@@ -1,0 +1,6 @@
+- name: run disable-thp
+  systemd:
+    name: disable-transparent-hugepages
+    enabled: true
+    state: started
+    daemon_reload: yes

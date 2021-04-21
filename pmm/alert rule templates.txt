@@ -1,0 +1,220 @@
+# Alert for any instance down
+---
+templates:
+  - name: MongoDBDown
+    version: 1
+    summary: MongoDB is down
+    expr: |-
+      mongodb_up < 1
+      # or up{service_type="mongodb"} == 0 
+    severity: critical
+    annotations:
+      summary: MongoDB is down ({{ $labels.service_name }})
+      description: |-
+        MongoDB {{ $labels.service_name }} on {{ $labels.node_name }} is down
+
+​# Alert for any instance out of disk space
+---
+templates:
+  - name: LowDiskSpace
+    version: 1
+    summary: Disk space % less than threshold
+    expr: (node_filesystem_avail_bytes{mountpoint="/rootfs"}  * 100) / node_filesystem_size_bytes{mountpoint="/rootfs"} < [[ .threshold ]]
+    params:
+      - name: threshold
+        summary: A percentage from configured maximum
+        unit: '%'
+        type: float
+        range: [0, 100]
+        value: 10
+    severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} is out of disk space"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} is out of disk space."
+​​
+# Alert for any instance out of disk space in 4 hours
+---
+templates:
+  - name: OutOfDiskSpaceInXHours
+    version: 1
+    summary: Out of disk space in X hours
+    expr: predict_linear(node_filesystem_free_bytes{fstype!~"tmpfs"}[1h], [[ .threshold ]] * 3600) < 0
+    params:
+      - name: threshold
+        summary: Number of hours
+        unit: 's'
+        type: float
+        range: [0, 100]
+        value: 4    
+    severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} out of disk space in [[ .threshold ]] hours"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} will be out of disk space in [[ .threshold ]] hours at current write rate."
+​​
+# Alert for any instance unusual disk read latency
+---
+templates:
+  - name: UnusualDiskReadLatency
+    version: 1
+    summary: High Disk Latency (Read)
+    expr: rate(node_disk_read_time_seconds_total[1m]) / rate(node_disk_reads_completed_total[1m]) > 100
+    severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} has unusual disk read latency"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} has unusual disk read latency."
+​
+# Alert for any instance unusual disk write latency
+---
+templates:
+  - name: UnusualDiskWiteLatency
+    version: 1
+    summary: High Disk Latency (Write)
+    expr: rate(node_disk_write_time_seconds_total[1m]) / rate(node_disk_writes_completed_total[1m]) > 100
+    severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} has unusual disk write latency"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} has unusual disk write latency."
+​​
+# Alert for any instance with swap filling up
+---
+templates:
+  - name: SwapFillingUp
+    version: 1
+    summary: Swap Usage
+    expr: (1 - (node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)) * 100 > 80
+    severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} has swap filling up"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} has swap filling up."
+​
+​​# Alert for any instance that has more than 500 connections for >5m.
+---
+templates:
+  - name: MongoDBConnections
+    version: 1
+    summary: MongoDB Connections
+    expr: avg by (service_name) (mongodb_connections{state="current"}) > 500
+    severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} connections"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} has more than 500 connections for more than 5 minutes."
+​
+# Alert for too many OPS  
+---
+templates:
+  - name: MongoDBOps
+    version: 1
+    summary: MongoDB High number of Operations
+    expr: rate(mnongodb_op_counters_total{type!="command"}[5m]) > 10000
+    severity: warning
+    annotations:
+      summary: "WARNING: High ops on (instance {{ $labels.node_name }}). More than 10k/s"
+      description: "High ops more than 10k/s"
+​
+# Alert for too few tickets available on WiredTiger
+---
+templates:
+  - name: MongoDBWiredTigerTickets
+    version: 1
+    summary: MongoDB WiredTiger tickets low
+    expr: avg by(service_name, type) (max_over_time(mongodb_mongod_wiredtiger_concurrent_transactions_available_tickets[5m])) < 50
+    severity: warning
+    annotations:
+      summary: "WARNING: WiredTiger available tickets on (instance {{ $labels.node_name }}) are less than 50 for more than 5 minutes."
+      description: "WiredTiger available tickets on (instance {{ $labels.node_name }}) are less than 50 for more than 5 minutes."
+​
+# Alert for too many evictions from the WiredTiger cache
+---
+templates:
+  - name: MongoDBWiredTigerCacheEvictions
+    version: 1
+    summary: MongoDB WiredTiger cache evictions high
+    expr: avg by(service_name, type) (rate(mongodb_mongod_wiredtiger_cache_evicted_total[5m])) > 5000
+    severity: warning
+    annotations:
+      summary: "WARNING: WiredTiger evictions per second on (instance {{ $labels.node_name }}) are higher than 5000."
+      description: "WiredTiger evictions per second on (instance {{ $labels.node_name }}) are higher than 5000."
+​​
+# Alert for too much replication delay
+---
+templates:
+  - name: MongoDBReplicationLag
+    version: 1
+    summary: MongoDB Replicationb Lag
+    expr: avg(mongodb_replset_member_optime_date{state="PRIMARY"}) - avg(mongodb_replset_member_optime_date{state="SECONDARY"}) > 10
+    severity: critical
+    annotations:
+      summary: "CRITICAL: The MongoDB replication lag is more than 10 sec on (instance {{ $labels.node_name }})"
+      description: "Mongodb replication lag is more than 10s"
+​
+# Alert for Replication Status 3
+---
+templates:
+  - name: MongoDBReplicationStatus3
+    version: 1
+    summary: MongoDB Node state RECOVERING
+    expr: mongodb_replset_member_state == 3
+    severity: critical
+    annotations:
+      summary: "CRITICAL: MongoDB Replication set member either perform startup self-checks, or transition from completing a rollback or resync (instance {{ $labels.node_name }})"
+      description: "MongoDB Replication set member either perform startup self-checks, or transition from completing a rollback or resync"
+​
+# Alert for Replication Status 8
+---
+templates:
+  - name: MongoDBReplicationStatus8
+    version: 1
+    summary: MongoDB Node state DOWN 
+    expr: mongodb_replset_member_state == 8
+    severity: critical
+    annotations:
+      summary: "CRITICAL: MongoDB Replication set member as seen from another member of the set, is unreachable (instance {{ $labels.node_name }})"
+      description: "MongoDB Replication set member as seen from another member of the set, is unreachable"
+​
+# Alert for Replication Status 9
+---
+templates:
+  - name: MongoDBReplicationStatus9
+    version: 1
+    summary: MongoDB Node state ROLLBACK
+    expr: mongodb_replset_member_state == 9
+    severity: critical
+    annotations:
+      summary: "CRITICAL: MongoDB Replication set member is actively performing a rollback. Data is not available for reads (instance {{ $labels.node_name }})"
+      description: "MongoDB Replication set member is actively performing a rollback. Data is not available for reads"
+​
+# Alert for too many open cursors on mongod
+---
+templates:
+  - name: MongoDBOpenCursors
+    version: 1
+    summary: MongoDB Open Cursors
+    expr: mongodb_metrics_cursor_open{state="total_open"} > 10000
+    severity: warning
+    annotations:
+      summary: "WARNING: Too many cursors opened by MongoDB for clients (> 10k) (instance {{ $labels.node_name }})"
+      description: "Too many cursors opened by MongoDB for clients (> 10k)"
+​
+# Alert for too many cursor timeouts
+---
+templates:
+  - name: MongoDBOpenCursorsTimeout
+    version: 1
+    summary: MongoDB Cursor Timeouts
+    expr: increase(mongodb_metrics_cursor_timed_out_total[5m]) > 100
+    severity: warning
+    annotations:
+      summary: "WARNING: Too many cursors are timing out (instance {{ $labels.node_name }})"
+      description: "Too many cursors are timing out"
+​
+# Alter for high memory usage for mongod
+---
+templates:
+  - name: MongoDBVirtualMemoryUsage
+    version: 1
+    summary: MongoDB Virtual Memory Usage
+    expr: (sum(mongodb_memory{type="virtual"}) BY (ip) / sum(mongodb_memory{type="mapped"}) BY (ip)) > 3
+    severity: warning
+    annotations:
+      summary: "WARNING: High memory usage (instance {{ $labels.node_name }})"
+      description: "High memory usage"        

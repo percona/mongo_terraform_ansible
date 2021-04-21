@@ -1,0 +1,18 @@
+{% if pbm_local %}
+storage:
+  type: filesystem
+  filesystem:
+    path: {{ pbm_path }}
+{% else %}
+storage:
+ type: s3
+ s3:
+     region: {{ region }}
+     bucket: {{ bucket }}
+     prefix: {{ prefix }}
+     endpointUrl: {{ endpointUrl }}
+     credentials:
+       access-key-id: {{ access_key_id }}
+       secret-access-key: {{ secret_access_key }}
+{% endif %}
+

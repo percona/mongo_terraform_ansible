@@ -1,0 +1,5 @@
+{% if use_tls %}
+PBM_MONGODB_URI="mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}/?tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
+{% else %}
+PBM_MONGODB_URI="mongodb://{{ pbmuser }}:{{ pbmpwd }}@localhost:{{ mongo_port }}"
+{% endif %}

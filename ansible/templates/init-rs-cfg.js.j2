@@ -1,0 +1,11 @@
+rs.initiate(
+  {
+    _id: "mongo-cfg",
+    configsvr: true,
+    members: [
+      {% for h in groups['cfg'] %}
+         { _id : {{ loop.index }}, host : "{{ h }}:{{ cfg_server_port }}", priority: {% if loop.first %}10{% else %}1{% endif %} } {% if not loop.last %},{% endif %}
+      {% endfor %}
+    ]
+  }
+);

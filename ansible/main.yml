@@ -1,0 +1,343 @@
+---
+- name: install percona rpms
+  hosts: all
+  tasks:
+    - name: copy rpm files from local machine
+      block:
+        - name: copy files
+          copy:
+            src: "{{ local_rpm_location }}"
+            dest: "{{ target_rpm_location }}"
+
+        - name: find copied percona RPMs
+          find:
+            paths: "{{ target_rpm_location }}"
+            patterns: "*.rpm"
+          register: percona_rpms
+
+        - set_fact:
+            rpm_list: "{{ percona_rpms.files | map(attribute='path') | list  }}"
+
+        - name: install copied rpm files
+          become: yes
+          yum:
+            name: "{{ rpm_list }}"
+            state: present
+            disablerepo: "*"
+            #disable_plugin: "*"
+
+      when: copy_files | bool
+
+    - name: install rpm files from repo
+      become: yes
+      block:
+        - name: install percona key
+          rpm_key:
+            key: https://downloads.percona.com/downloads/RPM-GPG-KEY-percona
+            state: present
+
+        - name: install percona repo
+          package:
+            name: "https://repo.percona.com/yum/percona-release-latest.noarch.rpm"
+            state: present
+
+        - name: Enable specific version
+          shell: "/usr/bin/percona-release enable psmdb-44 && /usr/bin/percona-release enable tools"
+
+        - name: install rpm from repo
+          package:
+            name: "{{ item }}"
+            state: present
+          with_items: "{{ packages }}"
+      when: not copy_files | bool
+
+- name: prepare os config
+  hosts: all
+  tasks:
+    - name: prepare disable transparent huge pages systemd service
+      become: yes
+      template:
+        src: disable-thp.service.j2
+        dest: /usr/lib/systemd/system/disable-thp.service
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: run disable thp service
+      become: yes
+      systemd:
+        name: disable-thp
+        enabled: true
+        state: started
+        daemon_reload: yes
+
+    - name: set up extra arguments for mongo client ssl 
+      set_fact:
+        mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
+      when: use_tls | bool
+
+    - name: set up keyfile if not using ssl
+      become: yes
+      copy: 
+        dest: "{{ keyFile_location }}"
+        content: "{{ keyfile_content }}"
+        owner: mongod
+        group: root
+        mode: 0600
+      when: not use_tls | bool
+
+- name: prepare config servers
+  hosts: cfg
+  tasks:
+    - name: copy mongod.conf on config server
+      become: yes
+      template: 
+        src: templates/mongod-cfgserver.conf.j2
+        dest: /etc/mongod.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: prepare the init command for cfg rs
+      template: 
+        src: templates/init-rs-cfg.js.j2
+        dest: /tmp/init-rs.js
+        mode: 0644
+      when: mongodb_primary is defined and mongodb_primary
+
+- name: prepare replica sets
+  hosts: shard*:rs*
+  tasks:
+    - name: copy mongod.conf to rs member
+      become: yes
+      template:
+        src: templates/mongod-replicaset.conf.j2
+        dest: /etc/mongod.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: initialize the replica set command
+      template:
+        src: templates/init-rs.js.j2
+        dest: /tmp/init-rs.js
+        mode: 0644
+      when: mongodb_primary is defined and mongodb_primary
+
+- name: bootstrap replica sets
+  hosts: cfg:shard*:rs*
+  tasks:
+    - name: create the datadir
+      become: yes
+      file:
+        path: "{{ mongod_path }}"
+        owner: mongod
+        mode: '0750'
+        state: directory
+
+    - name: figure out the mongo port
+      shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
+      register: mongo_port_result
+      changed_when: false
+      failed_when: mongo_port_result.stdout == ""
+
+    - set_fact:
+        mongo_port: "{{ mongo_port_result.stdout }}"
+
+    - name: set up encryption keyfile
+      become: yes
+      copy:
+        dest: "{{ encryption_keyfile }}"
+        content: "{{ encryption_key_content }}"
+        owner: mongod
+        group: root
+        mode: 0600
+      when: keyfile_encryption | bool
+
+    - name: set up Vault tokenfile
+      become: yes
+      copy:
+        dest: "{{ vault_tokenfile }}"
+        content: "{{ vault_tokenfile_content }}"
+        owner: mongod
+        group: root
+        mode: 0600
+      when: vault_encryption | bool
+
+    - name: start mongod on rs member
+      become: yes
+      service:
+        name: mongod
+        state: started
+
+    - name: wait a few secs so servers finish starting
+      pause:
+        seconds: 5
+
+    - name: run the init command for rs 
+      shell: mongo {{ mongo_extra_args | default("") }} --host localhost --port {{ mongo_port }} < /tmp/init-rs.js
+      when: mongodb_primary is defined and mongodb_primary
+
+    - name: wait a few secs so replica sets finish initializing
+      pause:
+        seconds: 5
+
+- name: create the local users & logrotate
+  hosts: cfg:shard*:rs*
+  tasks:
+    - name: copy logrotate conf
+      become: yes
+      template:
+        src: templates/logrotate-mongod.conf.j2
+        dest: /etc/logrotate.d/mongod
+        mode: 0644
+
+    - name: prepare the command to create root user
+      template:
+        src: templates/createRoot.js.j2
+        dest: /tmp/createRoot.js
+        mode: 0644
+      when: mongodb_primary is defined and mongodb_primary
+
+    - name: run the command to create the root user
+      shell: mongo admin {{ mongo_extra_args | default("") }} --host localhost --port {{ mongo_port  }} < /tmp/createRoot.js
+      when: mongodb_primary is defined and mongodb_primary
+
+    - name: prepare the commands to create pbm and pmm users and roles
+      template:
+        src: templates/createUsers.js.j2
+        dest: /tmp/createUsers.js
+        mode: 0644
+      when: mongodb_primary is defined and mongodb_primary
+
+    - name: run the command to create the pbm and pmm users and roles
+      shell: mongo admin {{ mongo_extra_args | default("") }} -uroot -p{{ mongo_root_password }} --port {{ mongo_port }} < /tmp/createUsers.js
+      when: mongodb_primary is defined and mongodb_primary
+
+- name: configure the pmm agent
+  hosts: cfg:shard*:rs*
+  tags: monitoring
+  tasks:
+    - name: figure out the ssl parameters for pmm
+      set_fact:
+        pmm_ssl_params: " --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }} "
+      when: use_tls | bool
+
+    - name: point to the server
+      become: true
+      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_server }}:443 --server-insecure-tls --force
+
+    - name: add mongodb metrics
+      become: true
+      shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster_name }} --host={{ ansible_fqdn }} --port={{ cfg_server_port if ('cfg' in group_names) else shard_port }} --tls-skip-verify
+      ignore_errors: yes
+
+- name: configure pbm agent
+  hosts: cfg:shard*:rs*
+  tags: backup
+  become: true
+  tasks:
+    - name: figure out the mongo port
+      shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
+      register: mongo_port_result
+      changed_when: false
+      failed_when: mongo_port_result.stdout == ""
+
+    - set_fact:
+        mongo_port: "{{ mongo_port_result.stdout }}"
+
+    - name: figure out the mongo ssl uri
+      set_fact:
+        mongo_uri_tls: "/?tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
+      when: use_tls | bool
+
+    - name: fix pbm home dir
+      shell: /usr/sbin/usermod -d /usr/local/percona pbm
+
+    - name: configure credentials file for pbm agent
+      template:
+        src: templates/pbm-agent.j2
+        dest: /etc/sysconfig/pbm-agent
+
+    - name: start pbm agent
+      service: 
+        name: pbm-agent
+        state: restarted
+
+    - name: prepare storage details file for pbm
+      template:
+        src: templates/pbm-storage.conf.j2
+        dest: /tmp/pbm-storage.conf
+
+    - name: set up storage location for pbm
+      shell: pbm config --file /tmp/pbm-storage.conf --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
+      when: mongodb_primary is defined and mongodb_primary
+
+    - name: set up backup cron
+      cron:
+        name: pbm backup
+        minute: 3
+        hour: 0
+        user: pbm
+        job: /usr/bin/pbm backup --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
+        cron_file: pbm_daily_backup
+
+    - name: set up purge old backup cron
+      cron:
+        name: pbm purge
+        minute: 3
+        hour: 4 
+        user: pbm
+        job: /usr/bin/pbm delete-backup --force --older-than $(date -u -d '-7 days' +'%Y-%m-%d') --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
+        cron_file: pbm_purge_old
+        
+- name: install mongos
+  hosts: mongos
+  tasks:
+    - name: copy mongos.conf 
+      become: yes
+      template:
+        src: templates/mongos.conf.j2
+        dest: /etc/mongos.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: setup logrotate conf for mongos
+      become: yes
+      template:
+        src: templates/logrotate-mongos.conf.j2
+        dest: /etc/logrotate.d/mongos
+        mode: 0644
+
+    - name: copy systemd template file for mongos
+      become: yes
+      template:
+        src: templates/mongos.service.j2
+        dest: /usr/lib/systemd/system/mongos.service
+        mode: 0644
+
+    - name: disable selinux
+      become: yes
+      shell: /usr/sbin/setenforce 0
+
+    - name: start mongos service
+      become: yes
+      systemd:
+        name: mongos
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: wait a few secs so replica sets finish initializing
+      pause:
+        seconds: 10
+
+- name: add the shards
+  hosts: shard*
+  tasks:
+    - name: add the shards to the cluster
+      shell: mongo admin {{ mongo_extra_args | default("") }} -uroot -p{{ mongo_root_password }} --port {{ mongos_port }} --eval "sh.addShard('{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
+      delegate_to: "{{ groups.mongos | first }}"
+      when: mongodb_primary is defined and mongodb_primary
+

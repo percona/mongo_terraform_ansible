@@ -1,0 +1,17 @@
+[cfg]
+%{ for index, group in ansible_group_cfg ~}
+${hostname_cfg[index]} ${ index == 0 ? "mongodb_primary=True" : "" }
+%{ endfor ~}
+
+%{ for shard_index in number_of_shards ~}
+[shard${shard_index}]
+%{ for index, group in ansible_group_shards ~}
+${ group == tostring(shard_index) && ansible_group_index[index] == "0" ? join(" ", [ hostname_shards[index], "mongodb_primary=True\n" ]) : "" ~} 
+${ group == tostring(shard_index) && ansible_group_index[index] != "0" ? join("", [ hostname_shards[index], "\n" ]) : "" ~} 
+%{ endfor ~}
+%{ endfor ~}
+
+[mongos]
+%{ for index, group in ansible_group_mongos ~}
+${hostname_mongos[index]} 
+%{ endfor ~}

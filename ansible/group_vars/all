@@ -1,0 +1,106 @@
+##################
+## General configuration
+##################
+
+# copy rpm files from a local path. If false yum will be used to download from a configured repository
+copy_files: false
+
+# only relevant if copy_files: false
+packages:
+  - percona-server-mongodb
+  - percona-backup-mongodb
+  - pmm2-client
+
+# where to copy rpms from if copy_files:true. We need to have pbm, pmm-client and percona-server-mongodb available on this directory
+local_rpm_location: /home/ec2-user/mongo/
+
+# where to copy rpm files to
+target_rpm_location: /tmp/
+
+mongo_root_password: percona
+
+cfg_server_port: 27019
+shard_port: 27018
+mongos_port: 27017
+replicaset_port: 27017
+
+mongod_log_path: /var/log/mongo/
+mongod_path: /data/mongo/
+
+##################
+## Authentication 
+##################
+
+# use_tls: true/false
+use_tls: yes
+
+# only relevant if use_tls: no
+keyFile_location: /var/lib/mongo/keyfile
+
+# openssl rand -base64 741 if you want to generate a new one
+keyfile_content: |
+  8pYcxvCqoe89kcp33KuTtKVf5MoHGEFjTnudrq5BosvWRoIxLowmdjrmUpVfAivh
+  CHjqM6w0zVBytAxH1lW+7teMYe6eDn2S/O/1YlRRiW57bWU3zjliW3VdguJar5i9
+
+# only relevant if use_tls: yes
+certificateKeyFile: /tmp/server.pem
+CAFile: /tmp/mongo-ca.pem
+
+################
+## Encryption
+###############
+# keyfile_encryption: true/false
+keyfile_encryption: true
+encryption_key_content: |
+  vvMTZ3dnSbG7wc6DkPpt+rp3Cc+jF8lJsYlq6QE1yEM=
+# path to the keyfile to encrypt
+encryption_keyfile: /opt/mongodb.key
+
+# vault_encryption: true/false - set to true to use Hashicorp Vault instead of local keyfile
+vault_encryption: false
+vault_server: vault.example.com
+vault_port: 8200
+# path to the token used by MongoDB to access Vault
+vault_tokenfile: /etc/mongodb/token
+vault_tokenfile_content: |
+  s.uTrHtzsZnEE7KyHeA797CkWA
+vault_cafile: /etc/mongodb/vault.crt
+# path to the secret within Vault
+vault_secret: secret/data/dc/psmongodb1
+
+##################
+## PMM 
+#################
+
+# server parameters
+pmm_server: dev-percona-pmm
+pmm_server_user: admin
+pmm_server_pwd: percona
+
+# client parameters
+mongodb_pmm_user: mongodb_exporter
+mongodb_pmm_user_pwd: percona
+
+# only applicable for sharded clusters
+cluster_name: dev
+
+###############
+## PBM
+###############
+
+pbmuser: pbm
+pbmpwd: secretpwd
+
+# backup location - locally mounted drive or cloud storage
+pbm_local: false
+
+# only relevant if pbm_local: true
+pbm_path: /backup
+
+# only relevant if pbm_local: false
+region: northamerica-northeast1
+bucket: dev-mongo-backups
+prefix: pbm/test
+endpointUrl: https://storage.googleapis.com
+access_key_id: 1234
+secret_access_key: 12344

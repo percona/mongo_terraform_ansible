@@ -1,0 +1,75 @@
+# mongod.conf - Shard Server
+
+# for documentation of all options, see:
+#   http://docs.mongodb.org/manual/reference/configuration-options/
+
+# where to write logging data.
+systemLog:
+  destination: file
+  logAppend: true
+  logRotate: rename
+  path: {{ mongod_log_path }}/mongod.log
+
+# Where and how to store data.
+storage:
+  dbPath: {{ mongod_path }}
+  directoryPerDB: true
+  journal:
+    enabled: true
+  wiredTiger:
+    engineConfig:
+          directoryForIndexes: true
+
+# how the process runs
+processManagement:
+  fork: true  # fork and run in background
+  pidFilePath: /var/run/mongod.pid  # location of pidfile
+  timeZoneInfo: /usr/share/zoneinfo
+
+# network interfaces
+net:
+{%if hostvars[inventory_hostname].group_names[0].startswith('shard') %}
+  port: {{ shard_port }}
+{% else %}
+  port: {{ replicaset_port }}
+{% endif %}
+  bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
+{% if use_tls %}
+  tls:
+    mode: requireTLS
+    certificateKeyFile: {{ certificateKeyFile }}
+    CAFile: {{ CAFile }}
+{% endif %}
+
+security:
+  authorization: enabled
+{% if use_tls %}
+  clusterAuthMode: x509
+{% else %}
+  keyFile: {{ keyFile_location }}
+{% endif %}
+{% if keyfile_encryption %}
+  enableEncryption: true
+  encryptionKeyFile: {{ encryption_keyfile }}
+{% elif vault_encryption %}
+  enableEncryption: true
+  vault:
+    serverName: {{ vault_server }}
+    port: {{ vault_port }}
+    tokenFile: {{ vault_tokenfile }}
+    secret: {{ vault_secret }}
+    serverCAFile: {{ vault_cafile }}
+{% endif %}
+
+operationProfiling:
+   slowOpThresholdMs: 200
+   mode: slowOp
+   slowOpSampleRate: 0.1
+
+replication:
+  replSetName: {{ hostvars[inventory_hostname].group_names[0] }}
+
+{%if hostvars[inventory_hostname].group_names[0].startswith('shard') %}
+sharding:
+  clusterRole: shardsvr
+{% endif %}

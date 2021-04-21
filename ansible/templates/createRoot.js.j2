@@ -1,0 +1,8 @@
+db.createUser({
+    user: "root",
+    pwd: "{{ mongo_root_password }}",
+    roles: [
+      {role: "root", db: "admin"}
+    ]
+  })
+

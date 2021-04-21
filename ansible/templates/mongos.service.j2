@@ -1,0 +1,35 @@
+[Unit]
+Description=MongoDB Router Service
+Documentation=https://docs.mongodb.org/manual
+After=network.target
+
+[Service]
+User=mongod
+Group=mongod
+Environment="OPTIONS=-f /etc/mongos.conf"
+ExecStart=/usr/bin/mongos $OPTIONS
+ExecStartPre=/usr/bin/touch /var/run/mongos.pid
+ExecStartPre=/usr/bin/chown mongod:mongod /var/run/mongos.pid
+ExecStartPre=/usr/bin/chmod 0755 /var/run/mongos.pid
+PermissionsStartOnly=true
+PIDFile=/var/run/mongos.pid
+#Type=forking
+# file size
+LimitFSIZE=infinity
+# cpu time
+LimitCPU=infinity
+# virtual memory size
+LimitAS=infinity
+# open files
+LimitNOFILE=64000
+# processes/threads
+LimitNPROC=64000
+# locked memory
+LimitMEMLOCK=infinity
+# total threads (user+kernel)
+TasksMax=infinity
+TasksAccounting=false
+
+[Install]
+WantedBy=multi-user.target
+

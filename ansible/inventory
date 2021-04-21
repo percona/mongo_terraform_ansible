@@ -1,0 +1,29 @@
+# Ansible inventory file
+#
+# Group names control the role a server will fulfill
+# A server can be in more than 1 role if it makes sense, for example both config server and mongos
+# cfg = config server
+# shardX = shard member X
+# mongos = mongos router
+# rsX = it will be considered a replicaset that won't be part of a sharded cluster. For example use rs1
+
+[cfg]
+dev-mongo-cfg00.c.cio-emr-dw-lab-9974ed.internal mongodb_primary=True
+dev-mongo-cfg01.c.cio-emr-dw-lab-9974ed.internal
+dev-mongo-cfg02.c.cio-emr-dw-lab-9974ed.internal
+
+[shard1]
+dev-mongo-shard00svr0.c.cio-emr-dw-lab-9974ed.internal mongodb_primary=True
+dev-mongo-shard00svr1.c.cio-emr-dw-lab-9974ed.internal
+dev-mongo-shard00svr2.c.cio-emr-dw-lab-9974ed.internal
+
+[shard2]
+dev-mongo-shard01svr0.c.cio-emr-dw-lab-9974ed.internal mongodb_primary=True
+dev-mongo-shard01svr1.c.cio-emr-dw-lab-9974ed.internal
+dev-mongo-shard01svr2.c.cio-emr-dw-lab-9974ed.internal
+
+[mongos]
+dev-mongo-router00.c.cio-emr-dw-lab-9974ed.internal
+#dev-mongo-router01.c.cio-emr-dw-lab-9974ed.internal
+#dev-mongo-router02.c.cio-emr-dw-lab-9974ed.internal
+

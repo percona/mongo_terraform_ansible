@@ -4,7 +4,7 @@
 2. Edit the [all variables file](group_vars/all)
 3. Run the playbook
 ```
-ansible-playbook main.yml -i inventory.ini --ask-become-pass
+ansible-playbook main.yml -i inventory --extra-vars "access_key_id=***** secret_access_key=******"
 ```
 
 ## Inventory file
@@ -18,26 +18,23 @@ ansible-playbook main.yml -i inventory.ini --ask-become-pass
 - Example of inventory for a sharded cluster:
 ```
 [cfg]
-ip-10-0-1-199.ec2.internal mongodb_primary=True
-host2
-host3
+dev-mongo-cfg00 mongodb_primary=True
+dev-mongo-cfg01
+dev-mongo-cfg02
 
+[shard0]
+dev-mongo-shard00svr0 mongodb_primary=True
+dev-mongo-shard00svr1
+dev-mongo-shard00svr2
 [shard1]
-ip-10-0-1-61.ec2.internal mongodb_primary=True
-host5
-host6
-
-[shard2]
-ip-10-0-1-72.ec2.internal mongodb_primary=True
-host8
-host9
-
-[shard3]
-host10
+dev-mongo-shard01svr0 mongodb_primary=True
+dev-mongo-shard01svr1
+dev-mongo-shard01svr2
 
 [mongos]
-ip-10-0-1-199.ec2.internal
+dev-mongo-router00
 ```
+
 - Example of inventory for a single replicaset:
 ```
 [rs1]
@@ -64,21 +61,26 @@ You should review and modify this file before making the deployment.
 
 * Deploy a replica set or sharded cluster from scratch:
 ```
-ansible-playbook main.yml -i inventory.ini --ask-become-pass 
+ansible-playbook main.yml -i inventory --ask-become-pass --extra-vars "access_key_id=********* secret_access_key=**********"
 ```
 * Add a new shard (e.g. shard3) to an existing cluster:
 ```
-ansible-playbook main.yml -i inventory.ini --ask-become-pass --limit shard3
+ansible-playbook main.yml -i inventory --ask-become-pass --limit shard3
 ```
 * Deploy skip the monitoring and backup parts
 ```
-ansible-playbook main.yml -i inventory.ini --ask-become-pass --skip-tags monitoring,backup
+ansible-playbook main.yml -i inventory --ask-become-pass --skip-tags monitoring,backup
 ```
 
 ## Cleanup
 * If you want cleanup a failed deploy, usually stopping mongod/mongos components and removing the datadir content is enough e.g.
 ```
 service mongos stop; service mongod stop; rm -rf /var/lib/mongo/*
+```
+
+You can also try running the `reset.yml` playbook
+```
+ansible-playbook reset.yml -i inventory
 ```
 
 ## Connecting 

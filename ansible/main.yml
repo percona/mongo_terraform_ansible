@@ -1,5 +1,5 @@
 ---
-- name: install percona rpms
+- name: install percona RPMs
   hosts: all
   tasks:
     - name: copy rpm files from local machine
@@ -28,7 +28,7 @@
 
       when: copy_files | bool
 
-    - name: install rpm files from repo
+    - name: install RPM files from repository
       become: yes
       block:
         - name: install percona key
@@ -51,8 +51,9 @@
           with_items: "{{ packages }}"
       when: not copy_files | bool
 
-- name: prepare os config
+- name: prepare OS configuration
   hosts: all
+  gather_facts: false
   tasks:
     - name: prepare disable transparent huge pages systemd service
       become: yes
@@ -86,8 +87,9 @@
         mode: 0600
       when: not use_tls | bool
 
-- name: prepare config servers
+- name: prepare the config servers
   hosts: cfg
+  gather_facts: false
   tasks:
     - name: copy mongod.conf on config server
       become: yes
@@ -98,17 +100,18 @@
         group: root
         mode: 0644
 
-    - name: prepare the init command for cfg rs
+    - name: prepare the init command for cfg replica set
       template: 
         src: templates/init-rs-cfg.js.j2
         dest: /tmp/init-rs.js
         mode: 0644
       when: mongodb_primary is defined and mongodb_primary
 
-- name: prepare replica sets
+- name: prepare the replica sets
+  gather_facts: false
   hosts: shard*:rs*
   tasks:
-    - name: copy mongod.conf to rs member
+    - name: copy mongod.conf to replica set member
       become: yes
       template:
         src: templates/mongod-replicaset.conf.j2
@@ -124,7 +127,8 @@
         mode: 0644
       when: mongodb_primary is defined and mongodb_primary
 
-- name: bootstrap replica sets
+- name: bootstrap the replica sets
+  gather_facts: false
   hosts: cfg:shard*:rs*
   tasks:
     - name: create the datadir
@@ -164,7 +168,7 @@
         mode: 0600
       when: vault_encryption | bool
 
-    - name: start mongod on rs member
+    - name: start mongod on replica set member
       become: yes
       service:
         name: mongod
@@ -174,7 +178,7 @@
       pause:
         seconds: 5
 
-    - name: run the init command for rs 
+    - name: run the init command for replica set
       shell: mongo {{ mongo_extra_args | default("") }} --host localhost --port {{ mongo_port }} < /tmp/init-rs.js
       when: mongodb_primary is defined and mongodb_primary
 
@@ -184,6 +188,7 @@
 
 - name: create the local users & logrotate
   hosts: cfg:shard*:rs*
+  gather_facts: false
   tasks:
     - name: copy logrotate conf
       become: yes
@@ -213,85 +218,9 @@
     - name: run the command to create the pbm and pmm users and roles
       shell: mongo admin {{ mongo_extra_args | default("") }} -uroot -p{{ mongo_root_password }} --port {{ mongo_port }} < /tmp/createUsers.js
       when: mongodb_primary is defined and mongodb_primary
-
-- name: configure the pmm agent
-  hosts: cfg:shard*:rs*
-  tags: monitoring
-  tasks:
-    - name: figure out the ssl parameters for pmm
-      set_fact:
-        pmm_ssl_params: " --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }} "
-      when: use_tls | bool
-
-    - name: point to the server
-      become: true
-      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_server }}:443 --server-insecure-tls --force
-
-    - name: add mongodb metrics
-      become: true
-      shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster_name }} --host={{ ansible_fqdn }} --port={{ cfg_server_port if ('cfg' in group_names) else shard_port }} --tls-skip-verify
-      ignore_errors: yes
-
-- name: configure pbm agent
-  hosts: cfg:shard*:rs*
-  tags: backup
-  become: true
-  tasks:
-    - name: figure out the mongo port
-      shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
-      register: mongo_port_result
-      changed_when: false
-      failed_when: mongo_port_result.stdout == ""
-
-    - set_fact:
-        mongo_port: "{{ mongo_port_result.stdout }}"
-
-    - name: figure out the mongo ssl uri
-      set_fact:
-        mongo_uri_tls: "/?tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
-      when: use_tls | bool
-
-    - name: fix pbm home dir
-      shell: /usr/sbin/usermod -d /usr/local/percona pbm
-
-    - name: configure credentials file for pbm agent
-      template:
-        src: templates/pbm-agent.j2
-        dest: /etc/sysconfig/pbm-agent
-
-    - name: start pbm agent
-      service: 
-        name: pbm-agent
-        state: restarted
-
-    - name: prepare storage details file for pbm
-      template:
-        src: templates/pbm-storage.conf.j2
-        dest: /tmp/pbm-storage.conf
-
-    - name: set up storage location for pbm
-      shell: pbm config --file /tmp/pbm-storage.conf --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
-      when: mongodb_primary is defined and mongodb_primary
-
-    - name: set up backup cron
-      cron:
-        name: pbm backup
-        minute: 3
-        hour: 0
-        user: pbm
-        job: /usr/bin/pbm backup --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
-        cron_file: pbm_daily_backup
-
-    - name: set up purge old backup cron
-      cron:
-        name: pbm purge
-        minute: 3
-        hour: 4 
-        user: pbm
-        job: /usr/bin/pbm delete-backup --force --older-than $(date -u -d '-7 days' +'%Y-%m-%d') --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
-        cron_file: pbm_purge_old
-        
-- name: install mongos
+      
+- name: install mongos routers
+  gather_facts: false
   hosts: mongos
   tasks:
     - name: copy mongos.conf 
@@ -333,11 +262,93 @@
       pause:
         seconds: 10
 
-- name: add the shards
+- name: add the shards to the cluster
   hosts: shard*
+  gather_facts: false
   tasks:
     - name: add the shards to the cluster
       shell: mongo admin {{ mongo_extra_args | default("") }} -uroot -p{{ mongo_root_password }} --port {{ mongos_port }} --eval "sh.addShard('{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
       delegate_to: "{{ groups.mongos | first }}"
       when: mongodb_primary is defined and mongodb_primary
 
+- name: configure monitoring with pmm
+  hosts: cfg:shard*:rs*
+  gather_facts: false
+  tags: monitoring
+  tasks:
+    - name: Ensure pmm-agent is started
+      become: true
+      service:
+        name:  pmm-agent
+        state: started
+
+    - name: figure out the ssl parameters for pmm
+      set_fact:
+        pmm_ssl_params: " --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }} "
+      when: use_tls | bool
+
+    - name: point to the server
+      become: true
+      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_server }}:443 --server-insecure-tls --force
+
+    - name: add mongodb metrics
+      become: true
+      shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster_name }} --host={{ ansible_fqdn }} --port={{ cfg_server_port if ('cfg' in group_names) else shard_port }} --tls-skip-verify
+      ignore_errors: yes
+
+- name: configure backup with pbm
+  hosts: cfg:shard*:rs*
+  gather_facts: false
+  tags: backup
+  become: true
+  tasks:
+    - name: figure out the mongo port
+      shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
+      register: mongo_port_result
+      changed_when: false
+      failed_when: mongo_port_result.stdout == ""
+
+    - set_fact:
+        mongo_port: "{{ mongo_port_result.stdout }}"
+
+    - name: figure out the mongo ssl uri
+      set_fact:
+        mongo_uri_tls: "/?tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
+      when: use_tls | bool
+
+    - name: configure credentials file for pbm agent
+      template:
+        src: templates/pbm-agent.j2
+        dest: /etc/sysconfig/pbm-agent
+
+    - name: start pbm agent
+      service: 
+        name: pbm-agent
+        state: restarted
+
+    - name: prepare storage details file for pbm
+      template:
+        src: templates/pbm-storage.conf.j2
+        dest: /tmp/pbm-storage.conf
+
+    - name: set up storage location for pbm
+      shell: pbm config --file /tmp/pbm-storage.conf --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
+      when: mongodb_primary is defined and mongodb_primary
+
+    - name: set up backup cron
+      cron:
+        name: pbm backup
+        minute: 3
+        hour: 0
+        user: pbm
+        job: /usr/bin/pbm backup --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
+        cron_file: pbm_daily_backup
+
+    - name: set up purge old backup cron
+      cron:
+        name: pbm purge
+        minute: 3
+        hour: 4 
+        user: pbm
+        job: /usr/bin/pbm delete-backup --force --older-than $(date -u -d '-7 days' +'\%Y-\%m-\%d') --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
+        cron_file: pbm_purge_old

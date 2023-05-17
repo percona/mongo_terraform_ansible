@@ -21,8 +21,11 @@ resource "google_compute_instance" "pmm" {
   network_interface {
     network = google_compute_network.vpc-network.id
     subnetwork = google_compute_subnetwork.vpc-subnet.id
+    access_config {}
   }
-
+  metadata = {
+    ssh-keys = "${var.gce_ssh_user}:${file(var.gce_ssh_pub_key_file)}"
+  }
   metadata_startup_script = <<EOT
     #! /bin/bash
 

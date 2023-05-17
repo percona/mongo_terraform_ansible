@@ -1,3 +1,14 @@
+# Note:
+# Consider overriding all the following variables at Ansible runtime via --extra-vars
+# - keyfile_content
+# - encryption_key_content (if using encryption at rest)
+# - vault_tokenfile_content (if using Hashicorp Vault)
+# - pmm_server_pwd
+# - pmm_user_pwd
+# - pbmpwd
+# - access_key_id (used for accesing S3 bucket for Backups)
+# - secret_access_key (used for accesing S3 bucket for Backups)
+
 ##################
 ## General configuration
 ##################
@@ -32,17 +43,17 @@ mongod_path: /data/mongo/
 ##################
 
 # use_tls: true/false
-use_tls: yes
+use_tls: false
 
-# only relevant if use_tls: no
+# only relevant if use_tls: false
 keyFile_location: /var/lib/mongo/keyfile
 
-# openssl rand -base64 741 if you want to generate a new one
+# Run openssl rand -base64 741 if you want to generate a new one
 keyfile_content: |
   8pYcxvCqoe89kcp33KuTtKVf5MoHGEFjTnudrq5BosvWRoIxLowmdjrmUpVfAivh
   CHjqM6w0zVBytAxH1lW+7teMYe6eDn2S/O/1YlRRiW57bWU3zjliW3VdguJar5i9
 
-# only relevant if use_tls: yes
+# next 2 only relevant if use_tls: true
 certificateKeyFile: /tmp/server.pem
 CAFile: /tmp/mongo-ca.pem
 
@@ -50,7 +61,7 @@ CAFile: /tmp/mongo-ca.pem
 ## Encryption
 ###############
 # keyfile_encryption: true/false
-keyfile_encryption: true
+keyfile_encryption: false
 encryption_key_content: |
   vvMTZ3dnSbG7wc6DkPpt+rp3Cc+jF8lJsYlq6QE1yEM=
 # path to the keyfile to encrypt
@@ -75,7 +86,7 @@ vault_secret: secret/data/dc/psmongodb1
 # server parameters
 pmm_server: dev-percona-pmm
 pmm_server_user: admin
-pmm_server_pwd: percona
+pmm_server_pwd: admin
 
 # client parameters
 mongodb_pmm_user: mongodb_exporter
@@ -91,7 +102,7 @@ cluster_name: dev
 pbmuser: pbm
 pbmpwd: secretpwd
 
-# backup location - locally mounted drive or cloud storage
+# backup location - set true for locally mounted NFS drive or false for S3-compatible storage bucket
 pbm_local: false
 
 # only relevant if pbm_local: true
@@ -102,5 +113,6 @@ region: northamerica-northeast1
 bucket: dev-mongo-backups
 prefix: pbm/test
 endpointUrl: https://storage.googleapis.com
-access_key_id: 1234
-secret_access_key: 12344
+# these are best provided via --extra-vars at runtime
+#access_key_id: *****
+#secret_access_key: *****

@@ -65,7 +65,7 @@ variable "pmm_volume_size" {
 variable "centos_amis" {
   description = "CentOS AMIs by region"
   default = {
-    northamerica-northeast1 = "centos-7-v20210420"
+    northamerica-northeast1 = "centos-7-v20230509"
   }
 }
 

@@ -3,8 +3,9 @@ data "google_compute_zones" "available" {
 	status = "UP"
 }
 
+# Set your desired network
 resource "google_compute_network" "vpc-network" {
-  name = "cio-emr-dw-lab-9974ed-terraform-vpc"
+  name = var.network_name
   auto_create_subnetworks = false
 }
 

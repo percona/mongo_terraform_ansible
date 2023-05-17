@@ -5,10 +5,13 @@ resource "local_file" "AnsibleInventory" {
      ansible_group_shards = google_compute_instance.shard.*.labels.ansible-group,
      ansible_group_index = google_compute_instance.shard.*.labels.ansible-index,
      hostname_shards = google_compute_instance.shard.*.name,
+     ip_shards = google_compute_instance.shard.*.network_interface.0.access_config.0.nat_ip,
      ansible_group_cfg = google_compute_instance.cfg.*.labels.ansible-group,
      hostname_cfg = google_compute_instance.cfg.*.name,
+     ip_cfg = google_compute_instance.cfg.*.network_interface.0.access_config.0.nat_ip,
      ansible_group_mongos = google_compute_instance.mongos.*.labels.ansible-group,
      hostname_mongos = google_compute_instance.mongos.*.name,
+     ip_mongos = google_compute_instance.mongos.*.network_interface.0.access_config.0.nat_ip,
      number_of_shards = range(var.shard_count)
     }
   )

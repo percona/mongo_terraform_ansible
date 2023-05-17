@@ -13,7 +13,7 @@
   become: yes
   tasks:
      - name: remove server from pmm
-       shell: pmm-admin remove mongodb {{ inventory_hostname }}
+       shell: pmm-admin remove mongodb {{ inventory_hostname }}-mongodb
        ignore_errors: yes
 
      - name: stop services
@@ -34,4 +34,4 @@
     - name: stop pmm client
       systemd: 
         name: pmm-agent
-        state: started
+        state: stopped

@@ -90,6 +90,7 @@ resource "google_compute_firewall" "mongodb-mongos-firewall" {
   name = "mongodb-mongos-firewall"
   network = google_compute_network.vpc-network.name
   direction = "INGRESS"
+  source_ranges = ["0.0.0.0/0"]
   target_tags = ["mongodb-mongos"]
   allow {
     protocol = "tcp"

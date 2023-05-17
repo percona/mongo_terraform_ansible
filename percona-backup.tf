@@ -37,4 +37,5 @@ output "access_key" {
 
 output "secret_key" {
   value     = google_storage_hmac_key.mongo-backup-service-account.secret
+  sensitive = true
 }

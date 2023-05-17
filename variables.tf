@@ -1,6 +1,7 @@
+# replace these with your own
 variable "project_id" {
   type    = string
-  default = "cio-emr-dw-lab-9974ed"
+  default = "consultants-206215"
 }
 
 variable "region" {

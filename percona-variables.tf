@@ -4,7 +4,7 @@ variable "env_tag" {
 }
 
 variable "configsvr_type" {
-	default = "e2-micro"
+	default = "e2-small"
 	description = "instance type of the config server"
 }
 
@@ -19,7 +19,7 @@ variable "configsvr_volume_size" {
 }
 
 variable "shardsvr_type" {
-	default = "e2-micro"
+	default = "e2-small"
 	description = "instance type of the shard server"
 }
 
@@ -65,7 +65,7 @@ variable "pmm_volume_size" {
 variable "centos_amis" {
   description = "CentOS AMIs by region"
   default = {
-    northamerica-northeast1 = "centos-8-v20210316"
+    northamerica-northeast1 = "centos-7-v20210420"
   }
 }
 

@@ -1,4 +1,4 @@
-# Alert for any instance down
+# Alert for any instance down - needs fixing
 ---
 templates:
   - name: MongoDBDown
@@ -12,6 +12,32 @@ templates:
       summary: MongoDB is down ({{ $labels.service_name }})
       description: |-
         MongoDB {{ $labels.service_name }} on {{ $labels.node_name }} is down
+
+# replica set member absent
+---
+templates:
+  - name: MongodbReplSetMemberHealth
+    version: 1
+    summary: MongoDB Replica Set Member Health
+    expr: mongodb_members_health != 1
+    severity: warning
+    annotations:
+      summary: "CRITICAL: ReplSet member is unreachable. (instance {{ $labels.node_name }})"
+      description: "ReplSet member is unreachable. Please investigate."
+
+# no primary - needs fixing
+---
+templates:
+  - name: MongodbReplSetHasNoPrimary
+    version: 1
+    summary: MongoDB replica set has no PRIMARY
+    expr: max(mongodb_mongod_replset_number_of_members) by (set) - count(mongodb_mongod_replset_my_state == 1) by (set) >= max(mongodb_mongod_replset_number_of_members) by (set)
+    for: 1m
+    severity: critical
+    annotations:
+      summary: "CRITICAL: ReplSet has no Primary. (instance {{ $labels.set }})"
+      description: "Please investigate."
+
 
 ​# Alert for any instance out of disk space
 ---

@@ -26,10 +26,10 @@ resource "google_compute_instance" "pmm" {
   metadata_startup_script = <<EOT
     #! /bin/bash
 
-    mkdir -p /var/lib/containers/storage
+    mkdir -p /var/lib/docker
     mkfs.xfs -L pmm /dev/sdb 
-    echo "$(blkid /dev/sdb | awk ' { print $3 }' | tr -d '"') /var/lib/containers/storage xfs defaults,noatime,discard 1 1" | tee -a /etc/fstab
-    mount /var/lib/containers/storage
+    echo "$(blkid /dev/sdb | awk ' { print $3 }' | tr -d '"') /var/lib/docker xfs defaults,noatime,discard 1 1" | tee -a /etc/fstab
+    mount /var/lib/docker
    
     tee -a /etc/sysctl.conf <<-EOF
     vm.swappiness=1
@@ -55,6 +55,7 @@ EOF
     setenforce 0
 
     yum -y install docker
+    service docker start
     docker pull percona/pmm-server:2
 
     docker create \
@@ -72,6 +73,7 @@ resource "google_compute_firewall" "percona-pmm-firewall" {
   name = "percona-pmm-firewall"
   network = google_compute_network.vpc-network.name
   direction = "INGRESS"
+  source_ranges = ["0.0.0.0/0"]
   target_tags = ["percona-pmm"]
   allow {
     protocol = "tcp"

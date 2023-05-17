@@ -108,6 +108,7 @@ resource "google_compute_firewall" "mongodb-cfgsvr-firewall" {
   name = "mongodb-cfgsvr-firewall"
   network = google_compute_network.vpc-network.name
   direction = "INGRESS"
+  source_ranges = ["0.0.0.0/0"]
   target_tags = ["mongodb-cfg"]
   allow {
     protocol = "tcp"

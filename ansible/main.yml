@@ -340,7 +340,7 @@
         name: pbm backup
         minute: 3
         hour: 0
-        user: pbm
+        user: mongod
         job: /usr/bin/pbm backup --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
         cron_file: pbm_daily_backup
 
@@ -349,6 +349,6 @@
         name: pbm purge
         minute: 3
         hour: 4 
-        user: pbm
+        user: mongod
         job: /usr/bin/pbm delete-backup --force --older-than $(date -u -d '-7 days' +'\%Y-\%m-\%d') --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
         cron_file: pbm_purge_old

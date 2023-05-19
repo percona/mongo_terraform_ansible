@@ -1,8 +1,9 @@
 ---
 - name: install percona RPMs
   hosts: all
+  tags: install
   tasks:
-    - name: copy rpm files from local machine
+    - name: copy RPM files from local machine
       block:
         - name: copy files
           copy:
@@ -18,7 +19,7 @@
         - set_fact:
             rpm_list: "{{ percona_rpms.files | map(attribute='path') | list  }}"
 
-        - name: install copied rpm files
+        - name: install copied RPM files
           become: yes
           yum:
             name: "{{ rpm_list }}"
@@ -33,18 +34,18 @@
       block:
         - name: install percona key
           rpm_key:
-            key: https://downloads.percona.com/downloads/RPM-GPG-KEY-percona
+            key: "{{ percona_key_location }}"
             state: present
 
-        - name: install percona repo
+        - name: install percona repositories
           package:
-            name: "https://repo.percona.com/yum/percona-release-latest.noarch.rpm"
+            name: "{{ percona_repo }}"
             state: present
 
-        - name: Enable specific version
-          shell: "/usr/bin/percona-release enable psmdb-44 && /usr/bin/percona-release enable tools"
+        - name: Enable specific MongoDB version
+          shell: "/usr/bin/percona-release enable {{ mongo_release }} && /usr/bin/percona-release enable tools"
 
-        - name: install rpm from repo
+        - name: install RPM from repository
           package:
             name: "{{ item }}"
             state: present
@@ -54,12 +55,13 @@
 - name: prepare OS configuration
   hosts: all
   gather_facts: false
+  tags: os_conf
   tasks:
     - name: prepare disable transparent huge pages systemd service
       become: yes
       template:
         src: disable-thp.service.j2
-        dest: /usr/lib/systemd/system/disable-thp.service
+        dest: "{{ thp_location }}"
         owner: root
         group: root
         mode: 0644
@@ -89,6 +91,7 @@
 
 - name: prepare the config servers
   hosts: cfg
+  tags: mongo_cfgsrv
   gather_facts: false
   tasks:
     - name: copy mongod.conf on config server
@@ -110,6 +113,7 @@
 - name: prepare the replica sets
   gather_facts: false
   hosts: shard*:rs*
+  tags: mongo_rs
   tasks:
     - name: copy mongod.conf to replica set member
       become: yes
@@ -130,6 +134,7 @@
 - name: bootstrap the replica sets
   gather_facts: false
   hosts: cfg:shard*:rs*
+  tags: bootstrap_rs
   tasks:
     - name: create the datadir
       become: yes
@@ -188,6 +193,7 @@
 
 - name: create the local users & logrotate
   hosts: cfg:shard*:rs*
+  tags: os_conf
   gather_facts: false
   tasks:
     - name: copy logrotate conf
@@ -222,6 +228,7 @@
 - name: install mongos routers
   gather_facts: false
   hosts: mongos
+  tags: mongos
   tasks:
     - name: copy mongos.conf 
       become: yes
@@ -264,6 +271,7 @@
 
 - name: add the shards to the cluster
   hosts: shard*
+  tags: add_shards
   gather_facts: false
   tasks:
     - name: add the shards to the cluster

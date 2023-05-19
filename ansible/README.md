@@ -53,13 +53,7 @@ You should review and modify this file before making the deployment.
 Note: PMM user and password are used to login to PMM UI via the web browser. If you intend to change the PMM credentials on the variables file (defaults are admin/admin), you will need to login to PMM via the web browser and change the PMM password there first, otherwise the playbook will fail. 
  
 ## Running
-* The playbook is meant to handle a deployment from scratch, unless run with some specific tags (e.g. conf). So be extra careful if you are running it against servers that already have data.
-
-- Available tags:
-  - backup
-    - Deploys & configures the pbm agent
-  - monitoring
-    - Deploys pmm2 client and registers with a pmm server
+* The playbook is meant to handle a deployment from scratch, unless run with some specific tags. Be extra careful if you are running it against servers that already have data.
 
 * Deploy a replica set or sharded cluster from scratch:
 ```
@@ -74,13 +68,33 @@ ansible-playbook main.yml -i inventory --limit shard3
 ansible-playbook main.yml -i inventory --skip-tags monitoring,backup
 ```
 
+### Available tags:
+  - backup
+    - Deploys & configures the pbm agent
+  - monitoring
+    - Deploys pmm2 client and registers with a pmm server
+  - install
+    - Installs packages at the OS level
+  - os_conf
+    - Tunes the OS for MongoDB
+  - mongo_cfgsrv
+    - Configures the config servers
+  - mongo_rs
+    - Configures the replica sets
+  - bootstrap_rs
+    - Bootstraps the replica sets (rs.initiate())
+  - mongos
+    - Configures the mongos routers
+  - add_shards
+    - Runs the sh.addShard() command on a mongos router
+
 ## Cleanup
 * If you want cleanup a failed deploy, usually stopping mongod/mongos components and removing the datadir content is enough e.g.
 ```
 service mongos stop; service mongod stop; rm -rf /var/lib/mongo/*
 ```
 
-You can also try running the `reset.yml` playbook
+You can also try running the `reset.yml` playbook:
 ```
 ansible-playbook reset.yml -i inventory
 ```

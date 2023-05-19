@@ -13,6 +13,13 @@
 ## General configuration
 ##################
 
+percona_key_location: https://downloads.percona.com/downloads/RPM-GPG-KEY-percona
+percona_repo: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+
+# MongoDB version as per "percona-release". Avaiability of MongoDB version depending on OS version.
+# e.g. -> Available repositories for centos7: psmdb-36 psmdb-40 psmdb-42 psmdb-44
+mongo_release: psmdb-44
+
 # copy rpm files from a local path. If false yum will be used to download from a configured repository
 copy_files: false
 
@@ -37,6 +44,8 @@ replicaset_port: 27017
 
 mongod_log_path: /var/log/mongo/
 mongod_path: /data/mongo/
+
+thp_location: /usr/lib/systemd/system/disable-thp.service
 
 ##################
 ## Authentication 

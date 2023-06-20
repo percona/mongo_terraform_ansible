@@ -24,7 +24,7 @@ variable "shardsvr_type" {
 }
 
 variable "shard_count" {
-  default = "2"
+  default = "1"
   description = "Number of shards to be used"
 }
 

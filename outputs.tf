@@ -14,6 +14,9 @@ resource "local_file" "AnsibleInventory" {
      ip_mongos = google_compute_instance.mongos.*.network_interface.0.access_config.0.nat_ip,
      number_of_shards = range(var.shard_count),
      gce_ssh_user = var.gce_ssh_user
+     hostname_pmm = google_compute_instance.pmm.name,
+     public_ip_pmm = google_compute_instance.pmm.network_interface.0.access_config.0.nat_ip,
+     private_ip_pmm = google_compute_instance.pmm.network_interface.0.network_ip
     }
   )
   filename = "inventory"

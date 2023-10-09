@@ -115,6 +115,6 @@ resource "google_compute_firewall" "mongodb-shardsvr-firewall" {
   target_tags = ["mongodb-shard"]
   allow {
     protocol = "tcp"
-    ports = ["22", "27018"]
+    ports = ["22", "27017", "27018"]
  }
 }

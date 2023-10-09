@@ -284,6 +284,13 @@
   gather_facts: false
   tags: monitoring
   tasks:
+    - name: figure out the mongo port
+      shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
+      register: mongo_port_result
+      changed_when: false
+      failed_when: mongo_port_result.stdout == ""
+    - set_fact:
+        mongo_port: "{{ mongo_port_result.stdout }}"
     - name: Ensure pmm-agent is started
       become: true
       service:
@@ -297,11 +304,11 @@
 
     - name: point to the server
       become: true
-      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_server }}:443 --server-insecure-tls --force
+      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:443 --server-insecure-tls --force
 
     - name: add mongodb metrics
       become: true
-      shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster_name }} --host={{ ansible_fqdn }} --port={{ cfg_server_port if ('cfg' in group_names) else shard_port }} --tls-skip-verify
+      shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster_name }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify
       ignore_errors: yes
 
 - name: configure backup with pbm

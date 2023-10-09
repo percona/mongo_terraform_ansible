@@ -62,6 +62,11 @@ variable "pmm_volume_size" {
 	description = "storage size for the PMM server"
 }
 
+variable "pmm_version" {
+	default = "2.40.0-el7"
+	description = "PMM image tag/version"
+}
+
 variable "centos_amis" {
   description = "CentOS AMIs by region"
   default = {

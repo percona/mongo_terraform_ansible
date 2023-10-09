@@ -59,17 +59,17 @@ EOF
 
     yum -y install docker
     service docker start
-    docker pull percona/pmm-server:2
+    docker pull percona/pmm-server:${var.pmm_version}
 
     docker create \
     -v /srv/ \
     --name pmm-data \
-    percona/pmm-server:2 /bin/true    
+    percona/pmm-server:${var.pmm_version} /bin/true    
 
     docker run --detach --restart always \
     --publish 443:443 \
     --volumes-from pmm-data --name pmm-server \
-    percona/pmm-server:2
+    percona/pmm-server:${var.pmm_version}
 EOT
 }
 resource "google_compute_firewall" "percona-pmm-firewall" {

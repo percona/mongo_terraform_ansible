@@ -53,7 +53,7 @@ variable "data_disk_type" {
 }
 
 variable "pmm_type" {
-	default = "e2-small"
+	default = "e2-standard-2"
 	description = "instance type of the PMM server"
 }
 

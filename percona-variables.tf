@@ -53,13 +53,18 @@ variable "data_disk_type" {
 }
 
 variable "pmm_type" {
-	default = "e2-standard-2"
+	default = "e2-small"
 	description = "instance type of the PMM server"
 }
 
 variable "pmm_volume_size" {
 	default = "100"
 	description = "storage size for the PMM server"
+}
+
+variable "pmm_version" {
+	default = "2.40.0-el7"
+	description = "PMM image tag/version"
 }
 
 variable "centos_amis" {

@@ -18,3 +18,6 @@ ${hostname_mongos[index]} ansible_host=${ip_mongos[index]}
 
 [all:vars]
 ansible_ssh_user=${gce_ssh_user}
+pmm_hostname=${hostname_pmm}
+pmm_public_ip=${public_ip_pmm}
+pmm_private_ip=${private_ip_pmm}

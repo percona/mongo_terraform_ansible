@@ -13,7 +13,7 @@ The installation process takes around 15 min for a 2 shard cluster
 - Keep a separate inventory file per environment (for example dev, test, prod).
 - If you have more than one cluster per environment, then keep one inventory per cluster as well (for example devrs1, devrs2, devshard1, devshard2).
 - On each inventory file, we have to specify groups for each shard's replicaset (name them shardXXXX), as well as the config servers (cfg) and mongos routers (mongos). 
-- For each standalone replicaset you should name them rsXXXX.
+- For each standalone replicaset you should name them rsXXXX (instead of shardXXXX).
 - You can specify a server in more than one group only for the case of deploying the mongos + config server combination. Any other combinations are currently not supported and cause execution to fail.
 
 - Example of inventory for a sharded cluster:
@@ -34,6 +34,12 @@ dev-mongo-shard01svr2
 
 [mongos]
 dev-mongo-router00
+
+[all:vars]
+ansible_ssh_user=mongodb
+pmm_hostname=pmm-dev
+pmm_public_ip=30.30.30.30
+pmm_private_ip=192.168.0.1
 ```
 
 - Example of inventory for a single replicaset:
@@ -42,6 +48,11 @@ dev-mongo-router00
 host11 mongodb_primary=True
 host12
 host13
+
+[all:vars]
+pmm_hostname=pmm-dev
+pmm_public_ip=30.30.30.30
+pmm_private_ip=192.168.0.1
 ```
 
 The `mongodb_primary` tag will make that server become the primary by giving it higher priority in the replicaset configuration.

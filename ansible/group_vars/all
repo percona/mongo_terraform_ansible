@@ -17,7 +17,7 @@ percona_key_location: https://downloads.percona.com/downloads/RPM-GPG-KEY-percon
 percona_repo: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
 
 # MongoDB version as per "percona-release". Avaiability of MongoDB version depending on OS version.
-# e.g. -> Available repositories for centos7: psmdb-36 psmdb-40 psmdb-42 psmdb-44
+# e.g. -> Available repositories for centos7: psmdb-36 psmdb-40 psmdb-42 psmdb-44 psmdb-50 psmdb-60
 mongo_release: psmdb-44
 
 # copy rpm files from a local path. If false yum will be used to download from a configured repository
@@ -93,7 +93,6 @@ vault_secret: secret/data/dc/psmongodb1
 #################
 
 # server parameters
-pmm_server: dev-percona-pmm
 pmm_server_user: admin
 pmm_server_pwd: admin
 

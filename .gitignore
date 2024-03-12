@@ -1,5 +1,6 @@
 /.terraform/
 /.terraform**
 *tfstate*
-*inventory*
+*inventory
 *.pub
+ssh_config

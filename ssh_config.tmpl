@@ -1,0 +1,28 @@
+%{ for index, group in ansible_group_shards ~}
+Host ${hostname_shards[index]}
+  Hostname ${ip_shards[index]}
+  User ${gce_ssh_user}
+  ProxyCommand ssh -W %h:%p gateway
+
+%{ endfor ~}
+
+%{ for index, group in ansible_group_cfg ~}
+Host ${hostname_cfg[index]}
+  Hostname ${ip_cfg[index]}
+  User ${gce_ssh_user}
+  ProxyCommand ssh -W %h:%p gateway
+
+%{ endfor ~}
+
+%{ for index, group in ansible_group_mongos ~}
+Host ${hostname_mongos[index]}
+  Hostname ${ip_mongos[index]}
+  User ${gce_ssh_user}
+  ProxyCommand ssh -W %h:%p gateway
+
+%{ endfor ~}
+Host ${hostname_pmm}
+  Hostname ${public_ip_pmm}
+  User ${gce_ssh_user}
+  LocalForward 13443 127.0.0.1:443
+  ProxyCommand ssh -W %h:%p gateway

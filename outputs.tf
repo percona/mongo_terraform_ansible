@@ -21,3 +21,24 @@ resource "local_file" "AnsibleInventory" {
   )
   filename = "inventory"
 }
+
+### The ssh config file
+resource "local_file" "SSHConfig" {
+  content = templatefile("ssh_config.tmpl",
+    {
+     ansible_group_shards = google_compute_instance.shard.*.labels.ansible-group,
+     hostname_shards = google_compute_instance.shard.*.name,
+     ip_shards = google_compute_instance.shard.*.network_interface.0.access_config.0.nat_ip,
+     ansible_group_cfg = google_compute_instance.cfg.*.labels.ansible-group,
+     hostname_cfg = google_compute_instance.cfg.*.name,
+     ip_cfg = google_compute_instance.cfg.*.network_interface.0.access_config.0.nat_ip,
+     ansible_group_mongos = google_compute_instance.mongos.*.labels.ansible-group,
+     hostname_mongos = google_compute_instance.mongos.*.name,
+     ip_mongos = google_compute_instance.mongos.*.network_interface.0.access_config.0.nat_ip,
+     gce_ssh_user = var.gce_ssh_user
+     hostname_pmm = google_compute_instance.pmm.name,
+     public_ip_pmm = google_compute_instance.pmm.network_interface.0.access_config.0.nat_ip,
+    }
+  )
+  filename = "ssh_config"
+}

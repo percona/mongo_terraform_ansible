@@ -1,10 +1,10 @@
 variable "env_tag" {
   description = "Name of Environment"
-  default = "dev"
+  default = "ivan"
 }
 
 variable "configsvr_type" {
-	default = "e2-small"
+	default = "e2-medium"
 	description = "instance type of the config server"
 }
 
@@ -19,7 +19,7 @@ variable "configsvr_volume_size" {
 }
 
 variable "shardsvr_type" {
-	default = "e2-small"
+	default = "e2-medium"
 	description = "instance type of the shard server"
 }
 
@@ -39,7 +39,7 @@ variable "shardsvr_volume_size" {
 }
 
 variable "mongos_type" {
-	default = "e2-micro"
+	default = "e2-medium"
 	description = "instance type of the mongos servers"
 }
 
@@ -62,15 +62,10 @@ variable "pmm_volume_size" {
 	description = "storage size for the PMM server"
 }
 
-variable "pmm_version" {
-	default = "2.40.0-el7"
-	description = "PMM image tag/version"
-}
-
 variable "centos_amis" {
   description = "CentOS AMIs by region"
   default = {
-    northamerica-northeast1 = "centos-7-v20230509"
+    northamerica-northeast1 = "projects/centos-cloud/global/images/centos-stream-9-v20231115"
   }
 }
 

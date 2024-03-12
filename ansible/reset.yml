@@ -3,20 +3,22 @@
   become: yes
   gather_facts: false
   tasks:
-    - name: stop services
+    - name: stop mongos service
       systemd: 
         name: mongos
         state: stopped
+      ignore_errors: yes
 
 - hosts: cfg:shard*:rs*
   gather_facts: false
+  tags: mongod
   become: yes
   tasks:
      - name: remove server from pmm
        shell: pmm-admin remove mongodb {{ inventory_hostname }}-mongodb
        ignore_errors: yes
 
-     - name: stop services
+     - name: stop mongod service
        systemd:
          name: "{{ item }}"
          state: stopped
@@ -25,7 +27,7 @@
          - pbm-agent
 
      - name: remove datadir contents
-       shell: rm -rf /data/mongo/*
+       shell: rm -rf {{ mongod_path }}/*
 
 - hosts: all
   gather_facts: false

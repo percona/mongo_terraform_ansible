@@ -23,6 +23,7 @@
         - { key: vm.dirty_ratio, value: "15" }
         - { key: vm.dirty_background_ratio, value: "5" }
         - { key: net.core.somaxconn, value: "65535" }
+        - { key: vm.max_map_count, value: "102400" }
 
     - name: modify limits
       community.general.pam_limits:
@@ -294,6 +295,15 @@
         dest: /tmp/createRoot.js
         mode: 0644
       when: mongodb_primary is defined and mongodb_primary
+
+    - name: figure out the mongo port
+      shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
+      register: mongo_port_result
+      changed_when: false
+      failed_when: mongo_port_result.stdout == ""
+
+    - set_fact:
+        mongo_port: "{{ mongo_port_result.stdout }}"
 
     - name: run the command to create the root user
       shell: mongo admin {{ mongo_extra_args | default("") }} --host localhost --port {{ mongo_port  }} < /tmp/createRoot.js

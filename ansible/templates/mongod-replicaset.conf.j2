@@ -14,11 +14,11 @@ systemLog:
 storage:
   dbPath: {{ mongod_path }}
   directoryPerDB: true
-  journal:
-    enabled: true
-  wiredTiger:
-    engineConfig:
-          directoryForIndexes: true
+# journal:
+#   enabled: true
+# wiredTiger:
+#   engineConfig:
+#         directoryForIndexes: true
 
 # how the process runs
 processManagement:

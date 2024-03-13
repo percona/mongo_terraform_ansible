@@ -43,7 +43,7 @@ resource "google_compute_firewall" "mongodb-shardsvr-firewall" {
   network = google_compute_network.vpc-network.name
   direction = "INGRESS"
   source_ranges = ["0.0.0.0/0"]
-  target_tags = ["mongodb-shard"]
+  target_tags = ["${var.env_tag}-mongodb-shard"]
   allow {
     protocol = "tcp"
     ports = ["22", "27017", "27018"]

@@ -36,7 +36,7 @@ resource "google_compute_firewall" "percona-pmm-firewall" {
   network = google_compute_network.vpc-network.name
   direction = "INGRESS"
   source_ranges = ["0.0.0.0/0"]
-  target_tags = ["percona-pmm"]
+  target_tags = ["${var.env_tag}-percona-pmm"]
   allow {
     protocol = "tcp"
     ports = ["22", "443"]

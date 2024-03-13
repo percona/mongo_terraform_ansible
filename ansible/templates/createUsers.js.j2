@@ -1,4 +1,32 @@
-db.createRole(    {      role: "explainRole",      privileges: [        { resource: { db: "", collection: "" }, actions: [ "listIndexes","listCollections","dbStats","dbHash","collStats","find" ] }], roles:[]});
+db.createRole({
+   "role":"explainRole",
+   "privileges":[
+      {
+         "resource":{
+            "db":"", "collection":""
+         },
+         "actions":[
+            "listIndexes",
+            "listCollections",
+            "dbStats",
+            "dbHash",
+            "collStats",
+            "find"
+         ]
+      },
+      {
+         resource:{
+            db:"", collection:"system.profile"
+         },
+         actions:[
+            "collStats",
+            "dbStats",
+            "indexStats"
+         ]
+      }
+   ],
+   "roles":[]
+});
 
 db.getSiblingDB("admin").createUser({
     user: "{{ mongodb_pmm_user }}",
@@ -6,18 +34,14 @@ db.getSiblingDB("admin").createUser({
     roles: [
         { role: "explainRole", db: "admin" },
         { role: "clusterMonitor", db: "admin" },
-        { role: "read", db: "local" }
+        { role: "read", db: "local" },
+        { "db" : "admin", "role" : "readWrite", "collection": "" },
+        { "db" : "admin", "role" : "backup" },
+        { "db" : "admin", "role" : "clusterMonitor" },
+        { "db" : "admin", "role" : "restore" },
+        { "db" : "admin", "role" : "pbmAnyAction" }        
     ]
 });
-
-db.getSiblingDB("admin").createRole({ "role": "pbmAnyAction",
-      "privileges": [
-         { "resource": { "anyResource": true },
-           "actions": [ "anyAction" ]
-         }
-      ],
-      "roles": []
-   });
 
 db.getSiblingDB("admin").createUser({user: "{{ pbmuser }}",
        "pwd": "{{ pbmpwd }}",

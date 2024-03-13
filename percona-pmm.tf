@@ -28,52 +28,11 @@ resource "google_compute_instance" "pmm" {
   }
   metadata_startup_script = <<EOT
     #! /bin/bash
-
-    mkdir -p /var/lib/docker
-    mkfs.xfs -L pmm /dev/sdb 
-    echo "$(blkid /dev/sdb | awk ' { print $3 }' | tr -d '"') /var/lib/docker xfs defaults,noatime,discard 1 1" | tee -a /etc/fstab
-    mount /var/lib/docker
-   
-    tee -a /etc/sysctl.conf <<-EOF
-    vm.swappiness=1
-    vm.dirty_ratio=15
-    vm.dirty_background_ratio=5
-    kernel.panic=10
-    net.core.somaxconn=65535
-    net.ipv4.tcp_max_syn_backlog=4096
-    net.ipv4.conf.all.secure_redirects=0
-    net.ipv4.conf.default.secure_redirects=0
-    net.ipv4.ip_local_port_range=10001    65535
-    net.ipv4.neigh.default.gc_thresh1=0
-    net.ipv4.tcp_slow_start_after_idle=0
-    net.ipv6.conf.all.accept_ra=0
-    net.ipv6.conf.all.accept_redirects=0
-    net.ipv6.conf.all.disable_ipv6=1
-    net.ipv6.conf.default.accept_ra=0
-    net.ipv6.conf.default.accept_redirects=0
-    net.ipv6.conf.default.disable_ipv6=1
-EOF
-    sysctl -p
-
-    setenforce 0
-
-    yum -y install docker
-    service docker start
-    docker pull percona/pmm-server:${var.pmm_version}
-
-    docker create \
-    -v /srv/ \
-    --name pmm-data \
-    percona/pmm-server:${var.pmm_version} /bin/true    
-
-    docker run --detach --restart always \
-    --publish 443:443 \
-    --volumes-from pmm-data --name pmm-server \
-    percona/pmm-server:${var.pmm_version}
+    echo "Created"
 EOT
 }
 resource "google_compute_firewall" "percona-pmm-firewall" {
-  name = "percona-pmm-firewall"
+  name = "${var.env_tag}-percona-pmm-firewall"
   network = google_compute_network.vpc-network.name
   direction = "INGRESS"
   source_ranges = ["0.0.0.0/0"]

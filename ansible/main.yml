@@ -1,8 +1,97 @@
 ---
-- name: install percona RPMs
+#- hosts: all
+#  vars_prompt:
+#    - name: "access_key_id"
+#      prompt: "Specify the access key"
+
+ #   - name: "secret_access_key"
+ #     prompt: "Specify the secret key"
+
+- name: prepare OS configuration
   hosts: all
+  tags: os_conf
+  become : yes
+  tasks:
+    - name: tune sysctl
+      ansible.posix.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: true
+      with_items:
+        - { key: vm.swappiness, value: "1" }
+        - { key: vm.dirty_ratio, value: "15" }
+        - { key: vm.dirty_background_ratio, value: "5" }
+        - { key: net.core.somaxconn, value: "65535" }
+        - { key: vm.max_map_count, value: "102400" }
+
+    - name: modify limits
+      community.general.pam_limits:
+        domain: "{{ item.domain }}"
+        limit_type: "{{ item.type }}"
+        limit_item: "{{ item.it }}"
+        value: "{{ item.value }}"
+      with_items:
+        - { domain: '*', type: soft, it: nofile, value: 64000 }
+        - { domain: '*', type: hard, it: nofile, value: 64000 }
+
+    - name: add pam limits to login
+      community.general.pamd:
+        state: after
+        type: session
+        module_path: postlogin
+        control: include
+        new_type: session
+        new_module_path: pam_limits.so
+        new_control: required
+        name: login
+
+    - name: prepare disable transparent huge pages systemd service
+      template:
+        src: disable-thp.service.j2
+        dest: "{{ thp_location }}"
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: run disable thp service
+      systemd:
+        name: disable-thp
+        enabled: true
+        state: started
+        daemon_reload: yes
+
+- name: install MongoDB
+  hosts: cfg:shard*:rs*
+  gather_facts: false
+  become: yes
   tags: install
   tasks:
+    - name: Create datadir
+      file:
+        path: "{{ mongod_path }}"
+        state: directory
+        mode: 0770
+
+    - name: Create an xfs filesystem 
+      community.general.filesystem:
+        fstype: xfs
+        state: present
+        dev: /dev/disk/by-id/google-persistent-disk-1
+
+    - name: Fetch the UUID of volume
+      command: blkid -s UUID -o value /dev/disk/by-id/google-persistent-disk-1
+      changed_when: false
+      register: blkid_out
+
+    - name: Mount up device by UUID
+      ansible.posix.mount:
+        path: "{{ mongod_path }}"
+        src: UUID={{ blkid_out.stdout }}
+        fstype: xfs
+        opts: noatime
+        state: mounted
+
     - name: copy RPM files from local machine
       block:
         - name: copy files
@@ -20,7 +109,6 @@
             rpm_list: "{{ percona_rpms.files | map(attribute='path') | list  }}"
 
         - name: install copied RPM files
-          become: yes
           yum:
             name: "{{ rpm_list }}"
             state: present
@@ -30,7 +118,6 @@
       when: copy_files | bool
 
     - name: install RPM files from repository
-      become: yes
       block:
         - name: install percona key
           rpm_key:
@@ -50,29 +137,28 @@
             name: "{{ item }}"
             state: present
           with_items: "{{ packages }}"
+      
       when: not copy_files | bool
 
-- name: prepare OS configuration
-  hosts: all
+- name: prepare auth
+  hosts: cfg:shard*:rs*
   gather_facts: false
   tags: os_conf
   tasks:
-    - name: prepare disable transparent huge pages systemd service
+    - name: check if old mongo client exists
+      stat: 
+        path: /bin/mongo
+      register: mongo_binary
+
+    - name: Create a symbolic link for mongo shell
       become: yes
-      template:
-        src: disable-thp.service.j2
-        dest: "{{ thp_location }}"
+      ansible.builtin.file:
+        src: /bin/mongosh
+        dest: /bin/mongo
         owner: root
         group: root
-        mode: 0644
-
-    - name: run disable thp service
-      become: yes
-      systemd:
-        name: disable-thp
-        enabled: true
-        state: started
-        daemon_reload: yes
+        state: link
+      when: mongo_binary.stat.exists == False
 
     - name: set up extra arguments for mongo client ssl 
       set_fact:
@@ -210,6 +296,15 @@
         mode: 0644
       when: mongodb_primary is defined and mongodb_primary
 
+    - name: figure out the mongo port
+      shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
+      register: mongo_port_result
+      changed_when: false
+      failed_when: mongo_port_result.stdout == ""
+
+    - set_fact:
+        mongo_port: "{{ mongo_port_result.stdout }}"
+
     - name: run the command to create the root user
       shell: mongo admin {{ mongo_extra_args | default("") }} --host localhost --port {{ mongo_port  }} < /tmp/createRoot.js
       when: mongodb_primary is defined and mongodb_primary
@@ -222,16 +317,93 @@
       when: mongodb_primary is defined and mongodb_primary
 
     - name: run the command to create the pbm and pmm users and roles
-      shell: mongo admin {{ mongo_extra_args | default("") }} -uroot -p{{ mongo_root_password }} --port {{ mongo_port }} < /tmp/createUsers.js
+      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongo_port }} < /tmp/createUsers.js
       when: mongodb_primary is defined and mongodb_primary
       
 - name: install mongos routers
   gather_facts: false
   hosts: mongos
+  become: yes
   tags: mongos
   tasks:
-    - name: copy mongos.conf 
+    - name: copy RPM files from local machine
+      block:
+        - name: copy files
+          copy:
+            src: "{{ local_rpm_location }}"
+            dest: "{{ target_rpm_location }}"
+
+        - name: find copied percona RPMs
+          find:
+            paths: "{{ target_rpm_location }}"
+            patterns: "*.rpm"
+          register: percona_rpms
+
+        - set_fact:
+            rpm_list: "{{ percona_rpms.files | map(attribute='path') | list  }}"
+
+        - name: install copied RPM files
+          yum:
+            name: "{{ rpm_list }}"
+            state: present
+            disablerepo: "*"
+            #disable_plugin: "*"
+
+      when: copy_files | bool
+
+    - name: install RPM files from repository
+      block:
+        - name: install percona key
+          rpm_key:
+            key: "{{ percona_key_location }}"
+            state: present
+
+        - name: install percona repositories
+          package:
+            name: "{{ percona_repo }}"
+            state: present
+
+        - name: Enable specific MongoDB version
+          shell: "/usr/bin/percona-release enable {{ mongo_release }} && /usr/bin/percona-release enable tools"
+
+        - name: install RPM from repository
+          package:
+            name: "{{ item }}"
+            state: present
+          with_items: "{{ router_packages }}"
+      when: not copy_files | bool
+
+    - name: check if old mongo client exists
+      stat: 
+        path: /bin/mongo
+      register: mongo_binary
+
+    - name: Create a symbolic link for mongo shell
       become: yes
+      ansible.builtin.file:
+        src: /bin/mongosh
+        dest: /bin/mongo
+        owner: root
+        group: root
+        state: link
+      when: mongo_binary.stat.exists == False
+
+    - name: set up extra arguments for mongo client ssl 
+      set_fact:
+        mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
+      when: use_tls | bool
+
+    - name: set up keyfile if not using ssl
+      become: yes
+      copy: 
+        dest: "{{ keyFile_location }}"
+        content: "{{ keyfile_content }}"
+        owner: mongod
+        group: root
+        mode: 0600
+      when: not use_tls | bool
+
+    - name: copy mongos.conf 
       template:
         src: templates/mongos.conf.j2
         dest: /etc/mongos.conf
@@ -240,25 +412,21 @@
         mode: 0644
 
     - name: setup logrotate conf for mongos
-      become: yes
       template:
         src: templates/logrotate-mongos.conf.j2
         dest: /etc/logrotate.d/mongos
         mode: 0644
 
     - name: copy systemd template file for mongos
-      become: yes
       template:
         src: templates/mongos.service.j2
         dest: /usr/lib/systemd/system/mongos.service
         mode: 0644
 
     - name: disable selinux
-      become: yes
       shell: /usr/sbin/setenforce 0
 
     - name: start mongos service
-      become: yes
       systemd:
         name: mongos
         state: started
@@ -275,43 +443,11 @@
   gather_facts: false
   tasks:
     - name: add the shards to the cluster
-      shell: mongo admin {{ mongo_extra_args | default("") }} -uroot -p{{ mongo_root_password }} --port {{ mongos_port }} --eval "sh.addShard('{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
+      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --eval "sh.addShard('{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
       delegate_to: "{{ groups.mongos | first }}"
       when: mongodb_primary is defined and mongodb_primary
 
-- name: configure monitoring with pmm
-  hosts: cfg:shard*:rs*
-  gather_facts: false
-  tags: monitoring
-  tasks:
-    - name: figure out the mongo port
-      shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
-      register: mongo_port_result
-      changed_when: false
-      failed_when: mongo_port_result.stdout == ""
-    - set_fact:
-        mongo_port: "{{ mongo_port_result.stdout }}"
-    - name: Ensure pmm-agent is started
-      become: true
-      service:
-        name:  pmm-agent
-        state: started
-
-    - name: figure out the ssl parameters for pmm
-      set_fact:
-        pmm_ssl_params: " --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }} "
-      when: use_tls | bool
-
-    - name: point to the server
-      become: true
-      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:443 --server-insecure-tls --force
-
-    - name: add mongodb metrics
-      become: true
-      shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster_name }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify
-      ignore_errors: yes
-
-- name: configure backup with pbm
+- name: configure backup with PBM
   hosts: cfg:shard*:rs*
   gather_facts: false
   tags: backup
@@ -367,3 +503,98 @@
         user: mongod
         job: /usr/bin/pbm delete-backup --force --older-than $(date -u -d '-7 days' +'\%Y-\%m-\%d') --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
         cron_file: pbm_purge_old
+
+- name: configure PMM server
+  hosts: pmm
+  gather_facts: false
+  tags: pmm_server
+  become: true
+  tasks:
+
+    - name: Create PMM dir
+      file:
+        path: "{{ pmm_dir }}"
+        state: directory
+        owner: root 
+        group: root
+        mode: 0710
+
+    - name: Create an xfs filesystem 
+      community.general.filesystem:
+        fstype: xfs
+        state: present
+        dev: /dev/disk/by-id/google-persistent-disk-1
+
+    - name: Fetch the UUID of volume
+      command: blkid -s UUID -o value /dev/disk/by-id/google-persistent-disk-1
+      changed_when: false
+      register: blkid_out
+
+    - name: Mount up device by UUID
+      ansible.posix.mount:
+        path: "{{ pmm_dir }}"
+        src: UUID={{ blkid_out.stdout }}
+        fstype: xfs
+        opts: noatime
+        state: mounted
+
+    - name: install yum utils
+      yum:
+        name: yum-utils
+        state: present
+
+    - name: yum config manager
+      shell: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+    - name: install docker
+      yum:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - docker-ce 
+        - docker-ce-cli
+        - containerd.io
+
+    - name: start docker
+      service:
+        name: docker
+        state: restarted
+
+    - name: pull pmm image 
+      shell: docker pull docker.io/percona/pmm-server:{{ pmm_version }}
+
+    - name: create pmm volume
+      shell: docker create -v /srv/ --name pmm-data percona/pmm-server:{{ pmm_version }} /bin/true
+
+    - name: run pmm container
+      shell: docker run --detach --restart always --publish 443:443 --volumes-from pmm-data --name pmm-server percona/pmm-server:{{ pmm_version }}    
+
+- name: configure monitoring with PMM
+  hosts: cfg:shard*:rs*:mongos
+  gather_facts: false
+  become: true
+  tags: monitoring
+  tasks:
+    - name: figure out the mongo port
+      shell: "grep -h -i port /etc/mongo?.conf | awk '{print $2}' | head -1"
+      register: mongo_port_result
+      changed_when: false
+      failed_when: mongo_port_result.stdout == ""
+    - set_fact:
+        mongo_port: "{{ mongo_port_result.stdout }}"
+
+    - name: Ensure pmm-agent is started
+      service:
+        name:  pmm-agent
+        state: started
+
+    - name: figure out the ssl parameters for pmm
+      set_fact:
+        pmm_ssl_params: " --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }} "
+      when: use_tls | bool
+
+    - name: point to the server
+      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:443 --server-insecure-tls --force
+
+    - name: add mongodb metrics
+      shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster_name }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify --enable-all-collectors

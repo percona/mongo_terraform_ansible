@@ -16,7 +16,7 @@ variable "zone" {
 
 variable "network_name" {
   type    = string
-  default = "mongo-terraform-test"
+  default = "mongo-terraform"
 }
 
 # username that will login via SSH to manage the instances, corresponding to the key below

@@ -35,9 +35,11 @@ dev-mongo-shard01svr2
 [mongos]
 dev-mongo-router00
 
+[pmm]
+test-percona-pmm
+
 [all:vars]
 ansible_ssh_user=mongodb
-pmm_hostname=pmm-dev
 pmm_public_ip=30.30.30.30
 pmm_private_ip=192.168.0.1
 ```
@@ -49,8 +51,11 @@ host11 mongodb_primary=True
 host12
 host13
 
+[pmm]
+test-percona-pmm
+
 [all:vars]
-pmm_hostname=pmm-dev
+ansible_ssh_user=mongodb
 pmm_public_ip=30.30.30.30
 pmm_private_ip=192.168.0.1
 ```
@@ -81,14 +86,10 @@ ansible-playbook main.yml -i inventory --skip-tags monitoring,backup
 ```
 
 ### Available tags:
-  - backup
-    - Deploys & configures the pbm agent
-  - monitoring
-    - Deploys pmm2 client and registers with a pmm server
-  - install
-    - Installs packages at the OS level
   - os_conf
     - Tunes the OS for MongoDB
+  - install
+    - Installs packages at the OS level
   - mongo_cfgsrv
     - Configures the config servers
   - mongo_rs
@@ -99,6 +100,12 @@ ansible-playbook main.yml -i inventory --skip-tags monitoring,backup
     - Configures the mongos routers
   - add_shards
     - Runs the sh.addShard() command on a mongos router
+  - backup
+    - Deploys & configures the pbm agent    
+  - pmm
+    - Deploys a pmm2 server with docker
+  - monitoring
+    - Deploys pmm2 client and registers with a pmm server
 
 ## Cleanup
 * If you want cleanup a failed deploy, usually stopping mongod/mongos components and removing the datadir content is enough e.g.

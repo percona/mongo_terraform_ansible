@@ -6,7 +6,7 @@ resource "google_storage_bucket" "mongo-backups" {
 
   lifecycle_rule {
     condition {
-      age = 7
+      age = "${var.backup_retention}"
     }
     action {
       type = "Delete"

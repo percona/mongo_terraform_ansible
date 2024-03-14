@@ -16,7 +16,12 @@ resource "local_file" "AnsibleInventory" {
      gce_ssh_user = var.gce_ssh_user
      hostname_pmm = google_compute_instance.pmm.name,
      public_ip_pmm = google_compute_instance.pmm.network_interface.0.access_config.0.nat_ip,
-     private_ip_pmm = google_compute_instance.pmm.network_interface.0.network_ip
+     private_ip_pmm = google_compute_instance.pmm.network_interface.0.network_ip,
+     bucket = google_storage_bucket.mongo-backups.name,
+     region = google_storage_bucket.mongo-backups.location,
+     cluster = var.env_tag,
+     access_key = google_storage_hmac_key.mongo-backup-service-account.access_id,
+     secret_access_key = google_storage_hmac_key.mongo-backup-service-account.secret,
     }
   )
   filename = "inventory"

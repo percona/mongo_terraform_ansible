@@ -19,6 +19,11 @@ variable "network_name" {
   default = "mongo-terraform"
 }
 
+variable "subnet_name" {
+  type = string
+  default = "mongo-subnet"
+}
+
 # username that will login via SSH to manage the instances, corresponding to the key below
 variable "gce_ssh_user" {
   type    = string

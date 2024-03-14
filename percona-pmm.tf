@@ -9,7 +9,7 @@ resource "google_compute_instance" "pmm" {
   name = "${var.env_tag}-percona-pmm"
   machine_type = var.pmm_type
   zone  = data.google_compute_zones.available.names[0]
-  tags = ["percona-pmm"]
+  tags = ["${var.env_tag}-percona-pmm"]
   boot_disk {
     initialize_params {
     image = lookup(var.centos_amis, var.region)
@@ -39,6 +39,6 @@ resource "google_compute_firewall" "percona-pmm-firewall" {
   target_tags = ["${var.env_tag}-percona-pmm"]
   allow {
     protocol = "tcp"
-    ports = ["22", "443"]
- }
+    ports = "${var.pmm_ports}"
+  }
 }

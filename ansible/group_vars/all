@@ -111,7 +111,8 @@ mongodb_pmm_user: mongodb_exporter
 mongodb_pmm_user_pwd: percona
 
 # only applicable for sharded clusters
-cluster_name: dev
+# the next is put into the inventory file by Terraform
+#cluster: dev
 
 ###############
 ## PBM
@@ -127,8 +128,9 @@ pbm_local: false
 pbm_path: /backup
 
 # only relevant if pbm_local: false
-region: northamerica-northeast1
-bucket: dev-mongo-backups
+# the next 2 are put into the inventory file by Terraform
+#region: northamerica-northeast1
+#bucket: dev-mongo-backups
 prefix: pbm/test
 endpointUrl: https://storage.googleapis.com
 # these are best provided via --extra-vars at runtime

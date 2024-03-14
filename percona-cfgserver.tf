@@ -11,7 +11,7 @@ resource "google_compute_instance" "cfg" {
   machine_type = var.configsvr_type
   zone  = data.google_compute_zones.available.names[count.index % 3]
   count = var.configsvr_count
-  tags = ["mongodb-cfg"]
+  tags = ["${var.env_tag}-mongodb-cfg"]
   labels = { 
     ansible-group = "cfg",
     environment = var.env_tag
@@ -46,7 +46,6 @@ resource "google_compute_firewall" "mongodb-cfgsvr-firewall" {
   target_tags = ["${var.env_tag}-mongodb-cfg"]
   allow {
     protocol = "tcp"
-    ports = ["22", "27019"]
- }
+    ports = "${var.configsvr_ports}"
+  }
 }
-

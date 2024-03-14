@@ -11,7 +11,7 @@ resource "google_compute_instance" "shard" {
   machine_type = var.shardsvr_type
   zone  = data.google_compute_zones.available.names[count.index % var.shardsvr_replicas]
   count = var.shard_count * var.shardsvr_replicas
-  tags = ["mongodb-shard"]
+  tags = ["${var.env_tag}-mongodb-shard"]
   labels = { 
     ansible-group = floor(count.index / var.shardsvr_replicas ),
     ansible-index = count.index % var.shardsvr_replicas,
@@ -46,6 +46,6 @@ resource "google_compute_firewall" "mongodb-shardsvr-firewall" {
   target_tags = ["${var.env_tag}-mongodb-shard"]
   allow {
     protocol = "tcp"
-    ports = ["22", "27017", "27018"]
- }
+    ports = "${var.shard_ports}"
+  }
 }

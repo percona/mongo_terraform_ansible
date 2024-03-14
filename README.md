@@ -9,10 +9,11 @@
 6. Edit the file `variables.tf` to configure the GCP project ID, the region, and SSH user and key to login to the created instances
 7. Run `terraform plan` and choose the project where you are working on if prompted
 8. Run `terraform apply` to provision the hardware
-9. Run `terraform output -json` to see the access/secret keys generated for the created Cloud Storage bucket 
-10. Copy the auto-generated Ansible inventory to ./ansible folder
-11. Append the auto-generated SSH configuration (ssh_config file) to ~/.ssh/config to connect to the hosts via a bastion server. Modify as needed depending on your environment.
+9. Copy the auto-generated Ansible inventory to ./ansible folder
+10. Append the auto-generated SSH configuration (ssh_config file) to ~/.ssh/config to connect to the hosts via a bastion server. Modify as needed depending on your environment.
 
 Look inside the `ansible` folder for instructions to complete the deploy of a MongoDB cluster (Optional)
 
 The deployment of the resources required for a 2 shard cluster takes around 1 minute
+
+You can run `terraform output -json` to see the access/secret keys generated for the created Cloud Storage bucket 

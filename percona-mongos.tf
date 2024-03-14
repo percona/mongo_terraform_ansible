@@ -3,7 +3,7 @@ resource "google_compute_instance" "mongos" {
   machine_type = var.mongos_type
   zone  = data.google_compute_zones.available.names[count.index % 3]
   count = var.mongos_count
-  tags = ["mongodb-mongos"]
+  tags = ["${var.env_tag}-mongodb-mongos"]
   labels = { 
     ansible-group = "mongos",
     environment = var.env_tag
@@ -35,6 +35,6 @@ resource "google_compute_firewall" "mongodb-mongos-firewall" {
   target_tags = ["${var.env_tag}-mongodb-mongos"]
   allow {
     protocol = "tcp"
-    ports = ["22", "27017"]
- }
+    ports = "${var.mongos_ports}"
+  }
 }

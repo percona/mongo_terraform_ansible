@@ -1,12 +1,4 @@
 ---
-#- hosts: all
-#  vars_prompt:
-#    - name: "access_key_id"
-#      prompt: "Specify the access key"
-
- #   - name: "secret_access_key"
- #     prompt: "Specify the secret key"
-
 - name: prepare OS configuration
   hosts: all
   tags: os_conf
@@ -316,7 +308,7 @@
         mode: 0644
       when: mongodb_primary is defined and mongodb_primary
 
-    - name: run the command to create the pbm and pmm users and roles
+    - name: run the command to create the PBM and PMM users and roles
       shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongo_port }} < /tmp/createUsers.js
       when: mongodb_primary is defined and mongodb_primary
       
@@ -388,12 +380,12 @@
         state: link
       when: mongo_binary.stat.exists == False
 
-    - name: set up extra arguments for mongo client ssl 
+    - name: set up extra arguments for mongo client SSL 
       set_fact:
         mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
       when: use_tls | bool
 
-    - name: set up keyfile if not using ssl
+    - name: set up keyfile if not using SSL
       become: yes
       copy: 
         dest: "{{ keyFile_location }}"
@@ -447,7 +439,7 @@
       delegate_to: "{{ groups.mongos | first }}"
       when: mongodb_primary is defined and mongodb_primary
 
-- name: configure backup with PBM
+- name: configure PBM
   hosts: cfg:shard*:rs*
   gather_facts: false
   tags: backup
@@ -462,47 +454,79 @@
     - set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
-    - name: figure out the mongo ssl uri
+    - name: figure out the mongo SSL URI
       set_fact:
         mongo_uri_tls: "/?tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
       when: use_tls | bool
 
-    - name: configure credentials file for pbm agent
+    - name: configure credentials file for PBM agent
       template:
         src: templates/pbm-agent.j2
         dest: /etc/sysconfig/pbm-agent
 
-    - name: start pbm agent
+    - name: start PBM agent
       service: 
         name: pbm-agent
         state: restarted
 
-    - name: prepare storage details file for pbm
+    - name: prepare storage details file for PBM
       template:
         src: templates/pbm-storage.conf.j2
         dest: /tmp/pbm-storage.conf
 
-    - name: set up storage location for pbm
-      shell: pbm config --file /tmp/pbm-storage.conf --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
+- name: configure backup URI for replica sets
+  hosts: rs*
+  gather_facts: false
+  tags: backup
+  become: true
+  tasks:
+    - name: generate PBM_MONGODB_URI
+      set_fact:
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ group_names[0] ] %}{{ h }}:{{ replicaset_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ group_names[0] }}&authSource=admin{{ mongo_uri_tls | default('') }}"
+
+- name: configure backup URI for sharded cluster
+  hosts: shard*:cfg*
+  gather_facts: false
+  tags: backup
+  become: true
+  tasks:
+    - name: generate PBM_MONGODB_URI
+      set_fact:
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet=mongo-cfg&authSource=admin{{ mongo_uri_tls | default('') }}"
+
+- name: configure backup 
+  hosts: shard*:cfg*:rs*
+  gather_facts: false
+  tags: backup
+  become: true
+  tasks:
+    - name: set up storage location for PBM
+      shell: pbm config --file /tmp/pbm-storage.conf --mongodb-uri '{{ mongodb_uri }}'
       when: mongodb_primary is defined and mongodb_primary
 
-    - name: set up backup cron
+    - name: set up backup cron job
       cron:
         name: pbm backup
         minute: 3
         hour: 0
         user: mongod
-        job: /usr/bin/pbm backup --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
+        job: /usr/bin/pbm backup --mongodb-uri '{{ mongodb_uri }}'
         cron_file: pbm_daily_backup
 
-    - name: set up purge old backup cron
+    - name: set up purge old backups cron job
       cron:
         name: pbm purge
         minute: 3
         hour: 4 
         user: mongod
-        job: /usr/bin/pbm delete-backup --force --older-than $(date -u -d '-7 days' +'\%Y-\%m-\%d') --mongodb-uri "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{{ ansible_fqdn }}:{{ mongo_port }}{{ mongo_uri_tls | default("")}}"
+        job: /usr/bin/pbm delete-backup --force --older-than $(date -u -d '-7 days' +'\%Y-\%m-\%d') --mongodb-uri '{{ mongodb_uri }}'
         cron_file: pbm_purge_old
+
+    - name: set up PBM_MONGODB_URI
+      lineinfile:
+        dest: /root/.bash_profile
+        line: export PBM_MONGODB_URI='{{ mongodb_uri }}'
+        state: present
 
 - name: configure PMM server
   hosts: pmm
@@ -588,7 +612,7 @@
         name:  pmm-agent
         state: started
 
-    - name: figure out the ssl parameters for pmm
+    - name: figure out the SSL parameters for pmm
       set_fact:
         pmm_ssl_params: " --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }} "
       when: use_tls | bool
@@ -597,4 +621,4 @@
       shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:443 --server-insecure-tls --force
 
     - name: add mongodb metrics
-      shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster_name }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify --enable-all-collectors
+      shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify --enable-all-collectors

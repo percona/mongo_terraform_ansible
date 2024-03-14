@@ -84,7 +84,7 @@ Note: PMM user and password are used to login to PMM UI via the web browser. If 
 
 * Deploy a replica set or sharded cluster from scratch:
 ```
-ansible-playbook main.yml -i inventory --extra-vars "access_key_id=********* secret_access_key=**********"
+ansible-playbook main.yml -i inventory
 ```
 * Add a new shard (e.g. shard3) to an existing cluster:
 ```

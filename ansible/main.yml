@@ -27,7 +27,7 @@
         - { domain: '*', type: soft, it: nofile, value: 64000 }
         - { domain: '*', type: hard, it: nofile, value: 64000 }
 
-    - name: add pam limits to login
+    - name: add PAM limits to login
       community.general.pamd:
         state: after
         type: session
@@ -46,7 +46,7 @@
         group: root
         mode: 0644
 
-    - name: run disable thp service
+    - name: run disable THP service
       systemd:
         name: disable-thp
         enabled: true
@@ -65,7 +65,7 @@
         state: directory
         mode: 0770
 
-    - name: Create an xfs filesystem 
+    - name: Create an XFS filesystem 
       community.general.filesystem:
         fstype: xfs
         state: present
@@ -91,7 +91,7 @@
             src: "{{ local_rpm_location }}"
             dest: "{{ target_rpm_location }}"
 
-        - name: find copied percona RPMs
+        - name: find copied Percona RPMs
           find:
             paths: "{{ target_rpm_location }}"
             patterns: "*.rpm"
@@ -116,7 +116,7 @@
             key: "{{ percona_key_location }}"
             state: present
 
-        - name: install percona repositories
+        - name: install Percona repositories
           package:
             name: "{{ percona_repo }}"
             state: present
@@ -137,12 +137,12 @@
   gather_facts: false
   tags: os_conf
   tasks:
-    - name: check if old mongo client exists
+    - name: check if old Mongo client exists
       stat: 
         path: /bin/mongo
       register: mongo_binary
 
-    - name: Create a symbolic link for mongo shell
+    - name: Create a symbolic link for Mongo shell
       become: yes
       ansible.builtin.file:
         src: /bin/mongosh
@@ -152,12 +152,12 @@
         state: link
       when: mongo_binary.stat.exists == False
 
-    - name: set up extra arguments for mongo client ssl 
+    - name: set up extra arguments for Mongo client TLS
       set_fact:
         mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
       when: use_tls | bool
 
-    - name: set up keyfile if not using ssl
+    - name: set up keyfile if not using TLS
       become: yes
       copy: 
         dest: "{{ keyFile_location }}"
@@ -222,7 +222,7 @@
         mode: '0750'
         state: directory
 
-    - name: figure out the mongo port
+    - name: figure out the Mongo port
       shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
       register: mongo_port_result
       changed_when: false
@@ -350,7 +350,7 @@
             key: "{{ percona_key_location }}"
             state: present
 
-        - name: install percona repositories
+        - name: install Percona repositories
           package:
             name: "{{ percona_repo }}"
             state: present
@@ -365,12 +365,12 @@
           with_items: "{{ router_packages }}"
       when: not copy_files | bool
 
-    - name: check if old mongo client exists
+    - name: check if old Mongo client exists
       stat: 
         path: /bin/mongo
       register: mongo_binary
 
-    - name: Create a symbolic link for mongo shell
+    - name: Create a symbolic link for Mongo shell
       become: yes
       ansible.builtin.file:
         src: /bin/mongosh
@@ -380,12 +380,12 @@
         state: link
       when: mongo_binary.stat.exists == False
 
-    - name: set up extra arguments for mongo client SSL 
+    - name: set up extra arguments for Mongo client TLS 
       set_fact:
         mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
       when: use_tls | bool
 
-    - name: set up keyfile if not using SSL
+    - name: set up keyfile if not using TLS
       become: yes
       copy: 
         dest: "{{ keyFile_location }}"
@@ -445,7 +445,7 @@
   tags: backup
   become: true
   tasks:
-    - name: figure out the mongo port
+    - name: figure out the Mongo port
       shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
       register: mongo_port_result
       changed_when: false
@@ -454,7 +454,7 @@
     - set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
-    - name: figure out the mongo SSL URI
+    - name: figure out the Mongo TLS URI
       set_fact:
         mongo_uri_tls: "/?tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
       when: use_tls | bool
@@ -543,7 +543,7 @@
         group: root
         mode: 0710
 
-    - name: Create an xfs filesystem 
+    - name: Create an XFS filesystem 
       community.general.filesystem:
         fstype: xfs
         state: present
@@ -570,7 +570,7 @@
     - name: yum config manager
       shell: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 
-    - name: install docker
+    - name: install Docker
       yum:
         name: "{{ item }}"
         state: present
@@ -579,18 +579,18 @@
         - docker-ce-cli
         - containerd.io
 
-    - name: start docker
+    - name: start Docker
       service:
         name: docker
         state: restarted
 
-    - name: pull pmm image 
+    - name: pull PMM image 
       shell: docker pull docker.io/percona/pmm-server:{{ pmm_version }}
 
-    - name: create pmm volume
+    - name: create PMM volume
       shell: docker create -v /srv/ --name pmm-data percona/pmm-server:{{ pmm_version }} /bin/true
 
-    - name: run pmm container
+    - name: run PMM container
       shell: docker run --detach --restart always --publish 443:443 --volumes-from pmm-data --name pmm-server percona/pmm-server:{{ pmm_version }}    
 
 - name: configure monitoring with PMM
@@ -599,7 +599,7 @@
   become: true
   tags: monitoring
   tasks:
-    - name: figure out the mongo port
+    - name: figure out the Mongo port
       shell: "grep -h -i port /etc/mongo?.conf | awk '{print $2}' | head -1"
       register: mongo_port_result
       changed_when: false
@@ -617,8 +617,8 @@
         pmm_ssl_params: " --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }} "
       when: use_tls | bool
 
-    - name: point to the server
+    - name: point agent to the PMM server
       shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:443 --server-insecure-tls --force
 
-    - name: add mongodb metrics
+    - name: add MongoDB metrics collector 
       shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify --enable-all-collectors

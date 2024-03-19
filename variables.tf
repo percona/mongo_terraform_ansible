@@ -24,15 +24,15 @@ variable "subnet_name" {
   default = "mongo-subnet"
 }
 
-# username that will login via SSH to manage the instances, corresponding to the key below
-variable "gce_ssh_user" {
-  type    = string
-  default = "ivan_groenewold"
+variable "gce_ssh_users" {
+  description = "SSH user names, and their public key files to be added to authorized_keys"
+  default = {
+    ivan_groenewold = "ivan.pub"
+#    ,user2 = "user2.pub"
+  }
 }
 
-# path your public key file on the machine you are running terraform from
-# you will login to the created instances using the private part of this key
-variable "gce_ssh_pub_key_file" {
-  type    = string
-  default = "ivan.pub"
+# This one is only used to auto-generate an ssh_config file. Each person running this code should set it to its own SSH user name
+variable "my_ssh_user" {
+  default = "ivan_groenewold"
 }

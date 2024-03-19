@@ -1,18 +1,18 @@
 resource "google_compute_disk" "pmm_disk" {
-  name  = "${var.env_tag}-percona-pmm-data"
-  type  = var.data_disk_type
+  name  = "${var.env_tag}-${var.pmm_tag}-data"
+  type  = var.pmm_disk_type
   size  = var.pmm_volume_size
   zone  = data.google_compute_zones.available.names[0]
 }
 
 resource "google_compute_instance" "pmm" {
-  name = "${var.env_tag}-percona-pmm"
+  name = "${var.env_tag}-${var.pmm_tag}"
   machine_type = var.pmm_type
   zone  = data.google_compute_zones.available.names[0]
-  tags = ["${var.env_tag}-percona-pmm"]
+  tags = ["${var.env_tag}-${var.pmm_tag}"]
   boot_disk {
     initialize_params {
-    image = lookup(var.centos_amis, var.region)
+    image = lookup(var.image, var.region)
     }
   }   
   attached_disk {
@@ -24,7 +24,7 @@ resource "google_compute_instance" "pmm" {
     access_config {}
   }
   metadata = {
-    ssh-keys = "${var.gce_ssh_user}:${file(var.gce_ssh_pub_key_file)}"
+    ssh-keys = join("\n", [for user, key_path in var.gce_ssh_users : "${user}:${file(key_path)}"])
   }
   metadata_startup_script = <<EOT
     #! /bin/bash
@@ -32,11 +32,11 @@ resource "google_compute_instance" "pmm" {
 EOT
 }
 resource "google_compute_firewall" "percona-pmm-firewall" {
-  name = "${var.env_tag}-percona-pmm-firewall"
+  name = "${var.env_tag}-${var.pmm_tag}-firewall"
   network = google_compute_network.vpc-network.name
   direction = "INGRESS"
   source_ranges = ["0.0.0.0/0"]
-  target_tags = ["${var.env_tag}-percona-pmm"]
+  target_tags = ["${var.env_tag}-${var.pmm_tag}"]
   allow {
     protocol = "tcp"
     ports = "${var.pmm_ports}"

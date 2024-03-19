@@ -3,6 +3,21 @@ variable "env_tag" {
   default = "igtest"
 }
 
+variable "configsvr_tag" {
+  description = "Name of the config servers"
+  default = "mongodb-cfg"
+}
+
+variable "shard_tag" {
+  description = "Name of the shard servers"
+  default = "mongodb-shard"
+}
+
+variable "mongos_tag" {
+  description = "Name of the mongos router servers"
+  default = "mongodb-mongos"
+}
+
 variable "configsvr_type" {
 	default = "e2-medium"
 	description = "instance type of the config server"
@@ -29,7 +44,7 @@ variable "shardsvr_type" {
 }
 
 variable "shard_count" {
-  default = "2"
+  default = "1"
   description = "Number of shards to be used"
 }
 
@@ -39,7 +54,7 @@ variable "shard_ports" {
 }
 
 variable "shardsvr_replicas" {
-  default = "3"
+  default = "5"
 	description = "How many replicas per shard"
 }
 
@@ -67,6 +82,15 @@ variable "data_disk_type" {
   default = "pd-standard"
 }
 
+variable "pmm_tag" {
+  description = "Name of the PMM server"
+  default = "percona-pmm"
+}
+
+variable "pmm_disk_type" {
+   default = "pd-ssd"
+}
+
 variable "pmm_type" {
 	default = "e2-standard-2"
 	description = "instance type of the PMM server"
@@ -87,8 +111,8 @@ variable "backup_retention" {
 	description = "days to keep backups in bucket"
 }
 
-variable "centos_amis" {
-  description = "CentOS AMIs by region"
+variable "image" {
+  description = "Available images by region"
   default = {
     northamerica-northeast1 = "projects/centos-cloud/global/images/centos-stream-9-v20231115"
   }

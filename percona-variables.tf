@@ -118,3 +118,7 @@ variable "image" {
   }
 }
 
+variable "enable_ssh_gateway" {
+  type = bool
+  default = true
+}

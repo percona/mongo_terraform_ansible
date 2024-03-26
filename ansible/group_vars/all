@@ -62,7 +62,7 @@ thp_location: /usr/lib/systemd/system/disable-thp.service
 use_tls: false
 
 # only relevant if use_tls: false
-keyFile_location: /var/lib/mongo/keyfile
+keyFile_location: /etc/mongod_keyfile
 
 # Run openssl rand -base64 741 if you want to generate a new one
 keyfile_content: |

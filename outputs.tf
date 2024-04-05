@@ -43,6 +43,7 @@ resource "local_file" "SSHConfig" {
      gce_ssh_user = var.my_ssh_user
      hostname_pmm = google_compute_instance.pmm.name,
      public_ip_pmm = google_compute_instance.pmm.network_interface.0.access_config.0.nat_ip,
+     enable_ssh_gateway = var.enable_ssh_gateway,
     }
   )
   filename = "ssh_config"

@@ -10,8 +10,8 @@ resource "google_compute_network" "vpc-network" {
 }
 
 resource "google_compute_subnetwork" "vpc-subnet" {
-  name = "${var.env_tag}-mongodb-terraform-subnet"
-  ip_cidr_range = "10.30.0.0/16"
+  name = "${var.env_tag}-${var.subnet_name}"
+  ip_cidr_range = var.subnet
   region = var.region
   network = google_compute_network.vpc-network.id
 }

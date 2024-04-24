@@ -595,7 +595,7 @@
 
 - name: configure monitoring with PMM
   hosts: cfg:shard*:rs*:mongos
-  gather_facts: false
+  gather_facts: true
   become: true
   tags: monitoring
   tasks:

@@ -1,27 +1,26 @@
 [cfg]
 %{ for index, group in ansible_group_cfg ~}
-${hostname_cfg[index]} ansible_host=${ip_cfg[index]} ${ index == 0 ? "mongodb_primary=True" : "" }
+${hostname_cfg[index]} ${ index == 0 ? "mongodb_primary=True" : "" }
 %{ endfor ~}
 
 %{ for shard_index in number_of_shards ~}
 [shard${shard_index}]
 %{ for index, group in ansible_group_shards ~}
-${ group == tostring(shard_index) && ansible_group_index[index] == "0" ? join("", [ hostname_shards[index], " ", "ansible_host=", ip_shards[index], " mongodb_primary=True\n" ]) : "" ~} 
-${ group == tostring(shard_index) && ansible_group_index[index] != "0" ? join("", [ hostname_shards[index], " ", "ansible_host=", ip_shards[index], "\n" ]) : "" ~} 
+${ group == tostring(shard_index) && ansible_group_index[index] == "0" ? join("", [ hostname_shards[index], " ", " mongodb_primary=True\n" ]) : "" ~} 
+${ group == tostring(shard_index) && ansible_group_index[index] != "0" ? join("", [ hostname_shards[index], " ", "\n" ]) : "" ~} 
 %{ endfor ~}
 %{ endfor ~}
 
 [mongos]
 %{ for index, group in ansible_group_mongos ~}
-${hostname_mongos[index]} ansible_host=${ip_mongos[index]}
+${hostname_mongos[index]} 
 %{ endfor ~}
 
 [pmm]
-${hostname_pmm} ansible_host=${public_ip_pmm}
+${hostname_pmm} 
 
 [all:vars]
 ansible_ssh_user=${gce_ssh_user}
-pmm_public_ip=${public_ip_pmm}
 pmm_private_ip=${private_ip_pmm}
 bucket=${bucket}
 region=${region}

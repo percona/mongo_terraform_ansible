@@ -439,7 +439,7 @@
       delegate_to: "{{ groups.mongos | first }}"
       when: mongodb_primary is defined and mongodb_primary
 
-- name: configure PBM
+- name: prepare the PBM connection string 
   hosts: cfg:shard*:rs*
   gather_facts: false
   tags: backup
@@ -454,10 +454,42 @@
     - set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
-    - name: figure out the Mongo TLS URI
+    - name: figure out the Mongo TLS options
       set_fact:
         mongo_uri_tls: "/?tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
       when: use_tls | bool
+
+- name: figure out backup URI for replica sets
+  hosts: rs*
+  gather_facts: false
+  tags: backup
+  become: true
+  tasks:
+    - name: generate PBM_MONGODB_URI
+      set_fact:
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ group_names[0] ] %}{{ h }}:{{ replicaset_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ group_names[0] }}&authSource=admin{{ mongo_uri_tls | default('') }}"
+
+- name: figure out backup URI for sharded cluster
+  hosts: shard*:cfg*
+  gather_facts: false
+  tags: backup
+  become: true
+  tasks:
+    - name: generate PBM_MONGODB_URI
+      set_fact:
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet=mongo-cfg&authSource=admin{{ mongo_uri_tls | default('') }}"
+
+- name: configure PBM agent and CLI
+  hosts: cfg:shard*:rs*
+  gather_facts: false
+  tags: backup
+  become: true
+  tasks:
+    - name: set up PBM_MONGODB_URI
+      lineinfile:
+        dest: /root/.bash_profile
+        line: export PBM_MONGODB_URI='{{ mongodb_uri }}'
+        state: present      
 
     - name: configure credentials file for PBM agent
       template:
@@ -472,61 +504,35 @@
     - name: prepare storage details file for PBM
       template:
         src: templates/pbm-storage.conf.j2
-        dest: /tmp/pbm-storage.conf
+        dest: /etc/pbm-storage.conf  
 
-- name: configure backup URI for replica sets
-  hosts: rs*
-  gather_facts: false
-  tags: backup
-  become: true
-  tasks:
-    - name: generate PBM_MONGODB_URI
-      set_fact:
-        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ group_names[0] ] %}{{ h }}:{{ replicaset_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ group_names[0] }}&authSource=admin{{ mongo_uri_tls | default('') }}"
-
-- name: configure backup URI for sharded cluster
-  hosts: shard*:cfg*
-  gather_facts: false
-  tags: backup
-  become: true
-  tasks:
-    - name: generate PBM_MONGODB_URI
-      set_fact:
-        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet=mongo-cfg&authSource=admin{{ mongo_uri_tls | default('') }}"
-
-- name: configure backup 
-  hosts: shard*:cfg*:rs*
+- name: configure backup process
+  hosts: rs*:cfg*
   gather_facts: false
   tags: backup
   become: true
   tasks:
     - name: set up storage location for PBM
-      shell: pbm config --file /tmp/pbm-storage.conf --mongodb-uri '{{ mongodb_uri }}'
+      shell: pbm config --file /etc/pbm-storage.conf --mongodb-uri '{{ mongodb_uri }}'
       when: mongodb_primary is defined and mongodb_primary
 
     - name: set up backup cron job
       cron:
         name: pbm backup
-        minute: 3
-        hour: 0
-        user: mongod
-        job: /usr/bin/pbm backup --mongodb-uri '{{ mongodb_uri }}'
+        minute: '{{ pbm_backup_minute }}'
+        hour: '{{ pbm_backup_hour }}'
+        user: '{{ pbm_os_user }}'
+        job: /usr/bin/pbm backup --type '{{ pbm_backup_type }}' --mongodb-uri '{{ mongodb_uri }}'
         cron_file: pbm_daily_backup
 
     - name: set up purge old backups cron job
       cron:
         name: pbm purge
-        minute: 3
-        hour: 4 
-        user: mongod
-        job: /usr/bin/pbm delete-backup --force --older-than $(date -u -d '-7 days' +'\%Y-\%m-\%d') --mongodb-uri '{{ mongodb_uri }}'
+        minute: '{{ pbm_purge_minute }}'
+        hour: '{{ pbm_purge_minute }}'
+        user: '{{ pbm_os_user }}'
+        job: /usr/bin/pbm delete-backup --force --older-than $(date -u -d '-{{ pbm_retention_days }} days' +'\%Y-\%m-\%d') --mongodb-uri '{{ mongodb_uri }}'
         cron_file: pbm_purge_old
-
-    - name: set up PBM_MONGODB_URI
-      lineinfile:
-        dest: /root/.bash_profile
-        line: export PBM_MONGODB_URI='{{ mongodb_uri }}'
-        state: present
 
 - name: configure PMM server
   hosts: pmm

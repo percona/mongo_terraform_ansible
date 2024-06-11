@@ -120,6 +120,13 @@ mongodb_pmm_user_pwd: percona
 
 pbmuser: pbm
 pbmpwd: secretpwd
+pbm_backup_type: physical
+pbm_retention_days: 3
+pbm_backup_hour: 0
+pbm_backup_minute: 2
+pbm_purge_hour: 0
+pbm_purge_minute: 2
+pbm_os_user: mongod
 
 # backup location - set true for locally mounted NFS drive or false for S3-compatible storage bucket
 pbm_local: false
@@ -131,7 +138,7 @@ pbm_path: /backup
 # the next 2 are put into the inventory file by Terraform
 #region: northamerica-northeast1
 #bucket: dev-mongo-backups
-prefix: pbm/test
+prefix: pbm
 endpointUrl: https://storage.googleapis.com
 # these are best provided via --extra-vars at runtime
 #access_key_id: *****

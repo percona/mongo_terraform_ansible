@@ -8,8 +8,7 @@
 4. Run `terraform init`
 5. Edit the file `variables.tf` (see below)
 6. Run `terraform apply` to provision the hardware. Choose the project where you are working on if prompted
-7. Copy the auto-generated Ansible inventory to ansible folder: `cp inventory ./ansible/`
-8. Append the auto-generated SSH configuration (ssh_config file) to your ~/.ssh/config to connect easily. Modify as needed depending on your environment. For example: `cat ssh_config >> ~/.ssh/config`
+7. Append the auto-generated SSH configuration (ssh_config file) to your ~/.ssh/config to connect easily. Modify as needed depending on your environment. For example: `cat ssh_config >> ~/.ssh/config`
 
 Look inside the [ansible](ansible) folder for instructions to complete the deployment of a complete MongoDB cluster
 

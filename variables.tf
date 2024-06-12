@@ -26,7 +26,7 @@ variable "my_ssh_user" {
 # This affects the SSH config file generated adding a proxycommand with a gateway host
 variable "enable_ssh_gateway" {
   type = bool
-  default = true
+  default = false
 }
 
 variable "region" {

@@ -14,7 +14,7 @@ The installation process takes around 15 min for a 2 shard cluster
 
 - Keep a separate inventory file per environment (for example dev, test, prod).
 - If you have more than one cluster per environment, then keep one inventory per cluster as well (for example devrs1, devrs2, devshard1, devshard2).
-- On each inventory file, we have to specify groups for each shard's replicaset (name them `shardXXXX`), as well as the config servers (name it `cfg`) and mongos routers (name it `mongos`). 
+- On each inventory file, we have to specify groups for each shard's replicaset (name them `shardXXXX`), as well as the config servers (name it `cfg`) and mongos routers (name it `mongos`).
 - For each standalone replicaset you should name them `rsXXXX` (don't use `shardXXXX` for replica sets not part of a sharded cluster).
 - You can specify a server in more than one group only for the case of deploying a mongos + config server on the same host. Any other combinations are currently not supported and cause execution to fail.
 
@@ -76,11 +76,11 @@ The `mongodb_primary` tag will make that server become the primary by giving it 
 Only 1 sharded cluster per inventory file is supported at this time. If you have more use separate inventory files (See above).
 
 ## Configuration
-* The [all variables file](group_vars/all) contains all the user-modifiable parameters. Each of these come with a small description to clarify the purpose, unless it is self-explanatory. 
+* The [all variables file](group_vars/all) contains all the user-modifiable parameters. Each of these come with a small description to clarify the purpose, unless it is self-explanatory.
 You should review and modify this file before making the deployment.
 
-Note: PMM user and password are used to login to PMM UI via the web browser. If you intend to change the PMM credentials on the variables file (defaults are admin/admin), you will need to login to PMM via the web browser and change the PMM password there first, otherwise the playbook will fail. 
- 
+Note: PMM user and password are used to login to PMM UI via the web browser. If you intend to change the PMM credentials on the variables file (defaults are admin/admin), you will need to login to PMM via the web browser and change the PMM password there first, otherwise the playbook will fail.
+
 ## Running
 * The playbook is meant to handle a deployment from scratch, unless run with some specific tags. Be extra careful if you are running it against servers that already have data.
 
@@ -114,7 +114,7 @@ ansible-playbook main.yml -i inventory --skip-tags monitoring,backup
     - Runs the sh.addShard() command on a mongos router
   - backup
     - Deploys & configures the pbm agent    
-  - pmm
+  - pmm_server
     - Deploys a pmm2 server with docker
   - monitoring
     - Deploys pmm2 client and registers with a pmm server
@@ -130,7 +130,7 @@ You can also try running the `reset.yml` playbook:
 ansible-playbook reset.yml -i inventory
 ```
 
-## Connecting 
+## Connecting
 * Connection string example with TLS
 ```
 mongo --tls --tlsCAFile /tmp/test-ca.pem --tlsCertificateKeyFile /tmp/test-client.pem --port 27017 --host ip-10-0-1-199.ec2.internal -u root -p percona

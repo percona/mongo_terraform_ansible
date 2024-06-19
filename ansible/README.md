@@ -133,7 +133,7 @@ ansible-playbook reset.yml -i inventory
 ## Restarting
 * To restart all mongod, mongos and pbm-agent services you can run the `restart.yml` playbook:
 ```
-ansible-playbook reset.yml -i inventory
+ansible-playbook restart.yml -i inventory
 ```
 
 This is useful for example after restoring a physical backup. The playbook includes a resync of PBM backup inventory at the end. 

@@ -1,0 +1,35 @@
+---
+- hosts: mongos
+  become: yes
+  gather_facts: false
+  tasks:
+    - name: stop pmm agent
+      systemd:
+        name: pmm-agent
+        state: stopped
+      ignore_errors: yes
+      
+    - name: stop mongos service
+      systemd:
+        name: mongos
+        state: stopped
+
+- hosts: cfg:shard*:rs*
+  gather_facts: false
+  become: yes
+  tasks:
+    - name: stop pmm and pbm services
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+      with_items:
+        - pbm-agent  
+        - pmm-agent
+      ignore_errors: yes        
+        
+    - name: stop mongod service
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+      with_items:
+        - mongod     

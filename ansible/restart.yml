@@ -9,7 +9,7 @@
          state: restarted
        with_items:
          - mongod
-         
+
      - name: restart pbm service
        systemd:
          name: "{{ item }}"
@@ -27,7 +27,7 @@
   gather_facts: false
   tasks:
     - name: restart mongos service
-      systemd: 
+      systemd:
         name: mongos
         state: restarted
 
@@ -53,4 +53,15 @@
 
     - name: resync pbm storage
       shell: pbm config --force-resync --mongodb-uri '{{ mongodb_uri }}'
-  run_once: true      
+  run_once: true
+
+  - hosts: cfg:shard*:rs*:mongos*
+    become: yes
+    gather_facts: false
+    tasks:
+      - name: restart pmm service
+        systemd:
+         name: "{{ item }}"
+         state: restarted
+        with_items:
+         - pmm-agent

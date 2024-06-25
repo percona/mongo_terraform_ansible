@@ -55,13 +55,13 @@
       shell: pbm config --force-resync --mongodb-uri '{{ mongodb_uri }}'
   run_once: true
 
-  - hosts: cfg:shard*:rs*:mongos*
-    become: yes
-    gather_facts: false
-    tasks:
-      - name: restart pmm service
-        systemd:
-         name: "{{ item }}"
-         state: restarted
-        with_items:
-         - pmm-agent
+- hosts: cfg:shard*:rs*:mongos*
+  become: yes
+  gather_facts: false
+  tasks:
+    - name: restart pmm service
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      with_items:
+        - pmm-agent

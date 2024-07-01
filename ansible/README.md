@@ -120,24 +120,24 @@ ansible-playbook main.yml -i inventory --skip-tags monitoring,backup
     - Deploys pmm2 client and registers with a pmm server
 
 ## Cleanup
-* If you want cleanup a failed deploy, usually stopping mongod/mongos components and removing the datadir content is enough e.g.
+* If you want cleanup a failed deploy to retry, usually stopping mongod/mongos components and removing the datadir content is enough e.g.
 ```
 service mongos stop; service mongod stop; rm -rf /var/lib/mongo/*
 ```
 
-You can also try running the `reset.yml` playbook:
+You can also use the `reset.yml` playbook to do this for you:
 ```
 ansible-playbook reset.yml -i inventory
 ```
 
 ## Stopping
-* To stop all mongod, mongos and pbm-agent services you can run the `stop.yml` playbook:
+* To stop all mongod, mongos, pmm and pbm-agent services you can run the `stop.yml` playbook:
 ```
 ansible-playbook stop.yml -i inventory
 ```
 
 ## Restarting
-* To restart all mongod, mongos and pbm-agent services you can run the `restart.yml` playbook:
+* To restart all mongod, mongos, pmm and pbm-agent services you can run the `restart.yml` playbook:
 ```
 ansible-playbook restart.yml -i inventory
 ```
@@ -145,11 +145,18 @@ ansible-playbook restart.yml -i inventory
 This is useful for example after restoring a physical backup. The playbook includes a resync of PBM backup inventory at the end.
 
 ## Connecting
+* Connection string example (no TLS)
+```
+mongo admin -u root -p percona --port 27017
+```
+
 * Connection string example with TLS
 ```
 mongo --tls --tlsCAFile /tmp/test-ca.pem --tlsCertificateKeyFile /tmp/test-client.pem --port 27017 --host ip-10-0-1-199.ec2.internal -u root -p percona
 ```
-* Listing existing backups with TLS
+
+* List existing backups with TLS
 ```
+sudo -i
 pbm list --mongodb-uri "mongodb://pbm:secretpwd@ip-10-0-1-199.ec2.internal:27019/?tls=true&tlsCertificateKeyFile=/tmp/test-server.pem&tlsCAFile=/tmp/test-ca.pem"
 ```

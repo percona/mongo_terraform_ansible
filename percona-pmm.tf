@@ -26,6 +26,11 @@ resource "google_compute_instance" "pmm" {
   metadata = {
     ssh-keys = join("\n", [for user, key_path in var.gce_ssh_users : "${user}:${file(key_path)}"])
   }
+  scheduling {
+    preemptible = false
+    automatic_restart = true 
+    provisioning_model = "STANDARD"
+  }
   metadata_startup_script = <<EOT
     #! /bin/bash
     echo "Created"

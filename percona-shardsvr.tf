@@ -33,6 +33,11 @@ resource "google_compute_instance" "shard" {
   metadata = {
     ssh-keys = join("\n", [for user, key_path in var.gce_ssh_users : "${user}:${file(key_path)}"])
   }
+  scheduling {
+    preemptible = var.use_spot_instances
+    automatic_restart = var.use_spot_instances ? true : false
+    provisioning_model = var.use_spot_instances ? "SPOT" : "STANDARD"
+  }
   metadata_startup_script = <<EOT
     #! /bin/bash
     echo "Created"

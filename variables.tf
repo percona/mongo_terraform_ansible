@@ -29,6 +29,12 @@ variable "enable_ssh_gateway" {
   default = false
 }
 
+# Save money by running spot instances but they may be terminated by google at any time
+variable "use_spot_instances" {
+  type = bool
+  default = false
+}
+
 variable "region" {
   type    = string
   default = "northamerica-northeast1"

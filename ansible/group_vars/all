@@ -13,7 +13,7 @@
 ## General configuration
 ##################
 
-percona_key_location: https://downloads.percona.com/downloads/RPM-GPG-KEY-percona
+percona_key_location: https://repo.percona.com/yum/PERCONA-PACKAGING-KEY
 percona_repo: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
 
 # MongoDB version as per "percona-release". Avaiability of MongoDB version depending on OS version.

@@ -55,7 +55,6 @@
 
 - name: install MongoDB
   hosts: cfg:shard*:rs*
-  gather_facts: false
   become: yes
   tags: install
   tasks:
@@ -134,7 +133,6 @@
 
 - name: prepare auth
   hosts: cfg:shard*:rs*
-  gather_facts: false
   tags: os_conf
   tasks:
     - name: check if old Mongo client exists
@@ -170,7 +168,6 @@
 - name: prepare the config servers
   hosts: cfg
   tags: mongo_cfgsrv
-  gather_facts: false
   tasks:
     - name: copy mongod.conf on config server
       become: yes
@@ -189,7 +186,6 @@
       when: mongodb_primary is defined and mongodb_primary
 
 - name: prepare the replica sets
-  gather_facts: false
   hosts: shard*:rs*
   tags: mongo_rs
   tasks:
@@ -210,7 +206,6 @@
       when: mongodb_primary is defined and mongodb_primary
 
 - name: bootstrap the replica sets
-  gather_facts: false
   hosts: cfg:shard*:rs*
   tags: bootstrap_rs
   tasks:
@@ -272,7 +267,6 @@
 - name: create the local users & logrotate
   hosts: cfg:shard*:rs*
   tags: os_conf
-  gather_facts: false
   tasks:
     - name: copy logrotate conf
       become: yes
@@ -313,7 +307,6 @@
       when: mongodb_primary is defined and mongodb_primary
       
 - name: install mongos routers
-  gather_facts: false
   hosts: mongos
   become: yes
   tags: mongos
@@ -432,7 +425,6 @@
 - name: add the shards to the cluster
   hosts: shard*
   tags: add_shards
-  gather_facts: false
   tasks:
     - name: add the shards to the cluster
       shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --eval "sh.addShard('{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
@@ -441,7 +433,6 @@
 
 - name: prepare the PBM connection string 
   hosts: cfg:shard*:rs*
-  gather_facts: false
   tags: backup
   become: true
   tasks:
@@ -461,7 +452,6 @@
 
 - name: figure out backup URI for replica sets
   hosts: rs*
-  gather_facts: false
   tags: backup
   become: true
   tasks:
@@ -471,7 +461,6 @@
 
 - name: figure out backup URI for sharded cluster
   hosts: shard*:cfg*
-  gather_facts: false
   tags: backup
   become: true
   tasks:
@@ -481,7 +470,6 @@
 
 - name: configure PBM agent and CLI
   hosts: cfg:shard*:rs*
-  gather_facts: false
   tags: backup
   become: true
   tasks:
@@ -508,7 +496,6 @@
 
 - name: configure backup process
   hosts: rs*:cfg*
-  gather_facts: false
   tags: backup
   become: true
   tasks:
@@ -536,7 +523,6 @@
 
 - name: configure PMM server
   hosts: pmm
-  gather_facts: false
   tags: pmm_server
   become: true
   tasks:
@@ -601,7 +587,6 @@
 
 - name: configure monitoring with PMM
   hosts: cfg:shard*:rs*:mongos
-  gather_facts: true
   become: true
   tags: monitoring
   tasks:

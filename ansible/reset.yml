@@ -4,20 +4,22 @@
   gather_facts: false
   tasks:
     - name: stop mongos service
-      systemd: 
+      systemd:
         name: mongos
         state: stopped
       ignore_errors: yes
+
+- hosts: mongos:cfg:shard*:rs*
+  tasks:
+     - name: remove server from pmm
+       shell: pmm-admin --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:443 --server-insecure-tls remove mongodb {{ inventory_hostname }}.c.{{project_id}}.internal-mongodb
+       ignore_errors: yes
 
 - hosts: cfg:shard*:rs*
   gather_facts: false
   tags: mongod
   become: yes
   tasks:
-     - name: remove server from pmm
-       shell: pmm-admin remove mongodb {{ inventory_hostname }}-mongodb
-       ignore_errors: yes
-
      - name: stop mongod service
        systemd:
          name: "{{ item }}"
@@ -34,6 +36,6 @@
   become: yes
   tasks:
     - name: stop pmm client
-      systemd: 
+      systemd:
         name: pmm-agent
         state: stopped

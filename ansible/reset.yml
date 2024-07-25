@@ -1,39 +1,52 @@
 ---
-- hosts: mongos
-  become: yes
+- hosts: mongos:cfg:shard*:rs*
   gather_facts: false
+  become: yes
+  tasks:
+    - name: remove server from pmm
+      shell: pmm-admin unregister --force
+      ignore_errors: yes
+
+    - name: stop pmm client
+      systemd:
+        name: pmm-agent
+        state: stopped
+      ignore_errors: yes
+
+- hosts: mongos
+  gather_facts: false
+  become: yes
   tasks:
     - name: stop mongos service
-      systemd: 
+      systemd:
         name: mongos
         state: stopped
       ignore_errors: yes
 
 - hosts: cfg:shard*:rs*
   gather_facts: false
-  tags: mongod
   become: yes
   tasks:
-     - name: remove server from pmm
-       shell: pmm-admin remove mongodb {{ inventory_hostname }}-mongodb
-       ignore_errors: yes
+    - name: stop mongod service
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+      with_items:
+        - mongod
+        - pbm-agent
+      ignore_errors: yes
 
-     - name: stop mongod service
-       systemd:
-         name: "{{ item }}"
-         state: stopped
-       with_items:
-         - mongod
-         - pbm-agent
+    - name: remove datadir contents
+      shell: rm -rf {{ mongod_path }}/*
 
-     - name: remove datadir contents
-       shell: rm -rf {{ mongod_path }}/*
-
-- hosts: all
+- hosts: pmm
   gather_facts: false
   become: yes
   tasks:
-    - name: stop pmm client
-      systemd: 
-        name: pmm-agent
-        state: stopped
+    - name: stop pmm
+      shell: docker stop pmm-server
+      ignore_errors: yes
+
+    - name: remove pmm
+      shell: docker rm pmm-server pmm-data
+      ignore_errors: yes

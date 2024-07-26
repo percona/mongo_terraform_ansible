@@ -35,6 +35,7 @@ net:
     mode: requireTLS
     certificateKeyFile: {{ certificateKeyFile }}
     CAFile: {{ CAFile }}
+    allowConnectionsWithoutCertificates: true    
 {% endif %}
 
 security:

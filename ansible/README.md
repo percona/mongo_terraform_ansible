@@ -97,7 +97,15 @@ ansible-playbook main.yml -i inventory --limit shard3
 ansible-playbook main.yml -i inventory --skip-tags monitoring,backup
 ```
 
-### Available tags:
+## TLS Setup
+
+There is an extra playbook `tls-setup.yml` that generates a test CA on the PMM server, then proceeds to create server certificates for each host. Finally certificates are copied to the configured location on each host. Run this playbook before the `main.yml` if you want a TLS-enabled setup and you don't have any certificates prepared in advance. Remember to set `use_tls: true` in the variables file in advance.
+
+```
+ansible-playbook tls-setup.yml -i inventory
+```
+
+### Available tags for `main.yml`:
   - os_conf
     - Tunes the OS for MongoDB
   - install
@@ -118,6 +126,14 @@ ansible-playbook main.yml -i inventory --skip-tags monitoring,backup
     - Deploys a pmm2 server with docker
   - monitoring
     - Deploys pmm2 client and registers with a pmm server
+
+### Available tags for `tls-setup.yml`:
+  - ca
+    - Deploys the CA on PMM-server
+  - create_certs
+    - Creates the certificates for each server and client
+  - copy_certs
+    - Copies certificates from control machine to each server
 
 ## Cleanup
 * If you want cleanup a failed deploy to retry, usually stopping mongod/mongos components and removing the datadir content is enough e.g.
@@ -152,13 +168,13 @@ mongo admin -u root -p percona --port 27017
 
 * Connection string example with TLS
 ```
-mongo --tls --tlsCAFile /tmp/test-ca.pem --tlsCertificateKeyFile /tmp/test-client.pem --port 27017 --host ip-10-0-1-199.ec2.internal -u root -p percona
+mongo admin --tls --tlsCAFile /etc/ssl/test-ca.pem --tlsCertificateKeyFile /etc/ssl/client.pem --port 27017 --host ip-10-0-1-199.ec2.internal -u root -p percona
 ```
 
 * List existing backups with TLS
 ```
 sudo -i
-pbm list --mongodb-uri "mongodb://pbm:secretpwd@ip-10-0-1-199.ec2.internal:27019/?tls=true&tlsCertificateKeyFile=/tmp/test-server.pem&tlsCAFile=/tmp/test-ca.pem"
+pbm list --mongodb-uri "mongodb://pbm:secretpwd@ip-10-0-1-199.ec2.internal:27019/?tls=true&tlsCertificateKeyFile=/etc/ssl/server.pem&tlsCAFile=/etc/ssl/test-ca.pem"
 ```
 
 ## Adding components to an existing deployment

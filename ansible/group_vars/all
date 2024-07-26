@@ -16,25 +16,24 @@
 percona_key_location: https://repo.percona.com/yum/PERCONA-PACKAGING-KEY
 percona_repo: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
 
-# MongoDB version as per "percona-release". Avaiability of MongoDB version depending on OS version.
+# MongoDB version as per "percona-release". Availability of MongoDB version depend on the OS version.
 # e.g. -> Available repositories for centos7: psmdb-36 psmdb-40 psmdb-42 psmdb-44 psmdb-50 psmdb-60
 mongo_release: psmdb-70
 
-# copy rpm files from a local path. If false yum will be used to download from a configured repository
-copy_files: false
-
-# only relevant if copy_files: false
+# packages and router_packages lists are only relevant if copy_files: false
 packages:
   - percona-server-mongodb
   - percona-backup-mongodb
   - pmm2-client
 
 router_packages:
-# to be removed when we add logic to create user, group, dir, etc. for mongos
-   - percona-server-mongodb
+   - percona-server-mongodb         # to be removed when we add logic to create user, group, dir, etc. for mongos
    - percona-server-mongodb-mongos
    - percona-server-mongodb-shell
    - pmm2-client
+
+# copy rpm files from a local path. If false yum will be used to download from a configured repository
+copy_files: false
    
 # where to copy rpms from if copy_files:true. We need to have pbm, pmm-client and percona-server-mongodb available on this directory
 local_rpm_location: /home/ec2-user/mongo/
@@ -42,12 +41,24 @@ local_rpm_location: /home/ec2-user/mongo/
 # where to copy rpm files to
 target_rpm_location: /tmp/
 
+#####################
+# MongoDB admin user
+#####################
+
 mongo_root_password: percona
+
+################
+# Network ports
+################
 
 cfg_server_port: 27019
 shard_port: 27018
 mongos_port: 27017
 replicaset_port: 27017
+
+################
+# MongoDB paths 
+################
 
 mongod_log_path: /var/log/mongo/
 mongod_path: /var/lib/mongo/
@@ -58,24 +69,23 @@ thp_location: /usr/lib/systemd/system/disable-thp.service
 ## Authentication 
 ##################
 
-# use_tls: true/false
-use_tls: false
+# use_tls: true/false. Controls if Mongo uses keyfile or x509 certificates for member authentication. Also controls if clients need to use TLS to connect.
+use_tls: true
 
-# only relevant if use_tls: false
+# keyFile is only relevant if use_tls: false. Run `openssl rand -base64 741` to generate a new key
 keyFile_location: /etc/mongod_keyfile
-
-# Run openssl rand -base64 741 if you want to generate a new one
 keyfile_content: |
   8pYcxvCqoe89kcp33KuTtKVf5MoHGEFjTnudrq5BosvWRoIxLowmdjrmUpVfAivh
   CHjqM6w0zVBytAxH1lW+7teMYe6eDn2S/O/1YlRRiW57bWU3zjliW3VdguJar5i9
 
-# next 2 only relevant if use_tls: true
-certificateKeyFile: /tmp/server.pem
-CAFile: /tmp/mongo-ca.pem
+# The next 2 options are only relevant if use_tls: true
+certificateKeyFile: /etc/ssl/server.pem
+CAFile: /etc/ssl/test-ca.pem
 
 ################
 ## Encryption
-###############
+################
+
 # keyfile_encryption: true/false
 keyfile_encryption: false
 encryption_key_content: |
@@ -96,26 +106,26 @@ vault_cafile: /etc/mongodb/vault.crt
 vault_secret: secret/data/dc/psmongodb1
 
 ##################
-## PMM 
-#################
+## Monitoring
+##################
 
 pmm_version: latest
 
-# server parameters
+# PMM server parameters
 pmm_dir: /var/lib/docker
 pmm_server_user: admin
 pmm_server_pwd: admin
 
-# client parameters
+# PMM agent parameters
 mongodb_pmm_user: mongodb_exporter
 mongodb_pmm_user_pwd: percona
 
-# only applicable for sharded clusters
-# the next is put into the inventory file by Terraform
+# The pmm-admin --cluster argument is only applicable for sharded clusters
+# the next line is automatically put into the inventory file by Terraform. If not provisioning servers with Terraform uncomment the following line
 #cluster: dev
 
 ###############
-## PBM
+## Backup
 ###############
 
 pbmuser: pbm
@@ -135,11 +145,11 @@ pbm_local: false
 pbm_path: /backup
 
 # only relevant if pbm_local: false
-# the next 2 are put into the inventory file by Terraform
+# the next 2 are put into the inventory file by Terraform. If not provisioning servers with Terraform uncomment the following lines
 #region: northamerica-northeast1
 #bucket: dev-mongo-backups
 prefix: pbm
 endpointUrl: https://storage.googleapis.com
-# these are best provided via --extra-vars at runtime
+# the access and secret access keys are best provided via --extra-vars at runtime to avoid exposing them
 #access_key_id: *****
 #secret_access_key: *****

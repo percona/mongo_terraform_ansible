@@ -152,7 +152,7 @@
 
     - name: set up extra arguments for Mongo client TLS
       set_fact:
-        mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
+        mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
       when: use_tls | bool
 
     - name: set up keyfile if not using TLS
@@ -257,7 +257,7 @@
         seconds: 5
 
     - name: run the init command for replica set
-      shell: mongo {{ mongo_extra_args | default("") }} --host localhost --port {{ mongo_port }} < /tmp/init-rs.js
+      shell: mongo {{ mongo_extra_args | default("") }} --port {{ mongo_port }} --host 127.0.0.1 < /tmp/init-rs.js
       when: mongodb_primary is defined and mongodb_primary
 
     - name: wait a few secs so replica sets finish initializing
@@ -292,7 +292,7 @@
         mongo_port: "{{ mongo_port_result.stdout }}"
 
     - name: run the command to create the root user
-      shell: mongo admin {{ mongo_extra_args | default("") }} --host localhost --port {{ mongo_port  }} < /tmp/createRoot.js
+      shell: mongo admin {{ mongo_extra_args | default("") }} --port {{ mongo_port }} --host 127.0.0.1  < /tmp/createRoot.js
       when: mongodb_primary is defined and mongodb_primary
 
     - name: prepare the commands to create pbm and pmm users and roles
@@ -303,7 +303,7 @@
       when: mongodb_primary is defined and mongodb_primary
 
     - name: run the command to create the PBM and PMM users and roles
-      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongo_port }} < /tmp/createUsers.js
+      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongo_port }} --host {{ inventory_hostname }} < /tmp/createUsers.js
       when: mongodb_primary is defined and mongodb_primary
       
 - name: install mongos routers
@@ -375,7 +375,7 @@
 
     - name: set up extra arguments for Mongo client TLS 
       set_fact:
-        mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
+        mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }}  "
       when: use_tls | bool
 
     - name: set up keyfile if not using TLS
@@ -427,7 +427,7 @@
   tags: add_shards
   tasks:
     - name: add the shards to the cluster
-      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --eval "sh.addShard('{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
+      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} --eval "sh.addShard('{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
       delegate_to: "{{ groups.mongos | first }}"
       when: mongodb_primary is defined and mongodb_primary
 
@@ -447,7 +447,7 @@
 
     - name: figure out the Mongo TLS options
       set_fact:
-        mongo_uri_tls: "/?tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
+        mongo_uri_tls: "&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
       when: use_tls | bool
 
 - name: figure out backup URI for replica sets

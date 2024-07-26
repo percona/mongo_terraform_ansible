@@ -3,7 +3,7 @@
   gather_facts: false
   become: yes
   tasks:
-    - name: remove server from pmm
+    - name: remove server from PMM
       shell: pmm-admin unregister --force
       ignore_errors: yes
 
@@ -12,6 +12,9 @@
         name: pmm-agent
         state: stopped
       ignore_errors: yes
+
+    - name: remove certificate related files    
+      shell: rm -f /etc/ssl/*.pem    
 
 - hosts: mongos
   gather_facts: false
@@ -43,10 +46,13 @@
   gather_facts: false
   become: yes
   tasks:
-    - name: stop pmm
+    - name: stop PMM server
       shell: docker stop pmm-server
       ignore_errors: yes
 
-    - name: remove pmm
+    - name: remove PMM server and data
       shell: docker rm pmm-server pmm-data
       ignore_errors: yes
+
+    - name: remove certificate related files    
+      shell: rm -f /etc/ssl/*.{crt,csr,pem,key,cnf,srl}

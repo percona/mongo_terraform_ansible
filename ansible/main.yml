@@ -69,11 +69,13 @@
         fstype: xfs
         state: present
         dev: /dev/disk/by-id/google-persistent-disk-1
+      when: arbiter is not defined
 
     - name: Fetch the UUID of volume
       command: blkid -s UUID -o value /dev/disk/by-id/google-persistent-disk-1
       changed_when: false
       register: blkid_out
+      when: arbiter is not defined
 
     - name: Mount up device by UUID
       ansible.posix.mount:
@@ -82,6 +84,7 @@
         fstype: xfs
         opts: noatime
         state: mounted
+      when: arbiter is not defined
 
     - name: copy RPM files from local machine
       block:
@@ -110,7 +113,7 @@
 
     - name: install RPM files from repository
       block:
-        - name: install percona key
+        - name: install Percona key
           rpm_key:
             key: "{{ percona_key_location }}"
             state: present
@@ -217,7 +220,7 @@
         mode: '0750'
         state: directory
 
-    - name: figure out the Mongo port
+    - name: figure out the mongod port
       shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
       register: mongo_port_result
       changed_when: false
@@ -282,7 +285,7 @@
         mode: 0644
       when: mongodb_primary is defined and mongodb_primary
 
-    - name: figure out the mongo port
+    - name: figure out the mongod port
       shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
       register: mongo_port_result
       changed_when: false
@@ -338,7 +341,7 @@
 
     - name: install RPM files from repository
       block:
-        - name: install percona key
+        - name: install Percona key
           rpm_key:
             key: "{{ percona_key_location }}"
             state: present
@@ -436,7 +439,7 @@
   tags: backup
   become: true
   tasks:
-    - name: figure out the Mongo port
+    - name: figure out the mongod port
       shell: "grep -h -i port /etc/mongod.conf | awk '{print $2}' | head -1"
       register: mongo_port_result
       changed_when: false
@@ -445,7 +448,7 @@
     - set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
-    - name: figure out the Mongo TLS options
+    - name: figure out the MongoDB TLS options
       set_fact:
         mongo_uri_tls: "&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
       when: use_tls | bool
@@ -483,16 +486,19 @@
       template:
         src: templates/pbm-agent.j2
         dest: /etc/sysconfig/pbm-agent
+      when: arbiter is not defined
 
     - name: start PBM agent
       service: 
         name: pbm-agent
         state: restarted
+      when: arbiter is not defined
 
     - name: prepare storage details file for PBM
       template:
         src: templates/pbm-storage.conf.j2
         dest: /etc/pbm-storage.conf  
+      when: arbiter is not defined
 
 - name: configure backup process
   hosts: rs*:cfg*
@@ -511,6 +517,7 @@
         user: '{{ pbm_os_user }}'
         job: /usr/bin/pbm backup --type '{{ pbm_backup_type }}' --mongodb-uri '{{ mongodb_uri }}'
         cron_file: pbm_daily_backup
+      when: arbiter is not defined
 
     - name: set up purge old backups cron job
       cron:
@@ -520,6 +527,7 @@
         user: '{{ pbm_os_user }}'
         job: /usr/bin/pbm delete-backup --force --older-than $(date -u -d '-{{ pbm_retention_days }} days' +'\%Y-\%m-\%d') --mongodb-uri '{{ mongodb_uri }}'
         cron_file: pbm_purge_old
+      when: arbiter is not defined
 
 - name: configure PMM server
   hosts: pmm
@@ -590,7 +598,7 @@
   become: true
   tags: monitoring
   tasks:
-    - name: figure out the Mongo port
+    - name: figure out the mongod/mongos port
       shell: "grep -h -i port /etc/mongo?.conf | awk '{print $2}' | head -1"
       register: mongo_port_result
       changed_when: false
@@ -603,7 +611,7 @@
         name:  pmm-agent
         state: started
 
-    - name: figure out the SSL parameters for pmm
+    - name: figure out the SSL parameters for pmm-agent
       set_fact:
         pmm_ssl_params: " --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }} "
       when: use_tls | bool
@@ -613,3 +621,8 @@
 
     - name: add MongoDB metrics collector 
       shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify --enable-all-collectors
+      when: arbiter is not defined
+
+    - name: add MongoDB metrics collector for arbiter
+      shell: pmm-admin add mongodb --cluster {{ cluster }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify
+      when: arbiter is defined

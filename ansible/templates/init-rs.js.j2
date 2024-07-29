@@ -1,11 +1,30 @@
+#rs.initiate(
+#  {
+#    _id: "{{ group_names[0] }}",
+#    members: [
+#      {% for h in groups[ group_names[0] ] %}
+#         { _id : {{ loop.index }}, host : "{{ h }}:{%if hostvars[inventory_hostname].group_names[0].startswith('shard') %}{{ shard_port }}{% else %}{{ replicaset_port }}{% endif %}", 
+priority: {% if loop.first %}10{% else %}1{% endif %} } {% if not loop.last %},{% endif %}
+#      {% endfor %}
+#    ]
+#  }
+#);
 rs.initiate(
   {
     _id: "{{ group_names[0] }}",
     members: [
       {% for h in groups[ group_names[0] ] %}
-         { _id : {{ loop.index }}, host : "{{ h }}:{%if hostvars[inventory_hostname].group_names[0].startswith('shard') %}{{ shard_port }}{% else %}{{ replicaset_port }}{% endif %}", priority: {% if loop.first %}10{% else %}1{% endif %} } {% if not loop.last %},{% endif %}
+      { 
+        _id : {{ loop.index }}, 
+        host : "{{ h }}:{%if hostvars[inventory_hostname].group_names[0].startswith('shard') %}{{ shard_port }}{% else %}{{ replicaset_port }}{% endif %}",
+        {% if hostvars[h].arbiter | default(false) %}
+        arbiterOnly: true
+        {% else %}
+        priority: {% if hostvars[h].mongodb_primary | default(false) %}2{% else %}1{% endif %}
+        {% endif %}
+      }
+        {% if not loop.last %},{% endif %}
       {% endfor %}
     ]
   }
 );
-

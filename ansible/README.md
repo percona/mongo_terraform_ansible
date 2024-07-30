@@ -17,6 +17,7 @@ The installation process takes around 15 min for a 2 shard cluster
 - On each inventory file, we have to specify groups for each shard's replicaset (name them `shardXXXX`), as well as the config servers (name it `cfg`) and mongos routers (name it `mongos`).
 - For each standalone replicaset you should name them `rsXXXX` (don't use `shardXXXX` for replica sets not part of a sharded cluster).
 - You can specify a server in more than one group only for the case of deploying a mongos + config server on the same host. Any other combinations are currently not supported and cause execution to fail.
+- Arbiters are specified by adding `arbiter=True` tag to each arbiter host
 
 - Example of an inventory for a sharded cluster:
 ```
@@ -29,10 +30,11 @@ dev-mongo-cfg02
 dev-mongo-shard00svr0 mongodb_primary=True
 dev-mongo-shard00svr1
 dev-mongo-shard00svr2
+
 [shard1]
 dev-mongo-shard01svr0 mongodb_primary=True
 dev-mongo-shard01svr1
-dev-mongo-shard01svr2
+dev-mongo-shard01svr2 arbiter=True
 
 [mongos]
 dev-mongo-router00

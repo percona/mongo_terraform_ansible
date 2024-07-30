@@ -70,7 +70,7 @@ thp_location: /usr/lib/systemd/system/disable-thp.service
 ##################
 
 # use_tls: true/false. Controls if Mongo uses keyfile or x509 certificates for member authentication. Also controls if clients need to use TLS to connect.
-use_tls: true
+use_tls: false
 
 # keyFile is only relevant if use_tls: false. Run `openssl rand -base64 741` to generate a new key
 keyFile_location: /etc/mongod_keyfile

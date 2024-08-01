@@ -429,6 +429,25 @@
   hosts: shard*
   tags: add_shards
   tasks:
+
+    - name: set up extra arguments for Mongo client TLS
+      set_fact:
+        mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
+      when: use_tls | bool
+
+    - name: prepare the command to set the cluster rw concern
+      template:
+        src: templates/setRWconcern.js.j2
+        dest: /tmp/setRWconcern.js
+        mode: 0644
+      delegate_to: "{{ groups.mongos | first }}"
+      run_once: true
+
+    - name: set the cluster rw concern
+      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} < /tmp/setRWconcern.js
+      delegate_to: "{{ groups.mongos | first }}"
+      run_once: true
+
     - name: add the shards to the cluster
       shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} --eval "sh.addShard('{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
       delegate_to: "{{ groups.mongos | first }}"

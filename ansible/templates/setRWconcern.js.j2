@@ -1,0 +1,5 @@
+db.adminCommand({
+  "setDefaultRWConcern" : 1,
+  "defaultWriteConcern" : { "w" : 1 },
+  "defaultReadConcern" : { "level" : "local" }
+})

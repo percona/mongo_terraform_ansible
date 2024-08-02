@@ -14,10 +14,10 @@ variable "env_tag" {
 }
 
 variable "gce_ssh_users" {
+  description = "SSH user names, and their public key files to be added to authorized_keys"
   default = {
     ivan_groenewold = "ivan.pub"
 #    ,user2 = "user2.pub"
-  description = "SSH user names, and their public key files to be added to authorized_keys"
   }
 }
 

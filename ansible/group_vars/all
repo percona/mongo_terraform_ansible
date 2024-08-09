@@ -24,7 +24,7 @@ mongo_release: psmdb-70
 # packages and router_packages lists are only relevant if copy_files: false
 # you can use a specific version instead of the default `latest` by passing the package names and version e.g. percona-server-mongodb-7.0.12-7.el9
 packages:
-  - percona-server-mongodb-7.0.11-6.el9
+  - percona-server-mongodb
   - percona-backup-mongodb
   - pmm2-client
 

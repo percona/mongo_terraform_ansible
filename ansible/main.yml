@@ -57,6 +57,8 @@
   hosts: cfg:shard*:rs*
   become: yes
   tags: install
+  environment: 
+    PERCONA_TELEMETRY_DISABLE=1
   tasks:
     - name: Create datadir
       file:
@@ -133,6 +135,14 @@
           with_items: "{{ packages }}"
       
       when: not copy_files | bool
+
+    - name: disable telemetry
+      systemd:
+        name: percona-telemetry-agent
+        enabled: false
+        state: stopped
+        daemon_reload: yes
+      ignore_errors: true
 
 - name: prepare auth
   hosts: cfg:shard*:rs*
@@ -313,6 +323,8 @@
   hosts: mongos
   become: yes
   tags: mongos
+  environment: 
+    PERCONA_TELEMETRY_DISABLE=1  
   tasks:
     - name: copy RPM files from local machine
       block:
@@ -420,6 +432,14 @@
         state: started
         enabled: yes
         daemon_reload: yes
+
+    - name: disable telemetry
+      systemd:
+        name: percona-telemetry-agent
+        enabled: false
+        state: stopped
+        daemon_reload: yes
+      ignore_errors: true
 
     - name: wait a few secs so replica sets finish initializing
       pause:
@@ -604,13 +624,13 @@
         state: restarted
 
     - name: pull PMM image 
-      shell: docker pull docker.io/percona/pmm-server:{{ pmm_version }}
+      shell: docker pull {{ pmm_image }}
 
-    - name: create PMM volume
-      shell: docker create -v /srv/ --name pmm-data percona/pmm-server:{{ pmm_version }} /bin/true
+    - name: create PMM data container
+      shell: docker create -v /srv/ --name pmm-data {{ pmm_image }} /bin/true
 
-    - name: run PMM container
-      shell: docker run --detach --restart always --publish 443:443 --volumes-from pmm-data --name pmm-server percona/pmm-server:{{ pmm_version }}    
+    - name: run PMM server container
+      shell: docker run --detach --restart always --publish 443:443 --volumes-from pmm-data --name pmm-server {{ pmm_image }}    
 
 - name: configure monitoring with PMM
   hosts: cfg:shard*:rs*:mongos

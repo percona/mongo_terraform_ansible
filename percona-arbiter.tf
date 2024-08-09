@@ -24,7 +24,7 @@ resource "google_compute_instance" "arbiter" {
   }
   scheduling {
     preemptible = var.use_spot_instances
-    automatic_restart = var.use_spot_instances ? true : false
+    automatic_restart = var.use_spot_instances ? false : true
     provisioning_model = var.use_spot_instances ? "SPOT" : "STANDARD"
   }
   metadata_startup_script = <<EOT

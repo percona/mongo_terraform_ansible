@@ -1,17 +1,18 @@
 # Note:
 # Consider overriding all the following variables at Ansible runtime via --extra-vars
 # - keyfile_content
-# - encryption_key_content (if using encryption at rest)
-# - vault_tokenfile_content (if using Hashicorp Vault)
+# - mongo_root_password
 # - pmm_server_pwd
-# - pmm_user_pwd
+# - mongodb_pmm_user_pwd
 # - pbmpwd
 # - access_key_id (used for accesing S3 bucket for Backups)
 # - secret_access_key (used for accesing S3 bucket for Backups)
+# - encryption_key_content (if using encryption at rest)
+# - vault_tokenfile_content (if using Hashicorp Vault)
 
-##################
+#########################
 ## General configuration
-##################
+#########################
 
 percona_key_location: https://repo.percona.com/yum/PERCONA-PACKAGING-KEY
 percona_repo: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
@@ -21,8 +22,9 @@ percona_repo: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
 mongo_release: psmdb-70
 
 # packages and router_packages lists are only relevant if copy_files: false
+# you can use a specific version instead of the default `latest` by passing the package names and version e.g. percona-server-mongodb-7.0.12-7.el9
 packages:
-  - percona-server-mongodb
+  - percona-server-mongodb-7.0.11-6.el9
   - percona-backup-mongodb
   - pmm2-client
 
@@ -35,10 +37,10 @@ router_packages:
 # copy rpm files from a local path. If false yum will be used to download from a configured repository
 copy_files: false
    
-# where to copy rpms from if copy_files:true. We need to have pbm, pmm-client and percona-server-mongodb available on this directory
-local_rpm_location: /home/ec2-user/mongo/
+# where to copy rpm files from if copy_files:true. We need to have pbm, pmm2-client and percona-server-mongodb packages available on this directory
+local_rpm_location: /home/my-user/mongo/
 
-# where to copy rpm files to
+# where to copy rpm files to in the target hosts
 target_rpm_location: /tmp/
 
 #####################
@@ -109,7 +111,8 @@ vault_secret: secret/data/dc/psmongodb1
 ## Monitoring
 ##################
 
-pmm_version: latest
+# Can also use perconalab/pmm-server-fb:PR-number-hash
+pmm_image: docker.io/percona/pmm-server:latest
 
 # PMM server parameters
 pmm_dir: /var/lib/docker
@@ -121,7 +124,9 @@ mongodb_pmm_user: mongodb_exporter
 mongodb_pmm_user_pwd: percona
 
 # The pmm-admin --cluster argument is only applicable for sharded clusters
-# the next line is automatically put into the inventory file by Terraform. If not provisioning servers with Terraform uncomment the following line
+# the next line is automatically put into the inventory file by Terraform. 
+# If not provisioning servers with Terraform uncomment the following line and provide the desired cluster name
+#
 #cluster: dev
 
 ###############

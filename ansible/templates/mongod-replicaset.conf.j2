@@ -7,7 +7,7 @@
 systemLog:
   destination: file
   logAppend: true
-  logRotate: rename
+  logRotate: reopen
   path: {{ mongod_log_path }}/mongod.log
 
 # Where and how to store data.

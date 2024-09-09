@@ -111,7 +111,10 @@ vault_secret: secret/data/dc/psmongodb1
 ## Monitoring
 ##################
 
-# Can also use perconalab/pmm-server-fb:PR-number-hash or perconalab/pmm-server:dev-latest
+# When true, Use the 'pmm2-client experimental' repo to install unreleased pmm2-client package
+experimental: false
+
+# Can also use perconalab/pmm-server-fb:PR-number-hash or perconalab/pmm-server:dev-latest. In that case set experimental to true.
 pmm_image: docker.io/percona/pmm-server:latest
 
 # PMM server parameters

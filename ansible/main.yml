@@ -128,6 +128,10 @@
         - name: Enable specific MongoDB version
           shell: "/usr/bin/percona-release enable {{ mongo_release }} && /usr/bin/percona-release enable tools"
 
+        - name: Enable experimental PMM client repository
+          shell: "/usr/bin/percona-release enable pmm2-client experimental"
+          when: experimental | bool
+
         - name: install RPM from repository
           package:
             name: "{{ item }}"
@@ -366,6 +370,10 @@
         - name: Enable specific MongoDB version
           shell: "/usr/bin/percona-release enable {{ mongo_release }} && /usr/bin/percona-release enable tools"
 
+        - name: Enable experimental PMM client repository
+          shell: "/usr/bin/percona-release enable pmm2-client experimental"
+          when: experimental | bool
+
         - name: install RPM from repository
           package:
             name: "{{ item }}"
@@ -517,7 +525,7 @@
   tasks:
     - name: set up PBM_MONGODB_URI
       lineinfile:
-        dest: /root/.bash_profile
+        dest: /etc/profile
         line: export PBM_MONGODB_URI='{{ mongodb_uri }}'
         state: present      
 

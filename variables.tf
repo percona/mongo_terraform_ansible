@@ -47,12 +47,12 @@ variable "shard_count" {
 }
 
 variable "shardsvr_replicas" {
-  default = "3"
+  default = "2"
   description = "How many data bearing nodes per shard"
 }
 
 variable "arbiters_per_replset" {
-  default = "0"
+  default = "1"
   description = "Number of arbiters per replica set"
 }
 

@@ -64,8 +64,9 @@ security:
 
 operationProfiling:
    slowOpThresholdMs: 200
-   mode: slowOp
-   slowOpSampleRate: 0.1
+   mode: all
+#   slowOpSampleRate: 0.1
+   rateLimit: 100
 
 replication:
   replSetName: {{ hostvars[inventory_hostname].group_names[0] }}

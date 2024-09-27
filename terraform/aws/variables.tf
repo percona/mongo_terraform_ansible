@@ -62,7 +62,7 @@ variable "shard_tag" {
 }
 
 variable "shardsvr_type" {
-  default = "t2-medium"
+  default = "t3.medium"
   description = "instance type of the shard server"
 }
 
@@ -86,7 +86,7 @@ variable "configsvr_tag" {
 }
 
 variable "configsvr_type" {
-  default = "t2-medium"
+  default = "t3.medium"
   description = "instance type of the config server"
 }
 
@@ -110,7 +110,7 @@ variable "mongos_tag" {
 }
 
 variable "mongos_type" {
-  default = "t2-medium"
+  default = "t3.medium"
   description = "instance type of the mongos servers"
 }
 
@@ -129,7 +129,7 @@ variable "arbiter_tag" {
 }
 
 variable "arbiter_type" {
-  default = "t2-medium"
+  default = "t3.medium"
   description = "instance type of the arbiter server"
 }
 
@@ -152,7 +152,7 @@ variable "pmm_disk_type" {
 }
 
 variable "pmm_type" {
-  default = "t2-large"
+  default = "t3.large"
   description = "instance type of the PMM server"
 }
 

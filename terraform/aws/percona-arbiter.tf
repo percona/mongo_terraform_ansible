@@ -6,16 +6,21 @@ resource "aws_instance" "arbiter" {
     ansible-index  = count.index % var.arbiters_per_replset
     environment    = var.env_tag
   }
-  instance_type = var.arbiter_type
-  availability_zone = element(data.aws_availability_zones.available.names, count.index % length(data.aws_availability_zones.available.names))
-  ami = lookup(var.image, var.region)
-  #subnet_id = aws_subnet.vpc-subnet.id
+  instance_type    = var.arbiter_type
+#  availability_zone = element(data.aws_availability_zones.available.names, count.index % length(data.aws_availability_zones.available.names))
+  availability_zone = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet)].availability_zone
+  ami               = lookup(var.image, var.region)
+  subnet_id         = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet)].id
   associate_public_ip_address = true
-  key_name = "${var.my_ssh_user}_key"
+  key_name          = aws_key_pair.my_key_pair.key_name
   vpc_security_group_ids = [aws_security_group.mongodb-arbiter-sg.id]
   user_data = <<EOT
     #!/bin/bash
-    echo "Created"
+    # Set the hostname
+    hostnamectl set-hostname "${var.env_tag}-${var.shard_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+
+    # Update /etc/hosts to reflect the hostname change
+    echo "127.0.0.1 $(hostname)" >> /etc/hosts    
 EOT
 }
 
@@ -26,26 +31,14 @@ resource "aws_security_group" "mongodb-arbiter-sg" {
   dynamic "ingress" {
     for_each = var.arbiter_ports
     content {
-      from_port   = 0
+      from_port   = ingress.value
       to_port     = ingress.value
       protocol    = "tcp"
       cidr_blocks = ["0.0.0.0/0"]  
     }
   }
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
   tags = {
     Name = "${var.env_tag}-${var.arbiter_tag}-sg"
     environment    = var.env_tag
   }
-}
-
-resource "aws_network_interface_sg_attachment" "arbiter_sg_attachment" {
-  count              = var.shard_count * var.arbiters_per_replset
-  security_group_id  = aws_security_group.mongodb-arbiter-sg.id
-  network_interface_id = aws_instance.arbiter[count.index].primary_network_interface_id
 }

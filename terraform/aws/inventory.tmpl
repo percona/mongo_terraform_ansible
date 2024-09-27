@@ -1,0 +1,33 @@
+[cfg]
+%{ for index, group in ansible_group_cfg ~}
+${hostname_cfg[index]} ${ index == 0 ? "mongodb_primary=True" : "" }
+%{ endfor ~}
+
+%{ for shard_index in number_of_shards ~}
+[shard${shard_index}]
+%{ for index, group in ansible_group_shards ~}
+${ group == tostring(shard_index) && ansible_group_index[index] == "0" ? join("", [ hostname_shards[index], " ", " mongodb_primary=True\n" ]) : "" ~} 
+${ group == tostring(shard_index) && ansible_group_index[index] != "0" ? join("", [ hostname_shards[index], " ", "\n" ]) : "" ~} 
+%{ endfor ~}
+%{ for arb_index, arb_group in ansible_group_arbiters ~}
+${ arb_group == tostring(shard_index) ? join("", [ hostname_arbiters[arb_index], " ", " arbiter=True\n" ]) : "" ~} 
+%{ endfor ~}
+
+%{ endfor ~}
+
+[mongos]
+%{ for index, group in ansible_group_mongos ~}
+${hostname_mongos[index]} 
+%{ endfor ~}
+
+[pmm]
+${hostname_pmm} 
+
+[all:vars]
+ansible_ssh_user=${my_ssh_user}
+pmm_private_ip=${private_ip_pmm}
+bucket=${bucket}
+region=${region}
+cluster=${cluster}
+access_key_id=${access_key}
+secret_access_key=${secret_access_key}

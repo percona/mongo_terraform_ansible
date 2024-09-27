@@ -27,16 +27,31 @@ resource "aws_instance" "cfg" {
   user_data = <<-EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.env_tag}-${var.configsvr_tag}0${count.index}"
+    hostnamectl set-hostname "${var.env_tag}-${var.configsvr_tag}0${count.index}.${var.env_tag}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts    
+
+    # Remove the dash from the Terraform volume ID to match with lsblk output
+    DEVICE=$(lsblk -o NAME,SERIAL | grep "${aws_ebs_volume.cfg_disk[count.index].id}" | awk '{print "/dev/" $1}')
+
+    # Create an XFS filesystem on the EBS volume
+    mkfs.xfs $DEVICE
+
+    # Create the directory for MongoDB data
+    mkdir -p /var/lib/mongo
+
+    # Mount the volume
+    mount $DEVICE /var/lib/mongo
+
+    # Add the volume to /etc/fstab for automatic mounting at boot
+    echo "$DEVICE /var/lib/mongo xfs defaults,nofail 0 2" >> /etc/fstab
   EOT
 }
 
 resource "aws_volume_attachment" "cfg_volume_attachment" {
   count        = var.configsvr_count
-  device_name  = "/dev/sdf"
+  device_name  = "/dev/sdf" # Placeholder, not used for NVMe but required by Terraform
   volume_id    = aws_ebs_volume.cfg_disk[count.index].id
   instance_id  = aws_instance.cfg[count.index].id
 }
@@ -53,8 +68,24 @@ resource "aws_security_group" "mongodb_cfgsvr_sg" {
       cidr_blocks = ["0.0.0.0/0"]  
     }
   }
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }  
   tags = {
     Name = "${var.env_tag}-${var.configsvr_tag}-sg"
     environment    = var.env_tag
   }
+}
+
+resource "aws_route53_record" "cfgsvr_dns_record" {
+  count   = var.configsvr_count
+  zone_id = aws_route53_zone.private_zone.zone_id
+  name    = "${var.env_tag}-${var.configsvr_tag}0${count.index}-data"
+  type    = "A"
+  ttl     = "300"
+  records = [aws_instance.cfg[count.index].private_ip]
 }

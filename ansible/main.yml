@@ -66,27 +66,27 @@
         state: directory
         mode: 0770
 
-    - name: Create an XFS filesystem 
-      community.general.filesystem:
-        fstype: xfs
-        state: present
-        dev: /dev/disk/by-id/google-persistent-disk-1
-      when: arbiter is not defined
+#    - name: Create an XFS filesystem 
+#      community.general.filesystem:
+#        fstype: xfs
+#        state: present
+#        dev: /dev/disk/by-id/google-persistent-disk-1
+#      when: arbiter is not defined
 
-    - name: Fetch the UUID of volume
-      command: blkid -s UUID -o value /dev/disk/by-id/google-persistent-disk-1
-      changed_when: false
-      register: blkid_out
-      when: arbiter is not defined
+ #   - name: Fetch the UUID of volume
+ #     command: blkid -s UUID -o value /dev/disk/by-id/google-persistent-disk-1
+ #     changed_when: false
+ #     register: blkid_out
+ #     when: arbiter is not defined
 
-    - name: Mount up device by UUID
-      ansible.posix.mount:
-        path: "{{ mongod_path }}"
-        src: UUID={{ blkid_out.stdout }}
-        fstype: xfs
-        opts: noatime
-        state: mounted
-      when: arbiter is not defined
+ #  - name: Mount up device by UUID
+ #     ansible.posix.mount:
+ #       path: "{{ mongod_path }}"
+ #       src: UUID={{ blkid_out.stdout }}
+ #       fstype: xfs
+ #       opts: noatime
+ #       state: mounted
+ #     when: arbiter is not defined
 
     - name: copy RPM files from local machine
       block:
@@ -590,24 +590,24 @@
         group: root
         mode: 0710
 
-    - name: Create an XFS filesystem 
-      community.general.filesystem:
-        fstype: xfs
-        state: present
-        dev: /dev/disk/by-id/google-persistent-disk-1
+ #   - name: Create an XFS filesystem 
+ #     community.general.filesystem:
+ #       fstype: xfs
+ #       state: present
+#        dev: /dev/disk/by-id/google-persistent-disk-1
 
-    - name: Fetch the UUID of volume
-      command: blkid -s UUID -o value /dev/disk/by-id/google-persistent-disk-1
-      changed_when: false
-      register: blkid_out
+ #   - name: Fetch the UUID of volume
+  #    command: blkid -s UUID -o value /dev/disk/by-id/google-persistent-disk-1
+   #   changed_when: false
+    #  register: blkid_out
 
-    - name: Mount up device by UUID
-      ansible.posix.mount:
-        path: "{{ pmm_dir }}"
-        src: UUID={{ blkid_out.stdout }}
-        fstype: xfs
-        opts: noatime
-        state: mounted
+   # - name: Mount up device by UUID
+   #   ansible.posix.mount:
+   #     path: "{{ pmm_dir }}"
+   #     src: UUID={{ blkid_out.stdout }}
+   #     fstype: xfs
+   #     opts: noatime
+   #     state: mounted
 
     - name: install yum utils
       yum:

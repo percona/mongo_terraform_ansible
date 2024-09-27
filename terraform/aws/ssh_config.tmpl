@@ -29,5 +29,5 @@ Host ${hostname_mongos[index]}
 Host ${hostname_pmm}
   Hostname ${public_ip_pmm}
   User ${my_ssh_user}
-  LocalForward 13443 127.0.0.1:443
+  LocalForward 23443 127.0.0.1:443
   %{ if enable_ssh_gateway }ProxyCommand ssh -W %h:%p gateway%{ endif }

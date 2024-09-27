@@ -50,6 +50,13 @@ resource "aws_route_table_association" "public_subnet_association" {
   route_table_id = aws_route_table.public_route_table.id
 }
 
+resource "aws_route53_zone" "private_zone" {
+  name = var.env_tag
+  vpc {
+    vpc_id = aws_vpc.vpc-network.id 
+  }
+}
+
 resource "aws_key_pair" "my_key_pair" {
   key_name   = "${var.env_tag}-${var.my_ssh_user}-key"
   public_key = file(var.ssh_public_key_path)

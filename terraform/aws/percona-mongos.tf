@@ -10,15 +10,15 @@ resource "aws_instance" "mongos" {
     ansible-group  = "mongos"
     environment    = var.env_tag
   }
-  vpc_security_group_ids = [aws_security_group.mongodb_mongos_firewall.id]
+  vpc_security_group_ids = [aws_security_group.mongodb_mongos_sg.id]
   user_data = <<-EOT
     #!/bin/bash
     echo "Created"
   EOT
 }
 
-resource "aws_security_group" "mongodb_mongos_firewall" {
-  name   = "${var.env_tag}-${var.mongos_tag}-firewall"
+resource "aws_security_group" "mongodb_mongos_sg" {
+  name   = "${var.env_tag}-${var.mongos_tag}-sg"
   vpc_id = aws_vpc.vpc-network.id
   dynamic "ingress" {
     for_each = var.mongos_ports
@@ -30,7 +30,7 @@ resource "aws_security_group" "mongodb_mongos_firewall" {
     }
   }
   tags = {
-    Name = "${var.env_tag}-${var.mongos_tag}-firewall"
+    Name = "${var.env_tag}-${var.mongos_tag}-sg"
     environment    = var.env_tag
   }
 }

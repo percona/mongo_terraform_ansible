@@ -25,15 +25,15 @@ resource "aws_instance" "cfg" {
     device_name = "/dev/sdf"
     volume_id   = aws_ebs_volume.cfg_disk[count.index].id
   }
-  vpc_security_group_ids = [aws_security_group.mongodb_cfgsvr_firewall.id]
+  vpc_security_group_ids = [aws_security_group.mongodb_cfgsvr_sg.id]
   user_data = <<-EOT
     #!/bin/bash
     echo "Created"
   EOT
 }
 
-resource "aws_security_group" "mongodb_cfgsvr_firewall" {
-  name   = "${var.env_tag}-${var.configsvr_tag}-firewall"
+resource "aws_security_group" "mongodb_cfgsvr_sg" {
+  name   = "${var.env_tag}-${var.configsvr_tag}-sg"
   vpc_id = aws_vpc.vpc-network.id
   dynamic "ingress" {
     for_each = var.configsvr_ports
@@ -45,7 +45,7 @@ resource "aws_security_group" "mongodb_cfgsvr_firewall" {
     }
   }
   tags = {
-    Name = "${var.env_tag}-${var.configsvr_tag}-firewall"
+    Name = "${var.env_tag}-${var.configsvr_tag}-sg"
     environment    = var.env_tag
   }
 }

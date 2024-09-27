@@ -20,7 +20,7 @@ EOT
 }
 
 resource "aws_security_group" "mongodb-arbiter-sg" {
-  name        = "${var.env_tag}-${var.arbiter_tag}-security-group"
+  name        = "${var.env_tag}-${var.arbiter_tag}-sg"
   description = "Allow traffic to MongoDB arbiter instances"
   vpc_id = aws_vpc.vpc-network.id
   dynamic "ingress" {
@@ -29,7 +29,7 @@ resource "aws_security_group" "mongodb-arbiter-sg" {
       from_port   = 0
       to_port     = ingress.value
       protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]  # Allow from any IP address; adjust based on your needs
+      cidr_blocks = ["0.0.0.0/0"]  
     }
   }
   egress {
@@ -39,7 +39,7 @@ resource "aws_security_group" "mongodb-arbiter-sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = {
-    Name = "${var.env_tag}-${var.arbiter_tag}-firewall"
+    Name = "${var.env_tag}-${var.arbiter_tag}-sg"
     environment    = var.env_tag
   }
 }

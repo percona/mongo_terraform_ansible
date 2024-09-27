@@ -3,7 +3,7 @@
 ################
 
 variable "env_tag" {
-  default = "my-test-env"
+  default = "aws-test"
   description = "Name of Environment. Replace these with your own custom name to avoid collisions"
 }
 
@@ -13,7 +13,7 @@ variable "ssh_public_key_path" {
 }
 
 variable "my_ssh_user" {
-  default = "ivan_groenewold"
+  default = "ec2-user"
   description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"  
 }
 

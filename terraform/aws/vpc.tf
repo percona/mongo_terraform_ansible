@@ -7,7 +7,7 @@ resource "aws_vpc" "vpc-network" {
   enable_dns_support = true
   enable_dns_hostnames = true
   tags = {
-    Name = "${var.env_tag}-${var.network_name}"
+    Name = "${var.env_tag}-${var.network_name}-vpc"
     environment    = var.env_tag
   }
 }
@@ -25,6 +25,6 @@ resource "aws_subnet" "vpc-subnet" {
 }
 
 resource "aws_key_pair" "my_key_pair" {
-  key_name   = "${var.my_ssh_user}_key"
+  key_name   = "${var.env_tag}-${var.my_ssh_user}-key"
   public_key = file(var.ssh_public_key_path)
 }

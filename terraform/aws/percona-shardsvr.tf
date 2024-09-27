@@ -30,11 +30,11 @@ resource "aws_instance" "shard" {
     #!/bin/bash
     echo "Created"
   EOT
-  vpc_security_group_ids = [aws_security_group.mongodb_shardsvr_firewall.id]
+  vpc_security_group_ids = [aws_security_group.mongodb_shardsvr_sg.id]
 }
 
-resource "aws_security_group" "mongodb_shardsvr_firewall" {
-  name   = "${var.env_tag}-${var.shard_tag}-firewall"
+resource "aws_security_group" "mongodb_shardsvr_sg" {
+  name   = "${var.env_tag}-${var.shard_tag}-sg"
   vpc_id = aws_vpc.vpc-network.id
   dynamic "ingress" {
     for_each = var.shard_ports
@@ -46,7 +46,8 @@ resource "aws_security_group" "mongodb_shardsvr_firewall" {
     }
   }
   tags = {
-    Name = "${var.env_tag}-${var.shard_tag}-firewall"
+    Name = "${var.env_tag}-${var.shard_tag}-sg"
     environment    = var.env_tag
+    
   }
 }

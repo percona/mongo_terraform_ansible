@@ -31,7 +31,7 @@ resource "aws_instance" "pmm" {
 }
 
 resource "aws_security_group" "pmm_security_group" {
-  name   = "${var.env_tag}-${var.pmm_tag}-security-group"
+  name   = "${var.env_tag}-${var.pmm_tag}-sg"
   vpc_id = aws_vpc.vpc-network.id
   dynamic "ingress" {
     for_each = var.pmm_ports
@@ -43,7 +43,7 @@ resource "aws_security_group" "pmm_security_group" {
     }
   }
   tags = {
-    Name = "${var.env_tag}-${var.pmm_tag}-firewall"
+    Name = "${var.env_tag}-${var.pmm_tag}-sg"
     environment    = var.env_tag
   }
 }

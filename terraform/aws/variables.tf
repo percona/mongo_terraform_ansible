@@ -56,7 +56,7 @@ variable "mongos_count" {
 # Shards
 ################
 
-variable "shard_tag" {
+variable "shardsvr_tag" {
   description = "Name of the shard servers"
   default = "mongodb-shard"
 }
@@ -71,7 +71,7 @@ variable "shardsvr_volume_size" {
   description = "storage size for the shard server"
 }
 
-variable "shard_ports" {
+variable "shardsvr_ports" {
   type = list(number)
   default = [ 22, 27018 ]
 }

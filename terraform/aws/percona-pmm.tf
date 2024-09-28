@@ -22,7 +22,7 @@ resource "aws_instance" "pmm" {
     Name = "${var.env_tag}-${var.pmm_tag}"
     environment    = var.env_tag
   }  
-  vpc_security_group_ids = [aws_security_group.pmm_security_group.id]
+  vpc_security_group_ids = [aws_security_group.mongodb_pmm_sg.id]
   user_data = <<-EOT
     #!/bin/bash
     # Set the hostname
@@ -31,20 +31,17 @@ resource "aws_instance" "pmm" {
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts  
 
-    # Remove the dash from the Terraform volume ID to match with lsblk output
-    DEVICE=$(lsblk -o NAME,SERIAL | grep "${aws_ebs_volume.pmm_disk.id}" | awk '{print "/dev/" $1}')
+    # Add a dash to lsblk output to match the Terraform volume ID 
+    DEVICE=$(lsblk -o NAME,SERIAL | sed 's/l/l-/' | grep "${aws_ebs_volume.pmm_disk.id}" | awk '{print "/dev/" $1}')
 
-    # Create an XFS filesystem on the EBS volume
     mkfs.xfs $DEVICE
 
-    # Create the directory for MongoDB data
     mkdir -p /var/lib/docker
 
-    # Mount the volume
     mount $DEVICE /var/lib/docker
 
-    # Add the volume to /etc/fstab for automatic mounting at boot
-    echo "$DEVICE /var/lib/docker xfs defaults,nofail 0 2" >> /etc/fstab    
+    UUID=$(blkid -s UUID -o value "$DEVICE")
+    echo "UUID=$UUID /var/lib/docker xfs defaults,nofail 0 2" >> /etc/fstab    
   EOT
   monitoring = true
 }
@@ -55,29 +52,46 @@ resource "aws_volume_attachment" "pmm_volume_attachment" {
   instance_id  = aws_instance.pmm.id
 }
 
-resource "aws_security_group" "pmm_security_group" {
-  name   = "${var.env_tag}-${var.pmm_tag}-sg"
-  vpc_id = aws_vpc.vpc-network.id
-  dynamic "ingress" {
-    for_each = var.pmm_ports
-    content {
-      from_port   = ingress.value
-      to_port     = ingress.value
-      protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]  
-    }
-  }
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }  
+resource "aws_security_group" "mongodb_pmm_sg" {
+  name        = "${var.env_tag}-${var.pmm_tag}-sg"
+  description = "Allow traffic to MongoDB pmm instances"
+  vpc_id      = aws_vpc.vpc-network.id
+
   tags = {
-    Name = "${var.env_tag}-${var.pmm_tag}-sg"
-    environment    = var.env_tag
+    Name        = "${var.env_tag}-${var.pmm_tag}-sg"
+    environment = var.env_tag
   }
+}
+
+resource "aws_security_group_rule" "mongodb-pmm-ingress" {
+  for_each          = toset([for port in var.pmm_ports : tostring(port)])
+  type              = "ingress"
+  from_port         = each.value
+  to_port           = each.value
+  protocol          = "tcp"
+  security_group_id = aws_security_group.mongodb_pmm_sg.id
+  cidr_blocks       = ["0.0.0.0/0"]  # Allow from any IP address; adjust based on your needs
+}
+
+# Ingress rule for ICMP (ping) traffic
+resource "aws_security_group_rule" "mongodb-pmm-icmp-ingress" {
+  type              = "ingress"
+  from_port         = 8     # Type 8 for echo request (ping)
+  to_port           = 0
+  protocol          = "icmp"
+  security_group_id = aws_security_group.mongodb_pmm_sg.id
+  cidr_blocks       = ["0.0.0.0/0"]  # Allow from any IP address; adjust based on your needs
+}
+
+# Egress rule allowing all traffic
+resource "aws_security_group_rule" "mongodb-pmm-egress" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  security_group_id = aws_security_group.mongodb_pmm_sg.id
+  cidr_blocks       = ["0.0.0.0/0"]  # Allow all outbound IPv4 traffic
+  ipv6_cidr_blocks  = ["::/0"]       # Allow all outbound IPv6 traffic
 }
 
 resource "aws_route53_record" "pmm_dns_record" {

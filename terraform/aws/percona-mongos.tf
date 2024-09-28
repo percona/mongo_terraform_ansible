@@ -23,28 +23,45 @@ resource "aws_instance" "mongos" {
 }
 
 resource "aws_security_group" "mongodb_mongos_sg" {
-  name   = "${var.env_tag}-${var.mongos_tag}-sg"
-  vpc_id = aws_vpc.vpc-network.id
-  dynamic "ingress" {
-    for_each = var.mongos_ports
-    content {
-      from_port   = ingress.value
-      to_port     = ingress.value
-      protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
-  }
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }  
+  name        = "${var.env_tag}-${var.mongos_tag}-sg"
+  description = "Allow traffic to MongoDB mongos instances"
+  vpc_id      = aws_vpc.vpc-network.id
+
   tags = {
-    Name = "${var.env_tag}-${var.mongos_tag}-sg"
-    environment    = var.env_tag
+    Name        = "${var.env_tag}-${var.mongos_tag}-sg"
+    environment = var.env_tag
   }
+}
+
+resource "aws_security_group_rule" "mongodb-mongos-ingress" {
+  for_each          = toset([for port in var.mongos_ports : tostring(port)])
+  type              = "ingress"
+  from_port         = each.value
+  to_port           = each.value
+  protocol          = "tcp"
+  security_group_id = aws_security_group.mongodb_mongos_sg.id
+  cidr_blocks       = ["0.0.0.0/0"]  # Allow from any IP address; adjust based on your needs
+}
+
+# Ingress rule for ICMP (ping) traffic
+resource "aws_security_group_rule" "mongodb-mongos-icmp-ingress" {
+  type              = "ingress"
+  from_port         = 8     # Type 8 for echo request (ping)
+  to_port           = 0
+  protocol          = "icmp"
+  security_group_id = aws_security_group.mongodb_mongos_sg.id
+  cidr_blocks       = ["0.0.0.0/0"]  # Allow from any IP address; adjust based on your needs
+}
+
+# Egress rule allowing all traffic
+resource "aws_security_group_rule" "mongodb-mongos-egress" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  security_group_id = aws_security_group.mongodb_mongos_sg.id
+  cidr_blocks       = ["0.0.0.0/0"]  # Allow all outbound IPv4 traffic
+  ipv6_cidr_blocks  = ["::/0"]       # Allow all outbound IPv6 traffic
 }
 
 resource "aws_route53_record" "mongos_dns_record" {

@@ -24,6 +24,7 @@ resource "local_file" "AnsibleInventory" {
      private_ip_pmm = google_compute_instance.pmm.network_interface.0.network_ip,
      bucket = google_storage_bucket.mongo-backups.name,
      region = google_storage_bucket.mongo-backups.location,
+     endpointUrl = "https://${var.region}.amazonaws.com",
      cluster = var.env_tag,
      access_key = google_storage_hmac_key.mongo-backup-service-account.access_id,
      secret_access_key = google_storage_hmac_key.mongo-backup-service-account.secret

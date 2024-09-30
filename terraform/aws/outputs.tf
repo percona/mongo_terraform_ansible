@@ -23,6 +23,7 @@ resource "local_file" "AnsibleInventory" {
      private_ip_pmm = aws_instance.pmm.private_ip,
      bucket = aws_s3_bucket.mongo_backups.bucket,
      region = aws_s3_bucket.mongo_backups.region,
+     endpointUrl = "https://${var.region}.amazonaws.com",
      cluster = var.env_tag,
      access_key = aws_iam_access_key.mongo_backup_access_key.id,
      secret_access_key = aws_iam_access_key.mongo_backup_access_key.secret

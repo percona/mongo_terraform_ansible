@@ -7,21 +7,20 @@ resource "aws_instance" "arbiter" {
     environment    = var.env_tag
   }
   instance_type    = var.arbiter_type
-#  availability_zone = element(data.aws_availability_zones.available.names, count.index % length(data.aws_availability_zones.available.names))
-  availability_zone = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet)].availability_zone
+  availability_zone = reverse(aws_subnet.vpc-subnet)[count.index % length(aws_subnet.vpc-subnet) % var.arbiters_per_replset].availability_zone
   ami               = lookup(var.image, var.region)
-  subnet_id         = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet)].id
+  subnet_id         = reverse(aws_subnet.vpc-subnet)[count.index % length(aws_subnet.vpc-subnet) % var.arbiters_per_replset].id
   associate_public_ip_address = true
   key_name          = aws_key_pair.my_key_pair.key_name
   vpc_security_group_ids = [aws_security_group.mongodb-arbiter-sg.id]
   user_data = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}.${var.env_tag}"
+    hostnamectl set-hostname "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index} % var.arbiters_per_replset}.${var.env_tag}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts    
-EOT
+  EOT
 }
 
 resource "aws_security_group" "mongodb-arbiter-sg" {

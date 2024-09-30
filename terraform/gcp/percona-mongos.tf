@@ -29,7 +29,7 @@ resource "google_compute_instance" "mongos" {
   metadata_startup_script = <<EOT
     #! /bin/bash
     echo "Created"
-EOT
+  EOT
 }
 
 resource "google_compute_firewall" "mongodb-mongos-firewall" {

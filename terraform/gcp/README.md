@@ -47,6 +47,11 @@
 
     Modify the config as needed depending on your environment
 
+4. Copy the generated inventory for Ansible
+    ```
+    cp inventory ../../ansible/
+    ```
+
 - Look inside the [ansible](ansible) folder for instructions to complete the deployment of a complete MongoDB cluster
 
 - The deployment of the resources required for a 2 shard cluster with Terraform takes around 1 minute

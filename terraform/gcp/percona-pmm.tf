@@ -32,10 +32,27 @@ resource "google_compute_instance" "pmm" {
     provisioning_model = "STANDARD"
   }
   metadata_startup_script = <<EOT
-    #! /bin/bash
-    echo "Created"
-EOT
+    #!/bin/bash
+    # Set the hostname
+    hostnamectl set-hostname "${var.env_tag}-${var.pmm_tag}.${var.env_tag}"
+
+    # Update /etc/hosts to reflect the hostname change
+    echo "127.0.0.1 $(hostname)" >> /etc/hosts  
+
+    # Add a dash to lsblk output to match the Terraform volume ID 
+    DEVICE=$(lsblk -o NAME,SERIAL | sed 's/l/l-/' | grep "${google_compute_disk.pmm_disk.id}" | awk '{print "/dev/" $1}')
+
+    mkfs.xfs $DEVICE
+
+    mkdir -p /var/lib/docker
+
+    mount $DEVICE /var/lib/docker
+
+    UUID=$(blkid -s UUID -o value "$DEVICE")
+    echo "UUID=$UUID /var/lib/docker xfs defaults,noatime,nofail 0 2" >> /etc/fstab    
+  EOT
 }
+
 resource "google_compute_firewall" "percona-pmm-firewall" {
   name = "${var.env_tag}-${var.pmm_tag}-firewall"
   network = google_compute_network.vpc-network.name

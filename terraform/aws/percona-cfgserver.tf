@@ -42,7 +42,7 @@ resource "aws_instance" "cfg" {
     mount $DEVICE /var/lib/mongo
 
     UUID=$(blkid -s UUID -o value "$DEVICE")
-    echo "UUID=$UUID /var/lib/mongo xfs defaults,nofail 0 2" >> /etc/fstab
+    echo "UUID=$UUID /var/lib/mongo xfs defaults,noatime,nofail 0 2" >> /etc/fstab
   EOT
 }
 

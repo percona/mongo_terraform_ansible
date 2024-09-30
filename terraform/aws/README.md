@@ -9,17 +9,13 @@
     aws configure
     ``` 
 
-3. Upload your SSH key to AWS platform
-   
-    Login to [AWS console](aws.amazon.com), go to `EC2` -> `Network & Security` -> `Key Pairs`. Select the `Actions`  buttion and click the `Import key pair` button. Upload your public SSH key and write down the associated username. This user and key will be used to login to the instances created.
-
-4. Clone this repository on your machine and `cd` to it
+3. Clone this repository on your machine and `cd` to it
 
     ```
     cd mongo_terraform_ansible/terraform/aws
     ```
 
-5. Initialize Terraform 
+4. Initialize Terraform 
 
     ```
     terraform init
@@ -47,11 +43,24 @@
 
     Modify the config as needed depending on your environment
 
+4. Copy the generated inventory for Ansible
+    ```
+    cp inventory ../../ansible/
+    ```
+
 - Look inside the [ansible](ansible) folder for instructions to complete the deployment of a complete MongoDB cluster
 
 - The deployment of the resources required for a 2 shard cluster with Terraform takes around 1 minute
 
 - You can run `terraform output -json` to see the access/secret keys generated for the S3 bucket created to store backups
+
+## Connecting to the created instances
+
+If you copied the generated configuration to ssh_config, no parameters should be needed. Example:
+
+```
+    ssh my-env-name-mongodb-cfg01
+```
 
 ## Minimum variables to customize
 

@@ -41,7 +41,7 @@ resource "aws_instance" "pmm" {
     mount $DEVICE /var/lib/docker
 
     UUID=$(blkid -s UUID -o value "$DEVICE")
-    echo "UUID=$UUID /var/lib/docker xfs defaults,nofail 0 2" >> /etc/fstab    
+    echo "UUID=$UUID /var/lib/docker xfs defaults,noatime,nofail 0 2" >> /etc/fstab    
   EOT
   monitoring = true
 }

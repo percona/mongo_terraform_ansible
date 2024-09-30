@@ -1,7 +1,7 @@
 resource "aws_ebs_volume" "shard_disk" {
   count             = var.shard_count * var.shardsvr_replicas
 #  availability_zone = element(data.aws_availability_zones.available.names, count.index % length(data.aws_availability_zones.available.names))
-  availability_zone           = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet)].availability_zone
+  availability_zone = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet) % var.shardsvr_replicas].availability_zone
   size              = var.shardsvr_volume_size
   type              = var.data_disk_type
   tags = {
@@ -15,9 +15,9 @@ resource "aws_instance" "shard" {
   ami                 = lookup(var.image, var.region)
   instance_type       = var.shardsvr_type
   #availability_zone   = element(data.aws_availability_zones.available.names, count.index % length(data.aws_availability_zones.available.names))
-  availability_zone           = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet)].availability_zone
+  availability_zone   = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet) % var.shardsvr_replicas].availability_zone
   key_name            = aws_key_pair.my_key_pair.key_name
-  subnet_id           = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet)].id
+  subnet_id           = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet) % var.shardsvr_replicas].id
   tags = {
     Name = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
     ansible-group = floor(count.index / var.shardsvr_replicas )
@@ -42,7 +42,7 @@ resource "aws_instance" "shard" {
     mount $DEVICE /var/lib/mongo
 
     UUID=$(blkid -s UUID -o value "$DEVICE")
-    echo "UUID=$DEVICE /var/lib/mongo xfs defaults,nofail 0 2" >> /etc/fstab    
+    echo "UUID=$DEVICE /var/lib/mongo xfs defaults,noatime,nofail 0 2" >> /etc/fstab    
   EOT
   vpc_security_group_ids = [aws_security_group.mongodb_shardsvr_sg.id]
 }

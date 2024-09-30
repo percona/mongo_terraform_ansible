@@ -13,7 +13,7 @@ resource "aws_instance" "arbiter" {
   associate_public_ip_address = true
   key_name          = aws_key_pair.my_key_pair.key_name
   vpc_security_group_ids = [aws_security_group.mongodb-arbiter-sg.id]
-  user_data = <<EOT
+  user_data = <<-EOT
     #!/bin/bash
     # Set the hostname
     hostnamectl set-hostname "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index} % var.arbiters_per_replset}.${var.env_tag}"

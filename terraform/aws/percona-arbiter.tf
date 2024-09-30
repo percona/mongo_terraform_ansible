@@ -1,7 +1,7 @@
 resource "aws_instance" "arbiter" {
   count = var.shard_count * var.arbiters_per_replset
   tags = {
-    Name           = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % {var.arbiters_per_replset}"
+    Name           = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index} % {var.arbiters_per_replset}"
     ansible-group  = floor(count.index / var.arbiters_per_replset)
     ansible-index  = count.index % var.arbiters_per_replset
     environment    = var.env_tag

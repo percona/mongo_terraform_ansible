@@ -4,7 +4,7 @@
   tags: os_conf
   become : yes
   tasks:
-    - name: tune sysctl
+    - name: tune sysctl values
       ansible.posix.sysctl:
         name: "{{ item.key }}"
         value: "{{ item.value }}"
@@ -17,7 +17,7 @@
         - { key: net.core.somaxconn, value: "65535" }
         - { key: vm.max_map_count, value: "102400" }
 
-    - name: modify limits
+    - name: modify PAM limits
       community.general.pam_limits:
         domain: "{{ item.domain }}"
         limit_type: "{{ item.type }}"
@@ -38,7 +38,7 @@
         new_control: required
         name: login
 
-    - name: prepare disable transparent huge pages systemd service
+    - name: prepare the disable transparent huge pages systemd service
       template:
         src: disable-thp.service.j2
         dest: "{{ thp_location }}"
@@ -46,7 +46,7 @@
         group: root
         mode: 0644
 
-    - name: run disable THP service
+    - name: run the disable THP service
       systemd:
         name: disable-thp
         enabled: true
@@ -60,33 +60,11 @@
   environment: 
     PERCONA_TELEMETRY_DISABLE=1
   tasks:
-    - name: Create datadir
+    - name: Create MongoDB datadir
       file:
         path: "{{ mongod_path }}"
         state: directory
         mode: 0770
-
-    - name: Create an XFS filesystem 
-      community.general.filesystem:
-        fstype: xfs
-        state: present
-        dev: /dev/disk/by-id/google-persistent-disk-1
-      when: arbiter is not defined
-
-    - name: Fetch the UUID of volume
-      command: blkid -s UUID -o value /dev/disk/by-id/google-persistent-disk-1
-      changed_when: false
-      register: blkid_out
-      when: arbiter is not defined
-
-    - name: Mount up device by UUID
-      ansible.posix.mount:
-        path: "{{ mongod_path }}"
-        src: UUID={{ blkid_out.stdout }}
-        fstype: xfs
-        opts: noatime
-        state: mounted
-      when: arbiter is not defined
 
     - name: copy RPM files from local machine
       block:
@@ -95,14 +73,15 @@
             src: "{{ local_rpm_location }}"
             dest: "{{ target_rpm_location }}"
 
-        - name: find copied Percona RPMs
+        - name: find copied RPMs
           find:
             paths: "{{ target_rpm_location }}"
             patterns: "*.rpm"
           register: percona_rpms
 
-        - set_fact:
-            rpm_list: "{{ percona_rpms.files | map(attribute='path') | list  }}"
+        - name: get the paths of copied files
+          set_fact:
+            rpm_list: "{{ percona_rpms.files | map(attribute='path') | list }}"
 
         - name: install copied RPM files
           yum:
@@ -125,7 +104,7 @@
             name: "{{ percona_repo }}"
             state: present
 
-        - name: Enable specific MongoDB version
+        - name: Enable the specific MongoDB version
           shell: "/usr/bin/percona-release enable {{ mongo_release }} && /usr/bin/percona-release enable tools"
 
         - name: Enable experimental PMM client repository
@@ -172,7 +151,7 @@
         mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
       when: use_tls | bool
 
-    - name: set up keyfile if not using TLS
+    - name: set up keyfile authentication
       become: yes
       copy: 
         dest: "{{ keyFile_location }}"
@@ -226,7 +205,7 @@
   hosts: cfg:shard*:rs*
   tags: bootstrap_rs
   tasks:
-    - name: create the datadir
+    - name: create the MongoDB datadir
       become: yes
       file:
         path: "{{ mongod_path }}"
@@ -240,10 +219,11 @@
       changed_when: false
       failed_when: mongo_port_result.stdout == ""
 
-    - set_fact:
+    - name: register the mongod port
+      set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
-    - name: set up encryption keyfile
+    - name: set up keyfile for encryption at rest 
       become: yes
       copy:
         dest: "{{ encryption_keyfile }}"
@@ -292,7 +272,7 @@
         dest: /etc/logrotate.d/mongod
         mode: 0644
 
-    - name: prepare the command to create root user
+    - name: prepare the command to create MongoDB root user
       template:
         src: templates/createRoot.js.j2
         dest: /tmp/createRoot.js
@@ -305,21 +285,22 @@
       changed_when: false
       failed_when: mongo_port_result.stdout == ""
 
-    - set_fact:
+    - name: register the mongod port
+      set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
-    - name: run the command to create the root user
+    - name: create the MongoDB root user
       shell: mongo admin {{ mongo_extra_args | default("") }} --port {{ mongo_port }} --host 127.0.0.1  < /tmp/createRoot.js
       when: mongodb_primary is defined and mongodb_primary
 
-    - name: prepare the commands to create pbm and pmm users and roles
+    - name: prepare the commands to create the PBM and PMM users and roles
       template:
         src: templates/createUsers.js.j2
         dest: /tmp/createUsers.js
         mode: 0644
       when: mongodb_primary is defined and mongodb_primary
 
-    - name: run the command to create the PBM and PMM users and roles
+    - name: create the PBM and PMM users and roles
       shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongo_port }} --host {{ inventory_hostname }} < /tmp/createUsers.js
       when: mongodb_primary is defined and mongodb_primary
       
@@ -337,13 +318,14 @@
             src: "{{ local_rpm_location }}"
             dest: "{{ target_rpm_location }}"
 
-        - name: find copied percona RPMs
+        - name: find copied RPMs
           find:
             paths: "{{ target_rpm_location }}"
             patterns: "*.rpm"
           register: percona_rpms
 
-        - set_fact:
+        - name: get the paths of copied files
+          set_fact:
             rpm_list: "{{ percona_rpms.files | map(attribute='path') | list  }}"
 
         - name: install copied RPM files
@@ -401,7 +383,7 @@
         mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }}  "
       when: use_tls | bool
 
-    - name: set up keyfile if not using TLS
+    - name: set up keyfile authentication
       become: yes
       copy: 
         dest: "{{ keyFile_location }}"
@@ -434,7 +416,7 @@
     - name: disable selinux
       shell: /usr/sbin/setenforce 0
 
-    - name: start mongos service
+    - name: start the mongos service
       systemd:
         name: mongos
         state: started
@@ -463,7 +445,7 @@
         mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
       when: use_tls | bool
 
-    - name: prepare the command to set the cluster rw concern
+    - name: prepare the command to set the cluster RW concern
       template:
         src: templates/setRWconcern.js.j2
         dest: /tmp/setRWconcern.js
@@ -471,7 +453,7 @@
       delegate_to: "{{ groups.mongos | first }}"
       run_once: true
 
-    - name: set the cluster rw concern
+    - name: set the cluster RW concern
       shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} < /tmp/setRWconcern.js
       delegate_to: "{{ groups.mongos | first }}"
       run_once: true
@@ -492,7 +474,8 @@
       changed_when: false
       failed_when: mongo_port_result.stdout == ""
 
-    - set_fact:
+    - name: register the mongod port
+      set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
     - name: figure out the MongoDB TLS options
@@ -582,32 +565,13 @@
   become: true
   tasks:
 
-    - name: Create PMM dir
+    - name: Create PMM directory
       file:
         path: "{{ pmm_dir }}"
         state: directory
         owner: root 
         group: root
         mode: 0710
-
-    - name: Create an XFS filesystem 
-      community.general.filesystem:
-        fstype: xfs
-        state: present
-        dev: /dev/disk/by-id/google-persistent-disk-1
-
-    - name: Fetch the UUID of volume
-      command: blkid -s UUID -o value /dev/disk/by-id/google-persistent-disk-1
-      changed_when: false
-      register: blkid_out
-
-    - name: Mount up device by UUID
-      ansible.posix.mount:
-        path: "{{ pmm_dir }}"
-        src: UUID={{ blkid_out.stdout }}
-        fstype: xfs
-        opts: noatime
-        state: mounted
 
     - name: install yum utils
       yum:
@@ -631,7 +595,7 @@
         name: docker
         state: restarted
 
-    - name: pull PMM image 
+    - name: pull the PMM Docker image 
       shell: docker pull {{ pmm_image }}
 
     - name: create PMM data container
@@ -650,7 +614,9 @@
       register: mongo_port_result
       changed_when: false
       failed_when: mongo_port_result.stdout == ""
-    - set_fact:
+
+    - name: register the mongod port
+      set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
     - name: Ensure pmm-agent is started

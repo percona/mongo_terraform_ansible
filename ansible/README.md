@@ -5,7 +5,7 @@
 3. Run the `main.yml` playbook pointing Ansible to the desired inventory file. For example:
 ```
 cd ./ansible
-ansible-playbook main.yml -i ../inventory
+ansible-playbook main.yml -i inventory
 ```
 
 The installation process takes around 15 min for a 2 shard cluster
@@ -19,7 +19,7 @@ The installation process takes around 15 min for a 2 shard cluster
 - You can specify a server in more than one group only for the case of deploying a mongos + config server on the same host. Any other combinations are currently not supported and cause execution to fail.
 - Arbiters are specified by adding `arbiter=True` tag to each arbiter host
 
-- Example of an inventory for a sharded cluster:
+- Example of an inventory for a sharded cluster in GCP:
 ```
 [cfg]
 dev-mongo-cfg00 mongodb_primary=True
@@ -53,7 +53,7 @@ access_key_id=GOOG1E2TPIJ5*****
 secret_access_key=******
 ```
 
-- Example of an inventory for a single replicaset:
+- Example of an inventory for a single replicaset in GCP:
 ```
 [rs1]
 host11 mongodb_primary=True

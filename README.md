@@ -1,25 +1,20 @@
-# Deploy hardware for MongoDB clusters using Terraform in Google Cloud
+# Deploy hardware for MongoDB clusters using Terraform 
 
 ## Pre-requisites
 
-1. Install Google Cloud SDK https://cloud.google.com/sdk/docs/install#linux
-2. Authenticate your shell session with your Google account credentials
-
-    ```
-    gcloud auth application-default login
-    ``` 
-
-3. Upload your SSH key to Google Cloud platform
-   
-    Login to [Google Cloud console](console.cloud.google.com), go to `Compute Engine` -> `Metadata`. Select the SSH keys tab and click the `Edit` button. Upload your public SSH key and write down the associated username. This user and key will be used to login to the instances created.
-
-4. Clone this repository on your machine and `cd` to it
+1. Clone this repository on your machine and `cd` to it
 
     ```
     cd mongo_terraform_ansible
     ```
 
-5. Initialize Terraform 
+2. Go to your desired target platform e.g.
+
+    ```
+    cd gcp
+    ```
+
+2. Initialize Terraform 
 
     ```
     terraform init
@@ -50,29 +45,3 @@
 - Look inside the [ansible](ansible) folder for instructions to complete the deployment of a complete MongoDB cluster
 
 - The deployment of the resources required for a 2 shard cluster with Terraform takes around 1 minute
-
-- You can run `terraform output -json` to see the access/secret keys generated for the Cloud Storage bucket created to store backups
-
-## Minimum variables to customize
-
-These are the ones you have to care about for a quick deploy with default values:
-
-- project_id
-
-    This is the GCP project to use 
-
-- env_tag
-
-    This is just a prefix for the name of your environment. Make sure nobody else is using the same one in the project
-
-- gce_ssh_users
-
-    List of SSH usernames and path to their public keys to configure access to your instances
-
-- my_ssh_user
-
-    Your own SSH user. This is used to generate an SSH config file for you
-
-- enable_ssh_gateway
-
-    Wether you can SSH directly or through a jump host. This is used to generate an SSH config file for you

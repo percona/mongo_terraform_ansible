@@ -65,7 +65,7 @@ variable "mongos_count" {
 # Shards
 ################
 
-variable "shard_tag" {
+variable "shardsvr_tag" {
   description = "Name of the shard servers"
   default = "mongodb-shard"
 }

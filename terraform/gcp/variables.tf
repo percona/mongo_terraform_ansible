@@ -9,7 +9,7 @@ variable "project_id" {
 }
 
 variable "env_tag" {
-  default = "my-test-env"
+  default = "gcp-test"
   description = "Name of Environment. Replace these with your own custom name to avoid collisions"
 }
 

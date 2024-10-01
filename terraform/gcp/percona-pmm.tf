@@ -39,8 +39,7 @@ resource "google_compute_instance" "pmm" {
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts  
 
-    # Add a dash to lsblk output to match the Terraform volume ID 
-    DEVICE=$(lsblk -o NAME,SERIAL | sed 's/l/l-/' | grep "${google_compute_disk.pmm_disk.id}" | awk '{print "/dev/" $1}')
+    DEVICE=$(readlink -f /dev/disk/by-id/google-persistent-disk-1)            
 
     mkfs.xfs $DEVICE
 

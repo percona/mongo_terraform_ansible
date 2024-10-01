@@ -1,5 +1,5 @@
 resource "google_compute_instance" "arbiter" {
-  name = "${var.env_tag}-${var.shard_tag}0${floor(count.index / var.arbiters_per_replset )}arb${count.index % var.arbiters_per_replset}"
+  name = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset )}arb${count.index % var.arbiters_per_replset}"
   machine_type = var.arbiter_type
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names) % var.arbiters_per_replset]
   count = var.shard_count * var.arbiters_per_replset

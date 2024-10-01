@@ -1,5 +1,5 @@
 resource "google_compute_disk" "shard_disk" {
-  name  = "${var.env_tag}-${var.shard_tag}0${floor(count.index / var.shardsvr_replicas )}svr${count.index % var.shardsvr_replicas}-data"
+  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas )}svr${count.index % var.shardsvr_replicas}-data"
   type  = var.data_disk_type
   size  = var.shardsvr_volume_size
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names) % var.shardsvr_replicas]
@@ -7,11 +7,11 @@ resource "google_compute_disk" "shard_disk" {
 }
 
 resource "google_compute_instance" "shard" {
-  name = "${var.env_tag}-${var.shard_tag}0${floor(count.index / var.shardsvr_replicas )}svr${count.index % var.shardsvr_replicas}"
+  name = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas )}svr${count.index % var.shardsvr_replicas}"
   machine_type = var.shardsvr_type
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names) % var.shardsvr_replicas]
   count = var.shard_count * var.shardsvr_replicas
-  tags = ["${var.env_tag}-${var.shard_tag}"]
+  tags = ["${var.env_tag}-${var.shardsvr_tag}"]
   labels = { 
     ansible-group = floor(count.index / var.shardsvr_replicas ),
     ansible-index = count.index % var.shardsvr_replicas,
@@ -62,11 +62,11 @@ resource "google_compute_instance" "shard" {
 }
 
 resource "google_compute_firewall" "mongodb-shardsvr-firewall" {
-  name = "${var.env_tag}-${var.shard_tag}-firewall"
+  name = "${var.env_tag}-${var.shardsvr_tag}-firewall"
   network = google_compute_network.vpc-network.name
   direction = "INGRESS"
   source_ranges = ["0.0.0.0/0"]
-  target_tags = ["${var.env_tag}-${var.shard_tag}"]
+  target_tags = ["${var.env_tag}-${var.shardsvr_tag}"]
   allow {
     protocol = "tcp"
     ports = "${var.shard_ports}"

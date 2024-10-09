@@ -180,7 +180,7 @@ pbm list --mongodb-uri "mongodb://pbm:secretpwd@ip-10-0-1-199.ec2.internal:27019
 ```
 
 ## Adding components to an existing deployment
-* You can add extra mongos routers by including them on the inventory file, then running the playbook using the appropriate tags and limit. 
+* You can add extra mongos routers by including them on the inventory file, then running the playbook using the appropriate tags and limit.
 ```
-ansible-playbook main.yml -i ../inventory --tags mongos,monitoring --limit mongos
+ansible-playbook main.yml -i inventory --tags mongos,monitoring --limit mongos
 ```

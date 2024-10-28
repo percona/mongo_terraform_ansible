@@ -39,4 +39,4 @@ operationProfiling:
    rateLimit: 100
 
 sharding:
-  configDB: mongo-cfg/{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}
+  configDB: {{ cluster }}-cfg/{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}

@@ -1,6 +1,6 @@
 rs.initiate(
   {
-    _id: "{{ group_names[0] }}",
+    _id: "{{ cluster }}-{{ group_names[0] }}",
     members: [
       {% for h in groups[ group_names[0] ] %}
       { 

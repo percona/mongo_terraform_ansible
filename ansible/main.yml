@@ -459,7 +459,7 @@
       run_once: true
 
     - name: add the shards to the cluster
-      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} --eval "sh.addShard('{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
+      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} --eval "sh.addShard('{{ cluster }}-{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
       delegate_to: "{{ groups.mongos | first }}"
       when: mongodb_primary is defined and mongodb_primary
 
@@ -490,7 +490,7 @@
   tasks:
     - name: generate PBM_MONGODB_URI
       set_fact:
-        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ group_names[0] ] %}{{ h }}:{{ replicaset_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ group_names[0] }}&authSource=admin{{ mongo_uri_tls | default('') }}"
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ group_names[0] ] %}{{ h }}:{{ replicaset_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-{{ group_names[0] }}&authSource=admin{{ mongo_uri_tls | default('') }}"
 
 - name: figure out backup URI for sharded cluster
   hosts: shard*:cfg*
@@ -499,7 +499,7 @@
   tasks:
     - name: generate PBM_MONGODB_URI
       set_fact:
-        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet=mongo-cfg&authSource=admin{{ mongo_uri_tls | default('') }}"
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-{{ group_names[0] }}&authSource=admin{{ mongo_uri_tls | default('') }}"
 
 - name: configure PBM agent and CLI
   hosts: cfg:shard*:rs*

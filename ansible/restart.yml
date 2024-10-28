@@ -37,7 +37,7 @@
   tasks:
     - name: generate PBM_MONGODB_URI
       set_fact:
-        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet=mongo-cfg&authSource=admin{{ mongo_uri_tls | default('') }}"
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-{{ group_names[0] }}&authSource=admin{{ mongo_uri_tls | default('') }}"
 
     - name: resync pbm storage
       shell: pbm config --force-resync --mongodb-uri '{{ mongodb_uri }}'
@@ -49,7 +49,7 @@
   tasks:
     - name: generate PBM_MONGODB_URI
       set_fact:
-        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ group_names[0] ] %}{{ h }}:{{ replicaset_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ group_names[0] }}&authSource=admin{{ mongo_uri_tls | default('') }}"
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ group_names[0] ] %}{{ h }}:{{ replicaset_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-{{ group_names[0] }}&authSource=admin{{ mongo_uri_tls | default('') }}"
 
     - name: resync pbm storage
       shell: pbm config --force-resync --mongodb-uri '{{ mongodb_uri }}'

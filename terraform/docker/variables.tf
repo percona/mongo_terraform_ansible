@@ -3,24 +3,21 @@
 ################
 
 variable "env_tag" {
-  default = "aws-test"
+  default = "docker-test"
   description = "Name of Environment. Replace these with your own custom name to avoid collisions"
 }
 
-variable "ssh_public_key_path" {
-  description = "SSH public key file to be added to authorized_keys"
-  default =  "ivan.pub"
+variable "ssh_users" {
+  description = "SSH user names, and their public key files to be added to authorized_keys"
+  default = {
+    ivan_groenewold = "ivan.pub"
+#    ,user2 = "user2.pub"
+  }
 }
 
 variable "my_ssh_user" {
-  default = "ec2-user"
+  default = "ivan_groenewold"
   description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"  
-}
-
-variable "enable_ssh_gateway" {
-  type = bool
-  default = false
-  description = "Adds proxycommand lines with a gateway/jump host to the generated ssh_config file"
 }
 
 ##################
@@ -61,17 +58,7 @@ variable "shardsvr_tag" {
   default = "mongodb-shard"
 }
 
-variable "shardsvr_type" {
-  default = "t3.medium"
-  description = "instance type of the shard server"
-}
-
-variable "shardsvr_volume_size" {
-  default = "50"
-  description = "storage size for the shard server"
-}
-
-variable "shardsvr_ports" {
+variable "shard_ports" {
   type = list(number)
   default = [ 22, 27018 ]
 }
@@ -83,16 +70,6 @@ variable "shardsvr_ports" {
 variable "configsvr_tag" {
   description = "Name of the config servers"
   default = "mongodb-cfg"
-}
-
-variable "configsvr_type" {
-  default = "t3.medium"
-  description = "instance type of the config server"
-}
-
-variable "configsvr_volume_size" {
-  default = "20"
-  description = "storage size for the config server"
 }
 
 variable "configsvr_ports" {
@@ -109,11 +86,6 @@ variable "mongos_tag" {
   default = "mongodb-mongos"
 }
 
-variable "mongos_type" {
-  default = "t3.medium"
-  description = "instance type of the mongos servers"
-}
-
 variable "mongos_ports" {
   type = list(number)
   default = [ 22, 27017 ]
@@ -126,11 +98,6 @@ variable "mongos_ports" {
 variable "arbiter_tag" {
   description = "Name of the arbiter servers"
   default = "mongodb-arb"
-}
-
-variable "arbiter_type" {
-  default = "t3.medium"
-  description = "instance type of the arbiter server"
 }
 
 variable "arbiter_ports" {
@@ -147,20 +114,6 @@ variable "pmm_tag" {
   default = "percona-pmm"
 }
 
-variable "pmm_disk_type" {
-   default = "gp2"
-}
-
-variable "pmm_type" {
-  default = "t3.large"
-  description = "instance type of the PMM server"
-}
-
-variable "pmm_volume_size" {
-  default = "100"
-  description = "storage size for the PMM server"
-}
-
 variable "pmm_ports" {
   type = list(number)
   default = [ 22, 443 ]
@@ -170,7 +123,25 @@ variable "pmm_ports" {
 # Bucket
 #############
 
-variable bucket_name { 
+variable "minio_region" {
+  description = "Default MINIO region"
+  default     = "us-east-1"
+}
+
+variable "minio_server" {
+  description = "Default MINIO host and port"
+  default     = "localhost:9000"
+}
+
+variable "minio_access_key" {
+  default = "minio"
+}
+
+variable "minio_secret_key" {
+  default = "minioadmin"
+}
+
+variable "bucket_name" { 
   default = "mongo-backups"
   description = "S3-compatible storage to put backups"
  }
@@ -184,21 +155,9 @@ variable "backup_retention" {
 # Instances
 #############
 
-variable "image" {
-  description = "Available images by region"
-  default = {
-    us-west-2 = "ami-0ad8bfd4b10994785"
-  }
-}
-
-# Save money by running spot instances but they may be terminated by AWS at any time
-variable "use_spot_instances" {
-  type = bool
-  default = false
-}
-
-variable "data_disk_type" {
-  default = "gp2"
+variable "docker_image" {
+  description = "Docker image"
+  default = "quay.io/centos/centos:stream9"
 }
 
 #############
@@ -207,7 +166,7 @@ variable "data_disk_type" {
 
 variable "region" {
   type    = string
-  default = "us-west-2"
+  default = "northamerica-northeast1"
 }
 
 variable "network_name" {
@@ -223,8 +182,4 @@ variable "subnet" {
 variable "subnet_name" {
   type = string
   default = "mongo-subnet"
-}
-
-variable "subnet_count" {
-  default = 3
 }

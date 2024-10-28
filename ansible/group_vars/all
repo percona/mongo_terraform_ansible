@@ -157,9 +157,11 @@ prefix: pbm
 
 # only relevant if pbm_local: false
 # the region, bucket, endpoint and keys are put into the inventory file by Terraform. If not provisioning servers with Terraform uncomment the following lines:
+#
 #region: northamerica-northeast1
 #bucket: dev-mongo-backups
 #endpointUrl: https://storage.googleapis.com
+#
 # the access and secret access keys are best provided via --extra-vars at runtime to avoid exposing them in the inventory file
 #access_key_id: *****
 #secret_access_key: *****

@@ -88,7 +88,6 @@
             name: "{{ rpm_list }}"
             state: present
             disablerepo: "*"
-            #disable_plugin: "*"
 
       when: copy_files | bool
 
@@ -131,21 +130,6 @@
   hosts: cfg:shard*:rs*
   tags: os_conf
   tasks:
-    - name: check if old Mongo client exists
-      stat: 
-        path: /bin/mongo
-      register: mongo_binary
-
-    - name: Create a symbolic link for Mongo shell
-      become: yes
-      ansible.builtin.file:
-        src: /bin/mongosh
-        dest: /bin/mongo
-        owner: root
-        group: root
-        state: link
-      when: mongo_binary.stat.exists == False
-
     - name: set up extra arguments for Mongo client TLS
       set_fact:
         mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates "
@@ -254,7 +238,7 @@
         seconds: 5
 
     - name: run the init command for replica set
-      shell: mongo {{ mongo_extra_args | default("") }} --port {{ mongo_port }} --host 127.0.0.1 < /tmp/init-rs.js
+      shell: mongosh {{ mongo_extra_args | default("") }} --port {{ mongo_port }} --host 127.0.0.1 < /tmp/init-rs.js
       when: mongodb_primary is defined and mongodb_primary
 
     - name: wait a few secs so replica sets finish initializing
@@ -290,7 +274,7 @@
         mongo_port: "{{ mongo_port_result.stdout }}"
 
     - name: create the MongoDB root user
-      shell: mongo admin {{ mongo_extra_args | default("") }} --port {{ mongo_port }} --host 127.0.0.1  < /tmp/createRoot.js
+      shell: mongosh admin {{ mongo_extra_args | default("") }} --port {{ mongo_port }} --host 127.0.0.1  < /tmp/createRoot.js
       when: mongodb_primary is defined and mongodb_primary
 
     - name: prepare the commands to create the PBM and PMM users and roles
@@ -301,8 +285,14 @@
       when: mongodb_primary is defined and mongodb_primary
 
     - name: create the PBM and PMM users and roles
-      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongo_port }} --host {{ inventory_hostname }} < /tmp/createUsers.js
+      shell: mongosh admin {{ mongo_extra_args | default("") }} -u {{ mongo_root_user }} -p {{ mongo_root_password }} --port {{ mongo_port }} --host {{ inventory_hostname }} < /tmp/createUsers.js
       when: mongodb_primary is defined and mongodb_primary
+
+    - name: set up an alias to login easily
+      lineinfile:
+        dest: /etc/profile
+        line: alias mongo='mongosh admin {{ mongo_extra_args | default("") }} -u {{ mongo_root_user }} -p {{ mongo_root_password }} --port {{ mongo_port }} --host {{ inventory_hostname }}'
+        state: present         
       
 - name: install mongos routers
   hosts: mongos
@@ -333,7 +323,6 @@
             name: "{{ rpm_list }}"
             state: present
             disablerepo: "*"
-            #disable_plugin: "*"
 
       when: copy_files | bool
 
@@ -363,25 +352,16 @@
           with_items: "{{ router_packages }}"
       when: not copy_files | bool
 
-    - name: check if old Mongo client exists
-      stat: 
-        path: /bin/mongo
-      register: mongo_binary
-
-    - name: Create a symbolic link for Mongo shell
-      become: yes
-      ansible.builtin.file:
-        src: /bin/mongosh
-        dest: /bin/mongo
-        owner: root
-        group: root
-        state: link
-      when: mongo_binary.stat.exists == False
-
     - name: set up extra arguments for Mongo client TLS 
       set_fact:
         mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }}  "
       when: use_tls | bool
+
+    - name: set up an alias to login easily to mongos
+      lineinfile:
+        dest: /etc/profile
+        line: alias mongo='mongosh admin {{ mongo_extra_args | default("") }} -u {{ mongo_root_user }} -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ inventory_hostname }}'
+        state: present     
 
     - name: set up keyfile authentication
       become: yes
@@ -416,13 +396,6 @@
     - name: disable selinux
       shell: /usr/sbin/setenforce 0
 
-    - name: start the mongos service
-      systemd:
-        name: mongos
-        state: started
-        enabled: yes
-        daemon_reload: yes
-
     - name: disable telemetry
       systemd:
         name: percona-telemetry-agent
@@ -430,6 +403,13 @@
         state: stopped
         daemon_reload: yes
       ignore_errors: true
+
+    - name: start the mongos service
+      systemd:
+        name: mongos
+        state: started
+        enabled: yes
+        daemon_reload: yes
 
     - name: wait a few secs so replica sets finish initializing
       pause:
@@ -454,12 +434,12 @@
       run_once: true
 
     - name: set the cluster RW concern
-      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} < /tmp/setRWconcern.js
+      shell: mongosh admin {{ mongo_extra_args | default("") }} -u {{ mongo_root_user }} -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} < /tmp/setRWconcern.js
       delegate_to: "{{ groups.mongos | first }}"
       run_once: true
 
     - name: add the shards to the cluster
-      shell: mongo admin {{ mongo_extra_args | default("") }} -u root -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} --eval "sh.addShard('{{ cluster }}-{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
+      shell: mongosh admin {{ mongo_extra_args | default("") }} -u {{ mongo_root_user }} -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} --eval "sh.addShard('{{ cluster }}-{{ group_names[0] }}/{{ ansible_hostname }}:{{ shard_port }}')"
       delegate_to: "{{ groups.mongos | first }}"
       when: mongodb_primary is defined and mongodb_primary
 
@@ -478,7 +458,7 @@
       set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
-    - name: figure out the MongoDB TLS options
+    - name: figure out MongoDB TLS options
       set_fact:
         mongo_uri_tls: "&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
       when: use_tls | bool
@@ -629,7 +609,7 @@
         pmm_ssl_params: " --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }} "
       when: use_tls | bool
 
-    - name: point agent to the PMM server
+    - name: point pmm-agent to the PMM server
       shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:443 --server-insecure-tls --force
 
     - name: add MongoDB metrics collector 

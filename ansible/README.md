@@ -8,7 +8,8 @@ cd ./ansible
 ansible-playbook main.yml -i inventory
 ```
 
-The installation process takes around 15 min for a 2 shard cluster
+The installation process takes around 15 min for a 2 shard cluster. 
+To connect to the servers there is a helper script provisioned in /etc/profile. you can run directly `mongo` on any host to connect to it locally with the proper credentials.
 
 ## Inventory file
 

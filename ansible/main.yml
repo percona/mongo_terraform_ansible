@@ -118,7 +118,7 @@
       
       when: not copy_files | bool
 
-    - name: disable telemetry
+    - name: disable Percona telemetry
       systemd:
         name: percona-telemetry-agent
         enabled: false
@@ -289,6 +289,7 @@
       when: mongodb_primary is defined and mongodb_primary
 
     - name: set up an alias to login easily
+      become: yes
       lineinfile:
         dest: /etc/profile
         line: alias mongo='mongosh admin {{ mongo_extra_args | default("") }} -u {{ mongo_root_user }} -p {{ mongo_root_password }} --port {{ mongo_port }} --host {{ inventory_hostname }}'
@@ -352,12 +353,21 @@
           with_items: "{{ router_packages }}"
       when: not copy_files | bool
 
+    - name: create logs directory
+      file: 
+        path: "{{ mongod_log_path }}"
+        state: directory
+        mode: '0755'
+        owner: mongod
+        group: mongod
+
     - name: set up extra arguments for Mongo client TLS 
       set_fact:
         mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }}  "
       when: use_tls | bool
 
     - name: set up an alias to login easily to mongos
+      become: yes
       lineinfile:
         dest: /etc/profile
         line: alias mongo='mongosh admin {{ mongo_extra_args | default("") }} -u {{ mongo_root_user }} -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ inventory_hostname }}'
@@ -396,7 +406,7 @@
     - name: disable selinux
       shell: /usr/sbin/setenforce 0
 
-    - name: disable telemetry
+    - name: disable Percona telemetry
       systemd:
         name: percona-telemetry-agent
         enabled: false

@@ -9,7 +9,7 @@ storage:
  s3:
      region: {{ region }}
      bucket: {{ bucket }}
-     prefix: {{ prefix }}
+     prefix: {{ prefix | default(cluster) }}
      endpointUrl: {{ endpointUrl }}
      credentials:
        access-key-id: {{ access_key_id }}

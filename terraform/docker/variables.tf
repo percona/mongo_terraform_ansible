@@ -7,19 +7,6 @@ variable "env_tag" {
   description = "Name of Environment. Replace these with your own custom name to avoid collisions"
 }
 
-variable "ssh_users" {
-  description = "SSH user names, and their public key files to be added to authorized_keys"
-  default = {
-    ivan_groenewold = "ivan.pub"
-#    ,user2 = "user2.pub"
-  }
-}
-
-variable "my_ssh_user" {
-  default = "ivan_groenewold"
-  description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"  
-}
-
 ##################
 # MongoDB topology
 ##################
@@ -58,11 +45,6 @@ variable "shardsvr_tag" {
   default = "mongodb-shard"
 }
 
-variable "shard_ports" {
-  type = list(number)
-  default = [ 22, 27018 ]
-}
-
 ################
 # CSRS
 ################
@@ -70,11 +52,6 @@ variable "shard_ports" {
 variable "configsvr_tag" {
   description = "Name of the config servers"
   default = "mongodb-cfg"
-}
-
-variable "configsvr_ports" {
-  type = list(number)
-  default = [ 22, 27019 ]
 }
 
 ################
@@ -86,11 +63,6 @@ variable "mongos_tag" {
   default = "mongodb-mongos"
 }
 
-variable "mongos_ports" {
-  type = list(number)
-  default = [ 22, 27017 ]
-}
-
 #############
 # Arbiters
 #############
@@ -100,11 +72,6 @@ variable "arbiter_tag" {
   default = "mongodb-arb"
 }
 
-variable "arbiter_ports" {
-  type = list(number)
-  default = [ 22, 27018 ]
-}
-
 #############
 # PMM
 #############
@@ -112,11 +79,6 @@ variable "arbiter_ports" {
 variable "pmm_tag" {
   description = "Name of the PMM server"
   default = "percona-pmm"
-}
-
-variable "pmm_ports" {
-  type = list(number)
-  default = [ 22, 443 ]
 }
 
 #############
@@ -157,29 +119,15 @@ variable "backup_retention" {
 
 variable "docker_image" {
   description = "Docker image"
-  default = "quay.io/centos/centos:stream9"
+  #default = "quay.io/centos/centos:stream9"
+  default = "percona/percona-server-mongodb:latest"
 }
 
 #############
 # Networking
 #############
 
-variable "region" {
-  type    = string
-  default = "northamerica-northeast1"
-}
-
 variable "network_name" {
   type    = string
   default = "mongo-terraform"
-}
-
-variable "subnet" {
-  type    = string
-  default = "10.128.0.0/20"
-}
-
-variable "subnet_name" {
-  type = string
-  default = "mongo-subnet"
 }

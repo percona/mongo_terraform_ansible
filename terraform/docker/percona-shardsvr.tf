@@ -1,15 +1,30 @@
-# Create Docker volumes to replace Google Compute Disks for shard servers
 resource "docker_volume" "shard_volume" {
   count = var.shard_count * var.shardsvr_replicas
   name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-data"
 }
 
-# Create Docker containers to replace Google Compute Instances for shard servers
 resource "docker_container" "shard" {
   count = var.shard_count * var.shardsvr_replicas
   name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
   image = var.docker_image
-  command = ["/bin/bash", "-c", "while true; do sleep 30; done;"]
+  mounts {
+    source = local_file.mongodb_keyfile.filename
+    target = "/etc/mongo/mongodb-keyfile.key"
+    type   = "bind"
+    read_only = true
+  }  
+  command = [
+    "mongod",
+    "--replSet", "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}",  
+    "--bind_ip_all",    
+    "--shardsvr",
+    "--keyFile", "/etc/mongo/mongodb-keyfile.key"
+  ]  
+  #env = [ "MONGO_INITDB_ROOT_USERNAME=mongoadmin", "MONGO_INITDB_ROOT_PASSWORD=secret" ]
+  labels { 
+    label = "replsetName"
+    value = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}"
+  }    
   labels { 
     label = "ansible-group"
     value = floor(count.index / var.shardsvr_replicas )
@@ -29,9 +44,16 @@ resource "docker_container" "shard" {
 
   mounts {
     type = "volume"
-    target = "/var/lib/mongo"
+    target = "/data/db"
     source = docker_volume.shard_volume[count.index].name
   }
-
+  healthcheck {
+    test        = ["CMD-SHELL", "mongosh --port 27018 --eval 'db.runCommand({ ping: 1 })'"]
+    interval    = "10s"
+    timeout     = "2s"
+    retries     = 5
+    start_period = "30s"
+  }
+  wait = true
   restart = "always"
 }

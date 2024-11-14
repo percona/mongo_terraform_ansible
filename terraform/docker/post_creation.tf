@@ -1,6 +1,7 @@
 resource "null_resource" "initiate_cfg_replset" {
   depends_on = [docker_container.cfg]
 
+  # Initialize Config server replica set 
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh --port 27019 --eval '
@@ -17,9 +18,10 @@ resource "null_resource" "initiate_cfg_replset" {
   }
 
   provisioner "local-exec" {
-    command = "sleep 10"
+    command = "sleep 20"
   }
 
+  # Create root user on the config servers
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh admin --port 27019 --eval '
@@ -29,19 +31,41 @@ resource "null_resource" "initiate_cfg_replset" {
           roles: [
             {role: "root", db: "admin"}
           ]
-        })
+        });
       '
     EOT
   }
 
+  provisioner "local-exec" {
+    command = <<-EOT
+      docker exec -i ${docker_container.cfg[0].name} mongosh admin -u root -p percona --port 27019 --eval '
+        db.createRole({
+          role: "pbmAgent",
+          privileges: [{
+            "resource": { "anyResource": true },
+            "actions": ["anyAction"]
+          }],
+          roles: [
+            "backup",
+            "restore",
+            "clusterAdmin"
+          ]
+        });
+        db.createUser({
+          user: "pbm",
+          pwd: "percona",
+          roles: [ "pbmAgent" ]
+        });
+      '
+    EOT
+  }
 }
 
 resource "null_resource" "initiate_shard_replset" {
-
-  for_each = toset([for i in range(var.shard_count) : tostring(i)])
-
   depends_on = [docker_container.arbiter, docker_container.shard]
 
+  # Initiate the shards replica sets 
+  for_each = toset([for i in range(var.shard_count) : tostring(i)])
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh --port 27018 --eval '
@@ -58,9 +82,10 @@ resource "null_resource" "initiate_shard_replset" {
   }
 
   provisioner "local-exec" {
-    command = "sleep 10"
+    command = "sleep 20"
   }
 
+  # Create the root user on the shards
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin --port 27018 --eval '
@@ -70,8 +95,32 @@ resource "null_resource" "initiate_shard_replset" {
           roles: [
             {role: "root", db: "admin"}
           ]
-        })
-      '
+        });
+      '        
+    EOT
+  }  
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u root -p percona --port 27018 --eval '
+        db.createRole({
+          role: "pbmAgent",
+          privileges: [{
+            "resource": { "anyResource": true },
+            "actions": ["anyAction"]
+          }],
+          roles: [
+            "backup",
+            "restore",
+            "clusterAdmin"
+          ]
+        });
+        db.createUser({
+          user: "pbm",
+          pwd: "percona",
+          roles: [ "pbmAgent" ]
+        });
+      '        
     EOT
   }  
 }
@@ -83,6 +132,7 @@ resource "null_resource" "add_shards" {
     null_resource.initiate_shard_replset
   ]
 
+  # Set the write concern 
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.mongos[0].name} mongosh admin -u root -p percona --eval '
@@ -95,11 +145,25 @@ resource "null_resource" "add_shards" {
     EOT
   }
 
+  # Run the add shards command 
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.mongos[0].name} mongosh admin -u root -p percona --eval '
         ${join(";", [for i in range(var.shard_count) : "sh.addShard(\"${lookup({for label in docker_container.shard[i * var.shardsvr_replicas].labels : label.label => label.value}, "replsetName", null)}/${docker_container.shard[i * var.shardsvr_replicas].name}:27018\")"])};
       '
+    EOT
+  }
+}
+
+resource "null_resource" "configure_pbm" {
+  depends_on = [
+    null_resource.initiate_cfg_replset,
+    null_resource.add_shards
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      cat pbm-storage.conf | docker exec -i ${docker_container.pbm_cfg[0].name} pbm config --file=-
     EOT
   }
 }

@@ -54,3 +54,30 @@ resource "docker_container" "cfg" {
   wait = true
   restart = "on-failure"
 }
+
+resource "docker_container" "pbm_cfg" {
+  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-pbm"
+  image = var.pbm_image 
+  count = var.configsvr_count
+  command = [
+    "pbm-agent"
+  ]  
+  env = [ "PBM_MONGODB_URI=pbm:percona@${docker_container.cfg[count.index].name}:27019" ]
+  mounts {
+    type = "volume"
+    target = "/data/db"
+    source = docker_volume.cfg_volume[count.index].name
+  }
+  networks_advanced {
+    name = docker_network.mongo_network.id
+  }
+  healthcheck {
+    test        = ["CMD-SHELL", "pbm version"]
+    interval    = "10s"
+    timeout     = "2s"
+    retries     = 5
+    start_period = "30s"
+  }   
+  wait = true  
+  restart = "on-failure"
+}

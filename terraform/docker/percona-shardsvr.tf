@@ -57,3 +57,30 @@ resource "docker_container" "shard" {
   wait = true
   restart = "always"
 }
+
+resource "docker_container" "pbm_shard" {
+  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-pbm"
+  count = var.shard_count * var.shardsvr_replicas
+  image = var.pbm_image 
+  command = [
+    "pbm-agent"
+  ]  
+  env = [ "PBM_MONGODB_URI=pbm:percona@${docker_container.shard[count.index].name}:27018" ]
+  mounts {
+    type = "volume"
+    target = "/data/db"
+    source = docker_volume.shard_volume[count.index].name
+  }
+  networks_advanced {
+    name = docker_network.mongo_network.id
+  }
+  healthcheck {
+    test        = ["CMD-SHELL", "pbm version"]
+    interval    = "10s"
+    timeout     = "2s"
+    retries     = 5
+    start_period = "30s"
+  }   
+  wait = true    
+  restart = "on-failure"
+}

@@ -90,11 +90,6 @@ variable "minio_region" {
   default     = "us-east-1"
 }
 
-variable "minio_server" {
-  description = "Default MINIO host and port"
-  default     = "localhost:9000"
-}
-
 variable "minio_access_key" {
   default = "minio"
 }
@@ -114,13 +109,18 @@ variable "backup_retention" {
 }
 
 #############
-# Instances
+# Images
 #############
 
 variable "docker_image" {
-  description = "Docker image"
+  description = "Docker image for MongoDB"
   #default = "quay.io/centos/centos:stream9"
   default = "percona/percona-server-mongodb:latest"
+}
+
+variable "pbm_image" {
+  description = "Docker image for PBM"
+  default = "percona/percona-backup-mongodb:latest"
 }
 
 #############

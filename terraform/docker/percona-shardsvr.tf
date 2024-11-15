@@ -37,11 +37,9 @@ resource "docker_container" "shard" {
     label = "environment"
     value = var.env_tag
   }  
-
   networks_advanced {
     name = docker_network.mongo_network.id
   }
-
   mounts {
     type = "volume"
     target = "/data/db"
@@ -55,13 +53,13 @@ resource "docker_container" "shard" {
     start_period = "30s"
   }
   wait = true
-  restart = "always"
+  restart = "no"
 }
 
 resource "docker_container" "pbm_shard" {
   name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-pbm"
   count = var.shard_count * var.shardsvr_replicas
-  image = var.pbm_image 
+  image = var.custom_image 
   command = [
     "pbm-agent"
   ]  
@@ -82,5 +80,5 @@ resource "docker_container" "pbm_shard" {
     start_period = "30s"
   }   
   wait = true    
-  restart = "on-failure"
+  restart = "no"
 }

@@ -1,7 +1,8 @@
+# Initialize Config server replica set 
 resource "null_resource" "initiate_cfg_replset" {
   depends_on = [docker_container.cfg]
 
-  # Initialize Config server replica set 
+  # Run rs.initiate()
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh --port 27019 --eval '
@@ -17,6 +18,7 @@ resource "null_resource" "initiate_cfg_replset" {
     EOT
   }
 
+  # Wait for RS to be finish initializing
   provisioner "local-exec" {
     command = "sleep 20"
   }
@@ -36,6 +38,7 @@ resource "null_resource" "initiate_cfg_replset" {
     EOT
   }
 
+  # Create user for PBM
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh admin -u root -p percona --port 27019 --eval '
@@ -61,6 +64,7 @@ resource "null_resource" "initiate_cfg_replset" {
   }
 }
 
+# Initiate the shards replica sets 
 resource "null_resource" "initiate_shard_replset" {
   depends_on = [docker_container.arbiter, docker_container.shard]
 
@@ -100,6 +104,7 @@ resource "null_resource" "initiate_shard_replset" {
     EOT
   }  
 
+  # Create user for PBM
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u root -p percona --port 27018 --eval '
@@ -125,6 +130,7 @@ resource "null_resource" "initiate_shard_replset" {
   }  
 }
 
+# Add shards to the cluster
 resource "null_resource" "add_shards" {
   depends_on = [
     docker_container.mongos,
@@ -155,10 +161,13 @@ resource "null_resource" "add_shards" {
   }
 }
 
+# Configure PBM
 resource "null_resource" "configure_pbm" {
   depends_on = [
     null_resource.initiate_cfg_replset,
-    null_resource.add_shards
+    null_resource.add_shards,
+    docker_container.pbm_shard,
+    docker_container.pbm_cfg
   ]
 
   provisioner "local-exec" {

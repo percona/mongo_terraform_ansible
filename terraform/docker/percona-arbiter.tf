@@ -53,5 +53,5 @@ resource "docker_container" "arbiter" {
     start_period = "30s"
   }   
   wait = true
-  restart = "on-failure"
+  restart = "no"
 }

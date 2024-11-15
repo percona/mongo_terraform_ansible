@@ -34,13 +34,11 @@ resource "docker_container" "cfg" {
     label = "environment"
     value = var.env_tag
   }  
-
   mounts {
     type = "volume"
     target = "/data/db"
     source = docker_volume.cfg_volume[count.index].name
   }
-
   networks_advanced {
     name = docker_network.mongo_network.id
   }
@@ -52,12 +50,12 @@ resource "docker_container" "cfg" {
     start_period = "30s"
   }
   wait = true
-  restart = "on-failure"
+  restart = "no"
 }
 
 resource "docker_container" "pbm_cfg" {
   name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-pbm"
-  image = var.pbm_image 
+  image = var.custom_image 
   count = var.configsvr_count
   command = [
     "pbm-agent"
@@ -79,5 +77,5 @@ resource "docker_container" "pbm_cfg" {
     start_period = "30s"
   }   
   wait = true  
-  restart = "on-failure"
+  restart = "no"
 }

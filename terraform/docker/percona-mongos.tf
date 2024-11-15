@@ -34,5 +34,5 @@ resource "docker_container" "mongos" {
     start_period = "30s"
   }  
   wait = true
-  restart = "on-failure"
+  restart = "no"
 }

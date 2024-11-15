@@ -36,6 +36,11 @@ variable "mongos_count" {
   description = "Number of mongos to provision"
 }
 
+variable "keyfile" {
+  default = "1234567890"
+  description = "Content of the keyfile for member authentication"
+}
+
 ################
 # Shards
 ################
@@ -94,6 +99,14 @@ variable "minio_access_key" {
   default = "minio"
 }
 
+variable "minio_server" {
+  default = "minio"
+}
+
+variable "minio_port" {
+  default = "9000"
+}
+
 variable "minio_secret_key" {
   default = "minioadmin"
 }
@@ -121,6 +134,21 @@ variable "docker_image" {
 variable "pbm_image" {
   description = "Docker image for PBM"
   default = "percona/percona-backup-mongodb:latest"
+}
+
+variable "base_os_image" {
+  description = "Base OS for the custom Docker image with pbm-agent and mongod"
+  default = "percona/percona-backup-mongodb:latest"
+}
+
+variable "custom_image" {
+  description = "Local Docker image for pbm-agent with mongod that will be created. Required for a physical restore"
+  default = "pbm-with-mongod"
+}
+
+variable "minio_image" {
+  description = "Minio Docker image"
+  default = "minio/minio"
 }
 
 #############

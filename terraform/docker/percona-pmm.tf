@@ -22,4 +22,5 @@ resource "docker_container" "pmm" {
     external = 443
   }  
   restart = "on-failure"
+
 }

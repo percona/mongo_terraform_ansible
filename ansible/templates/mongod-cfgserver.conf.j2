@@ -65,7 +65,7 @@ operationProfiling:
    rateLimit: 100
 
 replication:
-  replSetName: mongo-cfg
+  replSetName: {{ cluster }}-{{ group_names[0] }} 
 
 sharding:
   clusterRole: configsvr

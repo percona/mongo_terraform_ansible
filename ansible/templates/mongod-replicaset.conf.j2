@@ -69,7 +69,7 @@ operationProfiling:
    rateLimit: 100
 
 replication:
-  replSetName: {{ hostvars[inventory_hostname].group_names[0] }}
+  replSetName: {{ cluster }}-{{ hostvars[inventory_hostname].group_names[0] }}
 
 {%if hostvars[inventory_hostname].group_names[0].startswith('shard') %}
 sharding:

@@ -41,15 +41,6 @@ variable "keyfile" {
   description = "Content of the keyfile for member authentication"
 }
 
-################
-# Shards
-################
-
-variable "shardsvr_tag" {
-  description = "Name of the shard servers"
-  default = "mongodb-shard"
-}
-
 variable "shardsvr_port" {
   description = "Port of the mongod servers"
   default = "27018"
@@ -91,6 +82,7 @@ variable "arbiter_tag" {
   description = "Name of the arbiter servers"
   default = "mongodb-arb"
 }
+
 
 #############
 # PMM
@@ -187,4 +179,36 @@ variable "custom_image" {
 variable "network_name" {
   type    = string
   default = "mongo-terraform"
+}
+=======
+# Instances
+#############
+
+variable "docker_image" {
+  description = "Docker image"
+  default = "quay.io/centos/centos:stream9"
+}
+
+#############
+# Networking
+#############
+
+variable "region" {
+  type    = string
+  default = "northamerica-northeast1"
+}
+
+variable "network_name" {
+  type    = string
+  default = "mongo-terraform"
+}
+
+variable "subnet" {
+  type    = string
+  default = "10.128.0.0/20"
+}
+
+variable "subnet_name" {
+  type = string
+  default = "mongo-subnet"
 }

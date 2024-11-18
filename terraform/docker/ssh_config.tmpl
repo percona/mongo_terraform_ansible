@@ -1,0 +1,28 @@
+%{ for index, group in ansible_group_shards ~}
+Host ${hostname_shards[index]}
+  Hostname ${ip_shards[index]}
+  User ${ssh_user}
+
+%{ endfor ~}
+%{ for index, host in hostname_arbiters ~}
+Host ${hostname_arbiters[index]}
+  Hostname ${ip_arbiters[index]}
+  User ${ssh_user}
+
+%{ endfor ~}
+%{ for index, group in ansible_group_cfg ~}
+Host ${hostname_cfg[index]}
+  Hostname ${ip_cfg[index]}
+  User ${ssh_user}
+
+%{ endfor ~}
+%{ for index, group in ansible_group_mongos ~}
+Host ${hostname_mongos[index]}
+  Hostname ${ip_mongos[index]}
+  User ${ssh_user}
+
+%{ endfor ~}
+Host ${hostname_pmm}
+  Hostname ${public_ip_pmm}
+  User ${ssh_user}
+  LocalForward 13443 127.0.0.1:443

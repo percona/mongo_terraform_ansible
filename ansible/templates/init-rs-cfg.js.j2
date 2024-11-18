@@ -1,6 +1,6 @@
 rs.initiate(
   {
-    _id: "mongo-cfg",
+    _id: "{{ cluster }}-{{ group_names[0] }}",
     configsvr: true,
     members: [
       {% for h in groups['cfg'] %}

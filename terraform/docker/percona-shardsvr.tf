@@ -1,15 +1,27 @@
 # Create Docker volumes to replace Google Compute Disks for shard servers
-resource "docker_volume" "shard_volume" {
-  count = var.shard_count * var.shardsvr_replicas
-  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-data"
-}
-
-# Create Docker containers to replace Google Compute Instances for shard servers
 resource "docker_container" "shard" {
   count = var.shard_count * var.shardsvr_replicas
   name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
-  image = var.docker_image
-  command = ["/bin/bash", "-c", "while true; do sleep 30; done;"]
+  image = var.psmdb_image
+  mounts {
+    source = abspath(local_file.mongodb_keyfile.filename)
+    target = "/etc/mongo/mongodb-keyfile.key"
+    type   = "bind"
+    read_only = true
+  }  
+  command = [
+    "mongod",
+    "--replSet", "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}",  
+    "--bind_ip_all",    
+    "--port", "${var.shardsvr_port}",
+    "--shardsvr",
+    "--keyFile", "/etc/mongo/mongodb-keyfile.key"
+  ]  
+  #env = [ "MONGO_INITDB_ROOT_USERNAME=mongoadmin", "MONGO_INITDB_ROOT_PASSWORD=secret" ]
+  labels { 
+    label = "replsetName"
+    value = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}"
+  }    
   labels { 
     label = "ansible-group"
     value = floor(count.index / var.shardsvr_replicas )
@@ -22,16 +34,80 @@ resource "docker_container" "shard" {
     label = "environment"
     value = var.env_tag
   }  
-
   networks_advanced {
     name = docker_network.mongo_network.id
   }
-
   mounts {
     type = "volume"
-    target = "/var/lib/mongo"
+    target = "/data/db"
     source = docker_volume.shard_volume[count.index].name
   }
+  healthcheck {
+    test        = ["CMD-SHELL", "mongosh --port ${var.shardsvr_port} --eval 'db.runCommand({ ping: 1 })'"]
+    interval    = "10s"
+    timeout     = "2s"
+    retries     = 5
+    start_period = "30s"
+  }
+  wait = true
+  restart = "no"
+}
 
-  restart = "always"
+resource "docker_container" "pbm_shard" {
+  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-pbm"
+  count = var.shard_count * var.shardsvr_replicas
+  image = var.custom_image 
+  command = [
+    "pbm-agent"
+  ]  
+  env = [ "PBM_MONGODB_URI=pbm:percona@${docker_container.shard[count.index].name}:${var.shardsvr_port}" ]
+  mounts {
+    type = "volume"
+    target = "/data/db"
+    source = docker_volume.shard_volume[count.index].name
+  }
+  networks_advanced {
+    name = docker_network.mongo_network.id
+  }
+  healthcheck {
+    test        = ["CMD-SHELL", "pbm version"]
+    interval    = "10s"
+    timeout     = "2s"
+    retries     = 5
+    start_period = "30s"
+  }   
+  wait = true    
+  restart = "on-failure"
+}
+
+resource "docker_volume" "shard_volume_pmm" {
+  count = var.shard_count * var.shardsvr_replicas
+  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-pmm-client-data"
+}
+
+resource "docker_container" "pmm_shard" {
+  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-pmm"
+  image = var.pmm_client_image 
+  count = var.shard_count * var.shardsvr_replicas
+#  command = [
+#    "pbm-agent"
+#  ]  
+  env = [ "PMM_AGENT_SERVER_ADDRESS=${docker_container.pmm.name}:443", "PMM_AGENT_SERVER_USERNAME=admin", "PMM_AGENT_SERVER_PASSWORD=admin", "PMM_AGENT_SERVER_INSECURE_TLS=1", "PMM_AGENT_SETUP=1", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
+  mounts {
+    type = "volume"
+    target = "/srv"
+    source = docker_volume.shard_volume_pmm[count.index].name
+  }
+  networks_advanced {
+    name = docker_network.mongo_network.id
+  }
+  healthcheck {
+    test        = ["CMD-SHELL", "pmm-admin status"]
+    interval    = "10s"
+    timeout     = "2s"
+    retries     = 5
+    start_period = "30s"
+  }   
+  wait = true  
+  restart = "on-failure"
 }

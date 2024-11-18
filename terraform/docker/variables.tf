@@ -3,21 +3,8 @@
 ################
 
 variable "env_tag" {
-  default = "docker-test"
+  default = "test"
   description = "Name of Environment. Replace these with your own custom name to avoid collisions"
-}
-
-variable "ssh_users" {
-  description = "SSH user names, and their public key files to be added to authorized_keys"
-  default = {
-    ivan_groenewold = "ivan.pub"
-#    ,user2 = "user2.pub"
-  }
-}
-
-variable "my_ssh_user" {
-  default = "ivan_groenewold"
-  description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"  
 }
 
 ##################
@@ -49,18 +36,14 @@ variable "mongos_count" {
   description = "Number of mongos to provision"
 }
 
-################
-# Shards
-################
-
-variable "shardsvr_tag" {
-  description = "Name of the shard servers"
-  default = "mongodb-shard"
+variable "keyfile" {
+  default = "1234567890"
+  description = "Content of the keyfile for member authentication"
 }
 
-variable "shard_ports" {
-  type = list(number)
-  default = [ 22, 27018 ]
+variable "shardsvr_port" {
+  description = "Port of the mongod servers"
+  default = "27018"
 }
 
 ################
@@ -72,9 +55,9 @@ variable "configsvr_tag" {
   default = "mongodb-cfg"
 }
 
-variable "configsvr_ports" {
-  type = list(number)
-  default = [ 22, 27019 ]
+variable "configsvr_port" {
+  description = "Port of the mongod config servers"
+  default = "27019"
 }
 
 ################
@@ -86,9 +69,9 @@ variable "mongos_tag" {
   default = "mongodb-mongos"
 }
 
-variable "mongos_ports" {
-  type = list(number)
-  default = [ 22, 27017 ]
+variable "mongos_port" {
+  description = "Port of the mongos router servers"
+  default = "27017"
 }
 
 #############
@@ -100,10 +83,6 @@ variable "arbiter_tag" {
   default = "mongodb-arb"
 }
 
-variable "arbiter_ports" {
-  type = list(number)
-  default = [ 22, 27018 ]
-}
 
 #############
 # PMM
@@ -112,11 +91,6 @@ variable "arbiter_ports" {
 variable "pmm_tag" {
   description = "Name of the PMM server"
   default = "percona-pmm"
-}
-
-variable "pmm_ports" {
-  type = list(number)
-  default = [ 22, 443 ]
 }
 
 #############
@@ -128,13 +102,20 @@ variable "minio_region" {
   default     = "us-east-1"
 }
 
-variable "minio_server" {
-  description = "Default MINIO host and port"
-  default     = "localhost:9000"
-}
-
 variable "minio_access_key" {
   default = "minio"
+}
+
+variable "minio_server" {
+  default = "minio"
+}
+
+variable "minio_port" {
+  default = "9000"
+}
+
+variable "minio_console_port" {
+  default = "9001"
 }
 
 variable "minio_secret_key" {
@@ -152,6 +133,54 @@ variable "backup_retention" {
 }
 
 #############
+# Images
+#############
+
+variable "psmdb_image" {
+  description = "Docker image for MongoDB"
+  default = "percona/percona-server-mongodb:latest"
+}
+
+variable "pbm_image" {
+  description = "Docker image for PBM"
+  default = "percona/percona-backup-mongodb:latest"
+}
+
+variable "pmm_server_image" {
+  description = "Docker image for PMM server"
+  default = "percona/pmm-server:2"
+}
+
+variable "pmm_client_image" {
+  description = "Docker image for PMM client"
+  default = "percona/pmm-client:2"
+}
+
+variable "base_os_image" {
+  description = "Base OS for the custom Docker image with pbm-agent and mongod"
+  #default = "quay.io/centos/centos:stream9"
+  default = "oraclelinux:8"
+}
+
+variable "minio_image" {
+  description = "Minio Docker image"
+  default = "minio/minio"
+}
+
+variable "custom_image" {
+  description = "Name of the local Docker image to be created for pbm-agent + mongod. Required for a physical restore"
+  default = "pbm-with-mongod"
+}
+
+#############
+# Networking
+#############
+
+variable "network_name" {
+  type    = string
+  default = "mongo-terraform"
+}
+=======
 # Instances
 #############
 

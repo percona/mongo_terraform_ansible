@@ -3,7 +3,7 @@
 ################
 
 variable "env_tag" {
-  default = "docker-test"
+  default = "test"
   description = "Name of Environment. Replace these with your own custom name to avoid collisions"
 }
 
@@ -50,6 +50,11 @@ variable "shardsvr_tag" {
   default = "mongodb-shard"
 }
 
+variable "shardsvr_port" {
+  description = "Port of the mongod servers"
+  default = "27018"
+}
+
 ################
 # CSRS
 ################
@@ -59,6 +64,11 @@ variable "configsvr_tag" {
   default = "mongodb-cfg"
 }
 
+variable "configsvr_port" {
+  description = "Port of the mongod config servers"
+  default = "27019"
+}
+
 ################
 # Mongos routers
 ################
@@ -66,6 +76,11 @@ variable "configsvr_tag" {
 variable "mongos_tag" {
   description = "Name of the mongos router servers"
   default = "mongodb-mongos"
+}
+
+variable "mongos_port" {
+  description = "Port of the mongos router servers"
+  default = "27017"
 }
 
 #############
@@ -107,6 +122,10 @@ variable "minio_port" {
   default = "9000"
 }
 
+variable "minio_console_port" {
+  default = "9001"
+}
+
 variable "minio_secret_key" {
   default = "minioadmin"
 }
@@ -125,9 +144,8 @@ variable "backup_retention" {
 # Images
 #############
 
-variable "docker_image" {
+variable "psmdb_image" {
   description = "Docker image for MongoDB"
-  #default = "quay.io/centos/centos:stream9"
   default = "percona/percona-server-mongodb:latest"
 }
 
@@ -136,19 +154,30 @@ variable "pbm_image" {
   default = "percona/percona-backup-mongodb:latest"
 }
 
-variable "base_os_image" {
-  description = "Base OS for the custom Docker image with pbm-agent and mongod"
-  default = "percona/percona-backup-mongodb:latest"
+variable "pmm_server_image" {
+  description = "Docker image for PMM server"
+  default = "percona/pmm-server:2"
 }
 
-variable "custom_image" {
-  description = "Local Docker image for pbm-agent with mongod that will be created. Required for a physical restore"
-  default = "pbm-with-mongod"
+variable "pmm_client_image" {
+  description = "Docker image for PMM client"
+  default = "percona/pmm-client:2"
+}
+
+variable "base_os_image" {
+  description = "Base OS for the custom Docker image with pbm-agent and mongod"
+  #default = "quay.io/centos/centos:stream9"
+  default = "oraclelinux:8"
 }
 
 variable "minio_image" {
   description = "Minio Docker image"
   default = "minio/minio"
+}
+
+variable "custom_image" {
+  description = "Name of the local Docker image to be created for pbm-agent + mongod. Required for a physical restore"
+  default = "pbm-with-mongod"
 }
 
 #############

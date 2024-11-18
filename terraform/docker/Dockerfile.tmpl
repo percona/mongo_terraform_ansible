@@ -1,10 +1,9 @@
-FROM ${ docker_image } AS mdb
+FROM ${ psmdb_image } AS mdb
 FROM ${ pbm_image } AS pbm
 
 FROM ${ base_os_image }
 
-USER root
-RUN mkdir -p /data/db /data/configdb && chown -R mongod: /data/db && chown -R mongod: /data/configdb
+RUN mkdir -p /data/db /data/configdb
 
 COPY --from=mdb /usr/bin/mongod /usr/bin/
 COPY --from=pbm /usr/bin/pbm* /usr/bin/

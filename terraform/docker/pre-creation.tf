@@ -4,19 +4,19 @@ locals {
     bucket_name      = var.bucket_name
     env_tag          = var.env_tag
     minio_server     = var.minio_server
-    minio_port     = var.minio_port
+    minio_port      = var.minio_port
     minio_access_key = var.minio_access_key
     minio_secret_key = var.minio_secret_key  
   })
   dockerfile_content = templatefile("Dockerfile.tmpl", {
-    docker_image     = var.docker_image
+    psmdb_image      = var.psmdb_image
     pbm_image        = var.pbm_image
     base_os_image    = var.base_os_image        
   })  
 }
 
 resource "local_file" "mongodb_keyfile" {
-  filename = "/tmp/mongodb-keyfile.key"
+  filename = "${path.module}/mongodb-keyfile.key"
   content  = var.keyfile
   file_permission = "0600"
 }

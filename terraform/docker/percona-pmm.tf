@@ -6,18 +6,20 @@ resource "docker_volume" "pmm_volume" {
 # Create a Docker container for the PMM server
 resource "docker_container" "pmm" {
   name  = "${var.env_tag}-${var.pmm_tag}"
-  image = var.docker_image
-  command = ["/bin/bash", "-c", "while true; do sleep 30; done;"]
-
+  image = var.pmm_server_image
+#  command = ["/bin/bash", "-c", "while true; do sleep 30; done;"]
+#  env = [ "key=value" ]
   mounts {
     type = "volume"
     target = "/srv"
     source = docker_volume.pmm_volume.name
   }
-
   networks_advanced {
     name = docker_network.mongo_network.id
   }
-
-  restart = "always"
+  ports {
+    internal = 443
+    external = 443
+  }  
+  restart = "on-failure"
 }

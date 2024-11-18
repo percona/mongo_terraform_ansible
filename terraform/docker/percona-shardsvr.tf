@@ -1,4 +1,8 @@
-# Create Docker volumes to replace Google Compute Disks for shard servers
+resource "docker_volume" "shard_volume" {
+  count = var.shard_count * var.shardsvr_replicas
+  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-data"
+}
+
 resource "docker_container" "shard" {
   count = var.shard_count * var.shardsvr_replicas
   name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"

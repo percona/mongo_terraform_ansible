@@ -11,18 +11,18 @@ For backup storage, a MinIO server is deployed and configured.
 
 ## Pre-requisites
 
-0. Make sure you have Terraform installed. See https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli#install-terraform
+- Make sure you have Terraform installed. See https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli#install-terraform
 
-1. Install Docker. See https://docs.docker.com/engine/install/
+- Make sure you have installed Docker. See https://docs.docker.com/engine/install/
 
-2. Clone this repository on your machine and `cd` to it
+0. Clone this repository on your machine and `cd` to it
 
     ```
     git clone https://github.com/percona/mongo_terraform_ansible.git
     cd mongo_terraform_ansible/terraform/docker
     ```
 
-3. Initialize Terraform 
+1. Initialize Terraform 
 
     ```
     terraform init

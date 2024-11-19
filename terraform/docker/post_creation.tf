@@ -28,8 +28,8 @@ resource "null_resource" "initiate_cfg_replset" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh admin --port ${var.configsvr_port} --eval '
         db.createUser({
-          user: "root",
-          pwd: "percona",
+          user: "${var.mongodb_root_user}",
+          pwd: "${var.mongodb_root_password}",
           roles: [
             {role: "root", db: "admin"}
           ]
@@ -41,7 +41,7 @@ resource "null_resource" "initiate_cfg_replset" {
   # Create user for PBM
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.cfg[0].name} mongosh admin -u root -p percona --port ${var.configsvr_port} --eval '
+      docker exec -i ${docker_container.cfg[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.configsvr_port} --eval '
         db.createRole({
           role: "pbmAgent",
           privileges: [{
@@ -66,7 +66,7 @@ resource "null_resource" "initiate_cfg_replset" {
   # Create user for PMM
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.cfg[0].name} mongosh admin -u root -p percona --port ${var.configsvr_port} --eval '
+      docker exec -i ${docker_container.cfg[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.configsvr_port} --eval '
         db.createRole({
           role: "explainRole",
           privileges: [{
@@ -80,8 +80,8 @@ resource "null_resource" "initiate_cfg_replset" {
           roles: []
         });
         db.createUser({
-          user: "mongodb_exporter",
-          pwd: "percona",
+          user: "${var.mongodb_pbm_user}",
+          pwd: "${var.mongodb_pbm_password}",
           roles: [ 
             { "role": "explainRole", "db": "admin" },
             { "role": "clusterMonitor", "db": "admin" },
@@ -127,8 +127,8 @@ resource "null_resource" "initiate_shard_replset" {
     command = <<-EOT
       docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin --port ${var.shardsvr_port} --eval '
         db.createUser({
-          user: "root",
-          pwd: "percona",
+          user: "${var.mongodb_root_user}",
+          pwd: "${var.mongodb_root_password}",
           roles: [
             {role: "root", db: "admin"}
           ]
@@ -140,7 +140,7 @@ resource "null_resource" "initiate_shard_replset" {
   # Create user for PBM
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u root -p percona --port ${var.shardsvr_port} --eval '
+      docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.shardsvr_port} --eval '
         db.createRole({
           role: "pbmAgent",
           privileges: [{
@@ -165,7 +165,7 @@ resource "null_resource" "initiate_shard_replset" {
   # Create user for PMM
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u root -p percona --port ${var.shardsvr_port} --eval '
+      docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.shardsvr_port} --eval '
         db.createRole({
           role: "explainRole",
           privileges: [{
@@ -179,8 +179,8 @@ resource "null_resource" "initiate_shard_replset" {
           roles: []
         });
         db.createUser({
-          user: "mongodb_exporter",
-          pwd: "percona",
+          user: "${var.mongodb_pbm_user}",
+          pwd: "${var.mongodb_pbm_password}",
           roles: [ 
             { "role": "explainRole", "db": "admin" },
             { "role": "clusterMonitor", "db": "admin" },
@@ -207,7 +207,7 @@ resource "null_resource" "add_shards" {
   # Set the write concern 
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.mongos[0].name} mongosh admin -u root -p percona --eval '
+      docker exec -i ${docker_container.mongos[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval '
         db.adminCommand({
           "setDefaultRWConcern" : 1,
           "defaultWriteConcern" : { "w" : 1 },
@@ -220,7 +220,7 @@ resource "null_resource" "add_shards" {
   # Run the add shards command 
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.mongos[0].name} mongosh admin -u root -p percona --eval '
+      docker exec -i ${docker_container.mongos[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval '
         ${join(";", [for i in range(var.shard_count) : "sh.addShard(\"${lookup({for label in docker_container.shard[i * var.shardsvr_replicas].labels : label.label => label.value}, "replsetName", null)}/${docker_container.shard[i * var.shardsvr_replicas].name}:${var.shardsvr_port}\")"])};
       '
     EOT
@@ -254,7 +254,7 @@ resource "null_resource" "configure_pmm_client_cfg" {
   for_each = toset([for i in docker_container.cfg : tostring(i.name)])
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${each.key}-pmm pmm-admin add mongodb --username=mongodb_exporter --password=percona --cluster ${var.env_tag} --host=${each.key} --port=${var.configsvr_port} --tls-skip-verify --enable-all-collectors
+      docker exec -i ${each.key}-pmm pmm-admin add mongodb --username=${var.mongodb_pbm_user} --password=${var.mongodb_pbm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.configsvr_port} --tls-skip-verify --enable-all-collectors
     EOT
   }
 }
@@ -270,7 +270,7 @@ resource "null_resource" "configure_pmm_client_shards" {
   for_each = toset([for i in docker_container.shard : tostring(i.name)])
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${each.key}-pmm pmm-admin add mongodb --username=mongodb_exporter --password=percona --cluster ${var.env_tag} --host=${each.key} --port=${var.shardsvr_port} --tls-skip-verify --enable-all-collectors
+      docker exec -i ${each.key}-pmm pmm-admin add mongodb --username=${var.mongodb_pbm_user} --password=${var.mongodb_pbm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.shardsvr_port} --tls-skip-verify --enable-all-collectors
     EOT
   }  
 }

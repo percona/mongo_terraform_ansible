@@ -21,10 +21,6 @@ resource "docker_container" "mongos" {
     read_only = true
   }  
   labels { 
-    label = "ansible-group"
-    value = "cfg"
-  }
-  labels { 
     label = "environment"
     value = var.env_tag
   }  
@@ -51,9 +47,6 @@ resource "docker_container" "pmm_mongos" {
   name  = "${var.env_tag}-${var.mongos_tag}0${count.index}-pmm"
   image = var.pmm_client_image 
   count = var.mongos_count
-#  command = [
-#    "pbm-agent"
-#  ]  
   env = [ "PMM_AGENT_SERVER_ADDRESS=${docker_container.pmm.name}:443", "PMM_AGENT_SERVER_USERNAME=admin", "PMM_AGENT_SERVER_PASSWORD=admin", "PMM_AGENT_SERVER_INSECURE_TLS=1", "PMM_AGENT_SETUP=1", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {
     type = "volume"

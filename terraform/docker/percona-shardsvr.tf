@@ -21,19 +21,10 @@ resource "docker_container" "shard" {
     "--shardsvr",
     "--keyFile", "/etc/mongo/mongodb-keyfile.key"
   ]  
-  #env = [ "MONGO_INITDB_ROOT_USERNAME=mongoadmin", "MONGO_INITDB_ROOT_PASSWORD=secret" ]
   labels { 
     label = "replsetName"
     value = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}"
   }    
-  labels { 
-    label = "ansible-group"
-    value = floor(count.index / var.shardsvr_replicas )
-  }
-  labels { 
-    label = "ansible-index"
-    value = count.index % var.shardsvr_replicas
-  }
   labels { 
     label = "environment"
     value = var.env_tag
@@ -61,6 +52,7 @@ resource "docker_container" "pbm_shard" {
   name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-pbm"
   count = var.shard_count * var.shardsvr_replicas
   image = var.custom_image 
+  user  = 1001
   command = [
     "pbm-agent"
   ]  
@@ -93,9 +85,6 @@ resource "docker_container" "pmm_shard" {
   name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-pmm"
   image = var.pmm_client_image 
   count = var.shard_count * var.shardsvr_replicas
-#  command = [
-#    "pbm-agent"
-#  ]  
   env = [ "PMM_AGENT_SERVER_ADDRESS=${docker_container.pmm.name}:443", "PMM_AGENT_SERVER_USERNAME=admin", "PMM_AGENT_SERVER_PASSWORD=admin", "PMM_AGENT_SERVER_INSECURE_TLS=1", "PMM_AGENT_SETUP=1", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {
     type = "volume"

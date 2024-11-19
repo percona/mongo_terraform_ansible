@@ -41,7 +41,7 @@ resource "docker_container" "pbm_cli" {
   count = 1
   image = var.pbm_image 
   command = ["/bin/sh", "-c", "while true; do sleep 86400; done;"]
-  env = [ "PBM_MONGODB_URI=pbm:percona@${docker_container.cfg[0].name}:27019" ]
+  env = [ "PBM_MONGODB_URI=pbm:percona@${docker_container.cfg[0].name}:${var.configsvr_port}" ]
   mounts {
     source      = abspath(local_file.storage_config.filename)
     target      = "/etc/pbm-storage.conf"

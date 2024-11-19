@@ -7,6 +7,26 @@ variable "env_tag" {
   description = "Name of Environment. Replace these with your own custom name to avoid collisions"
 }
 
+variable "mongodb_root_user" {
+  default = "root"
+  description = "MongoDB user to be created with root perms"  
+}
+
+variable "mongodb_root_password" {
+  default = "percona"
+  description = "MongoDB root user password"  
+}
+
+variable "mongodb_pbm_user" {
+  default = "mongodb_exporter"
+  description = "MongoDB user to be created with for PBM"  
+}
+
+variable "mongodb_pbm_password" {
+  default = "percona"
+  description = "MongoDB PBM user password"  
+}
+
 ##################
 # MongoDB topology
 ##################
@@ -22,12 +42,12 @@ variable "shard_count" {
 }
 
 variable "shardsvr_replicas" {
-  default = "2"
+  default = "3"
   description = "How many data bearing nodes per shard"
 }
 
 variable "arbiters_per_replset" {
-  default = "1"
+  default = "0"
   description = "Number of arbiters per replica set"
 }
 

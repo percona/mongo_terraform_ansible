@@ -28,10 +28,6 @@ resource "docker_container" "cfg" {
     value = "${var.env_tag}-${var.configsvr_tag}"
   }    
   labels { 
-    label = "ansible-group"
-    value = "cfg"
-  }
-  labels { 
     label = "environment"
     value = var.env_tag
   }  
@@ -58,6 +54,7 @@ resource "docker_container" "pbm_cfg" {
   name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-pbm"
   image = var.custom_image 
   count = var.configsvr_count
+  user  = 1001
   command = [
     "pbm-agent"
   ]  

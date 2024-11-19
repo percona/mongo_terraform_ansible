@@ -56,11 +56,12 @@ For backup storage, a MinIO server is deployed and configured.
     ```
 
 - Access PMM running on https://127.0.0.1:443. Default credentials are admin/admin. 
-- By default a 2 shard cluster is deployed. Each shard is 3 node PSA replicaset.
+- By default a 2 shard cluster is deployed. Each shard is 3 node PSS replicaset.
 - A pbm-cli container is deployed where you can run PBM commands. Example:
   ```
   docker exec -it test-mongodb-pbm-cli pbm status
   ```
+- Access minio web interace at http://127.0.0.1:9001. Default credentials are minio/minioadmin.
 - No need to use Ansible when deploying via Docker images. 
 
 

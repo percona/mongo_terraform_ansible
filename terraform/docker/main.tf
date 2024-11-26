@@ -11,5 +11,4 @@ terraform {
 }
 
 provider "docker" {
-    host = "unix:///Users/ivangroenewold/.docker/run/docker.sock"
 }

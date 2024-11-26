@@ -16,8 +16,8 @@ resource "docker_container" "pmm" {
     name = docker_network.mongo_network.id
   }
   ports {
-    internal = 443
-    external = 443
+    internal = var.pmm_port
+    external = var.pmm_external_port
   }  
   restart = "on-failure"
 

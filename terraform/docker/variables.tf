@@ -42,12 +42,12 @@ variable "shard_count" {
 }
 
 variable "shardsvr_replicas" {
-  default = "3"
+  default = "2"
   description = "How many data bearing nodes per shard"
 }
 
 variable "arbiters_per_replset" {
-  default = "0"
+  default = "1"
   description = "Number of arbiters per replica set"
 }
 
@@ -67,7 +67,7 @@ variable "keyfile" {
 
 variable "shardsvr_tag" {
   description = "Name of the shard servers"
-  default = "mongodb-shard"
+  default = "shard"
 }
 
 variable "shardsvr_port" {
@@ -81,7 +81,7 @@ variable "shardsvr_port" {
 
 variable "configsvr_tag" {
   description = "Name of the config servers"
-  default = "mongodb-cfg"
+  default = "cfg"
 }
 
 variable "configsvr_port" {
@@ -95,7 +95,7 @@ variable "configsvr_port" {
 
 variable "mongos_tag" {
   description = "Name of the mongos router servers"
-  default = "mongodb-mongos"
+  default = "mongos"
 }
 
 variable "mongos_port" {
@@ -109,7 +109,12 @@ variable "mongos_port" {
 
 variable "arbiter_tag" {
   description = "Name of the arbiter servers"
-  default = "mongodb-arb"
+  default = "arb"
+}
+
+variable "arbiter_port" {
+  description = "Port of the arbiter servers"
+  default = "27018"
 }
 
 #############
@@ -119,6 +124,16 @@ variable "arbiter_tag" {
 variable "pmm_tag" {
   description = "Name of the PMM server"
   default = "percona-pmm"
+}
+
+variable "pmm_port" {
+  description = "Port of the PMM server inside docker network"
+  default = "443"
+}
+
+variable "pmm_external_port" {
+  description = "Port of the PMM server as seen from outside docker"
+  default = "443"
 }
 
 #############
@@ -184,6 +199,11 @@ variable "pmm_client_image" {
   default = "percona/pmm-client:2"
 }
 
+variable "pmm_client_container_suffix" {
+  default = "pmm-client"
+  description = "Suffix for PMM client container"
+}
+
 variable "base_os_image" {
   description = "Base OS for the custom Docker image with pbm-agent and mongod"
   #default = "quay.io/centos/centos:stream9"
@@ -196,8 +216,23 @@ variable "minio_image" {
 }
 
 variable "custom_image" {
-  description = "Name of the local Docker image to be created for pbm-agent + mongod. Required for a physical restore"
-  default = "pbm-with-mongod"
+  description = "Name of the local Docker image to be created for pbm-agent + current mongod version. Required for physical restores"
+  default = "percona-backup-mongodb-agent-custom"
+}
+
+variable "pbm_image_suffix" {
+  default = "pbm-agent"
+  description = "Suffix for PBM agent containers. Will be appended to each cluster component"
+}
+
+variable "pbm_cli_container_suffix" {
+  default = "pbm-cli"
+  description = "Suffix for PBM CLI container"
+}
+
+variable "uid" {
+  description = "The user id under which the main process runs in the container"
+  default = 1001
 }
 
 #############

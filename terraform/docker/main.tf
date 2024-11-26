@@ -10,4 +10,6 @@ terraform {
   }
 }
 
-provider "docker" {}
+provider "docker" {
+    host = "unix:///Users/ivangroenewold/.docker/run/docker.sock"
+}

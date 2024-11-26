@@ -22,7 +22,10 @@ resource "docker_container" "cfg" {
     "--dbpath", "/data/db",
     "--keyFile", "/etc/mongo/mongodb-keyfile.key"
   ]  
-  #env = [ "MONGO_INITDB_ROOT_USERNAME=mongoadmin", "MONGO_INITDB_ROOT_PASSWORD=secret" ]
+  ports {
+    internal = var.configsvr_port
+  }  
+  user = var.uid
   labels { 
     label = "replsetName"
     value = "${var.env_tag}-${var.configsvr_tag}"
@@ -51,7 +54,7 @@ resource "docker_container" "cfg" {
 }
 
 resource "docker_container" "pbm_cfg" {
-  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-pbm"
+  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-${var.pbm_image_suffix}"
   image = var.custom_image 
   count = var.configsvr_count
   user  = 1001
@@ -84,12 +87,9 @@ resource "docker_volume" "cfg_volume_pmm" {
 }
 
 resource "docker_container" "pmm_cfg" {
-  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-pmm"
+  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-${var.pmm_client_container_suffix}"
   image = var.pmm_client_image 
   count = var.configsvr_count
-#  command = [
-#    "pbm-agent"
-#  ]  
   env = [ "PMM_AGENT_SERVER_ADDRESS=${docker_container.pmm.name}:443", "PMM_AGENT_SERVER_USERNAME=admin", "PMM_AGENT_SERVER_PASSWORD=admin", "PMM_AGENT_SERVER_INSECURE_TLS=1", "PMM_AGENT_SETUP=1", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {
     type = "volume"
@@ -99,6 +99,9 @@ resource "docker_container" "pmm_cfg" {
   networks_advanced {
     name = docker_network.mongo_network.id
   }
+  ports {
+    internal = 42002
+  }    
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]
     interval    = "10s"

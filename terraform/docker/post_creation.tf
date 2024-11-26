@@ -230,13 +230,15 @@ resource "null_resource" "add_shards" {
 # Configure PBM
 resource "null_resource" "configure_pbm" {
   depends_on = [
-    null_resource.initiate_cfg_replset,
     null_resource.add_shards,
+    docker_container.cfg,
+    docker_container.shard,
     docker_container.pbm_shard,
     docker_container.pbm_cfg
   ]
   provisioner "local-exec" {
     command = <<-EOT
+      sleep 5
       cat pbm-storage.conf | docker exec -i ${docker_container.pbm_cfg[0].name} pbm config --file=-
     EOT
   }
@@ -254,7 +256,7 @@ resource "null_resource" "configure_pmm_client_cfg" {
   for_each = toset([for i in docker_container.cfg : tostring(i.name)])
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${each.key}-pmm pmm-admin add mongodb --username=${var.mongodb_pbm_user} --password=${var.mongodb_pbm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.configsvr_port} --tls-skip-verify --enable-all-collectors
+      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pbm_user} --password=${var.mongodb_pbm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.configsvr_port} --tls-skip-verify --enable-all-collectors
     EOT
   }
 }
@@ -270,7 +272,7 @@ resource "null_resource" "configure_pmm_client_shards" {
   for_each = toset([for i in docker_container.shard : tostring(i.name)])
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${each.key}-pmm pmm-admin add mongodb --username=${var.mongodb_pbm_user} --password=${var.mongodb_pbm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.shardsvr_port} --tls-skip-verify --enable-all-collectors
+      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pbm_user} --password=${var.mongodb_pbm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.shardsvr_port} --tls-skip-verify --enable-all-collectors
     EOT
   }  
 }
@@ -285,7 +287,7 @@ resource "null_resource" "configure_pmm_client_arb" {
   for_each = toset([for i in docker_container.arbiter : tostring(i.name)])
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${each.key}-pmm pmm-admin add mongodb --cluster ${var.env_tag} --host=${each.key} --port=${var.shardsvr_port} --tls-skip-verify
+      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --cluster ${var.env_tag} --host=${each.key} --port=${var.shardsvr_port} --tls-skip-verify
     EOT
   }    
 }

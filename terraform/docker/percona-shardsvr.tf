@@ -21,6 +21,10 @@ resource "docker_container" "shard" {
     "--shardsvr",
     "--keyFile", "/etc/mongo/mongodb-keyfile.key"
   ]  
+  user = var.uid
+  ports {
+    internal = var.shardsvr_port
+  }  
   labels { 
     label = "replsetName"
     value = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}"
@@ -49,7 +53,7 @@ resource "docker_container" "shard" {
 }
 
 resource "docker_container" "pbm_shard" {
-  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-pbm"
+  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-${var.pbm_image_suffix}"
   count = var.shard_count * var.shardsvr_replicas
   image = var.custom_image 
   user  = 1001
@@ -82,7 +86,7 @@ resource "docker_volume" "shard_volume_pmm" {
 }
 
 resource "docker_container" "pmm_shard" {
-  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-pmm"
+  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-${var.pmm_client_container_suffix}"
   image = var.pmm_client_image 
   count = var.shard_count * var.shardsvr_replicas
   env = [ "PMM_AGENT_SERVER_ADDRESS=${docker_container.pmm.name}:443", "PMM_AGENT_SERVER_USERNAME=admin", "PMM_AGENT_SERVER_PASSWORD=admin", "PMM_AGENT_SERVER_INSECURE_TLS=1", "PMM_AGENT_SETUP=1", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
@@ -94,6 +98,9 @@ resource "docker_container" "pmm_shard" {
   networks_advanced {
     name = docker_network.mongo_network.id
   }
+  ports {
+    internal = 42002
+  }    
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]
     interval    = "10s"

@@ -51,7 +51,7 @@ For backup storage, a MinIO server is deployed and configured.
 4. Connect to mongos router to access the cluster. Example:
 
     ```
-    docker exec -it test-mongodb-mongos00 mongosh admin -u root -p percona
+    docker exec -it test-mongos00 mongosh admin -u root -p percona
     sh.status()
     ```
 
@@ -59,7 +59,7 @@ For backup storage, a MinIO server is deployed and configured.
 - By default a 2 shard cluster is deployed. Each shard is 3 node PSS replicaset.
 - A pbm-cli container is deployed where you can run PBM commands. Example:
   ```
-  docker exec -it test-mongodb-pbm-cli pbm status
+  docker exec -it test-pbm-cli pbm status
   ```
 - Access minio web interace at http://127.0.0.1:9001. Default credentials are minio/minioadmin.
 - No need to use Ansible when deploying via Docker images. 

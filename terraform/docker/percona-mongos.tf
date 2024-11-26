@@ -12,8 +12,8 @@ resource "docker_container" "mongos" {
   ]    
   ports {
     internal = var.mongos_port
-    external = var.mongos_port
   }  
+  user = var.uid
   mounts {
     source = abspath(local_file.mongodb_keyfile.filename)
     target = "/etc/mongo/mongodb-keyfile.key"
@@ -44,7 +44,7 @@ resource "docker_volume" "mongos_volume_pmm" {
 }
 
 resource "docker_container" "pmm_mongos" {
-  name  = "${var.env_tag}-${var.mongos_tag}0${count.index}-pmm"
+  name  = "${var.env_tag}-${var.mongos_tag}0${count.index}-${var.pmm_client_container_suffix}"
   image = var.pmm_client_image 
   count = var.mongos_count
   env = [ "PMM_AGENT_SERVER_ADDRESS=${docker_container.pmm.name}:443", "PMM_AGENT_SERVER_USERNAME=admin", "PMM_AGENT_SERVER_PASSWORD=admin", "PMM_AGENT_SERVER_INSECURE_TLS=1", "PMM_AGENT_SETUP=1", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
@@ -56,6 +56,9 @@ resource "docker_container" "pmm_mongos" {
   networks_advanced {
     name = docker_network.mongo_network.id
   }
+  ports {
+    internal = 42002
+  }    
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]
     interval    = "10s"

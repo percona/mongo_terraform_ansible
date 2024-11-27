@@ -52,7 +52,7 @@ variable "arbiters_per_replset" {
 }
 
 variable "mongos_count" {
-  default = "1"
+  default = "3"
   description = "Number of mongos to provision"
 }
 
@@ -134,6 +134,16 @@ variable "pmm_port" {
 variable "pmm_external_port" {
   description = "Port of the PMM server as seen from outside docker"
   default = "443"
+}
+
+variable "pmm_user" {
+  description = "Username for PMM web interface and clients"
+  default = "admin"
+}
+
+variable "pmm_password" {
+  description = "Password for PMM web interface and clients"
+  default = "admin"
 }
 
 #############

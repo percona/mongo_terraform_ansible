@@ -20,7 +20,10 @@ resource "docker_container" "cfg" {
     "--configsvr",
     "--port", "${var.configsvr_port}",
     "--dbpath", "/data/db",
-    "--keyFile", "/etc/mongo/mongodb-keyfile.key"
+    "--keyFile", "/etc/mongo/mongodb-keyfile.key",
+    "--profile", "2",
+    "--slowms", "200",
+    "--rateLimit", "100"
   ]  
   ports {
     internal = var.configsvr_port

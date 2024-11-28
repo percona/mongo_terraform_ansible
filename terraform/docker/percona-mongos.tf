@@ -8,7 +8,9 @@ resource "docker_container" "mongos" {
     "--configdb", "${lookup({for label in docker_container.cfg[0].labels : label.label => label.value}, "replsetName", null)}/${join(",", [for i in range(var.configsvr_count) : "${docker_container.cfg[i].name}:${var.configsvr_port}" ])}",
     "--bind_ip_all",    
     "--port", "${var.mongos_port}",
-    "--keyFile", "/etc/mongo/mongodb-keyfile.key"
+    "--keyFile", "/etc/mongo/mongodb-keyfile.key",
+    "--slowms", "200",
+    "--rateLimit", "100"    
   ]    
   ports {
     internal = var.mongos_port

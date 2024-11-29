@@ -19,7 +19,10 @@ resource "docker_container" "shard" {
     "--bind_ip_all",    
     "--port", "${var.shardsvr_port}",
     "--shardsvr",
-    "--keyFile", "/etc/mongo/mongodb-keyfile.key"
+    "--keyFile", "/etc/mongo/mongodb-keyfile.key",
+    "--profile", "2",
+    "--slowms", "200",
+    "--rateLimit", "100"
   ]  
   user = var.uid
   ports {

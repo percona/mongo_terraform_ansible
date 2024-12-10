@@ -19,6 +19,8 @@ resource "docker_container" "shard" {
     "--bind_ip_all",    
     "--port", "${var.shardsvr_port}",
     "--shardsvr",
+    "--oplogSize", "200",
+    "--wiredTigerCacheSizeGB", "0.25",      
     "--keyFile", "/etc/mongo/mongodb-keyfile.key",
     "--profile", "2",
     "--slowms", "200",

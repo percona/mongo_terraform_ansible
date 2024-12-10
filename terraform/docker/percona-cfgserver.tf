@@ -20,6 +20,8 @@ resource "docker_container" "cfg" {
     "--configsvr",
     "--port", "${var.configsvr_port}",
     "--dbpath", "/data/db",
+    "--oplogSize", "200",
+    "--wiredTigerCacheSizeGB", "0.25",    
     "--keyFile", "/etc/mongo/mongodb-keyfile.key",
     "--profile", "2",
     "--slowms", "200",

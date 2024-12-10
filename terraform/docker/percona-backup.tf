@@ -53,7 +53,7 @@ resource "docker_container" "pbm_cli" {
   healthcheck {
     test        = ["CMD-SHELL", "pbm version"]
     interval    = "10s"
-    timeout     = "2s"
+    timeout     = "5s"
     retries     = 5
     start_period = "30s"
   }   

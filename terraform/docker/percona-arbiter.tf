@@ -44,7 +44,7 @@ resource "docker_container" "arbiter" {
   healthcheck {
     test        = ["CMD-SHELL", "mongosh --port ${var.arbiter_port} --eval 'db.runCommand({ ping: 1 })'"]
     interval    = "10s"
-    timeout     = "2s"
+    timeout     = "10s"
     retries     = 5
     start_period = "30s"
   }   
@@ -76,7 +76,7 @@ resource "docker_container" "pmm_arb" {
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]
     interval    = "10s"
-    timeout     = "2s"
+    timeout     = "10s"
     retries     = 5
     start_period = "30s"
   }   

@@ -48,7 +48,7 @@ resource "docker_container" "cfg" {
   healthcheck {
     test        = ["CMD-SHELL", "mongosh --port ${var.configsvr_port} --eval 'db.runCommand({ ping: 1 })'"]
     interval    = "10s"
-    timeout     = "2s"
+    timeout     = "10s"
     retries     = 5
     start_period = "30s"
   }
@@ -64,7 +64,7 @@ resource "docker_container" "pbm_cfg" {
   command = [
     "pbm-agent"
   ]  
-  env = [ "PBM_MONGODB_URI=pbm:percona@${docker_container.cfg[count.index].name}:${var.configsvr_port}" ]
+  env = [ "PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.cfg[count.index].name}:${var.configsvr_port}" ]
   mounts {
     type = "volume"
     target = "/data/db"
@@ -76,7 +76,7 @@ resource "docker_container" "pbm_cfg" {
   healthcheck {
     test        = ["CMD-SHELL", "pbm version"]
     interval    = "10s"
-    timeout     = "2s"
+    timeout     = "10s"
     retries     = 5
     start_period = "30s"
   }   
@@ -108,7 +108,7 @@ resource "docker_container" "pmm_cfg" {
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]
     interval    = "10s"
-    timeout     = "2s"
+    timeout     = "10s"
     retries     = 5
     start_period = "30s"
   }   

@@ -18,11 +18,21 @@ variable "mongodb_root_password" {
 }
 
 variable "mongodb_pbm_user" {
-  default = "mongodb_exporter"
+  default = "pbm"
   description = "MongoDB user to be created with for PBM"  
 }
 
 variable "mongodb_pbm_password" {
+  default = "percona"
+  description = "MongoDB PBM user password"  
+}
+
+variable "mongodb_pmm_user" {
+  default = "mongodb_exporter"
+  description = "MongoDB user to be created with for PBM"  
+}
+
+variable "mongodb_pmm_password" {
   default = "percona"
   description = "MongoDB PBM user password"  
 }

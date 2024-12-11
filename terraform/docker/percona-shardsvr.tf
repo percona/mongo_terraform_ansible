@@ -19,6 +19,8 @@ resource "docker_container" "shard" {
     "--bind_ip_all",    
     "--port", "${var.shardsvr_port}",
     "--shardsvr",
+    "--oplogSize", "200",
+    "--wiredTigerCacheSizeGB", "0.25",      
     "--keyFile", "/etc/mongo/mongodb-keyfile.key",
     "--profile", "2",
     "--slowms", "200",
@@ -47,7 +49,7 @@ resource "docker_container" "shard" {
   healthcheck {
     test        = ["CMD-SHELL", "mongosh --port ${var.shardsvr_port} --eval 'db.runCommand({ ping: 1 })'"]
     interval    = "10s"
-    timeout     = "2s"
+    timeout     = "10s"
     retries     = 5
     start_period = "30s"
   }
@@ -63,7 +65,7 @@ resource "docker_container" "pbm_shard" {
   command = [
     "pbm-agent"
   ]  
-  env = [ "PBM_MONGODB_URI=pbm:percona@${docker_container.shard[count.index].name}:${var.shardsvr_port}" ]
+  env = [ "PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.shard[count.index].name}:${var.shardsvr_port}" ]
   mounts {
     type = "volume"
     target = "/data/db"
@@ -75,7 +77,7 @@ resource "docker_container" "pbm_shard" {
   healthcheck {
     test        = ["CMD-SHELL", "pbm version"]
     interval    = "10s"
-    timeout     = "2s"
+    timeout     = "10s"
     retries     = 5
     start_period = "30s"
   }   
@@ -107,7 +109,7 @@ resource "docker_container" "pmm_shard" {
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]
     interval    = "10s"
-    timeout     = "2s"
+    timeout     = "10s"
     retries     = 5
     start_period = "30s"
   }   

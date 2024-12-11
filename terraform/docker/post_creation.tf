@@ -55,8 +55,8 @@ resource "null_resource" "initiate_cfg_replset" {
           ]
         });
         db.createUser({
-          user: "pbm",
-          pwd: "percona",
+          user: "${var.mongodb_pbm_user}",
+          pwd: "${var.mongodb_pbm_password}",
           roles: [ "pbmAgent" ]
         });
       '
@@ -80,8 +80,8 @@ resource "null_resource" "initiate_cfg_replset" {
           roles: []
         });
         db.createUser({
-          user: "${var.mongodb_pbm_user}",
-          pwd: "${var.mongodb_pbm_password}",
+          user: "${var.mongodb_pmm_user}",
+          pwd: "${var.mongodb_pmm_password}",
           roles: [ 
             { "role": "explainRole", "db": "admin" },
             { "role": "clusterMonitor", "db": "admin" },
@@ -154,8 +154,8 @@ resource "null_resource" "initiate_shard_replset" {
           ]
         });
         db.createUser({
-          user: "pbm",
-          pwd: "percona",
+          user: "${var.mongodb_pbm_user}",
+          pwd: "${var.mongodb_pbm_password}",
           roles: [ "pbmAgent" ]
         });
       '        
@@ -179,8 +179,8 @@ resource "null_resource" "initiate_shard_replset" {
           roles: []
         });
         db.createUser({
-          user: "${var.mongodb_pbm_user}",
-          pwd: "${var.mongodb_pbm_password}",
+          user: "${var.mongodb_pmm_user}",
+          pwd: "${var.mongodb_pmm_password}",
           roles: [ 
             { "role": "explainRole", "db": "admin" },
             { "role": "clusterMonitor", "db": "admin" },

@@ -1,6 +1,6 @@
 # MinIO Docker container
 resource "docker_container" "minio" {
-  name  = var.minio_server
+  name  = "${var.env_tag}-${var.minio_server}"
   image = var.minio_image
   env = [
     "MINIO_ROOT_USER=${var.minio_access_key}",
@@ -20,6 +20,15 @@ resource "docker_container" "minio" {
   networks_advanced {
     name = docker_network.mongo_network.id
   }
+  healthcheck {
+    test        = [ "CMD", "curl", "-k", "-f", "http://${var.env_tag}-${var.minio_server}:${var.minio_port}/minio/health/live" ]
+    interval    = "10s"
+    timeout     = "5s"
+    retries     = 5
+    start_period = "30s"
+  }   
+  wait = true       
+  restart = "on-failure"
 }
 
 # Initialize MinIO bucket using the MinIO client (`mc`)

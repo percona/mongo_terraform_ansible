@@ -5,7 +5,7 @@ Deploy the full stack of Percona MongoDB software on Docker containers:
 - Percona Server for MongoDB
 - Percona Backup for MongoDB
 - PMM Client
-- PMM Server
+- PMM Server 
 
 For the backup storage, a MinIO server is deployed and a storage bucket is configured as the backup destination for PBM.
 
@@ -87,6 +87,7 @@ For the backup storage, a MinIO server is deployed and a storage bucket is confi
   docker exec -it test-pbm-cli pbm status
   ```
 - Access the Minio web interface at http://127.0.0.1:9001 to see the backup storage. The default credentials are minio/minioadmin
+- Grafana renderer is installed and configured in order to be able to export PMM graphs as PNG
 - There is no need to run the Ansible playbooks when deploying MongoDB via the Docker images
 
 

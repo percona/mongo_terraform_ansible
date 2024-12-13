@@ -62,7 +62,7 @@ variable "arbiters_per_replset" {
 }
 
 variable "mongos_count" {
-  default = "3"
+  default = "1"
   description = "Number of mongos to provision"
 }
 
@@ -133,7 +133,12 @@ variable "arbiter_port" {
 
 variable "pmm_tag" {
   description = "Name of the PMM server"
-  default = "percona-pmm"
+  default = "pmm-server"
+}
+
+variable "renderer_tag" {
+  description = "Name of the Grafana image renderer"
+  default = "grafana-renderer"
 }
 
 variable "pmm_port" {
@@ -144,6 +149,11 @@ variable "pmm_port" {
 variable "pmm_external_port" {
   description = "Port of the PMM server as seen from outside docker"
   default = "443"
+}
+
+variable "renderer_port" {
+  description = "Port of the Grafana renderer"
+  default = "8081"
 }
 
 variable "pmm_user" {
@@ -222,6 +232,11 @@ variable "pmm_client_image" {
 variable "pmm_client_container_suffix" {
   default = "pmm-client"
   description = "Suffix for PMM client container"
+}
+
+variable "renderer_image" {
+  description = "Docker image for Grafana renderer container"
+  default = "grafana/grafana-image-renderer:latest"
 }
 
 variable "base_os_image" {

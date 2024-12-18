@@ -21,7 +21,7 @@ resource "docker_container" "shard" {
     "--shardsvr",
     "--oplogSize", "200",
     "--wiredTigerCacheSizeGB", "0.25",      
-    "--keyFile", "/etc/mongo/mongodb-keyfile.key",
+    "--keyFile", "${var.keyfile_path}",
     "--profile", "2",
     "--slowms", "200",
     "--rateLimit", "100"
@@ -58,7 +58,7 @@ resource "docker_container" "shard" {
 }
 
 resource "docker_container" "pbm_shard" {
-  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-${var.pbm_image_suffix}"
+  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-${var.pbm_container_suffix}"
   count = var.shard_count * var.shardsvr_replicas
   image = var.custom_image 
   user  = 1001
@@ -104,7 +104,7 @@ resource "docker_container" "pmm_shard" {
     name = docker_network.mongo_network.id
   }
   ports {
-    internal = 42002
+    internal = var.pmm_client_port
   }    
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]

@@ -17,7 +17,7 @@ For the backup storage, a MinIO server is deployed and a storage bucket is confi
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   ```
 
-- Make sure you have Terraform installed. Using Homebrew you can do:
+- Install Terraform. Using Homebrew you can do:
   
   ```
   brew install terraform
@@ -25,7 +25,7 @@ For the backup storage, a MinIO server is deployed and a storage bucket is confi
   
   See the [Terraform installation documentation](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli#install-terraform) for detailed instructions on other platforms.
 
-- Make sure you have installed Docker. Using Homebrew run:
+- Install Docker. Using Homebrew run:
   
   ```
   brew install docker --cask
@@ -68,7 +68,7 @@ For the backup storage, a MinIO server is deployed and a storage bucket is confi
     terraform apply
     ``` 
 
-3. Check containers are running correctly
+3. Check that created containers are running correctly
 
     ```
     docker ps -a

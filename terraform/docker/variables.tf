@@ -4,37 +4,7 @@
 
 variable "env_tag" {
   default = "test"
-  description = "Name of Environment. Replace these with your own custom name to avoid collisions"
-}
-
-variable "mongodb_root_user" {
-  default = "root"
-  description = "MongoDB user to be created with root perms"  
-}
-
-variable "mongodb_root_password" {
-  default = "percona"
-  description = "MongoDB root user password"  
-}
-
-variable "mongodb_pbm_user" {
-  default = "pbm"
-  description = "MongoDB user to be created with for PBM"  
-}
-
-variable "mongodb_pbm_password" {
-  default = "percona"
-  description = "MongoDB PBM user password"  
-}
-
-variable "mongodb_pmm_user" {
-  default = "mongodb_exporter"
-  description = "MongoDB user to be created with for PBM"  
-}
-
-variable "mongodb_pmm_password" {
-  default = "percona"
-  description = "MongoDB PBM user password"  
+  description = "Name of Environment. Replace these with your own custom name to avoid collisions with existing containers"
 }
 
 ##################
@@ -62,13 +32,32 @@ variable "arbiters_per_replset" {
 }
 
 variable "mongos_count" {
-  default = "1"
+  default = "2"
   description = "Number of mongos to provision"
 }
 
+######################
+# Security Credentials 
+######################
+
 variable "keyfile" {
-  default = "1234567890"
-  description = "Content of the keyfile for member authentication"
+  default = "KYYVuRIooX+S2Ee6GDUpYiI6rpx879XYYwWD44tF/WtogW0o8Z4Ua0/Fs+Nez4GO"
+  description = "Content of the keyfile for MongoDB replicaset member authentication"
+}
+
+variable "keyfile_path" {
+  default = "/etc/mongo/mongodb-keyfile.key"
+  description = "Path to the keyfile on MongoDB containers"
+}
+
+variable "mongodb_root_user" {
+  default = "root"
+  description = "MongoDB user to be created with root perms"  
+}
+
+variable "mongodb_root_password" {
+  default = "percona"
+  description = "MongoDB root user password"  
 }
 
 ################
@@ -137,18 +126,30 @@ variable "pmm_tag" {
 }
 
 variable "renderer_tag" {
-  description = "Name of the Grafana image renderer"
+  description = "Name of the Grafana image renderer container"
   default = "grafana-renderer"
+}
+
+variable "pmm_client_container_suffix" {
+  default = "pmm-client"
+  description = "Suffix for PMM client container"
 }
 
 variable "pmm_port" {
   description = "Port of the PMM server inside docker network"
+# PMM 3 uses 8443
+#  default = "8443"
   default = "443"
 }
 
 variable "pmm_external_port" {
   description = "Port of the PMM server as seen from outside docker"
   default = "443"
+}
+
+variable "pmm_client_port" {
+  description = "Port of the PMM client inside docker network"
+  default = "42002"
 }
 
 variable "renderer_port" {
@@ -164,6 +165,40 @@ variable "pmm_user" {
 variable "pmm_password" {
   description = "Password for PMM web interface and clients"
   default = "admin"
+}
+
+variable "mongodb_pmm_user" {
+  default = "pmm"
+  description = "MongoDB user to be created with for PBM"  
+}
+
+variable "mongodb_pmm_password" {
+  default = "percona"
+  description = "MongoDB PBM user password"  
+}
+
+#############
+# PBM
+#############
+
+variable "pbm_container_suffix" {
+  default = "pbm-agent"
+  description = "Suffix for PBM agent containers. Will be appended to each cluster component"
+}
+
+variable "pbm_cli_container_suffix" {
+  default = "pbm-cli"
+  description = "Suffix for PBM CLI container"
+}
+
+variable "mongodb_pbm_user" {
+  default = "pbmuser"
+  description = "MongoDB user to be created with for PBM"  
+}
+
+variable "mongodb_pbm_password" {
+  default = "percona"
+  description = "MongoDB PBM user password"  
 }
 
 #############
@@ -206,7 +241,7 @@ variable "backup_retention" {
 }
 
 #############
-# Images
+# Docker Images
 #############
 
 variable "psmdb_image" {
@@ -221,6 +256,7 @@ variable "pbm_image" {
 
 variable "pmm_server_image" {
   description = "Docker image for PMM server"
+#  default = "percona/pmm-server:3"  
   default = "percona/pmm-server:2"
 }
 
@@ -229,25 +265,16 @@ variable "pmm_client_image" {
   default = "percona/pmm-client:2"
 }
 
-variable "pmm_client_container_suffix" {
-  default = "pmm-client"
-  description = "Suffix for PMM client container"
-}
-
 variable "renderer_image" {
   description = "Docker image for Grafana renderer container"
   default = "grafana/grafana-image-renderer:latest"
 }
 
 variable "base_os_image" {
-  description = "Base OS for the custom Docker image with pbm-agent and mongod"
+  description = "Base OS image for the custom Docker image created with pbm-agent and mongod. Required for physical restores"
   #default = "quay.io/centos/centos:stream9"
-  default = "oraclelinux:8"
-}
-
-variable "minio_image" {
-  description = "Minio Docker image"
-  default = "minio/minio"
+  #default = "oraclelinux:8"
+  default = "redhat/ubi9-minimal"
 }
 
 variable "custom_image" {
@@ -255,18 +282,13 @@ variable "custom_image" {
   default = "percona-backup-mongodb-agent-custom"
 }
 
-variable "pbm_image_suffix" {
-  default = "pbm-agent"
-  description = "Suffix for PBM agent containers. Will be appended to each cluster component"
-}
-
-variable "pbm_cli_container_suffix" {
-  default = "pbm-cli"
-  description = "Suffix for PBM CLI container"
+variable "minio_image" {
+  description = "Minio Docker image"
+  default = "minio/minio"
 }
 
 variable "uid" {
-  description = "The user id under which the main process runs in the container"
+  description = "The user id under which the main process runs in the container created for pbm-agent + current mongod version"
   default = 1001
 }
 

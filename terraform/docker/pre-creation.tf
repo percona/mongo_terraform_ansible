@@ -3,7 +3,7 @@ locals {
     minio_region     = var.minio_region
     bucket_name      = var.bucket_name
     env_tag          = var.env_tag
-    minio_server     = var.minio_server
+    minio_server     = "${var.env_tag}-${var.minio_server}"
     minio_port      = var.minio_port
     minio_access_key = var.minio_access_key
     minio_secret_key = var.minio_secret_key  

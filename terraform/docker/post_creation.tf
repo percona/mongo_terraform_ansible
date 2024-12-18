@@ -7,10 +7,10 @@ resource "null_resource" "initiate_cfg_replset" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh --port ${var.configsvr_port} --eval '
         rs.initiate({
-          _id: "${lookup({for label in docker_container.cfg[0].labels : label.label => label.value}, "replsetName", null)}",
-          configsvr: true,
-          members: [
-            { _id: 0, host: "${docker_container.cfg[0].name}:${var.configsvr_port}", priority: 2 },
+          "_id": "${lookup({for label in docker_container.cfg[0].labels : label.label => label.value}, "replsetName", null)}",
+          "configsvr": true,
+          "members": [
+            { "_id": 0, "host": "${docker_container.cfg[0].name}:${var.configsvr_port}", "priority": 2 },
             ${join(",", [for i in range(1, var.configsvr_count) : "{ _id: ${i}, host: \"${docker_container.cfg[i].name}:${var.configsvr_port}\" }"])}
           ]
         });
@@ -28,42 +28,43 @@ resource "null_resource" "initiate_cfg_replset" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh admin --port ${var.configsvr_port} --eval '
         db.createUser({
-          user: "${var.mongodb_root_user}",
-          pwd: "${var.mongodb_root_password}",
-          roles: [
-            {role: "root", db: "admin"}
+          "user": "${var.mongodb_root_user}",
+          "pwd": "${var.mongodb_root_password}",
+          "roles": [
+            { "role": "root", "db": "admin" }
           ]
         });
       '
     EOT
   }
 
-  # Create user for PBM
+  # Create user for PBM on config servers
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.configsvr_port} --eval '
         db.createRole({
-          role: "pbmAgent",
-          privileges: [{
-            "resource": { "anyResource": true },
-            "actions": ["anyAction"]
-          }],
-          roles: [
-            "backup",
-            "restore",
-            "clusterAdmin"
-          ]
+          "role": "pbmAnyAction",
+          "privileges": [
+            { "resource": { "anyResource": true }, "actions": [ "anyAction" ] }
+          ],
+          roles: []
         });
-        db.createUser({
-          user: "${var.mongodb_pbm_user}",
-          pwd: "${var.mongodb_pbm_password}",
-          roles: [ "pbmAgent" ]
+        db.createUser( {
+          "user": "${var.mongodb_pbm_user}",
+          "pwd": "${var.mongodb_pbm_password}",
+          "roles": [         
+            { "db" : "admin", "role" : "readWrite", "collection": "" },
+            { "db" : "admin", "role" : "backup" },
+            { "db" : "admin", "role" : "clusterMonitor" },
+            { "db" : "admin", "role" : "restore" },
+            { "db" : "admin", "role" : "pbmAnyAction" } 
+          ]
         });
       '
     EOT
   }
 
-  # Create user for PMM
+  # Create user for PMM on config servers
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.configsvr_port} --eval '
@@ -71,26 +72,30 @@ resource "null_resource" "initiate_cfg_replset" {
           role: "explainRole",
           privileges: [{
             "resource": { "db": "", "collection": "" },
-            "actions": ["listIndexes","listCollections","dbStats","dbHash","collStats","find"]
+            "actions": [ "listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find" ]
           }, 
           {
             "resource": { "db": "", "collection": "system.profile" },
-            "actions": ["dbStats","indexStats","collStats"]
+            "actions": [ "dbStats","indexStats","collStats" ], 
+          },
+          {
+            "resource": { "db": "", "collection": "system.version" },
+            "actions": [ "find" ]
           }],
           roles: []
         });
         db.createUser({
-          user: "${var.mongodb_pmm_user}",
-          pwd: "${var.mongodb_pmm_password}",
-          roles: [ 
+          "user": "${var.mongodb_pmm_user}",
+          "pwd": "${var.mongodb_pmm_password}",
+          "roles": [ 
             { "role": "explainRole", "db": "admin" },
-            { "role": "clusterMonitor", "db": "admin" },
             { "role": "read", "db": "local" },
             { "db" : "admin", "role" : "readWrite", "collection": "" },
             { "db" : "admin", "role" : "backup" },
             { "db" : "admin", "role" : "clusterMonitor" },
             { "db" : "admin", "role" : "restore" },
-            { "db" : "admin", "role" : "pbmAgent" }    ]
+            { "db" : "admin", "role" : "pbmAnyAction" } 
+          ]
         });
       '
     EOT
@@ -127,84 +132,88 @@ resource "null_resource" "initiate_shard_replset" {
     command = <<-EOT
       docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin --port ${var.shardsvr_port} --eval '
         db.createUser({
-          user: "${var.mongodb_root_user}",
-          pwd: "${var.mongodb_root_password}",
-          roles: [
-            {role: "root", db: "admin"}
+          "user": "${var.mongodb_root_user}",
+          "pwd": "${var.mongodb_root_password}",
+          "roles": [
+            { "role": "root", "db": "admin" }
           ]
         });
       '        
     EOT
   }  
 
-  # Create user for PBM
+  # Create user for PBM on the shards
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.shardsvr_port} --eval '
         db.createRole({
-          role: "pbmAgent",
-          privileges: [{
-            "resource": { "anyResource": true },
-            "actions": ["anyAction"]
-          }],
-          roles: [
-            "backup",
-            "restore",
-            "clusterAdmin"
+          "role": "pbmAnyAction",
+          "privileges": [
+            { "resource": { "anyResource": true }, "actions": ["anyAction"] }
+          ],
+          "roles": []
+        });
+        db.createUser( {
+          "user": "${var.mongodb_pbm_user}",
+          "pwd": "${var.mongodb_pbm_password}",
+          "roles": [         
+            { "db" : "admin", "role" : "readWrite", "collection": "" },
+            { "db" : "admin", "role" : "backup" },
+            { "db" : "admin", "role" : "clusterMonitor" },
+            { "db" : "admin", "role" : "restore" },
+            { "db" : "admin", "role" : "pbmAnyAction" } 
           ]
         });
-        db.createUser({
-          user: "${var.mongodb_pbm_user}",
-          pwd: "${var.mongodb_pbm_password}",
-          roles: [ "pbmAgent" ]
-        });
-      '        
+      '
     EOT
   }  
 
-  # Create user for PMM
+  # Create user for PMM on the shards
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.shardsvr_port} --eval '
         db.createRole({
-          role: "explainRole",
-          privileges: [{
+          "role": "explainRole",
+          "privileges": [{
             "resource": { "db": "", "collection": "" },
             "actions": ["listIndexes","listCollections","dbStats","dbHash","collStats","find"]
           }, 
           {
             "resource": { "db": "", "collection": "system.profile" },
             "actions": ["dbStats","indexStats","collStats"]
+          }, 
+          {
+            "resource": { "db": "", "collection": "system.version" },
+            "actions": ["find"]
           }],
-          roles: []
+          "roles": []
         });
         db.createUser({
-          user: "${var.mongodb_pmm_user}",
-          pwd: "${var.mongodb_pmm_password}",
-          roles: [ 
+          "user": "${var.mongodb_pmm_user}",
+          "pwd": "${var.mongodb_pmm_password}",
+          "roles": [ 
             { "role": "explainRole", "db": "admin" },
-            { "role": "clusterMonitor", "db": "admin" },
             { "role": "read", "db": "local" },
             { "db" : "admin", "role" : "readWrite", "collection": "" },
             { "db" : "admin", "role" : "backup" },
             { "db" : "admin", "role" : "clusterMonitor" },
             { "db" : "admin", "role" : "restore" },
-            { "db" : "admin", "role" : "pbmAgent" }    ]
+            { "db" : "admin", "role" : "pbmAnyAction" } 
+          ]
         });
       '
     EOT
   }  
 }
 
-# Add shards to the cluster
-resource "null_resource" "add_shards" {
+# Set the global write concern to 1. This is needed when using arbiters
+resource "null_resource" "change_default_write_concern" {
+  count = length(docker_container.arbiter) > 0 ? 1 : 0
   depends_on = [
     docker_container.mongos,
     null_resource.initiate_cfg_replset,
     null_resource.initiate_shard_replset
   ]
-
-  # Set the write concern 
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.mongos[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval '
@@ -216,8 +225,15 @@ resource "null_resource" "add_shards" {
       '
     EOT
   }
+}
 
-  # Run the add shards command 
+# Add the shards to the cluster
+resource "null_resource" "add_shards" {
+  depends_on = [
+    docker_container.mongos,
+    null_resource.initiate_cfg_replset,
+    null_resource.initiate_shard_replset
+  ]
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.mongos[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval '
@@ -255,7 +271,7 @@ resource "null_resource" "configure_pmm_client_cfg" {
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${docker_container.pmm.name}:${var.pmm_port} --server-insecure-tls --force 
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pbm_user} --password=${var.mongodb_pbm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.configsvr_port} --service-name=${each.key} --tls-skip-verify --enable-all-collectors
+      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.configsvr_port} --service-name=${each.key} --tls-skip-verify --enable-all-collectors
     EOT
   }
 }
@@ -272,7 +288,7 @@ resource "null_resource" "configure_pmm_client_shards" {
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${docker_container.pmm.name}:${var.pmm_port} --server-insecure-tls --force 
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pbm_user} --password=${var.mongodb_pbm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.shardsvr_port} --service-name=${each.key} --tls-skip-verify --enable-all-collectors
+      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.shardsvr_port} --service-name=${each.key} --tls-skip-verify --enable-all-collectors
     EOT
   }  
 }
@@ -304,7 +320,7 @@ resource "null_resource" "configure_pmm_client_mongos" {
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${docker_container.pmm.name}:${var.pmm_port} --server-insecure-tls --force 
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pbm_user} --password=${var.mongodb_pbm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.mongos_port} --service-name=${each.key} --tls-skip-verify --enable-all-collectors
+      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.mongos_port} --service-name=${each.key} --tls-skip-verify --enable-all-collectors
     EOT
   }    
 }

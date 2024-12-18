@@ -19,7 +19,7 @@ resource "docker_container" "arbiter" {
     "--bind_ip_all",   
     "--port", "${var.arbiter_port}",
     "--shardsvr",
-    "--keyFile", "/etc/mongo/mongodb-keyfile.key"
+    "--keyFile", "${var.keyfile_path}"
   ]
   ports {
     internal = var.arbiter_port    
@@ -71,7 +71,7 @@ resource "docker_container" "pmm_arb" {
     name = docker_network.mongo_network.id
   }
   ports {
-    internal = 42002
+    internal = var.pmm_client_port
   }    
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]

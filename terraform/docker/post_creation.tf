@@ -263,6 +263,7 @@ resource "null_resource" "configure_pbm" {
 # Configure PMM for config servers
 resource "null_resource" "configure_pmm_client_cfg" {
   depends_on = [
+    docker_container.pmm,
     null_resource.initiate_cfg_replset,
     docker_container.pmm_cfg,
     docker_container.cfg,
@@ -279,6 +280,7 @@ resource "null_resource" "configure_pmm_client_cfg" {
 # Configure PMM for shard servers
 resource "null_resource" "configure_pmm_client_shards" {
   depends_on = [
+    docker_container.pmm,
     null_resource.add_shards,
     null_resource.initiate_shard_replset,
     docker_container.pmm_shard,
@@ -296,6 +298,7 @@ resource "null_resource" "configure_pmm_client_shards" {
 # Configure PMM for arbiters
 resource "null_resource" "configure_pmm_client_arb" {
   depends_on = [
+    docker_container.pmm,
     null_resource.initiate_shard_replset,
     docker_container.pmm_arb, 
     docker_container.arbiter            
@@ -312,6 +315,7 @@ resource "null_resource" "configure_pmm_client_arb" {
 # Configure PMM for mongos routers
 resource "null_resource" "configure_pmm_client_mongos" {
   depends_on = [
+    docker_container.pmm,
     null_resource.add_shards,
     docker_container.pmm_mongos, 
     docker_container.mongos            

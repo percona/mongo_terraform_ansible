@@ -42,15 +42,25 @@ resource "null_resource" "minio_bucket" {
         minio/mc mb minio/${var.bucket_name} --region=${var.minio_region}
     EOT
   }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      docker run --rm --network ${docker_network.mongo_network.name} \
+        -e MC_HOST_minio="http://${var.minio_access_key}:${var.minio_secret_key}@${docker_container.minio.name}:${var.minio_port}" \
+        minio/mc ilm rule add --expire-days ${var.backup_retention} minio/${var.bucket_name} 
+    EOT
+  }  
 }
 
 # PBM CLI container
 resource "docker_container" "pbm_cli" {
+  depends_on = [null_resource.minio_bucket]
+
   name  = "${var.env_tag}-${var.pbm_cli_container_suffix}"
   count = 1
   image = var.pbm_image 
   command = ["/bin/sh", "-c", "while true; do sleep 86400; done;"]
-  env = [ "PBM_MONGODB_URI=pbm:percona@${docker_container.cfg[0].name}:${var.configsvr_port}" ]
+  env = [ "PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.cfg[0].name}:${var.configsvr_port}" ]
   mounts {
     source      = abspath(local_file.storage_config.filename)
     target      = "/etc/pbm-storage.conf"

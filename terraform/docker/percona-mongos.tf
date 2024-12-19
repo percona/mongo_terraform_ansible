@@ -18,7 +18,7 @@ resource "docker_container" "mongos" {
   user = var.uid
   mounts {
     source = abspath(local_file.mongodb_keyfile.filename)
-    target = "/etc/mongo/mongodb-keyfile.key"
+    target = "${var.keyfile_path}"
     type   = "bind"
     read_only = true
   }  
@@ -59,7 +59,7 @@ resource "docker_container" "pmm_mongos" {
     name = docker_network.mongo_network.id
   }
   ports {
-    internal = 42002
+    internal = var.pmm_client_port
   }    
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]

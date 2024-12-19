@@ -22,7 +22,7 @@ resource "docker_container" "cfg" {
     "--dbpath", "/data/db",
     "--oplogSize", "200",
     "--wiredTigerCacheSizeGB", "0.25",    
-    "--keyFile", "/etc/mongo/mongodb-keyfile.key",
+    "--keyFile", "${var.keyfile_path}",
     "--profile", "2",
     "--slowms", "200",
     "--rateLimit", "100"
@@ -59,7 +59,7 @@ resource "docker_container" "cfg" {
 }
 
 resource "docker_container" "pbm_cfg" {
-  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-${var.pbm_image_suffix}"
+  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-${var.pbm_container_suffix}"
   image = var.custom_image 
   count = var.configsvr_count
   user  = 1001
@@ -105,7 +105,7 @@ resource "docker_container" "pmm_cfg" {
     name = docker_network.mongo_network.id
   }
   ports {
-    internal = 42002
+    internal = var.pmm_client_port
   }    
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]

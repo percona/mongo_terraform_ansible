@@ -138,8 +138,8 @@ variable "pmm_client_container_suffix" {
 variable "pmm_port" {
   description = "Port of the PMM server inside docker network"
 # PMM 3 uses 8443
-#  default = "8443"
-  default = "443"
+  default = "8443"
+#  default = "443"
 }
 
 variable "pmm_external_port" {
@@ -256,13 +256,14 @@ variable "pbm_image" {
 
 variable "pmm_server_image" {
   description = "Docker image for PMM server"
-#  default = "percona/pmm-server:3"  
-  default = "percona/pmm-server:2"
+  default = "perconalab/pmm-server:3-dev-latest"  
+#  default = "percona/pmm-server:2"
 }
 
 variable "pmm_client_image" {
   description = "Docker image for PMM client"
-  default = "percona/pmm-client:2"
+  #default = "percona/pmm-client:2"
+  default = "perconalab/pmm-client:3-dev-latest"
 }
 
 variable "renderer_image" {

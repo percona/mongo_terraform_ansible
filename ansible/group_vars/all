@@ -19,7 +19,8 @@ percona_repo: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
 
 # MongoDB version as per "percona-release". Availability of MongoDB version depend on the OS version.
 # e.g. -> Available repositories for centos7: psmdb-36 psmdb-40 psmdb-42 psmdb-44 psmdb-50 psmdb-60
-mongo_release: psmdb-70
+#mongo_release: psmdb-70
+mongo_release: psmdb-80
 
 # packages and router_packages lists are only relevant if copy_files: false
 # you can use a specific version instead of the default `latest` by passing the package names and version e.g. percona-server-mongodb-7.0.12-7.el9
@@ -111,11 +112,22 @@ vault_secret: secret/data/dc/psmongodb1
 ## Monitoring
 ##################
 
-# When true, Use the 'pmm2-client experimental' repo to install unreleased pmm2-client package
-experimental: false
-
+docker_repo: https://download.docker.com/linux/centos/docker-ce.repo
+docker_packages: 
+  - docker-ce 
+  - docker-ce-cli
+  - containerd.io
+  
 # Can also use perconalab/pmm-server-fb:PR-number-hash or perconalab/pmm-server:dev-latest. In that case set experimental to true.
+#pmm_image: perconalab/pmm-server:3-dev-latest
 pmm_image: docker.io/percona/pmm-server:latest
+#pmm_port: 8443
+pmm_port: 443
+pmm_external_port: 443
+
+#pmm_client_repo: pmm2-client experimental  
+#pmm_client_repo: pmm3-client
+pmm_client_repo: pmm2-client
 
 # PMM server parameters
 pmm_dir: /var/lib/docker

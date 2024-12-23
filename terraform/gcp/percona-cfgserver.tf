@@ -40,7 +40,7 @@ resource "google_compute_instance" "cfg" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.env_tag}-${var.configsvr_tag}0${count.index}.${var.env_tag}"
+    hostnamectl set-hostname "${var.env_tag}-${var.configsvr_tag}0${count.index}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts    

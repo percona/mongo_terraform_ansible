@@ -10,7 +10,8 @@ resource "docker_container" "mongos" {
     "--port", "${var.mongos_port}",
     "--keyFile", "/etc/mongo/mongodb-keyfile.key",
     "--slowms", "200",
-    "--rateLimit", "100"    
+    "--rateLimit", "100",
+    "--setParameter", "diagnosticDataCollectionDirectoryPath=/var/log/mongo/mongos.diagnostic.data/"        
   ]    
   ports {
     internal = var.mongos_port

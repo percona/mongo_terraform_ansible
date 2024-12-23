@@ -72,7 +72,7 @@ resource "null_resource" "initiate_cfg_replset" {
           role: "explainRole",
           privileges: [{
             "resource": { "db": "", "collection": "" },
-            "actions": [ "listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find" ]
+            "actions": [ "listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "indexStats", "find" ]
           }, 
           {
             "resource": { "db": "", "collection": "system.profile" },
@@ -176,7 +176,7 @@ resource "null_resource" "initiate_shard_replset" {
           "role": "explainRole",
           "privileges": [{
             "resource": { "db": "", "collection": "" },
-            "actions": ["listIndexes","listCollections","dbStats","dbHash","collStats","find"]
+            "actions": ["listIndexes","listCollections","dbStats","dbHash","collStats","indexStats","find"]
           }, 
           {
             "resource": { "db": "", "collection": "system.profile" },
@@ -272,9 +272,13 @@ resource "null_resource" "configure_pmm_client_cfg" {
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${docker_container.pmm.name}:${var.pmm_port} --server-insecure-tls --force 
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.configsvr_port} --service-name=${each.key} --tls-skip-verify --enable-all-collectors
     EOT
   }
+  provisioner "local-exec" {
+    command = <<-EOT
+      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --environment=${var.env_tag} --cluster ${var.cluster} --username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password} --host=${each.key} --port=${var.configsvr_port} --service-name=${each.key}-mongodb --tls-skip-verify --enable-all-collectors
+    EOT
+  }  
 }
 
 # Configure PMM for shard servers
@@ -290,9 +294,13 @@ resource "null_resource" "configure_pmm_client_shards" {
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${docker_container.pmm.name}:${var.pmm_port} --server-insecure-tls --force 
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.shardsvr_port} --service-name=${each.key} --tls-skip-verify --enable-all-collectors
     EOT
   }  
+  provisioner "local-exec" {
+    command = <<-EOT
+      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --environment=${var.env_tag} --cluster ${var.cluster} --username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password} --host=${each.key} --port=${var.shardsvr_port} --service-name=${each.key}-mongodb --tls-skip-verify --enable-all-collectors
+    EOT
+  }    
 }
 
 # Configure PMM for arbiters
@@ -307,9 +315,13 @@ resource "null_resource" "configure_pmm_client_arb" {
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${docker_container.pmm.name}:${var.pmm_port} --server-insecure-tls --force 
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --cluster ${var.env_tag} --host=${each.key} --port=${var.shardsvr_port} --service-name=${each.key} --tls-skip-verify
     EOT
   }    
+  provisioner "local-exec" {
+    command = <<-EOT
+      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --environment=${var.env_tag} --cluster ${var.cluster} --host=${each.key} --port=${var.shardsvr_port} --service-name=${each.key}-mongodb --tls-skip-verify
+    EOT
+  }     
 }
 
 # Configure PMM for mongos routers
@@ -324,7 +336,11 @@ resource "null_resource" "configure_pmm_client_mongos" {
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${docker_container.pmm.name}:${var.pmm_port} --server-insecure-tls --force 
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password} --cluster ${var.env_tag} --host=${each.key} --port=${var.mongos_port} --service-name=${each.key} --tls-skip-verify --enable-all-collectors
+    EOT
+  }    
+  provisioner "local-exec" {
+    command = <<-EOT
+      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --environment=${var.env_tag} --cluster ${var.cluster} --username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password} --host=${each.key} --port=${var.mongos_port} --service-name=${each.key}-mongodb --tls-skip-verify --enable-all-collectors
     EOT
   }    
 }

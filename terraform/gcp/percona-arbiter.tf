@@ -28,8 +28,12 @@ resource "google_compute_instance" "arbiter" {
     provisioning_model = var.use_spot_instances ? "SPOT" : "STANDARD"
   }
   metadata_startup_script = <<EOT
-    #! /bin/bash
-    echo "Created"
+    #!/bin/bash
+    # Set the hostname
+    hostnamectl set-hostname "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset )}arb${count.index % var.arbiters_per_replset}"
+
+    # Update /etc/hosts to reflect the hostname change
+    echo "127.0.0.1 $(hostname)" >> /etc/hosts    
   EOT
 }
 

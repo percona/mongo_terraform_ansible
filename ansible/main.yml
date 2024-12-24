@@ -620,9 +620,9 @@
       shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:{{ pmm_external_port }} --server-insecure-tls --force
 
     - name: add MongoDB metrics collector 
-      shell: pmm-admin add mongodb --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify --enable-all-collectors
+      shell: pmm-admin add mongodb --environment={{ env_tag }} --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify --enable-all-collectors
       when: arbiter is not defined
 
     - name: add MongoDB metrics collector for arbiter
-      shell: pmm-admin add mongodb --cluster {{ cluster }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify
+      shell: pmm-admin add mongodb --environment={{ env_tag }} --cluster {{ cluster }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify
       when: arbiter is defined

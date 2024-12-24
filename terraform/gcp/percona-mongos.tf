@@ -27,8 +27,12 @@ resource "google_compute_instance" "mongos" {
     provisioning_model = var.use_spot_instances ? "SPOT" : "STANDARD"
   }
   metadata_startup_script = <<EOT
-    #! /bin/bash
-    echo "Created"
+    #!/bin/bash
+    # Set the hostname
+    hostnamectl set-hostname "${var.env_tag}-${var.mongos_tag}0${count.index}"
+
+    # Update /etc/hosts to reflect the hostname change
+    echo "127.0.0.1 $(hostname)" >> /etc/hosts    
   EOT
 }
 

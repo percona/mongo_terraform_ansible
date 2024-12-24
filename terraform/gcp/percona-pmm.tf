@@ -34,7 +34,7 @@ resource "google_compute_instance" "pmm" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.env_tag}-${var.pmm_tag}.${var.env_tag}"
+    hostnamectl set-hostname "${var.env_tag}-${var.pmm_tag}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts  

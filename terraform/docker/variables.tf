@@ -183,6 +183,16 @@ variable "cluster" {
 }
 
 #############
+# YCSB
+#############
+
+variable "ycsb_container_suffix" {
+  default = "ycsb"
+  description = "Suffix for YCSB container"
+}
+
+
+#############
 # PBM
 #############
 
@@ -281,11 +291,22 @@ variable "base_os_image" {
   #default = "quay.io/centos/centos:stream9"
   #default = "oraclelinux:8"
   default = "redhat/ubi9-minimal"
+  #default = "redhat/ubi9"
+}
+
+variable "ycsb_os_image" {
+  description = "Base OS image for the custom Docker image created with YCSB"
+  default = "redhat/ubi8"
 }
 
 variable "custom_image" {
   description = "Name of the local Docker image to be created for pbm-agent + current mongod version. Required for physical restores"
   default = "percona-backup-mongodb-agent-custom"
+}
+
+variable "ycsb_image" {
+  description = "Name of the local Docker image to be created for YCSB benchmark"
+  default = "ycsb"
 }
 
 variable "minio_image" {

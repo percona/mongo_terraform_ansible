@@ -1,0 +1,5 @@
+FROM ${ ycsb_os_image }
+
+
+RUN yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && yum -y install python2 java-1.8.0-openjdk && ln -s /usr/bin/python2 /usr/bin/python 
+RUN curl -O --location https://github.com/brianfrankcooper/YCSB/releases/download/0.17.0/ycsb-0.17.0.tar.gz && tar xfvz ycsb-0.17.0.tar.gz && mv ycsb-0.17.0 ycsb

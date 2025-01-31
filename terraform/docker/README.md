@@ -97,3 +97,24 @@ For the backup storage, a MinIO server is deployed and a storage bucket is confi
   ```
   terraform destroy
   ```
+
+## Running a workload
+
+- To be able to run test workloads, a YCSB container is created as part of the stack. A sharded `ycsb` collection is automatically created with `{_id: hashed }` as the shard key. 
+
+To run a YCSB workload:
+
+1. Start a shell session inside the YCSB container
+````
+docker exec -it test-ycsb /bin/bash
+```
+
+2. Perform initial data load
+````
+/ycsb/bin/ycsb.sh load mongodb -P /ycsb/workloads/workloada -p mongodb.url="mongodb://root:percona@test-mongos00:27017/"
+```
+
+3. Run the benchmark
+```
+/ycsb/bin/ycsb.sh run mongodb -s -P /ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url="mongodb://root:percona@test-mongos00:27017/"
+```

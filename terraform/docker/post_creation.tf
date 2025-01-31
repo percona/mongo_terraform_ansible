@@ -344,3 +344,15 @@ resource "null_resource" "configure_pmm_client_mongos" {
     EOT
   }    
 }
+
+# Create the YCSB collection
+resource "null_resource" "create_ycsb_collection" {
+  depends_on = [
+    null_resource.add_shards
+  ]
+  provisioner "local-exec" {
+    command = <<-EOT
+      docker exec -i ${docker_container.mongos[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval 'sh.enableSharding("ycsb"); sh.shardCollection("ycsb.usertable", { "_id" : "hashed" }, false, { numInitialChunks : 100 });'
+    EOT
+  }
+}

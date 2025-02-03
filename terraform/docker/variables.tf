@@ -37,7 +37,7 @@ variable "mongos_count" {
 }
 
 ######################
-# Security Credentials 
+# Security Credentials
 ######################
 
 variable "keyfile" {
@@ -52,12 +52,12 @@ variable "keyfile_path" {
 
 variable "mongodb_root_user" {
   default = "root"
-  description = "MongoDB user to be created with root perms"  
+  description = "MongoDB user to be created with root perms"
 }
 
 variable "mongodb_root_password" {
   default = "percona"
-  description = "MongoDB root user password"  
+  description = "MongoDB root user password"
 }
 
 ################
@@ -137,9 +137,9 @@ variable "pmm_client_container_suffix" {
 
 variable "pmm_port" {
   description = "Port of the PMM server inside docker network"
-# PMM 3 uses 8443
-#  default = "8443"
-  default = "443"
+  # PMM 3 uses 8443. PMM 2 uses 443
+  # default = "443"
+  default = "8443"
 }
 
 variable "pmm_external_port" {
@@ -169,12 +169,12 @@ variable "pmm_password" {
 
 variable "mongodb_pmm_user" {
   default = "pmm"
-  description = "MongoDB user to be created with for PBM"  
+  description = "MongoDB user to be created with for PBM"
 }
 
 variable "mongodb_pmm_password" {
   default = "percona"
-  description = "MongoDB PBM user password"  
+  description = "MongoDB PBM user password"
 }
 
 variable "cluster" {
@@ -208,12 +208,12 @@ variable "pbm_cli_container_suffix" {
 
 variable "mongodb_pbm_user" {
   default = "pbmuser"
-  description = "MongoDB user to be created with for PBM"  
+  description = "MongoDB user to be created with for PBM"
 }
 
 variable "mongodb_pbm_password" {
   default = "percona"
-  description = "MongoDB PBM user password"  
+  description = "MongoDB PBM user password"
 }
 
 #############
@@ -245,7 +245,7 @@ variable "minio_secret_key" {
   default = "minioadmin"
 }
 
-variable "bucket_name" { 
+variable "bucket_name" {
   default = "mongo-backups"
   description = "S3-compatible storage to put backups"
  }
@@ -271,13 +271,13 @@ variable "pbm_image" {
 
 variable "pmm_server_image" {
   description = "Docker image for PMM server"
-  #default = "perconalab/pmm-server:3-dev-latest"  
-  default = "percona/pmm-server:2"
+  #default = "perconalab/pmm-server:3-dev-latest"
+  default = "percona/pmm-server:3"
 }
 
 variable "pmm_client_image" {
   description = "Docker image for PMM client"
-  default = "percona/pmm-client:2"
+  default = "percona/pmm-client:3"
   #default = "perconalab/pmm-client:3-dev-latest"
 }
 

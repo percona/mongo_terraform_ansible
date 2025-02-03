@@ -110,7 +110,7 @@ docker exec -it test-ycsb /bin/bash
 ```
 
 2. Perform initial data load
-````
+```
 /ycsb/bin/ycsb.sh load mongodb -P /ycsb/workloads/workloada -p mongodb.url="mongodb://root:percona@test-mongos00:27017/"
 ```
 

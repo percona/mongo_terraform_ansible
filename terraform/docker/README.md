@@ -105,7 +105,7 @@ For the backup storage, a MinIO server is deployed and a storage bucket is confi
 To run a YCSB workload:
 
 1. Start a shell session inside the YCSB container
-````
+```
 docker exec -it test-ycsb /bin/bash
 ```
 

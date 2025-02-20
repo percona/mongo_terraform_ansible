@@ -18,9 +18,31 @@ resource "null_resource" "initiate_cfg_replset" {
     EOT
   }
 
-  # Wait for RS to be finish initializing
+  # Wait for primary to be elected
   provisioner "local-exec" {
-    command = "sleep 20"
+    command = <<-EOT
+      retries=30
+      success=false
+      while [ $retries -gt 0 ]; do
+        # Check the replica set status and look for a primary
+        primary=$(docker exec -i ${docker_container.cfg[0].name} mongosh --port ${var.configsvr_port} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
+        
+        if [ "$primary" == "true" ]; then
+          echo "Primary has been elected in config server replica set"
+          success=true
+          break
+        fi
+        
+        echo "Waiting for primary to be elected... retries left: $retries"
+        retries=$((retries - 1))
+        sleep 5
+      done
+
+      if [ "$success" == "false" ]; then
+        echo "Primary not elected after maximum retries. Exiting."
+        exit 1
+      fi
+    EOT
   }
 
   # Create root user on the config servers
@@ -120,11 +142,28 @@ resource "null_resource" "initiate_shard_replset" {
           ]
         });
       '
-    EOT
-  }
+      retries=30
+      success=false
+      while [ $retries -gt 0 ]; do
+        # Check the replica set status and look for a primary for the shard
+        primary=$(docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh --port ${var.shardsvr_port} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
+        
+        if [ "$primary" == "true" ]; then
+          echo "Primary has been elected in shard ${each.key}"
+          success=true
+          break
+        fi
+        
+        echo "Waiting for primary to be elected in shard ${each.key}... retries left: $retries"
+        retries=$((retries - 1))
+        sleep 5
+      done
 
-  provisioner "local-exec" {
-    command = "sleep 20"
+      if [ "$success" == "false" ]; then
+        echo "Primary not elected in shard ${each.key} after maximum retries. Exiting."
+        exit 1
+      fi
+    EOT
   }
 
   # Create the root user on the shards
@@ -264,6 +303,7 @@ resource "null_resource" "configure_pbm" {
 resource "null_resource" "configure_pmm_client_cfg" {
   depends_on = [
     docker_container.pmm,
+    null_resource.add_shards,    
     null_resource.initiate_cfg_replset,
     docker_container.pmm_cfg,
     docker_container.cfg,

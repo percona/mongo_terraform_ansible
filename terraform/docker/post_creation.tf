@@ -27,7 +27,7 @@ resource "null_resource" "initiate_cfg_replset" {
         # Check the replica set status and look for a primary
         primary=$(docker exec -i ${docker_container.cfg[0].name} mongosh --port ${var.configsvr_port} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
         
-        if [ "$primary" == "true" ]; then
+        if test "$primary" = "true"; then
           echo "Primary has been elected in config server replica set"
           success=true
           break
@@ -38,7 +38,7 @@ resource "null_resource" "initiate_cfg_replset" {
         sleep 5
       done
 
-      if [ "$success" == "false" ]; then
+      if test "$success" = "false"; then
         echo "Primary not elected after maximum retries. Exiting."
         exit 1
       fi
@@ -148,7 +148,7 @@ resource "null_resource" "initiate_shard_replset" {
         # Check the replica set status and look for a primary for the shard
         primary=$(docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh --port ${var.shardsvr_port} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
         
-        if [ "$primary" == "true" ]; then
+        if test "$primary" = "true"; then
           echo "Primary has been elected in shard ${each.key}"
           success=true
           break
@@ -159,7 +159,7 @@ resource "null_resource" "initiate_shard_replset" {
         sleep 5
       done
 
-      if [ "$success" == "false" ]; then
+      if test "$success" = "false" ; then
         echo "Primary not elected in shard ${each.key} after maximum retries. Exiting."
         exit 1
       fi
@@ -311,6 +311,7 @@ resource "null_resource" "configure_pmm_client_cfg" {
   for_each = toset([for i in docker_container.cfg : tostring(i.name)])
   provisioner "local-exec" {
     command = <<-EOT
+      sleep 10
       docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${docker_container.pmm.name}:${var.pmm_port} --server-insecure-tls --force 
     EOT
   }

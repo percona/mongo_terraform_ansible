@@ -8,9 +8,9 @@ resource "docker_container" "arbiter" {
   name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
   image = var.psmdb_image 
   mounts {
-    source = abspath(local_file.mongodb_keyfile.filename)
-    target = "/etc/mongo/mongodb-keyfile.key"
-    type   = "bind"
+    source = docker_volume.keyfile_volume.name
+    target = "${var.keyfile_path}"
+    type   = "volume"
     read_only = true
   }  
   command = [
@@ -19,7 +19,7 @@ resource "docker_container" "arbiter" {
     "--bind_ip_all",   
     "--port", "${var.arbiter_port}",
     "--shardsvr",
-    "--keyFile", "${var.keyfile_path}"
+    "--keyFile", "${var.keyfile_path}/${var.keyfile_name}"
   ]
   ports {
     internal = var.arbiter_port    
@@ -50,6 +50,7 @@ resource "docker_container" "arbiter" {
   }   
   wait = true
   restart = "no"
+  depends_on = [docker_container.init_keyfile_container]
 }
 
 resource "docker_volume" "arb_volume_pmm" {

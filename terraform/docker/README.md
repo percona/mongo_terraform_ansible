@@ -5,13 +5,15 @@ Deploy the full stack of Percona MongoDB software on Docker containers:
 - Percona Server for MongoDB
 - Percona Backup for MongoDB
 - PMM Client
-- PMM Server 
+- PMM Server with Grafana Renderer
 
-For the backup storage, a MinIO server is deployed and a storage bucket is configured as the backup destination for PBM.
+For the backup storage, a MinIO server is deployed and a storage bucket is configured as the backup destination for PBM. Logical and physical backup functionality works. 
 
 ## Pre-requisites
 
-- For a Macbook it is recommended to install Homebrew. From a Terminal run:
+### Mac
+
+- It is recommended to install Homebrew. From a Terminal run:
   
   ```
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -23,17 +25,48 @@ For the backup storage, a MinIO server is deployed and a storage bucket is confi
   brew install terraform
   ```
   
-  See the [Terraform installation documentation](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli#install-terraform) for detailed instructions on other platforms.
+  See the [Terraform installation documentation](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli#install-terraform) for detailed instructions.
 
 - Install Docker. Using Homebrew run:
   
   ```
   brew install docker --cask
   ```
-  
-  See the [Docker installation documentation](https://docs.docker.com/engine/install/) for detailed instructions on other platforms.
 
-- Start Docker Desktop by opening the Docker app.
+You can check the [Docker installation documentation](https://docs.docker.com/engine/install/) for detailed instructions.
+
+- Start Docker Desktop by opening the Docker app using the Finder.
+
+- Go to Settings -> Advanced. Make sure you have ticked the option `Allow the default Docker socket to be used (requires password)`
+
+### Windows
+
+- Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+  Open PowerShell or Windows Command Prompt in administrator mode by right-clicking and selecting "Run as administrator".
+
+  ```
+  wsl --install
+  ```
+
+- Install a Linux distribution. For example:
+```
+wsl --install -d  Ubuntu
+```
+
+- Open `Ubuntu` app from Windows Menu and proceed with the creation of a Linux user and password of your choice.
+
+- [Install Terraform](https://developer.hashicorp.com/terraform/install) inside Linux. Example for Ubuntu:
+
+  ```
+  wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+  sudo apt update && sudo apt install terraform
+  ```
+
+- Install [Docker Desltop on WSL](https://docs.docker.com/desktop/features/wsl/#turn-on-docker-desktop-wsl-2). Depending on which version of Windows you are using, Docker Desktop may prompt you to turn on WSL 2 during installation.
+
+
+## Initial Installation
 
 0. Clone this repository on your machine
 
@@ -53,9 +86,11 @@ For the backup storage, a MinIO server is deployed and a storage bucket is confi
     terraform init
     ```
 
-## Quick guide
+## User Guide
 
-1. Review and edit the configuration file if needed. By default a 2-shard cluster is deployed, where each shard is 3 node Replica Set.
+- By default a 2-shard cluster is deployed, where each shard is a 3-node Replica Set using a PSA topology.
+
+1. Review and edit the configuration file as needed.
 
 
     ```
@@ -68,11 +103,12 @@ For the backup storage, a MinIO server is deployed and a storage bucket is confi
     terraform apply
     ``` 
 
-3. Check that created containers are running correctly
+3. Check that all the created containers are running correctly
 
     ```
     docker ps -a
     ```
+    Status should be say `Up` and `healthy`.
 
 4. Connect to a mongos router to access the cluster. For example:
 
@@ -81,26 +117,26 @@ For the backup storage, a MinIO server is deployed and a storage bucket is confi
     sh.status()
     ```
 
-- Access PMM Server by opening a web browser at https://127.0.0.1:443. The default credentials are admin/admin
-- A `pbm-cli` container is deployed where you can run PBM commands. Example:
+- You can access the PMM Server by opening a web browser at https://127.0.0.1:443. The default credentials are `admin/admin`.
+- A dedicated `pbm-cli` container is deployed where you can run PBM commands. Example:
   ```
   docker exec -it test-pbm-cli pbm status
   ```
-- Access the Minio web interface at http://127.0.0.1:9001 to see the backup storage. The default credentials are minio/minioadmin
-- Grafana renderer is installed and configured in order to be able to export PMM graphs as PNG
-- There is no need to run the Ansible playbooks when deploying MongoDB via the Docker images
+- You can access the Minio web interface at http://127.0.0.1:9001 to inspect the backup storage/files. The default credentials are `minio/minioadmin`.
+- Grafana renderer is installed and configured in order to be able to export any PMM graphic as a PNG image.
+- There is no need to run the Ansible playbook for the Docker deployments.
 
 
 ## Cleanup
 
-1. Run terraform to remove all the resources 
+1. Run terraform to remove all the resources and start from scratch
   ```
   terraform destroy
   ```
 
 ## Running a workload
 
-- To be able to run test workloads, a YCSB container is created as part of the stack. A sharded `ycsb` collection is automatically created with `{_id: hashed }` as the shard key. 
+- To be able to run test workloads, a YCSB container is created as part of the stack. A sharded `ycsb.usertable` collection is automatically created with `{_id: hashed }` as the shard key. 
 
 To run a YCSB workload:
 
@@ -109,7 +145,7 @@ To run a YCSB workload:
 docker exec -it test-ycsb /bin/bash
 ```
 
-2. Perform initial data load
+2. Perform initial data load against one of the mongos containers, using the correct credentials and port number.
 ```
 /ycsb/bin/ycsb.sh load mongodb -P /ycsb/workloads/workloada -p mongodb.url="mongodb://root:percona@test-mongos00:27017/"
 ```

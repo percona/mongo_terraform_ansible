@@ -40,14 +40,19 @@ variable "mongos_count" {
 # Security Credentials
 ######################
 
-variable "keyfile" {
+variable "keyfile_contents" {
   default = "KYYVuRIooX+S2Ee6GDUpYiI6rpx879XYYwWD44tF/WtogW0o8Z4Ua0/Fs+Nez4GO"
   description = "Content of the keyfile for MongoDB replicaset member authentication"
 }
 
 variable "keyfile_path" {
-  default = "/etc/mongo/mongodb-keyfile.key"
+  default = "/etc/mongo"
   description = "Path to the keyfile on MongoDB containers"
+}
+
+variable "keyfile_name" {
+  default = "mongodb-keyfile.key"
+  description = "Name of the file containing the keyfile on MongoDB containers"
 }
 
 variable "mongodb_root_user" {

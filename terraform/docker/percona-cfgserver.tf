@@ -7,9 +7,9 @@ resource "docker_container" "cfg" {
   name = "${var.env_tag}-${var.configsvr_tag}0${count.index}"
   image = var.psmdb_image 
   mounts {
-    source = abspath(local_file.mongodb_keyfile.filename)
-    target = "/etc/mongo/mongodb-keyfile.key"
-    type   = "bind"
+    source = docker_volume.keyfile_volume.name
+    target = "${var.keyfile_path}"
+    type   = "volume"
     read_only = true
   }  
   count = var.configsvr_count
@@ -22,7 +22,7 @@ resource "docker_container" "cfg" {
     "--dbpath", "/data/db",
     "--oplogSize", "200",
     "--wiredTigerCacheSizeGB", "0.25",    
-    "--keyFile", "${var.keyfile_path}",
+    "--keyFile", "${var.keyfile_path}/${var.keyfile_name}",
     "--profile", "2",
     "--slowms", "200",
     "--rateLimit", "100"
@@ -56,13 +56,14 @@ resource "docker_container" "cfg" {
   }
   wait = true
   restart = "no"
+  depends_on = [docker_container.init_keyfile_container]
 }
 
 resource "docker_container" "pbm_cfg" {
   name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-${var.pbm_container_suffix}"
   image = var.custom_image 
   count = var.configsvr_count
-  user  = 1001
+  user  = var.uid
   command = [
     "pbm-agent"
   ]  

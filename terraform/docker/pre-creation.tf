@@ -18,10 +18,32 @@ locals {
   })    
 }
 
-resource "local_file" "mongodb_keyfile" {
-  filename = "${path.module}/mongodb-keyfile.key"
-  content  = var.keyfile
-  file_permission = "0600"
+resource "docker_volume" "keyfile_volume" {
+  name = "shared_keyfile"
+}
+
+resource "docker_container" "init_keyfile_container" {
+  name  = "init_keyfile_container"
+  image = var.base_os_image
+  command = [
+    "sh",
+    "-c",
+    "echo '${var.keyfile_contents}' > /mnt/${var.keyfile_name} && chmod 600 /mnt/${var.keyfile_name} && chown ${var.uid} /mnt/${var.keyfile_name}"
+  ]
+  mounts {
+    target = "/mnt"
+    source = docker_volume.keyfile_volume.name
+    type   = "volume"
+  }
+  user = "root"
+  must_run = false
+}
+
+resource "null_resource" "remove_init_keyfile_container" {
+  depends_on = [docker_container.init_keyfile_container]
+  provisioner "local-exec" {
+    command = "docker rm -f init_keyfile_container"
+  }
 }
 
 resource "local_file" "storage_config" {

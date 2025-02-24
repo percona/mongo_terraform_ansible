@@ -8,7 +8,7 @@ resource "docker_container" "mongos" {
     "--configdb", "${lookup({for label in docker_container.cfg[0].labels : label.label => label.value}, "replsetName", null)}/${join(",", [for i in range(var.configsvr_count) : "${docker_container.cfg[i].name}:${var.configsvr_port}" ])}",
     "--bind_ip_all",    
     "--port", "${var.mongos_port}",
-    "--keyFile", "/etc/mongo/mongodb-keyfile.key",
+    "--keyFile", "${var.keyfile_path}/${var.keyfile_name}",
     "--slowms", "200",
     "--rateLimit", "100",
     "--setParameter", "diagnosticDataCollectionDirectoryPath=/var/log/mongo/mongos.diagnostic.data/"        
@@ -18,9 +18,9 @@ resource "docker_container" "mongos" {
   }  
   user = var.uid
   mounts {
-    source = abspath(local_file.mongodb_keyfile.filename)
+    source = docker_volume.keyfile_volume.name
     target = "${var.keyfile_path}"
-    type   = "bind"
+    type   = "volume"
     read_only = true
   }  
   labels { 
@@ -39,6 +39,7 @@ resource "docker_container" "mongos" {
   }  
   wait = true
   restart = "no"
+  depends_on = [docker_container.init_keyfile_container]
 }
 
 resource "docker_volume" "mongos_volume_pmm" {

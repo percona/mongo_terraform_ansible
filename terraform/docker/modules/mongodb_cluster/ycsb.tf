@@ -1,10 +1,9 @@
 resource "docker_container" "ycsb" {
-  depends_on = [null_resource.docker_build_ycsb]
   name = "${var.env_tag}-${var.ycsb_container_suffix}"
   image = var.ycsb_image 
   command = [ "sleep", "infinity"]
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = "${var.network_name}"
   }
   healthcheck {
     test        = ["CMD-SHELL", "/ycsb/bin/ycsb --help"]

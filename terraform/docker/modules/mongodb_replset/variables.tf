@@ -1,65 +1,117 @@
-################
-# Project
-################
+variable "rs_name" {
+  description = "Name of the MongoDB replicaset"
+  default = "rs01"
+}
 
 variable "env_tag" {
   description = "Name of the Environment"
-  default = "docker"
+  default = "qa"
 }
 
-variable "clusters" {
-  description = "MongoDB cluster configurations"
-  type = map(object({
-    env_tag               = optional(string, "test")                # Name of Environment for the cluster
-    configsvr_count       = optional(number, 3)                     # Number of config servers to be used
-    shard_count           = optional(number, 2)                     # Number of shards to be used
-    shardsvr_replicas     = optional(number, 2)                     # How many data bearing nodes per shard
-    arbiters_per_replset  = optional(number, 1)                     # Number of arbiters per replica set
-    mongos_count          = optional(number, 2)                     # Number of mongos to provision
-    pmm_host              = optional(string, "docker-pmm-server")   # Hostname of PMM server
-    pmm_port              = optional(number, 8443)                  # Port of PMM Server
-    minio_server          = optional(string, "docker-minio")        # Hostname of Minio server
-    minio_port            = optional(number, 9000)                  # Port of Minio Server
-  }))
+##################
+# MongoDB topology
+##################
 
-  default = {
-    test01 = {
-      env_tag = "test"
-    }
-    prod01 = {
-      env_tag = "prod"
-      mongos_count = 1
-    }
-  }
+variable "data_nodes_per_replset" {
+  default = "2"
+  description = "How many data bearing nodes per replset"
 }
 
-# variable "replsets" {
-#   description = "MongoDB replica set configurations"
-#   type = map(object({
-#     env_tag          = optional(string, "test")  # Name of Environment
-#     data_nodes_per_replset      = optional(number, 2)       # Number of data bearing members per replset
-#     arbiters_per_replset = optional(number, 1)   # Number of arbiters per replica set
-#     pmm_host          = optional(string, "docker-pmm-server")  # Hostname of PMM server
-#     pmm_port          = optional(number, 8443)   # Port of PMM Server
-#     minio_server      = optional(string, "docker-minio") 
-#     minio_port        = optional(number, 9000)
-#   }))
+variable "arbiters_per_replset" {
+  default = "1"
+  description = "Number of arbiters per replica set"
+}
 
-#   default = {
-#     rs01 = {
-#       env_tag = "test"
-#     }
-#     rs02 = {
-#       env_tag = "prod"
-#     }
-#   }
-# }
+######################
+# Security Credentials
+######################
+
+variable "keyfile_contents" {
+  default = "KYYVuRIooX+S2Ee6GDUpYiI6rpx879XYYwWD44tF/WtogW0o8Z4Ua0/Fs+Nez4GO"
+  description = "Content of the keyfile for MongoDB replicaset member authentication"
+}
+
+variable "keyfile_path" {
+  default = "/etc/mongo"
+  description = "Path to the keyfile on MongoDB containers"
+}
+
+variable "keyfile_name" {
+  default = "mongodb-keyfile.key"
+  description = "Name of the file containing the keyfile on MongoDB containers"
+}
+
+variable "mongodb_root_user" {
+  default = "root"
+  description = "MongoDB user to be created with root perms"
+}
+
+variable "mongodb_root_password" {
+  default = "percona"
+  description = "MongoDB root user password"
+}
+
+################
+# Shards
+################
+
+variable "shardsvr_tag" {
+  description = "Name of the shard servers"
+  default = "shard"
+}
+
+variable "shardsvr_port" {
+  description = "Port of the mongod servers"
+  default = "27018"
+}
+
+################
+# CSRS
+################
+
+variable "configsvr_tag" {
+  description = "Name of the config servers"
+  default = "cfg"
+}
+
+variable "configsvr_port" {
+  description = "Port of the mongod config servers"
+  default = "27019"
+}
+
+################
+# Mongos routers
+################
+
+variable "mongos_tag" {
+  description = "Name of the mongos router servers"
+  default = "mongos"
+}
+
+variable "mongos_port" {
+  description = "Port of the mongos router servers"
+  default = "27017"
+}
+
+#############
+# Arbiters
+#############
+
+variable "arbiter_tag" {
+  description = "Name of the arbiter servers"
+  default = "arb"
+}
+
+variable "arbiter_port" {
+  description = "Port of the arbiter servers"
+  default = "27018"
+}
 
 #############
 # PMM
 #############
 
-variable "pmm_tag" {
+variable "pmm_host" {
   description = "Name of the PMM server"
   default = "pmm-server"
 }
@@ -116,6 +168,35 @@ variable "mongodb_pmm_password" {
   description = "MongoDB PBM user password"
 }
 
+variable "cluster" {
+  description = "Name of the cluster as seen on PMM server"
+  default = "docker-test"
+}
+
+
+#############
+# PBM
+#############
+
+variable "pbm_container_suffix" {
+  default = "pbm-agent"
+  description = "Suffix for PBM agent containers. Will be appended to each cluster component"
+}
+
+variable "pbm_cli_container_suffix" {
+  default = "pbm-cli"
+  description = "Suffix for PBM CLI container"
+}
+
+variable "mongodb_pbm_user" {
+  default = "pbmuser"
+  description = "MongoDB user to be created with for PBM"
+}
+
+variable "mongodb_pbm_password" {
+  default = "percona"
+  description = "MongoDB PBM user password"
+}
 
 #############
 # Bucket
@@ -159,16 +240,6 @@ variable "backup_retention" {
 ###############
 # Docker Images
 ###############
-
-variable "renderer_image" {
-  description = "Docker image for Grafana renderer container"
-  default = "grafana/grafana-image-renderer:latest"
-}
-
-variable "minio_image" {
-  description = "Minio Docker image"
-  default = "minio/minio"
-}
 
 variable "psmdb_image" {
   description = "Docker image for MongoDB"
@@ -218,6 +289,15 @@ variable "ycsb_image" {
 variable "uid" {
   description = "The user id under which the main process runs in the container created for pbm-agent + current mongod version"
   default = 1001
+}
+
+#############
+# YCSB
+#############
+
+variable "ycsb_container_suffix" {
+  default = "ycsb"
+  description = "Suffix for YCSB container"
 }
 
 #############

@@ -3,7 +3,7 @@ storage:
  s3:
      region: ${ minio_region }
      bucket: ${ bucket_name }
-     prefix: ${ env_tag }
+     prefix: ${ cluster_name }
      endpointUrl: http://${ minio_server }:${ minio_port }
      credentials:
        access-key-id: ${ minio_access_key }

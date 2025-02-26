@@ -1,11 +1,11 @@
-resource "docker_volume" "shard_volume" {
+resource "docker_volume" "rs_volume" {
   count = var.data_nodes_per_replset
-  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-data"
+  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-data"
 }
 
-resource "docker_container" "shard" {
+resource "docker_container" "rs" {
   count = var.data_nodes_per_replset
-  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}"
+  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}"
   image = var.psmdb_image
   mounts {
     source = docker_volume.keyfile_volume.name
@@ -15,10 +15,9 @@ resource "docker_container" "shard" {
   }  
   command = [
     "mongod",
-    "--replSet", "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.data_nodes_per_replset)}",  
+    "--replSet", "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}",  
     "--bind_ip_all",    
-    "--port", "${var.shardsvr_port}",
-    "--shardsvr",
+    "--port", "${var.replset_port}",
     "--oplogSize", "200",
     "--wiredTigerCacheSizeGB", "0.25",      
     "--keyFile", "${var.keyfile_path}/${var.keyfile_name}",
@@ -28,11 +27,11 @@ resource "docker_container" "shard" {
   ]  
   user = var.uid
   ports {
-    internal = var.shardsvr_port
+    internal = var.replset_port
   }  
   labels { 
     label = "replsetName"
-    value = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.data_nodes_per_replset)}"
+    value = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}"
   }    
   labels { 
     label = "environment"
@@ -44,10 +43,10 @@ resource "docker_container" "shard" {
   mounts {
     type = "volume"
     target = "/data/db"
-    source = docker_volume.shard_volume[count.index].name
+    source = docker_volume.rs_volume[count.index].name
   }
   healthcheck {
-    test        = ["CMD-SHELL", "mongosh --port ${var.shardsvr_port} --eval 'db.runCommand({ ping: 1 })'"]
+    test        = ["CMD-SHELL", "mongosh --port ${var.replset_port} --eval 'db.runCommand({ ping: 1 })'"]
     interval    = "10s"
     timeout     = "10s"
     retries     = 5
@@ -58,19 +57,19 @@ resource "docker_container" "shard" {
   depends_on = [docker_container.init_keyfile_container]
 }
 
-resource "docker_container" "pbm_shard" {
-  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-${var.pbm_container_suffix}"
+resource "docker_container" "pbm_rs" {
+  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-${var.pbm_container_suffix}"
   count = var.data_nodes_per_replset
   image = var.custom_image 
   user  = var.uid
   command = [
     "pbm-agent"
   ]  
-  env = [ "PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.shard[count.index].name}:${var.shardsvr_port}" ]
+  env = [ "PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.rs[count.index].name}:${var.replset_port}" ]
   mounts {
     type = "volume"
     target = "/data/db"
-    source = docker_volume.shard_volume[count.index].name
+    source = docker_volume.rs_volume[count.index].name
   }
   networks_advanced {
     name = "${var.network_name}"
@@ -86,20 +85,20 @@ resource "docker_container" "pbm_shard" {
   restart = "on-failure"
 }
 
-resource "docker_volume" "shard_volume_pmm" {
+resource "docker_volume" "rs_volume_pmm" {
   count = var.data_nodes_per_replset
-  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-pmm-client-data"
+  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-pmm-client-data"
 }
 
-resource "docker_container" "pmm_shard" {
-  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-${var.pmm_client_container_suffix}"
+resource "docker_container" "pmm_rs" {
+  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-${var.pmm_client_container_suffix}"
   image = var.pmm_client_image 
   count = var.data_nodes_per_replset
   env = [ "PMM_AGENT_SERVER_ADDRESS=${var.pmm_host}:${var.pmm_port}", "PMM_AGENT_SERVER_USERNAME=${var.pmm_user}", "PMM_AGENT_SERVER_PASSWORD=${var.pmm_password}", "PMM_AGENT_SERVER_INSECURE_TLS=1", "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {
     type = "volume"
     target = "/srv"
-    source = docker_volume.shard_volume_pmm[count.index].name
+    source = docker_volume.rs_volume_pmm[count.index].name
   }
   networks_advanced {
     name = "${var.network_name}"

@@ -1,6 +1,5 @@
 resource "docker_container" "ycsb" {
-  depends_on = [null_resource.docker_build_ycsb]
-  name = "${var.env_tag}-${var.ycsb_container_suffix}"
+  name = "${var.rs_name}-${var.ycsb_container_suffix}"
   image = var.ycsb_image 
   command = [ "sleep", "infinity"]
   networks_advanced {

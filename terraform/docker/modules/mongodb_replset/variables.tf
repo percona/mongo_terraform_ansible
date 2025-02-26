@@ -51,45 +51,17 @@ variable "mongodb_root_password" {
   description = "MongoDB root user password"
 }
 
-################
-# Shards
-################
+######################
+# Data bearing members
+######################
 
-variable "shardsvr_tag" {
-  description = "Name of the shard servers"
-  default = "shard"
+variable "replset_tag" {
+  description = "Name of the replicaset servers"
+  default = "svr"
 }
 
-variable "shardsvr_port" {
-  description = "Port of the mongod servers"
-  default = "27018"
-}
-
-################
-# CSRS
-################
-
-variable "configsvr_tag" {
-  description = "Name of the config servers"
-  default = "cfg"
-}
-
-variable "configsvr_port" {
-  description = "Port of the mongod config servers"
-  default = "27019"
-}
-
-################
-# Mongos routers
-################
-
-variable "mongos_tag" {
-  description = "Name of the mongos router servers"
-  default = "mongos"
-}
-
-variable "mongos_port" {
-  description = "Port of the mongos router servers"
+variable "replset_port" {
+  description = "Port of the replset servers"
   default = "27017"
 }
 
@@ -104,7 +76,7 @@ variable "arbiter_tag" {
 
 variable "arbiter_port" {
   description = "Port of the arbiter servers"
-  default = "27018"
+  default = "27017"
 }
 
 #############
@@ -167,12 +139,6 @@ variable "mongodb_pmm_password" {
   default = "percona"
   description = "MongoDB PBM user password"
 }
-
-variable "cluster" {
-  description = "Name of the cluster as seen on PMM server"
-  default = "docker-test"
-}
-
 
 #############
 # PBM
@@ -249,12 +215,6 @@ variable "psmdb_image" {
 variable "pbm_image" {
   description = "Docker image for PBM"
   default = "percona/percona-backup-mongodb:latest"
-}
-
-variable "pmm_server_image" {
-  description = "Docker image for PMM server"
-  #default = "perconalab/pmm-server:3-dev-latest"
-  default = "percona/pmm-server:3"
 }
 
 variable "pmm_client_image" {

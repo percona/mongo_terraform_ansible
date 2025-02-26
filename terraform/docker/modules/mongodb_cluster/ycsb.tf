@@ -1,5 +1,5 @@
 resource "docker_container" "ycsb" {
-  name = "${var.env_tag}-${var.ycsb_container_suffix}"
+  name = "${var.cluster_name}-${var.ycsb_container_suffix}"
   image = var.ycsb_image 
   command = [ "sleep", "infinity"]
   networks_advanced {

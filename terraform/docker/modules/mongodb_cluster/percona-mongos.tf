@@ -1,7 +1,7 @@
 # Create Docker containers for MongoDB mongos
 resource "docker_container" "mongos" {
   count = var.mongos_count
-  name  = "${var.env_tag}-${var.mongos_tag}0${count.index}"
+  name  = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
   image = var.psmdb_image
   command = [
     "mongos",
@@ -43,12 +43,12 @@ resource "docker_container" "mongos" {
 }
 
 resource "docker_volume" "mongos_volume_pmm" {
-  name  = "${var.env_tag}-${var.mongos_tag}0${count.index}-pmm-client-data"
+  name  = "${var.cluster_name}-${var.mongos_tag}0${count.index}-pmm-client-data"
   count = var.mongos_count
 }
 
 resource "docker_container" "pmm_mongos" {
-  name  = "${var.env_tag}-${var.mongos_tag}0${count.index}-${var.pmm_client_container_suffix}"
+  name  = "${var.cluster_name}-${var.mongos_tag}0${count.index}-${var.pmm_client_container_suffix}"
   image = var.pmm_client_image 
   count = var.mongos_count
   env = [ "PMM_AGENT_SERVER_ADDRESS=${var.pmm_host}:${var.pmm_port}", "PMM_AGENT_SERVER_USERNAME=${var.pmm_user}", "PMM_AGENT_SERVER_PASSWORD=${var.pmm_password}", "PMM_AGENT_SERVER_INSECURE_TLS=1", "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]

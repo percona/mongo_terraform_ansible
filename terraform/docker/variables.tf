@@ -2,13 +2,10 @@
 # Project
 ################
 
-variable "env_tag" {
-  description = "Name of the Environment"
-  default = "docker"
-}
+# By default we deploy 1 sharded cluster, named test01. The configuration can be customized by adding the optional values listed.
 
 variable "clusters" {
-  description = "MongoDB cluster configurations"
+  description = "MongoDB clusters to deploy"
   type = map(object({
     env_tag               = optional(string, "test")                # Name of Environment for the cluster
     configsvr_count       = optional(number, 3)                     # Number of config servers to be used
@@ -16,9 +13,9 @@ variable "clusters" {
     shardsvr_replicas     = optional(number, 2)                     # How many data bearing nodes per shard
     arbiters_per_replset  = optional(number, 1)                     # Number of arbiters per replica set
     mongos_count          = optional(number, 2)                     # Number of mongos to provision
-    pmm_host              = optional(string, "docker-pmm-server")   # Hostname of PMM server
+    pmm_host              = optional(string, "pmm-server")          # Hostname of PMM server
     pmm_port              = optional(number, 8443)                  # Port of PMM Server
-    minio_server          = optional(string, "docker-minio")        # Hostname of Minio server
+    minio_server          = optional(string, "minio")               # Hostname of Minio server
     minio_port            = optional(number, 9000)                  # Port of Minio Server
   }))
 
@@ -26,34 +23,46 @@ variable "clusters" {
     test01 = {
       env_tag = "test"
     }
-    prod01 = {
-      env_tag = "prod"
-      mongos_count = 1
-    }
   }
 }
 
-# variable "replsets" {
-#   description = "MongoDB replica set configurations"
-#   type = map(object({
-#     env_tag          = optional(string, "test")  # Name of Environment
-#     data_nodes_per_replset      = optional(number, 2)       # Number of data bearing members per replset
-#     arbiters_per_replset = optional(number, 1)   # Number of arbiters per replica set
-#     pmm_host          = optional(string, "docker-pmm-server")  # Hostname of PMM server
-#     pmm_port          = optional(number, 8443)   # Port of PMM Server
-#     minio_server      = optional(string, "docker-minio") 
-#     minio_port        = optional(number, 9000)
-#   }))
+# More sharded clusters can be deployed by appending to the list. 
+# The below example provisions another cluster named prod01 with a custom number of mongos in addition to the test01 cluster:
+#
+# default = {
+#   test01 = {
+#     env_tag = "test"
+#   }
+#   prod01 = {
+#     env_tag = "prod"
+#     mongos_count = 1
+#   }
+# }
 
-#   default = {
+# By default, no replica sets are deployed (except those needed for the sharded clusters).
+# If you want to provision separate replica sets, uncomment the code below.
+
+variable "replsets" {
+   description = "MongoDB replica sets to deploy"
+   type = map(object({
+     env_tag                   = optional(string, "test")               # Name of Environment
+     data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members per replset
+     arbiters_per_replset      = optional(number, 1)                    # Number of arbiters per replica set
+     pmm_host                  = optional(string, "pmm-server")         # Hostname of PMM server
+     pmm_port                  = optional(number, 8443)                 # Port of PMM Server
+     minio_server              = optional(string, "minio")              # Hostname of Minio server
+     minio_port                = optional(number, 9000)                 # Port of Minio Server
+   })) 
+
+   default = {
 #     rs01 = {
 #       env_tag = "test"
 #     }
 #     rs02 = {
 #       env_tag = "prod"
 #     }
-#   }
-# }
+   }
+}
 
 #############
 # PMM

@@ -1,6 +1,6 @@
 # PBM CLI container
 resource "docker_container" "pbm_cli" {
-  name  = "${var.env_tag}-${var.pbm_cli_container_suffix}"
+  name  = "${var.cluster_name}-${var.pbm_cli_container_suffix}"
   count = 1
   image = var.pbm_image 
   command = ["/bin/sh", "-c", "while true; do sleep 86400; done;"]

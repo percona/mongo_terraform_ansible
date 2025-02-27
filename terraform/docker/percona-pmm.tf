@@ -1,7 +1,7 @@
 
 # Create a Docker container for the Grafana renderer container
 resource "docker_container" "renderer" {
-  name  = "${var.env_tag}-${var.renderer_tag}"
+  name  = "${var.renderer_tag}"
   image = var.renderer_image
   env = [ "IGNORE_HTTPS_ERRORS=true" ]
   networks_advanced {
@@ -20,17 +20,17 @@ resource "docker_container" "renderer" {
 
 # Create a Docker volume to simulate the attached disk
 resource "docker_volume" "pmm_volume" {
-  name = "${var.env_tag}-${var.pmm_tag}-data"
+  name = "${var.pmm_host}-data"
 }
 
 # Create a Docker container for the PMM server
 resource "docker_container" "pmm" {
-  name  = "${var.env_tag}-${var.pmm_tag}"
+  name  = "${var.pmm_host}"
   depends_on = [
     docker_container.renderer
   ]  
   image = var.pmm_server_image
-  env = [ "GF_RENDERING_SERVER_URL=http://${docker_container.renderer.name}:${var.renderer_port}/render", "GF_RENDERING_CALLBACK_URL=https://${var.env_tag}-${var.pmm_tag}:${var.pmm_port}/graph/" ]
+  env = [ "GF_RENDERING_SERVER_URL=http://${docker_container.renderer.name}:${var.renderer_port}/render", "GF_RENDERING_CALLBACK_URL=https://${var.pmm_host}:${var.pmm_port}/graph/" ]
   mounts {
     type = "volume"
     target = "/srv"
@@ -44,7 +44,7 @@ resource "docker_container" "pmm" {
     external = var.pmm_external_port
   }  
   healthcheck {
-    test        = ["CMD", "curl", "-k", "-f", "https://${var.env_tag}-${var.pmm_tag}:${var.pmm_port}/graph/login" ]
+    test        = ["CMD", "curl", "-k", "-f", "https://${var.pmm_host}:${var.pmm_port}/graph/login" ]
     interval    = "10s"
     timeout     = "10s"
     retries     = 5

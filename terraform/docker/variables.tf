@@ -1,131 +1,74 @@
 ################
-# Project/access
+# Project
 ################
 
-variable "env_tag" {
-  default = "test"
-  description = "Name of Environment. Replace these with your own custom name to avoid collisions with existing containers"
+# By default we deploy 1 sharded cluster, named test01. The configuration can be customized by adding the optional values listed.
+
+variable "clusters" {
+  description = "MongoDB clusters to deploy"
+  type = map(object({
+    env_tag               = optional(string, "test")                # Name of Environment for the cluster
+    configsvr_count       = optional(number, 3)                     # Number of config servers to be used
+    shard_count           = optional(number, 2)                     # Number of shards to be used
+    shardsvr_replicas     = optional(number, 2)                     # How many data bearing nodes per shard
+    arbiters_per_replset  = optional(number, 1)                     # Number of arbiters per replica set
+    mongos_count          = optional(number, 2)                     # Number of mongos to provision
+    pmm_host              = optional(string, "pmm-server")          # Hostname of PMM server
+    pmm_port              = optional(number, 8443)                  # Port of PMM Server
+    minio_server          = optional(string, "minio")               # Hostname of Minio server
+    minio_port            = optional(number, 9000)                  # Port of Minio Server
+  }))
+
+  default = {
+    test01 = {
+      env_tag = "test"
+    }
+  }
 }
 
-##################
-# MongoDB topology
-##################
+# More sharded clusters can be deployed by appending to the list. 
+# The below example provisions another cluster named prod01 with a custom number of mongos in addition to the test01 cluster:
+#
+# default = {
+#   test01 = {
+#     env_tag = "test"
+#   }
+#   prod01 = {
+#     env_tag = "prod"
+#     mongos_count = 1
+#   }
+# }
 
-variable "configsvr_count" {
-  default = "3"
-  description = "Number of config servers to be used"
-}
+# By default, no replica sets are deployed (except those needed for the sharded clusters).
+# If you want to provision separate replica sets, uncomment the code below.
 
-variable "shard_count" {
-  default = "2"
-  description = "Number of shards to be used"
-}
+variable "replsets" {
+   description = "MongoDB replica sets to deploy"
+   type = map(object({
+     env_tag                   = optional(string, "test")               # Name of Environment
+     data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members per replset
+     arbiters_per_replset      = optional(number, 1)                    # Number of arbiters per replica set
+     pmm_host                  = optional(string, "pmm-server")         # Hostname of PMM server
+     pmm_port                  = optional(number, 8443)                 # Port of PMM Server
+     minio_server              = optional(string, "minio")              # Hostname of Minio server
+     minio_port                = optional(number, 9000)                 # Port of Minio Server
+   })) 
 
-variable "shardsvr_replicas" {
-  default = "2"
-  description = "How many data bearing nodes per shard"
-}
-
-variable "arbiters_per_replset" {
-  default = "1"
-  description = "Number of arbiters per replica set"
-}
-
-variable "mongos_count" {
-  default = "2"
-  description = "Number of mongos to provision"
-}
-
-######################
-# Security Credentials
-######################
-
-variable "keyfile_contents" {
-  default = "KYYVuRIooX+S2Ee6GDUpYiI6rpx879XYYwWD44tF/WtogW0o8Z4Ua0/Fs+Nez4GO"
-  description = "Content of the keyfile for MongoDB replicaset member authentication"
-}
-
-variable "keyfile_path" {
-  default = "/etc/mongo"
-  description = "Path to the keyfile on MongoDB containers"
-}
-
-variable "keyfile_name" {
-  default = "mongodb-keyfile.key"
-  description = "Name of the file containing the keyfile on MongoDB containers"
-}
-
-variable "mongodb_root_user" {
-  default = "root"
-  description = "MongoDB user to be created with root perms"
-}
-
-variable "mongodb_root_password" {
-  default = "percona"
-  description = "MongoDB root user password"
-}
-
-################
-# Shards
-################
-
-variable "shardsvr_tag" {
-  description = "Name of the shard servers"
-  default = "shard"
-}
-
-variable "shardsvr_port" {
-  description = "Port of the mongod servers"
-  default = "27018"
-}
-
-################
-# CSRS
-################
-
-variable "configsvr_tag" {
-  description = "Name of the config servers"
-  default = "cfg"
-}
-
-variable "configsvr_port" {
-  description = "Port of the mongod config servers"
-  default = "27019"
-}
-
-################
-# Mongos routers
-################
-
-variable "mongos_tag" {
-  description = "Name of the mongos router servers"
-  default = "mongos"
-}
-
-variable "mongos_port" {
-  description = "Port of the mongos router servers"
-  default = "27017"
-}
-
-#############
-# Arbiters
-#############
-
-variable "arbiter_tag" {
-  description = "Name of the arbiter servers"
-  default = "arb"
-}
-
-variable "arbiter_port" {
-  description = "Port of the arbiter servers"
-  default = "27018"
+   default = {
+#     rs01 = {
+#       env_tag = "test"
+#     }
+#     rs02 = {
+#       env_tag = "prod"
+#     }
+   }
 }
 
 #############
 # PMM
 #############
 
-variable "pmm_tag" {
+variable "pmm_host" {
   description = "Name of the PMM server"
   default = "pmm-server"
 }
@@ -182,44 +125,6 @@ variable "mongodb_pmm_password" {
   description = "MongoDB PBM user password"
 }
 
-variable "cluster" {
-  description = "Name of the cluster as seen on PMM server"
-  default = "docker-test"
-}
-
-#############
-# YCSB
-#############
-
-variable "ycsb_container_suffix" {
-  default = "ycsb"
-  description = "Suffix for YCSB container"
-}
-
-
-#############
-# PBM
-#############
-
-variable "pbm_container_suffix" {
-  default = "pbm-agent"
-  description = "Suffix for PBM agent containers. Will be appended to each cluster component"
-}
-
-variable "pbm_cli_container_suffix" {
-  default = "pbm-cli"
-  description = "Suffix for PBM CLI container"
-}
-
-variable "mongodb_pbm_user" {
-  default = "pbmuser"
-  description = "MongoDB user to be created with for PBM"
-}
-
-variable "mongodb_pbm_password" {
-  default = "percona"
-  description = "MongoDB PBM user password"
-}
 
 #############
 # Bucket
@@ -264,6 +169,16 @@ variable "backup_retention" {
 # Docker Images
 ###############
 
+variable "renderer_image" {
+  description = "Docker image for Grafana renderer container"
+  default = "grafana/grafana-image-renderer:latest"
+}
+
+variable "minio_image" {
+  description = "Minio Docker image"
+  default = "minio/minio"
+}
+
 variable "psmdb_image" {
   description = "Docker image for MongoDB"
   default = "percona/percona-server-mongodb:latest"
@@ -286,11 +201,6 @@ variable "pmm_client_image" {
   #default = "perconalab/pmm-client:3-dev-latest"
 }
 
-variable "renderer_image" {
-  description = "Docker image for Grafana renderer container"
-  default = "grafana/grafana-image-renderer:latest"
-}
-
 variable "base_os_image" {
   description = "Base OS image for the custom Docker image created with pbm-agent and mongod. Required for physical restores"
   #default = "quay.io/centos/centos:stream9"
@@ -301,22 +211,24 @@ variable "base_os_image" {
 
 variable "ycsb_os_image" {
   description = "Base OS image for the custom Docker image created with YCSB"
-  default = "redhat/ubi8"
+  default = "redhat/ubi8-minimal"
 }
 
-variable "custom_image" {
+variable "pbm_mongod_image" {
   description = "Name of the local Docker image to be created for pbm-agent + current mongod version. Required for physical restores"
-  default = "percona-backup-mongodb-agent-custom"
+  default = "percona/pbm-agent-custom"
+}
+
+variable "mongos_image" {
+  description = "Name of the local Docker image to be created for mongos router"
+  #default = "percona/mongos"
+  # Using this image until we can make the custom mongos image work
+  default = "percona/percona-server-mongodb:latest"
 }
 
 variable "ycsb_image" {
   description = "Name of the local Docker image to be created for YCSB benchmark"
-  default = "ycsb"
-}
-
-variable "minio_image" {
-  description = "Minio Docker image"
-  default = "minio/minio"
+  default = "percona/ycsb"
 }
 
 variable "uid" {

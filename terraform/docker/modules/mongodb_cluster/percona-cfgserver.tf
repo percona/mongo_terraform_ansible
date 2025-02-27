@@ -1,10 +1,10 @@
 resource "docker_volume" "cfg_volume" {
-  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-data"
+  name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-data"
   count = var.configsvr_count
 }
 
 resource "docker_container" "cfg" {
-  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}"
+  name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
   image = var.psmdb_image 
   mounts {
     source = docker_volume.keyfile_volume.name
@@ -15,7 +15,7 @@ resource "docker_container" "cfg" {
   count = var.configsvr_count
   command = [
     "mongod",
-    "--replSet", "${var.env_tag}-${var.configsvr_tag}",  
+    "--replSet", "${var.cluster_name}-${var.configsvr_tag}",  
     "--bind_ip_all",    
     "--configsvr",
     "--port", "${var.configsvr_port}",
@@ -33,7 +33,7 @@ resource "docker_container" "cfg" {
   user = var.uid
   labels { 
     label = "replsetName"
-    value = "${var.env_tag}-${var.configsvr_tag}"
+    value = "${var.cluster_name}-${var.configsvr_tag}"
   }    
   labels { 
     label = "environment"
@@ -45,7 +45,7 @@ resource "docker_container" "cfg" {
     source = docker_volume.cfg_volume[count.index].name
   }
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = "${var.network_name}"
   }
   healthcheck {
     test        = ["CMD-SHELL", "mongosh --port ${var.configsvr_port} --eval 'db.runCommand({ ping: 1 })'"]
@@ -60,8 +60,8 @@ resource "docker_container" "cfg" {
 }
 
 resource "docker_container" "pbm_cfg" {
-  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-${var.pbm_container_suffix}"
-  image = var.custom_image 
+  name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-${var.pbm_container_suffix}"
+  image = var.pbm_mongod_image 
   count = var.configsvr_count
   user  = var.uid
   command = [
@@ -74,7 +74,7 @@ resource "docker_container" "pbm_cfg" {
     source = docker_volume.cfg_volume[count.index].name
   }
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = "${var.network_name}"
   }
   healthcheck {
     test        = ["CMD-SHELL", "pbm version"]
@@ -88,22 +88,22 @@ resource "docker_container" "pbm_cfg" {
 }
 
 resource "docker_volume" "cfg_volume_pmm" {
-  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-pmm-client-data"
+  name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-pmm-client-data"
   count = var.configsvr_count
 }
 
 resource "docker_container" "pmm_cfg" {
-  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}-${var.pmm_client_container_suffix}"
+  name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-${var.pmm_client_container_suffix}"
   image = var.pmm_client_image 
   count = var.configsvr_count
-  env = [ "PMM_AGENT_SERVER_ADDRESS=${docker_container.pmm.name}:${var.pmm_port}", "PMM_AGENT_SERVER_USERNAME=${var.pmm_user}", "PMM_AGENT_SERVER_PASSWORD=${var.pmm_password}", "PMM_AGENT_SERVER_INSECURE_TLS=1", "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
+  env = [ "PMM_AGENT_SERVER_ADDRESS=${var.pmm_host}:${var.pmm_port}", "PMM_AGENT_SERVER_USERNAME=${var.pmm_user}", "PMM_AGENT_SERVER_PASSWORD=${var.pmm_password}", "PMM_AGENT_SERVER_INSECURE_TLS=1", "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {
     type = "volume"
     target = "/srv"
     source = docker_volume.cfg_volume_pmm[count.index].name
   }
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = "${var.network_name}"
   }
   ports {
     internal = var.pmm_client_port

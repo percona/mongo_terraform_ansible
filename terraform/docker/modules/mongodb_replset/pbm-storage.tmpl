@@ -1,0 +1,10 @@
+storage:
+ type: s3
+ s3:
+     region: ${ minio_region }
+     bucket: ${ bucket_name }
+     prefix: ${ rs_name }
+     endpointUrl: http://${ minio_server }:${ minio_port }
+     credentials:
+       access-key-id: ${ minio_access_key }
+       secret-access-key: ${ minio_secret_key }

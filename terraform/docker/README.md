@@ -122,41 +122,47 @@ wsl --install -d  Ubuntu
 
 ### PMM Monitoring
 
-- You can access the PMM Server by opening a web browser at https://127.0.0.1:443. The default credentials are `admin/admin`.
-- Grafana renderer is installed and configured in order to be able to export any PMM graphic as a PNG image.
+    - You can access the PMM Server by opening a web browser at https://127.0.0.1:443. The default credentials are `admin/admin`.
+    - Grafana renderer is installed and configured in order to be able to export any PMM graphic as a PNG image.
 
 ### PBM Backup
 
-- A dedicated `pbm-cli` container is deployed where you can run PBM commands. Example:
-  ```
-  docker exec -it test01-pbm-cli pbm status
-  ```
-- You can access the Minio web interface at http://127.0.0.1:9001 to inspect the backup storage/files. The default credentials are `minio/minioadmin`.
+    - A dedicated `pbm-cli` container is deployed where you can run PBM commands. Example:
+
+      ```
+      docker exec -it test01-pbm-cli pbm status
+      ```
+
+    - You can access the Minio web interface at http://127.0.0.1:9001 to inspect the backup storage/files. The default credentials are `minio/minioadmin`.
 
 ### Simulating a workload
 
-- To be able to run test workloads, a YCSB container is created as part of the stack. A sharded `ycsb.usertable` collection is automatically created with `{_id: hashed }` as the shard key. 
+    - To be able to run test workloads, a YCSB container is created as part of the stack. A sharded `ycsb.usertable` collection is automatically created with `{_id: hashed }` as the shard key. 
 
-To run a YCSB workload:
+    - To run a YCSB workload:
 
-1. Start a shell session inside the YCSB container
-```
-docker exec -it test01-ycsb /bin/bash
-```
+      1. Start a shell session inside the YCSB container
 
-2. Perform initial data load against one of the mongos containers, using the correct credentials and port number.
-```
-/ycsb/bin/ycsb load mongodb -P /ycsb/workloads/workloada -p mongodb.url="mongodb://root:percona@test01-mongos00:27017/"
-```
+      ```
+      docker exec -it test01-ycsb /bin/bash
+      ```
 
-3. Run the benchmark
-```
-/ycsb/bin/ycsb run mongodb -s -P /ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url="mongodb://root:percona@test01-mongos00:27017/"
-```
+      2. Perform initial data load against one of the mongos containers, using the correct credentials and port number.
+
+      ```
+      /ycsb/bin/ycsb load mongodb -P /ycsb/workloads/workloada -p mongodb.url="mongodb://root:percona@test01-mongos00:27017/"
+      ```
+
+      3. Run the benchmark
+
+      ```
+      /ycsb/bin/ycsb run mongodb -s -P /ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url="mongodb://root:percona@test01-mongos00:27017/"
+      ```
 
 ## Cleanup
 
-1. Run terraform to remove all the resources and start from scratch
-  ```
-  terraform destroy
-  ```
+   - Run terraform to remove all the resources and start from scratch
+
+   ```
+   terraform destroy
+   ```

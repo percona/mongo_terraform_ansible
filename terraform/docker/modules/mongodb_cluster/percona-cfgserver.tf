@@ -61,7 +61,7 @@ resource "docker_container" "cfg" {
 
 resource "docker_container" "pbm_cfg" {
   name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-${var.pbm_container_suffix}"
-  image = var.custom_image 
+  image = var.pbm_mongod_image 
   count = var.configsvr_count
   user  = var.uid
   command = [

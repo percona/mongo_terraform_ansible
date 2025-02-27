@@ -131,11 +131,6 @@ variable "pmm_host" {
   default = "pmm-server"
 }
 
-variable "renderer_tag" {
-  description = "Name of the Grafana image renderer container"
-  default = "grafana-renderer"
-}
-
 variable "pmm_client_container_suffix" {
   default = "pmm-client"
   description = "Suffix for PMM client container"
@@ -148,19 +143,9 @@ variable "pmm_port" {
   default = "8443"
 }
 
-variable "pmm_external_port" {
-  description = "Port of the PMM server as seen from outside docker"
-  default = "443"
-}
-
 variable "pmm_client_port" {
   description = "Port of the PMM client inside docker network"
   default = "42002"
-}
-
-variable "renderer_port" {
-  description = "Port of the Grafana renderer"
-  default = "8081"
 }
 
 variable "pmm_user" {
@@ -175,7 +160,7 @@ variable "pmm_password" {
 
 variable "mongodb_pmm_user" {
   default = "pmm"
-  description = "MongoDB user to be created with for PBM"
+  description = "MongoDB user to be created for PBM"
 }
 
 variable "mongodb_pmm_password" {
@@ -228,10 +213,6 @@ variable "minio_port" {
   default = "9000"
 }
 
-variable "minio_console_port" {
-  default = "9001"
-}
-
 variable "minio_secret_key" {
   default = "minioadmin"
 }
@@ -241,14 +222,18 @@ variable "bucket_name" {
   description = "S3-compatible storage to put backups"
  }
 
-variable "backup_retention" {
-  default = "2"
-  description = "days to keep backups in bucket"
-}
 
 ###############
 # Docker Images
 ###############
+
+variable "base_os_image" {
+  description = "Base OS image for the custom Docker image created with pbm-agent and mongod. Required for physical restores"
+  #default = "quay.io/centos/centos:stream9"
+  #default = "oraclelinux:8"
+  default = "redhat/ubi9-minimal"
+  #default = "redhat/ubi9"
+}
 
 variable "psmdb_image" {
   description = "Docker image for MongoDB"
@@ -266,27 +251,21 @@ variable "pmm_client_image" {
   #default = "perconalab/pmm-client:3-dev-latest"
 }
 
-variable "base_os_image" {
-  description = "Base OS image for the custom Docker image created with pbm-agent and mongod. Required for physical restores"
-  #default = "quay.io/centos/centos:stream9"
-  #default = "oraclelinux:8"
-  default = "redhat/ubi9-minimal"
-  #default = "redhat/ubi9"
-}
-
-variable "ycsb_os_image" {
-  description = "Base OS image for the custom Docker image created with YCSB"
-  default = "redhat/ubi8"
-}
-
-variable "custom_image" {
+variable "pbm_mongod_image" {
   description = "Name of the local Docker image to be created for pbm-agent + current mongod version. Required for physical restores"
-  default = "percona-backup-mongodb-agent-custom"
+  default = "percona/pbm-agent-custom"
+}
+
+variable "mongos_image" {
+  description = "Name of the local Docker image to be created for mongos router"
+  #default = "percona/mongos"
+  # Using this image until we can make the custom mongos image work
+  default = "percona/percona-server-mongodb:latest"
 }
 
 variable "ycsb_image" {
   description = "Name of the local Docker image to be created for YCSB benchmark"
-  default = "ycsb"
+  default = "percona/ycsb"
 }
 
 variable "uid" {

@@ -61,7 +61,7 @@ resource "docker_container" "shard" {
 resource "docker_container" "pbm_shard" {
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-${var.pbm_container_suffix}"
   count = var.shard_count * var.shardsvr_replicas
-  image = var.custom_image 
+  image = var.pbm_mongod_image 
   user  = var.uid
   command = [
     "pbm-agent"

@@ -60,7 +60,7 @@ resource "docker_container" "rs" {
 resource "docker_container" "pbm_rs" {
   name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-${var.pbm_container_suffix}"
   count = var.data_nodes_per_replset
-  image = var.custom_image 
+  image = var.pbm_mongod_image 
   user  = var.uid
   command = [
     "pbm-agent"

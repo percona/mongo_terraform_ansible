@@ -10,6 +10,7 @@ locals {
   })
 }
 
+# Prepare the temporary container to initialize the keyfile volume
 resource "docker_volume" "keyfile_volume" {
   name = "shared_keyfile"
 }
@@ -38,6 +39,7 @@ resource "null_resource" "remove_init_keyfile_container" {
   }
 }
 
+# Create the PBM configuration file
 resource "local_file" "storage_config" {
   filename = "${path.module}/pbm-storage.conf.${var.cluster_name}"
   content  = local.storage_config_content

@@ -88,11 +88,6 @@ variable "pmm_host" {
   default = "pmm-server"
 }
 
-variable "renderer_tag" {
-  description = "Name of the Grafana image renderer container"
-  default = "grafana-renderer"
-}
-
 variable "pmm_client_container_suffix" {
   default = "pmm-client"
   description = "Suffix for PMM client container"
@@ -105,19 +100,9 @@ variable "pmm_port" {
   default = "8443"
 }
 
-variable "pmm_external_port" {
-  description = "Port of the PMM server as seen from outside docker"
-  default = "443"
-}
-
 variable "pmm_client_port" {
   description = "Port of the PMM client inside docker network"
   default = "42002"
-}
-
-variable "renderer_port" {
-  description = "Port of the Grafana renderer"
-  default = "8081"
 }
 
 variable "pmm_user" {
@@ -185,10 +170,6 @@ variable "minio_port" {
   default = "9000"
 }
 
-variable "minio_console_port" {
-  default = "9001"
-}
-
 variable "minio_secret_key" {
   default = "minioadmin"
 }
@@ -197,11 +178,6 @@ variable "bucket_name" {
   default = "mongo-backups"
   description = "S3-compatible storage to put backups"
  }
-
-variable "backup_retention" {
-  default = "2"
-  description = "days to keep backups in bucket"
-}
 
 ###############
 # Docker Images
@@ -236,14 +212,14 @@ variable "ycsb_os_image" {
   default = "redhat/ubi8"
 }
 
-variable "custom_image" {
+variable "pbm_mongod_image" {
   description = "Name of the local Docker image to be created for pbm-agent + current mongod version. Required for physical restores"
-  default = "percona-backup-mongodb-agent-custom"
+  default = "percona/pbm-agent-custom"
 }
 
 variable "ycsb_image" {
   description = "Name of the local Docker image to be created for YCSB benchmark"
-  default = "ycsb"
+  default = "percona/ycsb"
 }
 
 variable "uid" {

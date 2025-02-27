@@ -68,7 +68,7 @@ variable "replsets" {
 # PMM
 #############
 
-variable "pmm_tag" {
+variable "pmm_host" {
   description = "Name of the PMM server"
   default = "pmm-server"
 }
@@ -211,17 +211,24 @@ variable "base_os_image" {
 
 variable "ycsb_os_image" {
   description = "Base OS image for the custom Docker image created with YCSB"
-  default = "redhat/ubi8"
+  default = "redhat/ubi8-minimal"
 }
 
-variable "custom_image" {
+variable "pbm_mongod_image" {
   description = "Name of the local Docker image to be created for pbm-agent + current mongod version. Required for physical restores"
-  default = "percona-backup-mongodb-agent-custom"
+  default = "percona/pbm-agent-custom"
+}
+
+variable "mongos_image" {
+  description = "Name of the local Docker image to be created for mongos router"
+  #default = "percona/mongos"
+  # Using this image until we can make the custom mongos image work
+  default = "percona/percona-server-mongodb:latest"
 }
 
 variable "ycsb_image" {
   description = "Name of the local Docker image to be created for YCSB benchmark"
-  default = "ycsb"
+  default = "percona/ycsb"
 }
 
 variable "uid" {

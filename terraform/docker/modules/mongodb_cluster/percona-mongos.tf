@@ -2,7 +2,7 @@
 resource "docker_container" "mongos" {
   count = var.mongos_count
   name  = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
-  image = var.psmdb_image
+  image = var.mongos_image
   command = [
     "mongos",
     "--configdb", "${lookup({for label in docker_container.cfg[0].labels : label.label => label.value}, "replsetName", null)}/${join(",", [for i in range(var.configsvr_count) : "${docker_container.cfg[i].name}:${var.configsvr_port}" ])}",

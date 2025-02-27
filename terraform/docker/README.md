@@ -7,7 +7,10 @@ Deploy the full stack of Percona MongoDB software on Docker containers:
 - PMM Client
 - PMM Server with Grafana Renderer
 
-A MinIO server is deployed and a storage bucket is configured as the backup destination for PBM. Logical and physical backup functionality works. 
+- A MinIO server with a storage bucket is created for PBM backups. Logical and physical backup functionality works. 
+
+- By default 1 sharded cluster with 2 shards is created, where each shard is a 3-node Replica Set using a PSA topology. Additional clusters or replica sets can be created by customizing the variables.tf file
+
 
 ## Pre-requisites
 
@@ -88,9 +91,7 @@ wsl --install -d  Ubuntu
 
 ## User Guide
 
-- By default 1 sharded cluster is deployed with 2 shards, where each shard is a 3-node Replica Set using a PSA topology.
-
-1. Review and edit the configuration file as needed.
+1. Review and edit the configuration file as needed
 
 
     ```
@@ -113,28 +114,26 @@ wsl --install -d  Ubuntu
 4. Connect to a mongos router to access the cluster. For example:
 
     ```
-    docker exec -it test-mongos00 mongosh admin -u root -p percona
+    docker exec -it test01-mongos00 mongosh admin -u root -p percona
     sh.status()
     ```
 
-- You can access the PMM Server by opening a web browser at https://127.0.0.1:443. The default credentials are `admin/admin`.
-- A dedicated `pbm-cli` container is deployed where you can run PBM commands. Example:
-  ```
-  docker exec -it test-pbm-cli pbm status
-  ```
-- You can access the Minio web interface at http://127.0.0.1:9001 to inspect the backup storage/files. The default credentials are `minio/minioadmin`.
-- Grafana renderer is installed and configured in order to be able to export any PMM graphic as a PNG image.
 - There is no need to run the Ansible playbook for the Docker deployments.
 
+### PMM Monitoring
 
-## Cleanup
+- You can access the PMM Server by opening a web browser at https://127.0.0.1:443. The default credentials are `admin/admin`.
+- Grafana renderer is installed and configured in order to be able to export any PMM graphic as a PNG image.
 
-1. Run terraform to remove all the resources and start from scratch
+### PBM Backup
+
+- A dedicated `pbm-cli` container is deployed where you can run PBM commands. Example:
   ```
-  terraform destroy
+  docker exec -it test01-pbm-cli pbm status
   ```
+- You can access the Minio web interface at http://127.0.0.1:9001 to inspect the backup storage/files. The default credentials are `minio/minioadmin`.
 
-## Running a workload
+### Simulating a workload
 
 - To be able to run test workloads, a YCSB container is created as part of the stack. A sharded `ycsb.usertable` collection is automatically created with `{_id: hashed }` as the shard key. 
 
@@ -142,15 +141,22 @@ To run a YCSB workload:
 
 1. Start a shell session inside the YCSB container
 ```
-docker exec -it test-ycsb /bin/bash
+docker exec -it test01-ycsb /bin/bash
 ```
 
 2. Perform initial data load against one of the mongos containers, using the correct credentials and port number.
 ```
-/ycsb/bin/ycsb.sh load mongodb -P /ycsb/workloads/workloada -p mongodb.url="mongodb://root:percona@test-mongos00:27017/"
+/ycsb/bin/ycsb load mongodb -P /ycsb/workloads/workloada -p mongodb.url="mongodb://root:percona@test01-mongos00:27017/"
 ```
 
 3. Run the benchmark
 ```
-/ycsb/bin/ycsb.sh run mongodb -s -P /ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url="mongodb://root:percona@test-mongos00:27017/"
+/ycsb/bin/ycsb run mongodb -s -P /ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url="mongodb://root:percona@test01-mongos00:27017/"
 ```
+
+## Cleanup
+
+1. Run terraform to remove all the resources and start from scratch
+  ```
+  terraform destroy
+  ```

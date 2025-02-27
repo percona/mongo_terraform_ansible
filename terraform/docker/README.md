@@ -110,7 +110,7 @@ If no errors, proceed to the next section.
     ```
     docker ps -a
     ```
-    Status should be say `Up` and `healthy`.
+    Status should be `Up` and `healthy`.
 
 4. Connect to a mongos router to access the cluster. For example:
 

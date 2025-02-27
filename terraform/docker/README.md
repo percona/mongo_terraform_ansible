@@ -7,10 +7,9 @@ Deploy the full stack of Percona MongoDB software on Docker containers:
 - PMM Client
 - PMM Server with Grafana Renderer
 
-- A MinIO server with a storage bucket is created for PBM backups. Logical and physical backup functionality works. 
+A MinIO server with a storage bucket is created for PBM backups. Logical and physical backup functionality works. 
 
-- By default 1 sharded cluster with 2 shards is created, where each shard is a 3-node Replica Set using a PSA topology. Additional clusters or replica sets can be created by customizing the variables.tf file
-
+By default 1 sharded cluster with 2 shards is created, where each shard is a 3-node Replica Set using a PSA topology. Additional clusters or replica sets can be created by customizing the variables.tf file
 
 ## Pre-requisites
 
@@ -71,23 +70,25 @@ wsl --install -d  Ubuntu
 
 ## Initial Installation
 
-0. Clone this repository on your machine
+1. Clone this repository to your machine
 
     ```
     git clone https://github.com/percona/mongo_terraform_ansible.git
     ```
 
-1. Go to the directory
+2. Go to the directory
     
     ```
     cd mongo_terraform_ansible/terraform/docker
     ```
 
-1. Initialize Terraform 
+3. Initialize Terraform 
 
     ```
     terraform init
     ```
+
+If no errors, proceed to the next section.
 
 ## User Guide
 

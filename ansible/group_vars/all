@@ -27,12 +27,14 @@ mongo_release: psmdb-80
 packages:
   - percona-server-mongodb
   - percona-backup-mongodb
-  - pmm2-client
+  #- pmm2-client
+  - pmm3-client
 
 router_packages:
    - percona-server-mongodb-mongos
    - percona-mongodb-mongosh
-   - pmm2-client
+   #- pmm2-client
+   - pmm3-client
 
 # copy rpm files from a local path. If false yum will be used to download from a configured repository
 copy_files: false

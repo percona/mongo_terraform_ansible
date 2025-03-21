@@ -8,7 +8,7 @@ cd ./ansible
 ansible-playbook main.yml -i inventory
 ```
 
-The installation process takes around 15 min for a 2 shard cluster. 
+The installation process takes around 15 min for a 2 shard cluster.
 To connect to the servers there is a helper script provisioned in /etc/profile. you can run directly `mongo` on any host to connect to it locally with the proper credentials.
 
 ## Inventory file
@@ -126,9 +126,9 @@ ansible-playbook tls-setup.yml -i inventory
   - backup
     - Deploys & configures the pbm agent    
   - pmm_server
-    - Deploys a pmm2 server with docker
+    - Deploys a PMM server with docker
   - monitoring
-    - Deploys pmm2 client and registers with a pmm server
+    - Deploys PMM client and registers with a pmm server
 
 ### Available tags for `tls-setup.yml`:
   - ca

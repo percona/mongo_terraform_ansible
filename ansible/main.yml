@@ -45,7 +45,7 @@
         owner: root
         group: root
         mode: 0644
-      when: mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) < 80  
+      when: mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) < 80
 
     - name: run the disable THP service
       systemd:
@@ -53,13 +53,13 @@
         enabled: true
         state: started
         daemon_reload: yes
-      when: mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) < 80  
+      when: mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) < 80
 
 - name: install MongoDB
   hosts: cfg:shard*:rs*
   become: yes
   tags: install
-  environment: 
+  environment:
     PERCONA_TELEMETRY_DISABLE: 1
   tasks:
     - name: Create MongoDB datadir
@@ -108,6 +108,9 @@
         - name: Enable the specific MongoDB version
           shell: "/usr/bin/percona-release enable {{ mongo_release }} && /usr/bin/percona-release enable tools"
 
+        - name: Enable PBM repository
+          shell: "/usr/bin/percona-release enable pbm"
+
         - name: Enable PMM client repository
           shell: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
 
@@ -116,7 +119,7 @@
             name: "{{ item }}"
             state: present
           with_items: "{{ packages }}"
-      
+
       when: not copy_files | bool
 
     - name: disable Percona telemetry
@@ -138,7 +141,7 @@
 
     - name: set up keyfile authentication
       become: yes
-      copy: 
+      copy:
         dest: "{{ keyFile_location }}"
         content: "{{ keyfile_content }}"
         owner: mongod
@@ -152,7 +155,7 @@
   tasks:
     - name: copy mongod.conf on config server
       become: yes
-      template: 
+      template:
         src: templates/mongod-cfgserver.conf.j2
         dest: /etc/mongod.conf
         owner: root
@@ -160,7 +163,7 @@
         mode: 0644
 
     - name: prepare the init command for cfg replica set
-      template: 
+      template:
         src: templates/init-rs-cfg.js.j2
         dest: /tmp/init-rs.js
         mode: 0644
@@ -208,7 +211,7 @@
       set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
-    - name: set up keyfile for encryption at rest 
+    - name: set up keyfile for encryption at rest
       become: yes
       copy:
         dest: "{{ encryption_keyfile }}"
@@ -294,14 +297,14 @@
       lineinfile:
         dest: /etc/profile
         line: alias mongo='mongosh admin {{ mongo_extra_args | default("") }} -u {{ mongo_root_user }} -p {{ mongo_root_password }} --port {{ mongo_port }} --host {{ inventory_hostname }}'
-        state: present         
-      
+        state: present
+
 - name: install mongos routers
   hosts: mongos
   become: yes
   tags: mongos
-  environment: 
-    PERCONA_TELEMETRY_DISABLE: 1  
+  environment:
+    PERCONA_TELEMETRY_DISABLE: 1
   tasks:
     - name: copy RPM files from local machine
       block:
@@ -354,14 +357,14 @@
       when: not copy_files | bool
 
     - name: create logs directory
-      file: 
+      file:
         path: "{{ mongod_log_path }}"
         state: directory
         mode: '0755'
         owner: mongod
         group: mongod
 
-    - name: set up extra arguments for Mongo client TLS 
+    - name: set up extra arguments for Mongo client TLS
       set_fact:
         mongo_extra_args: " --tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }}  "
       when: use_tls | bool
@@ -371,11 +374,11 @@
       lineinfile:
         dest: /etc/profile
         line: alias mongo='mongosh admin {{ mongo_extra_args | default("") }} -u {{ mongo_root_user }} -p {{ mongo_root_password }} --port {{ mongos_port }} --host {{ inventory_hostname }}'
-        state: present     
+        state: present
 
     - name: set up keyfile authentication
       become: yes
-      copy: 
+      copy:
         dest: "{{ keyFile_location }}"
         content: "{{ keyfile_content }}"
         owner: mongod
@@ -383,7 +386,7 @@
         mode: 0600
       when: not use_tls | bool
 
-    - name: copy mongos.conf 
+    - name: copy mongos.conf
       template:
         src: templates/mongos.conf.j2
         dest: /etc/mongos.conf
@@ -453,7 +456,7 @@
       delegate_to: "{{ groups.mongos | first }}"
       when: mongodb_primary is defined and mongodb_primary
 
-- name: prepare the PBM connection string 
+- name: prepare the PBM connection string
   hosts: cfg:shard*:rs*
   tags: backup
   become: true
@@ -500,7 +503,7 @@
       lineinfile:
         dest: /etc/profile
         line: export PBM_MONGODB_URI='{{ mongodb_uri }}'
-        state: present      
+        state: present
 
     - name: configure credentials file for PBM agent
       template:
@@ -509,7 +512,7 @@
       when: arbiter is not defined
 
     - name: start PBM agent
-      service: 
+      service:
         name: pbm-agent
         state: restarted
       when: arbiter is not defined
@@ -517,7 +520,7 @@
     - name: prepare storage details file for PBM
       template:
         src: templates/pbm-storage.conf.j2
-        dest: /etc/pbm-storage.conf  
+        dest: /etc/pbm-storage.conf
       when: arbiter is not defined
 
 - name: configure backup process
@@ -559,7 +562,7 @@
       file:
         path: "{{ pmm_dir }}"
         state: directory
-        owner: root 
+        owner: root
         group: root
         mode: 0710
 
@@ -575,21 +578,21 @@
       yum:
         name: "{{ item }}"
         state: present
-      with_items: "{{ docker_packages }}"   
+      with_items: "{{ docker_packages }}"
 
     - name: start Docker
       service:
         name: docker
         state: restarted
 
-    - name: pull the PMM Docker image 
+    - name: pull the PMM Docker image
       shell: docker pull {{ pmm_image }}
 
     - name: create PMM data container
       shell: docker create -v /srv/ --name pmm-data {{ pmm_image }} /bin/true
 
     - name: run PMM server container
-      shell: docker run --detach --restart always --publish {{ pmm_external_port }}:{{ pmm_port }} --volumes-from pmm-data --name pmm-server {{ pmm_image }}    
+      shell: docker run --detach --restart always --publish {{ pmm_external_port }}:{{ pmm_port }} --volumes-from pmm-data --name pmm-server {{ pmm_image }}
 
 - name: configure monitoring with PMM
   hosts: cfg:shard*:rs*:mongos
@@ -619,7 +622,7 @@
     - name: point pmm-agent to the PMM server
       shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:{{ pmm_external_port }} --server-insecure-tls --force
 
-    - name: add MongoDB metrics collector 
+    - name: add MongoDB metrics collector
       shell: pmm-admin add mongodb --environment={{ env_tag }} --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }} {{ pmm_ssl_params | default("") }} --cluster {{ cluster }} --host={{ ansible_fqdn }} --port={{ mongo_port }} --tls-skip-verify --enable-all-collectors
       when: arbiter is not defined
 

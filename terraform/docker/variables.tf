@@ -71,16 +71,13 @@ variable "replsets" {
 variable "pmm_host" {
   description = "Name of the PMM server"
   default = "pmm-server"
+  type = string
 }
 
 variable "renderer_tag" {
   description = "Name of the Grafana image renderer container"
   default = "grafana-renderer"
-}
-
-variable "pmm_client_container_suffix" {
-  default = "pmm-client"
-  description = "Suffix for PMM client container"
+  type = string  
 }
 
 variable "pmm_port" {
@@ -88,41 +85,19 @@ variable "pmm_port" {
   # PMM 3 uses 8443. PMM 2 uses 443
   # default = "443"
   default = "8443"
+  type = string
 }
 
 variable "pmm_external_port" {
   description = "Port of the PMM server as seen from outside docker"
   default = "443"
-}
-
-variable "pmm_client_port" {
-  description = "Port of the PMM client inside docker network"
-  default = "42002"
+  type = string
 }
 
 variable "renderer_port" {
   description = "Port of the Grafana renderer"
   default = "8081"
-}
-
-variable "pmm_user" {
-  description = "Username for PMM web interface and clients"
-  default = "admin"
-}
-
-variable "pmm_password" {
-  description = "Password for PMM web interface and clients"
-  default = "admin"
-}
-
-variable "mongodb_pmm_user" {
-  default = "pmm"
-  description = "MongoDB user to be created with for PBM"
-}
-
-variable "mongodb_pmm_password" {
-  default = "percona"
-  description = "MongoDB PBM user password"
+  type = string
 }
 
 
@@ -133,36 +108,44 @@ variable "mongodb_pmm_password" {
 variable "minio_region" {
   description = "Default MINIO region"
   default     = "us-east-1"
+  type = string
 }
 
 variable "minio_access_key" {
   default = "minio"
+  type = string
 }
 
 variable "minio_server" {
   default = "minio"
+  type = string
 }
 
 variable "minio_port" {
   default = "9000"
+  type = string
 }
 
 variable "minio_console_port" {
   default = "9001"
+  type = string
 }
 
 variable "minio_secret_key" {
   default = "minioadmin"
+  type = string
 }
 
 variable "bucket_name" {
   default = "mongo-backups"
   description = "S3-compatible storage to put backups"
+  type = string
  }
 
 variable "backup_retention" {
   default = "2"
   description = "days to keep backups in bucket"
+  type = string
 }
 
 ###############
@@ -172,33 +155,32 @@ variable "backup_retention" {
 variable "renderer_image" {
   description = "Docker image for Grafana renderer container"
   default = "grafana/grafana-image-renderer:latest"
+  type = string
 }
 
 variable "minio_image" {
   description = "Minio Docker image"
   default = "minio/minio"
+  type = string
 }
 
 variable "psmdb_image" {
   description = "Docker image for MongoDB"
   default = "percona/percona-server-mongodb:latest"
+  type = string
 }
 
 variable "pbm_image" {
   description = "Docker image for PBM"
   default = "percona/percona-backup-mongodb:latest"
+  type = string
 }
 
 variable "pmm_server_image" {
   description = "Docker image for PMM server"
   #default = "perconalab/pmm-server:3-dev-latest"
   default = "percona/pmm-server:3"
-}
-
-variable "pmm_client_image" {
-  description = "Docker image for PMM client"
-  default = "percona/pmm-client:3"
-  #default = "perconalab/pmm-client:3-dev-latest"
+  type = string
 }
 
 variable "base_os_image" {
@@ -207,33 +189,25 @@ variable "base_os_image" {
   #default = "oraclelinux:8"
   default = "redhat/ubi9-minimal"
   #default = "redhat/ubi9"
+  type = string
 }
 
 variable "ycsb_os_image" {
   description = "Base OS image for the custom Docker image created with YCSB"
   default = "redhat/ubi8-minimal"
+  type = string
 }
 
 variable "pbm_mongod_image" {
   description = "Name of the local Docker image to be created for pbm-agent + current mongod version. Required for physical restores"
   default = "percona/pbm-agent-custom"
-}
-
-variable "mongos_image" {
-  description = "Name of the local Docker image to be created for mongos router"
-  #default = "percona/mongos"
-  # Using this image until we can make the custom mongos image work
-  default = "percona/percona-server-mongodb:latest"
+  type = string
 }
 
 variable "ycsb_image" {
   description = "Name of the local Docker image to be created for YCSB benchmark"
   default = "percona/ycsb"
-}
-
-variable "uid" {
-  description = "The user id under which the main process runs in the container created for pbm-agent + current mongod version"
-  default = 1001
+  type = string
 }
 
 #############

@@ -100,11 +100,6 @@ variable "pmm_port" {
   default = "8443"
 }
 
-variable "pmm_client_port" {
-  description = "Port of the PMM client inside docker network"
-  default = "42002"
-}
-
 variable "pmm_user" {
   description = "Username for PMM web interface and clients"
   default = "admin"

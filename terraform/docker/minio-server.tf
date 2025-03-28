@@ -1,6 +1,6 @@
 # MinIO Docker container
 resource "docker_container" "minio" {
-  name  = "${var.minio_server}"
+  name  = var.minio_server
   image = var.minio_image
   env = [
     "MINIO_ROOT_USER=${var.minio_access_key}",
@@ -12,10 +12,12 @@ resource "docker_container" "minio" {
   ports {
     internal = var.minio_port
     external = var.minio_port
+    ip = "127.0.0.1"
   }
   ports {
     internal = var.minio_console_port
     external = var.minio_console_port
+    ip = "127.0.0.1"
   }
   networks_advanced {
     name = docker_network.mongo_network.id

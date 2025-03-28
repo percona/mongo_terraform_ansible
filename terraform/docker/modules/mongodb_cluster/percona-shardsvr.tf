@@ -29,6 +29,7 @@ resource "docker_container" "shard" {
   user = var.uid
   ports {
     internal = var.shardsvr_port
+    ip = "127.0.0.1" 
   }  
   labels { 
     label = "replsetName"
@@ -104,9 +105,6 @@ resource "docker_container" "pmm_shard" {
   networks_advanced {
     name = "${var.network_name}"
   }
-  ports {
-    internal = var.pmm_client_port
-  }    
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]
     interval    = "10s"

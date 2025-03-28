@@ -22,6 +22,7 @@ resource "docker_container" "arbiter" {
   ]
   ports {
     internal = var.arbiter_port    
+    ip = "127.0.0.1" 
   }    
   user = var.uid
   labels { 
@@ -70,9 +71,6 @@ resource "docker_container" "pmm_arb" {
   networks_advanced {
     name = "${var.network_name}"
   }
-  ports {
-    internal = var.pmm_client_port
-  }    
   healthcheck {
     test        = ["CMD-SHELL", "pmm-admin status"]
     interval    = "10s"

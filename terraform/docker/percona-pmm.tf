@@ -1,7 +1,7 @@
 
 # Create a Docker container for the Grafana renderer container
 resource "docker_container" "renderer" {
-  name  = "${var.renderer_tag}"
+  name  = var.renderer_tag
   image = var.renderer_image
   env = [ "IGNORE_HTTPS_ERRORS=true" ]
   networks_advanced {
@@ -25,7 +25,7 @@ resource "docker_volume" "pmm_volume" {
 
 # Create a Docker container for the PMM server
 resource "docker_container" "pmm" {
-  name  = "${var.pmm_host}"
+  name  = var.pmm_host
   depends_on = [
     docker_container.renderer
   ]  
@@ -42,6 +42,7 @@ resource "docker_container" "pmm" {
   ports {
     internal = var.pmm_port
     external = var.pmm_external_port
+    #ip = "127.0.0.1"  
   }  
   healthcheck {
     test        = ["CMD", "curl", "-k", "-f", "https://${var.pmm_host}:${var.pmm_port}/graph/login" ]

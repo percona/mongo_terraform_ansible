@@ -300,6 +300,17 @@ resource "null_resource" "configure_pbm" {
   }
 }
 
+resource "null_resource" "wait_for_pmm" {
+  provisioner "local-exec" {
+    command = <<EOT
+      until docker exec -i ${docker_container.mongos[0].name} curl -k -f https://${var.pmm_host}:${var.pmm_port}/graph/login > /dev/null 2>&1; do      
+        echo "Waiting for PMM..."
+        sleep 5
+      done
+    EOT
+  }
+}
+
 # Configure PMM for config servers
 resource "null_resource" "configure_pmm_client_cfg" {
   depends_on = [
@@ -311,7 +322,6 @@ resource "null_resource" "configure_pmm_client_cfg" {
   for_each = toset([for i in docker_container.cfg : tostring(i.name)])
   provisioner "local-exec" {
     command = <<-EOT
-      sleep 10
       docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} --server-insecure-tls --force 
     EOT
   }

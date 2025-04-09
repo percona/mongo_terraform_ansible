@@ -132,7 +132,7 @@ resource "null_resource" "change_default_write_concern" {
   ]
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.rs[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password}  --port ${var.replset_port} --eval '
+      docker exec -i ${docker_container.rs[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.replset_port} --eval '
         db.adminCommand({
           "setDefaultRWConcern" : 1,
           "defaultWriteConcern" : { "w" : 1 },
@@ -158,6 +158,17 @@ resource "null_resource" "configure_pbm" {
   }
 }
 
+resource "null_resource" "wait_for_pmm" {
+  provisioner "local-exec" {
+    command = <<EOT
+      until docker exec -i ${docker_container.rs[0].name} curl -k -f https://${var.pmm_host}:${var.pmm_port}/graph/login > /dev/null 2>&1; do      
+        echo "Waiting for PMM..."
+        sleep 5
+      done
+    EOT
+  }
+}
+
 # Configure PMM for rs servers
 resource "null_resource" "configure_pmm_client_rs" {
   depends_on = [
@@ -168,7 +179,6 @@ resource "null_resource" "configure_pmm_client_rs" {
   for_each = toset([for i in docker_container.rs : tostring(i.name)])
   provisioner "local-exec" {
     command = <<-EOT
-      sleep 10
       docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} --server-insecure-tls --force 
     EOT
   }

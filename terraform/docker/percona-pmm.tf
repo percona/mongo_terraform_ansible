@@ -45,7 +45,7 @@ resource "docker_container" "pmm" {
     #ip = "127.0.0.1"  
   }  
   healthcheck {
-    test        = ["CMD", "curl", "-k", "-f", "https://${var.pmm_host}:${var.pmm_port}/graph/login" ]
+    test        = ["CMD", "curl", "-k", "-f", "https://${var.pmm_host}:${var.pmm_port}/v1/readyz" ]
     interval    = "10s"
     timeout     = "10s"
     retries     = 5

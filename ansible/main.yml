@@ -558,7 +558,7 @@
   become: true
   tasks:
 
-    - name: Create PMM directory
+    - name: create PMM directory
       file:
         path: "{{ pmm_dir }}"
         state: directory
@@ -571,7 +571,7 @@
         name: yum-utils
         state: present
 
-    - name: yum config manager
+    - name: add the Docker repository
       shell: yum-config-manager --add-repo {{ docker_repo }}
 
     - name: install Docker
@@ -585,14 +585,28 @@
         name: docker
         state: restarted
 
-    - name: pull the PMM Docker image
-      shell: docker pull {{ pmm_image }}
+    - name: create Docker network pmm-network 
+      shell: docker network create pmm-network
 
-    - name: create PMM data container
-      shell: docker create -v /srv/ --name pmm-data {{ pmm_image }} /bin/true
+    - name: generate Watchtower token
+      command: openssl rand -hex 16
+      register: token_output
+
+    - name: set the token as a variable
+      set_fact:
+        watchtower_token: "{{ token_output.stdout }}"
+
+    - name: install Watchtower
+      shell: docker run -d --network=pmm-network --name watchtower --restart always -e WATCHTOWER_HTTP_API_TOKEN={{ watchtower_token }} -e WATCHTOWER_HTTP_API_UPDATE=1 --volume /var/run/docker.sock:/var/run/docker.sock percona/watchtower:latest
+
+    - name: install Grafana renderer
+      shell: docker run -d --network=pmm-network --name renderer --restart always -e IGNORE_HTTPS_ERRORS=true grafana/grafana-image-renderer:latest
+
+    - name: create PMM data volume
+      shell: docker volume create pmm-data
 
     - name: run PMM server container
-      shell: docker run --detach --restart always --publish {{ pmm_external_port }}:{{ pmm_port }} --volumes-from pmm-data --name pmm-server {{ pmm_image }}
+      shell: docker run -d --network=pmm-network --name pmm-server --restart always -p {{ pmm_external_port }}:{{ pmm_port }} --volume pmm-data:/srv -e GF_RENDERING_SERVER_URL=http://renderer:8081/render -e GF_RENDERING_CALLBACK_URL=https://pmm-server:{{ pmm_port }}/graph/ -e PMM_WATCHTOWER_HOST=http://watchtower:8080 -e PMM_WATCHTOWER_TOKEN={{ watchtower_token }} {{ pmm_image }}
 
 - name: configure monitoring with PMM
   hosts: cfg:shard*:rs*:mongos
@@ -609,7 +623,7 @@
       set_fact:
         mongo_port: "{{ mongo_port_result.stdout }}"
 
-    - name: Ensure pmm-agent is started
+    - name: ensure pmm-agent is started
       service:
         name:  pmm-agent
         state: started

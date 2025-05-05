@@ -122,8 +122,8 @@ docker_packages:
 
 # Can also use perconalab/pmm-server-fb:PR-number-hash or perconalab/pmm-server:dev-latest. In that case set experimental to true.
 #pmm_image: perconalab/pmm-server:3-dev-latest
-#pmm_image: docker.io/percona/pmm-server:latest
-pmm_image: docker.io/percona/pmm-server:3
+pmm_image: docker.io/percona/pmm-server:latest
+#pmm_image: docker.io/percona/pmm-server:3
 # For PMM 3 pmm_port is 8443. For PMM 2 it is 443
 #pmm_port: 443
 pmm_port: 8443

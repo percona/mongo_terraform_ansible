@@ -46,13 +46,17 @@
   gather_facts: false
   become: yes
   tasks:
-    - name: stop PMM server
-      shell: docker stop pmm-server
+    - name: remove PMM server
+      shell: docker rm pmm-server watchtower renderer --force
       ignore_errors: yes
 
-    - name: remove PMM server and data
-      shell: docker rm pmm-server pmm-data
-      ignore_errors: yes
+    - name: remove PMM volume
+      shell: docker volume rm pmm-data --force
+      ignore_errors: yes            
+
+    - name: remove PMM network
+      shell: docker network rm pmm-network --force
+      ignore_errors: yes   
 
     - name: remove certificate related files    
       shell: rm -f /etc/ssl/*.{crt,csr,pem,key,cnf,srl}

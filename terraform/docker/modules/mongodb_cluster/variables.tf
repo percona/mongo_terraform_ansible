@@ -242,7 +242,7 @@ variable "pbm_image" {
 
 variable "pmm_client_image" {
   description = "Docker image for PMM client"
-  default = "percona/pmm-client:3"
+  default = "percona/pmm-client:latest"
   #default = "perconalab/pmm-client:3-dev-latest"
 }
 

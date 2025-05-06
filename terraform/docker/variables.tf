@@ -80,6 +80,12 @@ variable "renderer_tag" {
   type = string  
 }
 
+variable "watchtower_tag" {
+  description = "Name of the Watchtower container"
+  default = "watchtower"
+  type = string  
+}
+
 variable "pmm_port" {
   description = "Port of the PMM server inside docker network"
   # PMM 3 uses 8443. PMM 2 uses 443
@@ -100,6 +106,17 @@ variable "renderer_port" {
   type = string
 }
 
+variable "watchtower_port" {
+  description = "Port of the Watchtower"
+  default = "8080"
+  type = string
+}
+
+variable "watchtower_token" {
+  description = "Watchtower API token"
+  default = "1234567890"
+  type = string
+}
 
 #############
 # Bucket
@@ -158,6 +175,12 @@ variable "renderer_image" {
   type = string
 }
 
+variable "watchtower_image" {
+  description = "Docker image for Watchtower container"
+  default = "percona/watchtower:latest"
+  type = string
+}
+
 variable "minio_image" {
   description = "Minio Docker image"
   default = "minio/minio"
@@ -179,7 +202,8 @@ variable "pbm_image" {
 variable "pmm_server_image" {
   description = "Docker image for PMM server"
   #default = "perconalab/pmm-server:3-dev-latest"
-  default = "percona/pmm-server:3"
+  #default = "percona/pmm-server:3.0"
+  default = "percona/pmm-server:latest"
   type = string
 }
 

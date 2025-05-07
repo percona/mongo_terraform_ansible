@@ -3,6 +3,10 @@
   gather_facts: false
   become: yes
   tasks:
+    - name: wipe arbiter directory contents
+      shell: rm -rf {{ mongod_path }}/*
+      when: arbiter is defined
+
      - name: restart mongod service
        systemd:
          name: "{{ item }}"
@@ -16,6 +20,7 @@
          state: restarted
        with_items:
           - pbm-agent
+       when: arbiter is not defined
 
      - name: figure out the Mongo TLS options
        set_fact:

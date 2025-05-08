@@ -1,0 +1,5 @@
+mongo_port: 27018
+cfg_server_port: 27019
+mongos_port: 27017
+mongod_conf_template: mongod-sharding.conf.j2
+rs_init_template: init-rs.js.j2

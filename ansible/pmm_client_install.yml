@@ -1,0 +1,57 @@
+---
+- name: install PMM client
+  hosts: cfg:shards:replsets:mongos
+  become: yes
+  tags: install
+  environment:
+    PERCONA_TELEMETRY_DISABLE: 1
+  tasks:
+    - name: install RPM files from repository
+      block:
+        - name: Enable PMM client repository
+          shell: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
+
+        - name: install pmm-client RPM from repository
+          package:
+            name: "{{ item }}"
+            state: present
+          with_items: "{{ pmm_client_package }}"
+
+      when: not copy_files | bool
+
+    - name: disable Percona telemetry
+      systemd:
+        name: percona-telemetry-agent
+        enabled: false
+        state: stopped
+        daemon_reload: yes
+      ignore_errors: true
+
+- name: configure monitoring with PMM
+  hosts: cfg:shards:replsets:mongos
+  become: true
+  tags: monitoring
+  tasks:
+    - name: ensure pmm-agent is started
+      service:
+        name: pmm-agent
+        state: started
+
+    - name: figure out the SSL parameters for pmm-agent
+      set_fact:
+        pmm_ssl_params: " --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }} "
+      when: use_tls | bool
+
+    - name: point pmm-agent to the PMM server
+      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:{{ pmm_external_port }} --server-insecure-tls --force
+
+    - name: Add MongoDB metrics collector
+      shell: >
+        pmm-admin add mongodb
+        --environment={{ env_tag }}
+        --cluster {{ cluster }}
+        --host={{ ansible_fqdn }}
+        --port={{ mongo_port }}
+        --tls-skip-verify
+        {{ '--username=' ~ mongodb_pmm_user ~ ' --password=' ~ mongodb_pmm_user_pwd ~ ' ' ~ (pmm_ssl_params | default("")) ~ ' --enable-all-collectors' if arbiter is not defined else '' }}
+      when: env_tag is defined and cluster is defined and ansible_fqdn is defined and mongo_port is defined

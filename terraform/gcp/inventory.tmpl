@@ -3,6 +3,11 @@
 ${hostname_cfg[index]} ${ index == 0 ? "mongodb_primary=True" : "" }
 %{ endfor ~}
 
+[shards:children]
+%{ for shard_index in number_of_shards ~}
+shard${shard_index}
+%{ endfor ~}
+
 %{ for shard_index in number_of_shards ~}
 [shard${shard_index}]
 %{ for index, group in ansible_group_shards ~}

@@ -1,0 +1,3 @@
+mongo_port: 27019
+mongod_conf_template: mongod-cfgserver.conf.j2
+rs_init_template: init-rs-cfg.js.j2

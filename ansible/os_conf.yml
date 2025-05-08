@@ -1,0 +1,68 @@
+---
+- name: prepare OS configuration
+  hosts: cfg:shards:replsets:pmm
+  tags: os_conf
+  become : yes
+  environment:
+    PERCONA_TELEMETRY_DISABLE: 1  
+  tasks:
+    - name: tune sysctl values
+      ansible.posix.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: true
+      with_items:
+        - { key: vm.swappiness, value: "1" }
+        - { key: vm.dirty_ratio, value: "15" }
+        - { key: vm.dirty_background_ratio, value: "5" }
+        - { key: net.core.somaxconn, value: "65535" }
+        - { key: vm.max_map_count, value: "102400" }
+
+    - name: modify PAM limits
+      community.general.pam_limits:
+        domain: "{{ item.domain }}"
+        limit_type: "{{ item.type }}"
+        limit_item: "{{ item.it }}"
+        value: "{{ item.value }}"
+      with_items:
+        - { domain: '*', type: soft, it: nofile, value: 64000 }
+        - { domain: '*', type: hard, it: nofile, value: 64000 }
+
+    - name: add PAM limits to login
+      community.general.pamd:
+        state: after
+        type: session
+        module_path: postlogin
+        control: include
+        new_type: session
+        new_module_path: pam_limits.so
+        new_control: required
+        name: login
+
+    - name: prepare the disable THP systemd service (Mongo < 8)
+      template:
+        src: disable-thp.service.j2
+        dest: "{{ thp_location }}"
+        owner: root
+        group: root
+        mode: 0644
+      when: mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) < 80
+
+    - name: run the disable THP service (Mongo < 8)
+      systemd:
+        name: disable-thp
+        enabled: true
+        state: started
+        daemon_reload: yes
+      when: mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) < 80
+
+    - name: install Percona GPG key
+      rpm_key:
+        key: "{{ percona_key_location }}"
+        state: present
+
+    - name: install Percona release package 
+      package:
+        name: "{{ percona_release_package }}"
+        state: present

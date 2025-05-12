@@ -28,11 +28,7 @@ processManagement:
 
 # network interfaces
 net:
-{%if hostvars[inventory_hostname].group_names[0].startswith('shard') %}
-  port: {{ shard_port }}
-{% else %}
   port: {{ replicaset_port }}
-{% endif %}
   bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
 {% if use_tls %}
   tls:
@@ -70,8 +66,3 @@ operationProfiling:
 
 replication:
   replSetName: {{ cluster }}-{{ hostvars[inventory_hostname].group_names[0] }}
-
-{%if hostvars[inventory_hostname].group_names[0].startswith('shard') %}
-sharding:
-  clusterRole: shardsvr
-{% endif %}

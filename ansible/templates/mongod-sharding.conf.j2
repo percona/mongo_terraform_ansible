@@ -1,4 +1,4 @@
-# mongod.conf - config server
+# mongod.conf - Shard Server
 
 # for documentation of all options, see:
 #   http://docs.mongodb.org/manual/reference/configuration-options/
@@ -15,10 +15,10 @@ storage:
   dbPath: {{ mongod_path }}
   directoryPerDB: true
 # journal:
-#   enabled: true  
-#  wiredTiger:
-#    engineConfig:
-#          directoryForIndexes: true
+#   enabled: true
+# wiredTiger:
+#   engineConfig:
+#         directoryForIndexes: true
 
 # how the process runs
 processManagement:
@@ -35,7 +35,7 @@ net:
     mode: requireTLS
     certificateKeyFile: {{ certificateKeyFile }}
     CAFile: {{ CAFile }}
-    allowConnectionsWithoutCertificates: true    
+    allowConnectionsWithoutCertificates: true
 {% endif %}
 
 security:
@@ -65,7 +65,7 @@ operationProfiling:
    rateLimit: 100
 
 replication:
-  replSetName: {{ cluster }}-{{ group_names[0] }} 
+  replSetName: {{ cluster }}-{{ hostvars[inventory_hostname].group_names[0] }}
 
 sharding:
-  clusterRole: configsvr
+  clusterRole: shardsvr

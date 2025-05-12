@@ -1,0 +1,5 @@
+mongo_port: 27017
+cfg_server_port: 27019
+
+# where to copy rpm files from if copy_files:true. We need to have pbm, pmm2-client and percona-server-mongodb packages available on this directory
+local_rpm_location: /home/my-user/mongos/

@@ -1,0 +1,110 @@
+---
+- name: install PBM client
+  hosts: cfg:shards:replsets
+  become: yes
+  tags: install
+  environment:
+    PERCONA_TELEMETRY_DISABLE: 1
+  tasks:
+    - name: install RPM files from repository
+      block:
+        - name: Enable PBM repository
+          shell: "/usr/bin/percona-release enable pbm release"
+
+        - name: install pbm RPM from repository
+          package:
+            name: "{{ item }}"
+            state: present
+          with_items: "{{ pbm_package }}"
+      when: not copy_files | bool
+
+    - name: disable Percona telemetry
+      systemd:
+        name: percona-telemetry-agent
+        enabled: false
+        state: stopped
+        daemon_reload: yes
+      ignore_errors: true
+
+- name: prepare the PBM connection string
+  hosts: cfg:shards:replsets
+  tags: backup
+  become: true
+  tasks:
+
+- name: figure out backup URI for replica sets
+  hosts: replsets
+  tags: backup
+  become: true
+  tasks:
+    - name: generate PBM_MONGODB_URI
+      set_fact:
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ group_names[0] ] %}{{ h }}:{{ mongo_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-{{ group_names[0] }}&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
+
+- name: figure out backup URI for sharded cluster
+  hosts: shards:cfg
+  tags: backup
+  become: true
+  tasks:
+    - name: generate PBM_MONGODB_URI
+      set_fact:
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-cfg&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
+
+- name: configure PBM agent and CLI
+  hosts: cfg:shards:replsets
+  tags: backup
+  become: true
+  tasks:
+    - name: set up PBM_MONGODB_URI
+      lineinfile:
+        dest: /etc/profile
+        line: export PBM_MONGODB_URI='{{ mongodb_uri }}'
+        state: present
+
+    - name: configure credentials file for PBM agent
+      template:
+        src: templates/pbm-agent.j2
+        dest: /etc/sysconfig/pbm-agent
+      when: arbiter is not defined
+
+    - name: start PBM agent
+      service:
+        name: pbm-agent
+        state: restarted
+      when: arbiter is not defined
+
+    - name: prepare storage details file for PBM
+      template:
+        src: templates/pbm-storage.conf.j2
+        dest: /etc/pbm-storage.conf
+      when: arbiter is not defined
+
+- name: configure backup process
+  hosts: cfg:replsets
+  become: yes
+  tags: backup
+  tasks:
+    - name: set up storage location for PBM
+      shell: pbm config --file /etc/pbm-storage.conf --mongodb-uri '{{ mongodb_uri }}'
+      when: mongodb_primary is defined and mongodb_primary
+
+    - name: set up backup cron job
+      cron:
+        name: pbm backup
+        minute: '{{ pbm_backup_minute }}'
+        hour: '{{ pbm_backup_hour }}'
+        user: '{{ pbm_os_user }}'
+        job: /usr/bin/pbm backup --type '{{ pbm_backup_type }}' --mongodb-uri '{{ mongodb_uri }}'
+        cron_file: pbm_daily_backup
+      when: arbiter is not defined
+
+    - name: set up purge old backups cron job
+      cron:
+        name: pbm purge
+        minute: '{{ pbm_purge_minute }}'
+        hour: '{{ pbm_purge_minute }}'
+        user: '{{ pbm_os_user }}'
+        job: /usr/bin/pbm cleanup --force --older-than $(date -u -d '-{{ pbm_retention_days }} days' +'\%Y-\%m-\%d') --mongodb-uri '{{ mongodb_uri }}'
+        cron_file: pbm_purge_old
+      when: arbiter is not defined
+

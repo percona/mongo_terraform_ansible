@@ -1,0 +1,108 @@
+---
+- name: install mongos routers
+  hosts: mongos
+  become: yes
+  tags: mongos
+  environment:
+    PERCONA_TELEMETRY_DISABLE: 1
+  tasks:
+    - name: copy RPM files from local machine
+      block:
+        - name: copy files
+          copy:
+            src: "{{ local_rpm_location }}"
+            dest: "{{ target_rpm_location }}"
+
+        - name: find copied RPMs
+          find:
+            paths: "{{ target_rpm_location }}"
+            patterns: "*.rpm"
+          register: percona_rpms
+
+        - name: get the paths of copied files
+          set_fact:
+            rpm_list: "{{ percona_rpms.files | map(attribute='path') | list }}"
+
+        - name: install copied RPM files
+          yum:
+            name: "{{ rpm_list }}"
+            state: present
+            disablerepo: "*"
+
+      when: copy_files | bool
+
+    - name: install mongod files from repository
+      block:
+        - name: Enable specific MongoDB version
+          shell: "/usr/bin/percona-release enable {{ mongo_release }}"
+
+        - name: install mongos RPM from repository
+          package:
+            name: "{{ item }}"
+            state: present
+          with_items: "{{ mongos_packages }}"
+
+      when: not copy_files | bool
+
+    - name: create logs directory
+      file:
+        path: "{{ mongod_log_path }}"
+        state: directory
+        mode: '0755'
+        owner: mongod
+        group: mongod
+
+    - name: set up an alias to login easily to mongos
+      become: yes
+      lineinfile:
+        dest: /etc/profile
+        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ inventory_hostname }}'
+        state: present
+
+    - name: set up keyfile 
+      become: yes
+      copy:
+        dest: "{{ keyFile_location }}"
+        content: "{{ keyfile_content }}"
+        owner: mongod
+        group: root
+        mode: 0600
+      when: not use_tls | bool
+
+    - name: copy mongos.conf
+      template:
+        src: templates/mongos.conf.j2
+        dest: /etc/mongos.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: setup logrotate conf for mongos
+      template:
+        src: templates/logrotate-mongos.conf.j2
+        dest: /etc/logrotate.d/mongos
+        mode: 0644
+
+    - name: copy systemd template file for mongos
+      template:
+        src: templates/mongos.service.j2
+        dest: /usr/lib/systemd/system/mongos.service
+        mode: 0644
+
+    - name: disable SELinux
+      shell: /usr/sbin/setenforce 0
+
+    - name: disable Percona telemetry
+      systemd:
+        name: percona-telemetry-agent
+        enabled: false
+        state: stopped
+        daemon_reload: yes
+      ignore_errors: true
+
+    - name: start the mongos router service
+      systemd:
+        name: mongos
+        state: started
+        enabled: yes
+        daemon_reload: yes

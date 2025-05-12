@@ -1,5 +1,5 @@
 ---
-- hosts: mongos:cfg:shard*:rs*
+- hosts: mongos:cfg:shards:replsets
   gather_facts: false
   become: yes
   tasks:
@@ -26,7 +26,7 @@
         state: stopped
       ignore_errors: yes
 
-- hosts: cfg:shard*:rs*
+- hosts: cfg:shards:replsets
   gather_facts: false
   become: yes
   tasks:

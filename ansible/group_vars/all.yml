@@ -15,7 +15,7 @@
 #########################
 
 percona_key_location: https://repo.percona.com/yum/PERCONA-PACKAGING-KEY
-percona_repo: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+percona_release_package: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
 
 # MongoDB version as per "percona-release". Availability of MongoDB version depend on the OS version.
 # e.g. -> Available repositories for centos7: psmdb-36 psmdb-40 psmdb-42 psmdb-44 psmdb-50 psmdb-60
@@ -24,17 +24,13 @@ mongo_release: psmdb-80
 
 # packages and router_packages lists are only relevant if copy_files: false
 # you can use a specific version instead of the default `latest` by passing the package names and version e.g. percona-server-mongodb-7.0.12-7.el9
-packages:
+mongod_packages:
   - percona-server-mongodb
-  - percona-backup-mongodb
-  #- pmm2-client
-  - pmm-client
+  - percona-mongodb-mongosh
 
-router_packages:
+mongos_packages:
    - percona-server-mongodb-mongos
-   - percona-mongodb-mongosh
-   #- pmm2-client
-   - pmm-client
+   - percona-mongodb-mongosh   
 
 # copy rpm files from a local path. If false yum will be used to download from a configured repository
 copy_files: false
@@ -45,34 +41,21 @@ local_rpm_location: /home/my-user/mongo/
 # where to copy rpm files to in the target hosts
 target_rpm_location: /tmp/
 
-#####################
-# MongoDB admin user
-#####################
+##########
+# MongoDB 
+##########
 
-mongo_root_user: root
-mongo_root_password: percona
-
-################
-# Network ports
-################
-
-cfg_server_port: 27019
-shard_port: 27018
-mongos_port: 27017
-replicaset_port: 27017
-
-################
-# MongoDB paths
-################
+mongo_admin_user: root
+mongo_admin_password: percona
 
 mongod_log_path: /var/log/mongo/
 mongod_path: /var/lib/mongo/
 
 thp_location: /usr/lib/systemd/system/disable-thp.service
 
-##################
-## Authentication
-##################
+########################
+## Member Authentication
+########################
 
 # use_tls: true/false. Controls if Mongo uses keyfile or x509 certificates for member authentication. Also controls if clients need to use TLS to connect.
 use_tls: false
@@ -87,9 +70,9 @@ keyfile_content: |
 certificateKeyFile: /etc/ssl/server.pem
 CAFile: /etc/ssl/test-ca.pem
 
-################
-## Encryption
-################
+##########################
+## Data-at-rest Encryption
+##########################
 
 # keyfile_encryption: true/false
 keyfile_encryption: false
@@ -133,6 +116,9 @@ pmm_external_port: 443
 #pmm_client_repo: pmm2-client
 pmm_client_repo: pmm3-client
 
+pmm_client_package:
+  - pmm-client
+
 # PMM server parameters
 pmm_dir: /var/lib/docker
 pmm_server_user: admin
@@ -153,6 +139,9 @@ env_tag: test
 ## Backup
 ###############
 
+pbm_package:
+  - percona-backup-mongodb
+  
 pbmuser: pbm
 pbmpwd: secretpwd
 pbm_backup_type: physical

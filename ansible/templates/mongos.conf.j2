@@ -18,7 +18,7 @@ processManagement:
 
 # network interfaces
 net:
-  port: {{ mongos_port }}
+  port: {{ mongo_port }}
   bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
 {% if use_tls %}
   tls:

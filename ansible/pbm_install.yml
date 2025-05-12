@@ -16,7 +16,6 @@
             name: "{{ item }}"
             state: present
           with_items: "{{ pbm_package }}"
-
       when: not copy_files | bool
 
     - name: disable Percona telemetry

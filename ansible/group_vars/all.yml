@@ -24,14 +24,13 @@ mongo_release: psmdb-80
 
 # packages and router_packages lists are only relevant if copy_files: false
 # you can use a specific version instead of the default `latest` by passing the package names and version e.g. percona-server-mongodb-7.0.12-7.el9
-mongod_package:
+mongod_packages:
   - percona-server-mongodb
+  - percona-mongodb-mongosh
 
-mongos_package:
+mongos_packages:
    - percona-server-mongodb-mongos
-
-mongosh_package:
-   - percona-mongodb-mongosh
+   - percona-mongodb-mongosh   
 
 # copy rpm files from a local path. If false yum will be used to download from a configured repository
 copy_files: false
@@ -53,9 +52,6 @@ mongod_log_path: /var/log/mongo/
 mongod_path: /var/lib/mongo/
 
 thp_location: /usr/lib/systemd/system/disable-thp.service
-
-mongos_port: 27017
-cfg_server_port: 27019
 
 ########################
 ## Member Authentication
@@ -145,6 +141,7 @@ env_tag: test
 
 pbm_package:
   - percona-backup-mongodb
+  
 pbmuser: pbm
 pbmpwd: secretpwd
 pbm_backup_type: physical

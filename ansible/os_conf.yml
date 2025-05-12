@@ -1,10 +1,8 @@
 ---
 - name: prepare OS configuration
-  hosts: cfg:shards:replsets:pmm
+  hosts: cfg:shards:replsets
   tags: os_conf
   become : yes
-  environment:
-    PERCONA_TELEMETRY_DISABLE: 1  
   tasks:
     - name: tune sysctl values
       ansible.posix.sysctl:
@@ -56,13 +54,3 @@
         state: started
         daemon_reload: yes
       when: mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) < 80
-
-    - name: install Percona GPG key
-      rpm_key:
-        key: "{{ percona_key_location }}"
-        state: present
-
-    - name: install Percona release package 
-      package:
-        name: "{{ percona_release_package }}"
-        state: present

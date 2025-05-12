@@ -6,14 +6,43 @@
   environment:
     PERCONA_TELEMETRY_DISABLE: 1
   tasks:
-    - name: Enable specific MongoDB version
-      shell: "/usr/bin/percona-release enable {{ mongo_release }}"
+    - name: copy RPM files from local machine
+      block:
+        - name: copy files
+          copy:
+            src: "{{ local_rpm_location }}"
+            dest: "{{ target_rpm_location }}"
 
-    - name: install mongos RPM from repository
-      package:
-        name: "{{ item }}"
-        state: present
-      with_items: "{{ mongos_package }}"
+        - name: find copied RPMs
+          find:
+            paths: "{{ target_rpm_location }}"
+            patterns: "*.rpm"
+          register: percona_rpms
+
+        - name: get the paths of copied files
+          set_fact:
+            rpm_list: "{{ percona_rpms.files | map(attribute='path') | list }}"
+
+        - name: install copied RPM files
+          yum:
+            name: "{{ rpm_list }}"
+            state: present
+            disablerepo: "*"
+
+      when: copy_files | bool
+
+    - name: install mongod files from repository
+      block:
+        - name: Enable specific MongoDB version
+          shell: "/usr/bin/percona-release enable {{ mongo_release }}"
+
+        - name: install mongos RPM from repository
+          package:
+            name: "{{ item }}"
+            state: present
+          with_items: "{{ mongos_packages }}"
+
+      when: not copy_files | bool
 
     - name: create logs directory
       file:
@@ -27,7 +56,7 @@
       become: yes
       lineinfile:
         dest: /etc/profile
-        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongos_port }} --host {{ inventory_hostname }}'
+        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ inventory_hostname }}'
         state: present
 
     - name: set up keyfile 

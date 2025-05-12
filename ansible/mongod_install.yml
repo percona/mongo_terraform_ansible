@@ -42,11 +42,11 @@
         - name: Enable the specific MongoDB version
           shell: "/usr/bin/percona-release enable {{ mongo_release }}"
 
-        - name: install mongod RPM from repository
+        - name: install mongod RPMs from repository
           package:
             name: "{{ item }}"
             state: present
-          with_items: "{{ mongod_package }}"
+          with_items: "{{ mongod_packages }}"
 
       when: not copy_files | bool
 

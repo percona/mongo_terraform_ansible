@@ -1,0 +1,15 @@
+[rs]
+%{ for index, group in ansible_group_replsets ~}
+${hostname_replsets[index]} ${ index == 0 ? "mongodb_primary=True" : "" }
+%{ endfor ~}
+
+[pmm]
+${hostname_pmm} 
+
+[all:vars]
+ansible_ssh_user=${my_ssh_user}
+bucket=${bucket}
+region=${region}
+endpointUrl=${endpointUrl}
+access_key_id=${access_key}
+secret_access_key=${secret_access_key}

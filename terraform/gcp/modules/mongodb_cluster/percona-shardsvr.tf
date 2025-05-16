@@ -1,5 +1,5 @@
 resource "google_compute_disk" "shard_disk" {
-  name  = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas )}svr${count.index % var.shardsvr_replicas}-data"
+  name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas )}svr${count.index % var.shardsvr_replicas}-data"
   type  = var.data_disk_type
   size  = var.shardsvr_volume_size
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names) % var.shardsvr_replicas]
@@ -7,11 +7,11 @@ resource "google_compute_disk" "shard_disk" {
 }
 
 resource "google_compute_instance" "shard" {
-  name = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas )}svr${count.index % var.shardsvr_replicas}"
+  name = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas )}svr${count.index % var.shardsvr_replicas}"
   machine_type = var.shardsvr_type
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names) % var.shardsvr_replicas]
   count = var.shard_count * var.shardsvr_replicas
-  tags = ["${var.env_tag}-${var.shardsvr_tag}"]
+  tags = ["${var.cluster_name}-${var.shardsvr_tag}"]
   labels = { 
     ansible-group = floor(count.index / var.shardsvr_replicas ),
     ansible-index = count.index % var.shardsvr_replicas,
@@ -26,8 +26,8 @@ resource "google_compute_instance" "shard" {
     source = element(google_compute_disk.shard_disk.*.self_link, count.index)
   }     
   network_interface {
-    network = google_compute_network.vpc-network.id
-    subnetwork = google_compute_subnetwork.vpc-subnet.id
+    network = var.vpc
+    subnetwork = var.subnet_name
     access_config {}
   }
   metadata = {
@@ -41,7 +41,7 @@ resource "google_compute_instance" "shard" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
+    hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts    
@@ -61,11 +61,11 @@ resource "google_compute_instance" "shard" {
 }
 
 resource "google_compute_firewall" "mongodb-shardsvr-firewall" {
-  name = "${var.env_tag}-${var.shardsvr_tag}-firewall"
-  network = google_compute_network.vpc-network.name
+  name = "${var.cluster_name}-${var.shardsvr_tag}-firewall"
+  network = var.vpc
   direction = "INGRESS"
-  source_ranges = ["0.0.0.0/0"]
-  target_tags = ["${var.env_tag}-${var.shardsvr_tag}"]
+  source_ranges = ["${var.subnet_cidr}"]
+  target_tags = ["${var.cluster_name}-${var.shardsvr_tag}"]
   allow {
     protocol = "tcp"
     ports = "${var.shard_ports}"

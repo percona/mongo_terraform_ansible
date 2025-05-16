@@ -1,12 +1,11 @@
 resource "google_compute_instance" "arbiter" {
-  name = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset )}arb${count.index % var.arbiters_per_replset}"
+  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
   machine_type = var.arbiter_type
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names) % var.arbiters_per_replset]
-  count = var.shard_count * var.arbiters_per_replset
-  tags = ["${var.env_tag}-${var.arbiter_tag}"]
+  count = var.arbiters_per_replset
+  tags = ["${var.rs_name}-${var.arbiter_tag}"]
   labels = { 
-    ansible-group = floor(count.index / var.arbiters_per_replset ),
-    ansible-index = count.index % var.arbiters_per_replset,
+    ansible-group = var.replset_tag,
     environment = var.env_tag
   }  
   boot_disk {
@@ -15,8 +14,8 @@ resource "google_compute_instance" "arbiter" {
     }
   }   
   network_interface {
-    network = google_compute_network.vpc-network.id
-    subnetwork = google_compute_subnetwork.vpc-subnet.id
+    network = var.vpc
+    subnetwork = var.subnet_name
     access_config {}
   }
   metadata = {
@@ -30,7 +29,7 @@ resource "google_compute_instance" "arbiter" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset )}arb${count.index % var.arbiters_per_replset}"
+    hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts    
@@ -38,11 +37,11 @@ resource "google_compute_instance" "arbiter" {
 }
 
 resource "google_compute_firewall" "mongodb-arbiter-firewall" {
-  name = "${var.env_tag}-${var.arbiter_tag}-firewall"
-  network = google_compute_network.vpc-network.name
+  name = "${var.rs_name}-${var.arbiter_tag}-firewall"
+  network = var.vpc
   direction = "INGRESS"
-  source_ranges = ["0.0.0.0/0"]
-  target_tags = ["${var.env_tag}-${var.arbiter_tag}"]
+  source_ranges = ["${var.subnet_cidr}"]
+  target_tags = ["${var.rs_name}-${var.arbiter_tag}"]
   allow {
     protocol = "tcp"
     ports = "${var.arbiter_ports}"

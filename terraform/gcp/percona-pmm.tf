@@ -1,15 +1,15 @@
 resource "google_compute_disk" "pmm_disk" {
-  name  = "${var.env_tag}-${var.pmm_tag}-data"
+  name  = "${local.pmm_host}-data"
   type  = var.pmm_disk_type
   size  = var.pmm_volume_size
   zone  = data.google_compute_zones.available.names[0]
 }
 
 resource "google_compute_instance" "pmm" {
-  name = "${var.env_tag}-${var.pmm_tag}"
+  name = "${local.pmm_host}"
   machine_type = var.pmm_type
   zone  = data.google_compute_zones.available.names[0]
-  tags = ["${var.env_tag}-${var.pmm_tag}"]
+  tags = ["${local.pmm_host}"]
   boot_disk {
     initialize_params {
     image = lookup(var.image, var.region)
@@ -34,7 +34,7 @@ resource "google_compute_instance" "pmm" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.env_tag}-${var.pmm_tag}"
+    hostnamectl set-hostname "${local.pmm_host}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts  
@@ -53,13 +53,13 @@ resource "google_compute_instance" "pmm" {
 }
 
 resource "google_compute_firewall" "percona-pmm-firewall" {
-  name = "${var.env_tag}-${var.pmm_tag}-firewall"
+  name = "${local.pmm_host}-firewall"
   network = google_compute_network.vpc-network.name
   direction = "INGRESS"
-  source_ranges = ["0.0.0.0/0"]
-  target_tags = ["${var.env_tag}-${var.pmm_tag}"]
+  source_ranges = ["${var.subnet_cidr}"]
+  target_tags = ["${local.pmm_host}"]
   allow {
     protocol = "tcp"
-    ports = "${var.pmm_ports}"
+    ports = "${var.pmm_port}"
   }
 }

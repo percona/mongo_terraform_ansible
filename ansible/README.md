@@ -51,10 +51,10 @@ dev-percona-pmm
 
 [all:vars]
 ansible_ssh_user=mongodb
-pmm_public_ip=30.30.30.30
 pmm_private_ip=192.168.0.1
 bucket=dev-mongo-backups
 region=NORTHAMERICA-NORTHEAST1
+endpointUrl=https://storage.googleapis.com
 cluster=dev
 access_key_id=GOOG1E2TPIJ5*****
 secret_access_key=******
@@ -81,10 +81,10 @@ test-percona-pmm
 
 [all:vars]
 ansible_ssh_user=mongodb
-pmm_public_ip=30.30.30.30
 pmm_private_ip=192.168.0.1
 bucket=test-mongo-backups
 region=NORTHAMERICA-NORTHEAST1
+endpointUrl=https://storage.googleapis.com
 cluster=test
 access_key_id=GOOG1E2TPI*******
 secret_access_key=******

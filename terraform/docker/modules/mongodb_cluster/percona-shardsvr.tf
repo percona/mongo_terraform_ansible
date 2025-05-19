@@ -29,7 +29,7 @@ resource "docker_container" "shard" {
   user = var.uid
   ports {
     internal = var.shardsvr_port
-    ip = "127.0.0.1" 
+    ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0" 
   }  
   labels { 
     label = "replsetName"

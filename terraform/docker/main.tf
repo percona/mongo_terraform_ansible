@@ -28,6 +28,7 @@ module "mongodb_clusters" {
   pmm_port = each.value.pmm_port  
   minio_server = each.value.minio_server
   minio_port = each.value.minio_port
+  bind_to_localhost = each.value.bind_to_localhost
 
   depends_on = [docker_container.pmm, null_resource.minio_bucket ]
 }
@@ -43,6 +44,7 @@ module "mongodb_replsets" {
    pmm_port = each.value.pmm_port  
    minio_server = each.value.minio_server
    minio_port = each.value.minio_port
+   bind_to_localhost = each.value.bind_to_localhost
 
    depends_on = [docker_container.pmm, null_resource.minio_bucket ]
  }

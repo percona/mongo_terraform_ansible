@@ -285,3 +285,10 @@ variable "network_name" {
   type    = string
   default = "mongo-terraform"
 }
+
+
+variable "bind_to_localhost" {
+  type = bool
+  default = true 
+  description = "Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0"
+}

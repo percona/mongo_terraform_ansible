@@ -60,7 +60,7 @@ resource "docker_container" "pmm" {
   ports {
     internal = var.pmm_port
     external = var.pmm_external_port
-    #ip = "127.0.0.1"  
+    ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
   }  
   healthcheck {
     test        = ["CMD", "curl", "-k", "-f", "https://${var.pmm_host}:${var.pmm_port}/v1/readyz" ]

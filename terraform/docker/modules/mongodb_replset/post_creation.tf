@@ -158,33 +158,41 @@ resource "null_resource" "configure_pbm" {
   }
 }
 
-resource "null_resource" "wait_for_pmm" {
-  provisioner "local-exec" {
-    command = <<EOT
-      until docker exec -i ${docker_container.rs[0].name} curl -k -f https://${var.pmm_host}:${var.pmm_port}/graph/login > /dev/null 2>&1; do      
-        echo "Waiting for PMM..."
-        sleep 5
-      done
-    EOT
-  }
-}
-
 # Configure PMM for rs servers
 resource "null_resource" "configure_pmm_client_rs" {
   depends_on = [
     null_resource.initiate_replset,
     docker_container.pmm_rs,
-    docker_container.rs,
+    docker_container.rs
   ]
   for_each = toset([for i in docker_container.rs : tostring(i.name)])
+
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} --server-insecure-tls --force 
+      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
+        pmm-admin config ${each.key} container ${each.key} \
+        --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} \
+        --server-insecure-tls --force; do
+          echo "Retrying pmm-admin config for ${each.key} (rs)..."
+          sleep 1
+      done
     EOT
   }
+
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --environment=${var.env_tag} --username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password} --host=${each.key} --port=${var.replset_port} --service-name=${each.key}-mongodb --tls-skip-verify --enable-all-collectors
+      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
+        pmm-admin add mongodb \
+        --environment=${var.env_tag} \
+        --username=${var.mongodb_pmm_user} \
+        --password=${var.mongodb_pmm_password} \
+        --host=${each.key} \
+        --port=${var.replset_port} \
+        --service-name=${each.key}-mongodb \
+        --tls-skip-verify --enable-all-collectors; do
+          echo "Retrying pmm-admin add mongodb for ${each.key} (rs)..."
+          sleep 1
+      done
     EOT
   }  
 }
@@ -194,17 +202,34 @@ resource "null_resource" "configure_pmm_client_arb" {
   depends_on = [
     null_resource.initiate_replset,
     docker_container.pmm_arb, 
-    docker_container.arbiter            
+    docker_container.arbiter
   ]
   for_each = toset([for i in docker_container.arbiter : tostring(i.name)])
+
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin config ${each.key} container ${each.key} --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} --server-insecure-tls --force 
+      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
+        pmm-admin config ${each.key} container ${each.key} \
+        --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} \
+        --server-insecure-tls --force; do
+          echo "Retrying pmm-admin config for ${each.key} (arb)..."
+          sleep 1
+      done
     EOT
-  }    
+  }
+
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${each.key}-${var.pmm_client_container_suffix} pmm-admin add mongodb --environment=${var.env_tag} --host=${each.key} --port=${var.arbiter_port} --service-name=${each.key}-mongodb --tls-skip-verify
+      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
+        pmm-admin add mongodb \
+        --environment=${var.env_tag} \
+        --host=${each.key} \
+        --port=${var.arbiter_port} \
+        --service-name=${each.key}-mongodb \
+        --tls-skip-verify; do
+          echo "Retrying pmm-admin add mongodb for ${each.key} (arb)..."
+          sleep 1
+      done
     EOT
   }     
 }

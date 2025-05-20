@@ -25,65 +25,64 @@ There is a helper script provisioned in `/etc/profile` to connect to each server
 - Example of an inventory for a sharded cluster (GCP):
 ```
 [cfg]
-dev-mongo-cfg00 mongodb_primary=True
-dev-mongo-cfg01
-dev-mongo-cfg02
+mongodb-cfg00 mongodb_primary=True
+mongodb-cfg01
+mongodb-cfg02
 
 [shards:children]
 shard0
 shard1
 
 [shard0]
-dev-mongo-shard00svr0 mongodb_primary=True
-dev-mongo-shard00svr1
-dev-mongo-shard00svr2
+mongodb-shard00svr0 mongodb_primary=True
+mongodb-shard00svr1
+mongodb-shard00svr2
 
 [shard1]
-dev-mongo-shard01svr0 mongodb_primary=True
-dev-mongo-shard01svr1
-dev-mongo-shard01svr2 arbiter=True
+mongodb-shard01svr0 mongodb_primary=True
+mongodb-shard01svr1
+mongodb-shard01svr2 arbiter=True
 
 [mongos]
-dev-mongo-router00
+mongodb-router00
 
 [pmm]
-dev-percona-pmm
+percona-pmm
 
 [all:vars]
 ansible_ssh_user=mongodb
 bucket=dev-mongo-backups
 region=NORTHAMERICA-NORTHEAST1
 endpointUrl=https://storage.googleapis.com
-cluster=dev
+cluster=cl01
 access_key_id=GOOG1E2TPIJ5*****
 secret_access_key=******
 ```
 
-- For each standalone replicaset you need to create a group and put all them as children of `replsets` group:
+- For each standalone replicaset you need to create a group and put it as children of `replsets` group:
 ```
 [replsets:children]
+rs0
 rs1
-rs2
+
+[rs0]
+mongodb-rs00svr0 mongodb_primary=True
+mongodb-rs00svr1
+mongodb-rs00svr2 arbiter=True
 
 [rs1]
-host11 mongodb_primary=True
-host12
-host13
-
-[rs2]
-host14 mongodb_primary=True
-host15
-host16
+mongodb-rs01svr0 mongodb_primary=True
+mongodb-rs01svr1
+mongodb-rs01svr2
 
 [pmm]
-test-percona-pmm
+percona-pmm
 
 [all:vars]
 ansible_ssh_user=mongodb
 bucket=test-mongo-backups
 region=NORTHAMERICA-NORTHEAST1
 endpointUrl=https://storage.googleapis.com
-cluster=test
 access_key_id=GOOG1E2TPI*******
 secret_access_key=******
 ```

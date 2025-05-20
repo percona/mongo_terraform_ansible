@@ -1,17 +1,17 @@
 ---
-- name: prepare OS configuration
+- name: Prepare OS configuration
   hosts: cfg:shards:replsets:mongos
   tags: os_conf
   become : yes
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"  
   tasks:
-    - name: install Percona GPG key
+    - name: Install Percona GPG key
       rpm_key:
         key: "{{ percona_key_location }}"
         state: present
 
-    - name: install percona-release package 
+    - name: Install percona-release package 
       package:
         name: "{{ percona_release_package }}"
         state: present

@@ -11,7 +11,7 @@ variable "cluster_name" {
 
 variable "env_tag" {
   default = "qa"
-  description = "Name of Environment. Replace these with your own custom name to avoid collisions"
+  description = "Name of Environment"
 }
 
 variable "gce_ssh_users" {

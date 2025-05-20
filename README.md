@@ -1,8 +1,15 @@
-# Deploy a MongoDB environment using Terraform/Ansible
+# Deploy MongoDB environments using Terraform/Ansible
 
-There are different directories to deploy resources on AWS, GCP or a local setup that uses Docker containers. 
+This automation is meant to deploy the full stack of Percona MongoDB software easily:
 
-## Pre-requisites
+- Percona Server for MongoDB
+- Percona Backup for MongoDB
+- PMM Client
+- PMM Server
+
+The code creates instances in Google Cloud or AWS using Terraform, and relies on Ansible to install the software. You also have the option to run all components on a single server using Docker containers (e.g. your own laptop).
+
+## Instructions
 
 1. Clone this repository on your machine and `cd` to it
 
@@ -11,12 +18,9 @@ There are different directories to deploy resources on AWS, GCP or a local setup
     cd mongo_terraform_ansible
     ```
 
-2. Go to your desired target platform. Examples:
-
+2. Go to your desired target platform's subdirectory. Example:
     ```
     cd terraform/gcp
-    cd terraform/aws
-    cd terraform/docker
     ```
-
-3. Follow the instructions on the README for your desired platform
+    
+3. Follow the instructions on the README inside the subdirectory of your desired platform.

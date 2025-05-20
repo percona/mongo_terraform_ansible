@@ -1,5 +1,5 @@
 ---
-- name: add the shards to the cluster
+- name: Add the shards to the cluster
   hosts: shards
   tags: add_shards
   tasks:
@@ -13,7 +13,7 @@
       delegate_to: "{{ groups.mongos | first }}"
       run_once: true
 
-    - name: add the shards to the cluster
+    - name: Add the shards to the cluster
       shell: mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} --eval "sh.addShard('{{ cluster }}-{{ group_names[0] }}/{{ ansible_hostname }}:{{ mongo_port }}')"
       delegate_to: "{{ groups.mongos | first }}"
       when: mongodb_primary is defined and mongodb_primary

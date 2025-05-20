@@ -15,7 +15,7 @@ variable "rs_name" {
 
 variable "env_tag" {
   default = "qa"
-  description = "Name of Environment. Replace these with your own custom name to avoid collisions"
+  description = "Name of Environment"
 }
 
 variable "gce_ssh_users" {
@@ -57,7 +57,7 @@ variable "arbiters_per_replset" {
 
 variable "replset_tag" {
   description = "Name of the replicaset servers"
-  default = "svr"
+  default = "mongodb-rs"
 }
 
 variable "replsetsvr_ports" {

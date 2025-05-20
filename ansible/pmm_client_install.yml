@@ -1,17 +1,17 @@
 ---
-- name: install PMM client
+- name: Install PMM client
   hosts: cfg:shards:replsets:mongos
   become: yes
   tags: install
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: install RPM files from repository
+    - name: Install RPM files from repository
       block:
         - name: Enable PMM client repository
           shell: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
 
-        - name: install pmm-client RPM from repository
+        - name: Install pmm-client RPM from repository
           package:
             name: "{{ item }}"
             state: present
@@ -19,7 +19,7 @@
 
       when: not copy_files | bool
 
-    - name: disable Percona telemetry
+    - name: Disable Percona telemetry
       systemd:
         name: percona-telemetry-agent
         enabled: false
@@ -28,17 +28,17 @@
       ignore_errors: true
       when: disable_telemetry | bool
 
-- name: configure monitoring with PMM
+- name: Configure monitoring with PMM
   hosts: cfg:shards:replsets:mongos
   become: true
   tags: monitoring
   tasks:
-    - name: ensure pmm-agent is started
+    - name: Ensure pmm-agent is started
       service:
         name: pmm-agent
         state: started
 
-    - name: point pmm-agent to the PMM server
+    - name: Point pmm-agent to the PMM server
       shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].inventory_hostname }}:{{ pmm_external_port }} --server-insecure-tls --force
 
     - name: Add MongoDB metrics collector

@@ -28,7 +28,7 @@ processManagement:
 
 # network interfaces
 net:
-  port: {{ replicaset_port }}
+  port: {{ mongo_port }}
   bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
 {% if use_tls %}
   tls:
@@ -65,4 +65,4 @@ operationProfiling:
    rateLimit: 100
 
 replication:
-  replSetName: {{ cluster }}-{{ hostvars[inventory_hostname].group_names[0] }}
+  replSetName: {{ hostvars[inventory_hostname].group_names[0] }}

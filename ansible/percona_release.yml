@@ -4,7 +4,7 @@
   tags: os_conf
   become : yes
   environment:
-    PERCONA_TELEMETRY_DISABLE: 1  
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"  
   tasks:
     - name: install Percona GPG key
       rpm_key:

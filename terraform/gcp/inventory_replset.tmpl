@@ -1,6 +1,12 @@
-[rs]
+[replsets:children]
+${rs_name}
+
+[${rs_name}]
 %{ for index, group in ansible_group_replsets ~}
 ${hostname_replsets[index]} ${ index == 0 ? "mongodb_primary=True" : "" }
+%{ endfor ~}
+%{ for arb_index, arb_group in ansible_group_arbiters ~}
+${ hostname_arbiters[arb_index] } arbiter=True
 %{ endfor ~}
 
 [pmm]

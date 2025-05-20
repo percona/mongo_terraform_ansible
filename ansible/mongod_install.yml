@@ -4,7 +4,7 @@
   become: yes
   tags: install
   environment:
-    PERCONA_TELEMETRY_DISABLE: 1
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
     - name: Create MongoDB datadir
       file:
@@ -57,6 +57,7 @@
         state: stopped
         daemon_reload: yes
       ignore_errors: true
+      when: disable_telemetry | bool
 
 - name: prepare the configuration
   hosts: cfg:shards:replsets

@@ -4,7 +4,7 @@
   become: yes
   tags: install
   environment:
-    PERCONA_TELEMETRY_DISABLE: 1
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
     - name: install RPM files from repository
       block:
@@ -26,6 +26,7 @@
         state: stopped
         daemon_reload: yes
       ignore_errors: true
+      when: disable_telemetry | bool
 
 - name: configure monitoring with PMM
   hosts: cfg:shards:replsets:mongos
@@ -38,13 +39,15 @@
         state: started
 
     - name: point pmm-agent to the PMM server
-      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:{{ pmm_external_port }} --server-insecure-tls --force
+      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].inventory_hostname }}:{{ pmm_external_port }} --server-insecure-tls --force
 
     - name: Add MongoDB metrics collector
       shell: >
         pmm-admin add mongodb
         --environment={{ env_tag }}
+        {% if cluster is defined %}
         --cluster {{ cluster }}
+        {% endif %}
         --host={{ ansible_fqdn }}
         --port={{ mongo_port }}
         --tls-skip-verify

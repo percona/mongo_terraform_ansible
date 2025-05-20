@@ -4,7 +4,7 @@
   become: yes
   tags: mongos
   environment:
-    PERCONA_TELEMETRY_DISABLE: 1
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
     - name: copy RPM files from local machine
       block:
@@ -99,6 +99,7 @@
         state: stopped
         daemon_reload: yes
       ignore_errors: true
+      when: disable_telemetry | bool
 
     - name: start the mongos router service
       systemd:

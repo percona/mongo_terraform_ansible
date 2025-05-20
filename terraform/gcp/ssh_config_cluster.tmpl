@@ -27,3 +27,4 @@ Host ${hostname_pmm}
   User ${my_ssh_user}
   LocalForward 23443 127.0.0.1:443
   %{ if enable_ssh_gateway }ProxyCommand ssh -W %h:%p gateway%{ endif }
+  

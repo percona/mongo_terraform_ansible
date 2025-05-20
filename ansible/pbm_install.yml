@@ -4,7 +4,7 @@
   become: yes
   tags: install
   environment:
-    PERCONA_TELEMETRY_DISABLE: 1
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
     - name: install RPM files from repository
       block:
@@ -25,6 +25,7 @@
         state: stopped
         daemon_reload: yes
       ignore_errors: true
+      when: disable_telemetry | bool
 
 - name: prepare the PBM connection string
   hosts: cfg:shards:replsets
@@ -39,7 +40,7 @@
   tasks:
     - name: generate PBM_MONGODB_URI
       set_fact:
-        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ group_names[0] ] %}{{ h }}:{{ mongo_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-{{ group_names[0] }}&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ group_names[0] ] %}{{ h }}:{{ mongo_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ group_names[0] }}&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
 
 - name: figure out backup URI for sharded cluster
   hosts: shards:cfg

@@ -77,6 +77,7 @@ resource "local_file" "AnsibleInventoryRS" {
       ip_arbiters              = each.value.ip_arbiters
 
       my_ssh_user              = var.my_ssh_user
+      rs_name                  = each.value.rs_name
       region                   = each.value.region
       hostname_pmm             = local.pmm_host
       bucket                   = google_storage_bucket.mongo-backups.name
@@ -96,6 +97,7 @@ resource "local_file" "SSHConfigRS" {
     ansible_group_replsets     = each.value.ansible_group_replsets
     hostname_replsets          = each.value.hostname_replsets
     ip_replsets                = each.value.ip_replsets
+    ansible_group_arbiters   = each.value.ansible_group_arbiters
     hostname_arbiters      = each.value.hostname_arbiters
     ip_arbiters            = each.value.ip_arbiters
     my_ssh_user            = var.my_ssh_user

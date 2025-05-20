@@ -41,6 +41,8 @@ local_rpm_location: /home/my-user/mongo/
 # where to copy rpm files to in the target hosts
 target_rpm_location: /tmp/
 
+disable_telemetry: false
+
 ##########
 # MongoDB 
 ##########

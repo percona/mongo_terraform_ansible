@@ -4,7 +4,6 @@
   tags: pmm_server
   become: true
   tasks:
-
     - name: create PMM directory
       file:
         path: "{{ pmm_dir }}"

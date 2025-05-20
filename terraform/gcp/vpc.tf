@@ -39,6 +39,19 @@ resource "google_compute_firewall" "internal" {
   priority      = 65534
 }
 
+resource "google_compute_firewall" "icmp" {
+  name    = "allow-icmp"
+  network = google_compute_network.vpc-network.id
+
+  allow {
+    protocol = "icmp"
+  }
+
+  source_ranges = [ "0.0.0.0/0" ] 
+  direction     = "INGRESS"
+  priority      = 65534
+}
+
 resource "google_compute_firewall" "ssh" {
   name    = "allow-ssh"
   network = google_compute_network.vpc-network.id
@@ -50,5 +63,5 @@ resource "google_compute_firewall" "ssh" {
 
   source_ranges = [ var.source_ranges ]
   direction     = "INGRESS"
-  priority      = 1000
+  priority      = 65534
 }

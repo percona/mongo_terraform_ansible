@@ -23,10 +23,10 @@ resource "aws_instance" "shard" {
   user_data = <<-EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
+    hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}.${data.aws_route53_zone.private_zone.name}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname)" >> /etc/hosts    
+    echo "127.0.0.1 $(hostname)" > /etc/hosts    
 
     # Add a dash to lsblk output to match the Terraform volume ID 
     DEVICE=$(lsblk -o NAME,SERIAL | sed 's/l/l-/' | grep "${aws_ebs_volume.shard_disk[count.index].id}" | awk '{print "/dev/" $1}')
@@ -67,7 +67,18 @@ resource "aws_security_group_rule" "mongodb-shardsvr-ingress" {
   to_port           = each.value
   protocol          = "tcp"
   security_group_id = aws_security_group.mongodb_shardsvr_sg.id
-  cidr_blocks       = ["0.0.0.0/0"]  # Allow from any IP address; adjust based on your needs
+  cidr_blocks       = [var.subnet_cidr] 
+}
+
+# Ingress rule (SSH from anywhere)
+resource "aws_security_group_rule" "mongodb-shardsvr-ssh_inbound" {
+  type              = "ingress"
+  from_port         = 22
+  to_port           = 22
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.mongodb_shardsvr_sg.id
+  description       = "SSH from anywhere"
 }
 
 # Ingress rule for ICMP (ping) traffic

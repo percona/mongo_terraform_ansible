@@ -56,6 +56,7 @@ resource "local_file" "SSHConfigCluster" {
     enable_ssh_gateway     = var.enable_ssh_gateway
     hostname_pmm           = aws_instance.pmm.tags["Name"]
     public_ip_pmm          = aws_instance.pmm.public_ip
+    pmm_port               = var.pmm_port
   })
 
   filename = "ssh_config_${each.key}"
@@ -101,6 +102,7 @@ resource "local_file" "SSHConfigRS" {
     enable_ssh_gateway         = var.enable_ssh_gateway
     hostname_pmm               = aws_instance.pmm.tags["Name"]
     public_ip_pmm              = aws_instance.pmm.public_ip
+    pmm_port                   = var.pmm_port    
   })
 
   filename = "ssh_config_${each.key}"

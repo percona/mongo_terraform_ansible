@@ -47,6 +47,7 @@ resource "aws_route_table_association" "public_subnet_association" {
   route_table_id = aws_route_table.public_route_table.id
 }
 
+# DNS
 resource "aws_route53_zone" "private_zone" {
   name = local.vpc
   vpc {
@@ -58,68 +59,4 @@ resource "aws_route53_zone" "private_zone" {
 resource "aws_key_pair" "my_key_pair" {
   key_name   = "${var.my_ssh_user}-key"
   public_key = file(var.ssh_public_key_path)
-}
-
-# Create a security groups (no inline rules)
-resource "aws_security_group" "allow_ssh" {
-  name        = "allow_ssh_from_anywhere"
-  description = "Allow SSH from anywhere"
-  vpc_id      = aws_vpc.vpc-network.id 
-
-  tags = {
-    Name = "allow-ssh-global"
-  }
-}
-
-resource "aws_security_group" "allow_ping" {
-  name        = "allow_ping_from_anywhere"
-  description = "Allow ping from anywhere"
-  vpc_id      = aws_vpc.vpc-network.id 
-
-  tags = {
-    Name = "allow-ping-global"
-  }
-}
-
-resource "aws_security_group" "allow_all_outbound" {
-  name        = "allow_all_outbound"
-  description = "Allow outbound traffic to anywhere"
-  vpc_id      = aws_vpc.vpc-network.id 
-
-  tags = {
-    Name = "allow-outbound-global"
-  }
-}
-
-# Ingress rule (SSH from anywhere)
-resource "aws_security_group_rule" "ssh_inbound" {
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.allow_ssh.id
-  description       = "SSH from anywhere"
-}
-
-# Egress rule (Allow all outbound traffic)
-resource "aws_security_group_rule" "all_outbound" {
-  type              = "egress"
-  from_port         = 0
-  to_port           = 0
-  protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.allow_all_outbound.id
-  description       = "Allow all outbound traffic"
-}
-
-# Allow Ping
-resource "aws_security_group_rule" "icmp_inbound" {
-  type              = "ingress"
-  from_port         = -1
-  to_port           = -1
-  protocol          = "icmp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.allow_ping.id
-  description       = "Allow all ICMP traffic from anywhere"
 }

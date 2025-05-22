@@ -1,4 +1,13 @@
 ---
+- name: Gather facts from the PMM server
+  hosts: pmm
+  gather_facts: yes
+  tags: monitoring
+  tasks:
+    - name: Dummy task to force fact gathering
+      debug:
+        msg: "Facts collected for PMM server"
+
 - name: Install PMM client
   hosts: cfg:shards:replsets:mongos
   become: yes
@@ -39,7 +48,7 @@
         state: started
 
     - name: Point pmm-agent to the PMM server
-      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].inventory_hostname }}:{{ pmm_external_port }} --server-insecure-tls --force
+      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].ansible_fqdn }}:{{ pmm_external_port }} --server-insecure-tls --force
 
     - name: Add MongoDB metrics collector
       shell: >

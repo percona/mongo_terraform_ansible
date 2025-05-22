@@ -156,7 +156,7 @@ variable "region" {
 variable "default_vpc_name" {
   description = "Base VPC name"
   type        = string
-  default     = "mongo-vpc"
+  default     = "mongo"
 }
 
 locals {

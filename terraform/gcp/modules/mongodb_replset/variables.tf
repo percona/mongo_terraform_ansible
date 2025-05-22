@@ -55,8 +55,8 @@ variable "replset_tag" {
 }
 
 variable "replsetsvr_ports" {
-  type = list(number)
-  default = [ 27017 ]
+  type = number
+  default = 27017
 }
 
 variable "replsetsvr_volume_size" {
@@ -84,8 +84,8 @@ variable "arbiter_type" {
 }
 
 variable "arbiter_ports" {
-  type = list(number)
-  default = [ 27017 ]
+  type = number
+  default = 27017
 }
 
 #############

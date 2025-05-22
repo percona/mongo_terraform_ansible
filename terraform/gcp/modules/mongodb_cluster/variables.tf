@@ -80,8 +80,8 @@ variable "shardsvr_volume_size" {
 }
 
 variable "shard_ports" {
-  type = list(number)
-  default = [ 27018 ]
+  type = number
+  default = 27018
 }
 
 ################
@@ -104,8 +104,8 @@ variable "configsvr_volume_size" {
 }
 
 variable "configsvr_ports" {
-  type = list(number)
-  default = [ 27019 ]
+  type = number
+  default = 27019
 }
 
 ################
@@ -123,8 +123,8 @@ variable "mongos_type" {
 }
 
 variable "mongos_ports" {
-  type = list(number)
-  default = [ 27017 ]
+  type = number
+  default = 27017
 }
 
 #############
@@ -142,8 +142,8 @@ variable "arbiter_type" {
 }
 
 variable "arbiter_ports" {
-  type = list(number)
-  default = [ 27018 ]
+  type = number
+  default = 27018
 }
 
 #############

@@ -117,7 +117,7 @@ variable "region" {
 
 variable "vpc" {
   type    = string
-  default = "mongo-terraform"
+  default = "mongo"
 }
 
 variable "subnet_count" {

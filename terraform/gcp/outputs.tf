@@ -57,6 +57,7 @@ resource "local_file" "SSHConfigCluster" {
     enable_ssh_gateway     = var.enable_ssh_gateway
     hostname_pmm           = local.pmm_host
     public_ip_pmm          = google_compute_instance.pmm.network_interface.0.access_config.0.nat_ip
+    pmm_port               = var.pmm_port    
   })
 
   filename = "ssh_config_${each.key}"
@@ -67,9 +68,9 @@ resource "local_file" "AnsibleInventoryRS" {
 
   content = templatefile("inventory_replset.tmpl",
     {
-      ansible_group_replsets     = each.value.ansible_group_replsets
-      hostname_replsets          = each.value.hostname_replsets
-      ip_replsets                = each.value.ip_replsets
+      ansible_group_replsets   = each.value.ansible_group_replsets
+      hostname_replsets        = each.value.hostname_replsets
+      ip_replsets              = each.value.ip_replsets
 
       ansible_group_arbiters   = each.value.ansible_group_arbiters
       hostname_arbiters        = each.value.hostname_arbiters
@@ -93,16 +94,17 @@ resource "local_file" "SSHConfigRS" {
   for_each = module.mongodb_replsets
 
   content = templatefile("ssh_config_rs.tmpl", {
-    ansible_group_replsets     = each.value.ansible_group_replsets
-    hostname_replsets          = each.value.hostname_replsets
-    ip_replsets                = each.value.ip_replsets
-    ansible_group_arbiters   = each.value.ansible_group_arbiters
+    ansible_group_replsets = each.value.ansible_group_replsets
+    hostname_replsets      = each.value.hostname_replsets
+    ip_replsets            = each.value.ip_replsets
+    ansible_group_arbiters = each.value.ansible_group_arbiters
     hostname_arbiters      = each.value.hostname_arbiters
     ip_arbiters            = each.value.ip_arbiters
     my_ssh_user            = var.my_ssh_user
     enable_ssh_gateway     = var.enable_ssh_gateway
     hostname_pmm           = local.pmm_host
     public_ip_pmm          = google_compute_instance.pmm.network_interface.0.access_config.0.nat_ip
+    pmm_port               = var.pmm_port
   })
 
   filename = "ssh_config_${each.key}"

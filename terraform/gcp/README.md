@@ -16,7 +16,7 @@
 4. Clone this repository on your machine and `cd` to it
 
     ```
-    cd mongo_terraform_ansible
+    cd mongo_terraform_ansible/terraform/gcp
     ```
 
 5. Initialize Terraform 

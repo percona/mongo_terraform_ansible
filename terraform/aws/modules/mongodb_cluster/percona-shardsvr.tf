@@ -1,11 +1,10 @@
 resource "aws_ebs_volume" "shard_disk" {
   count             = var.shard_count * var.shardsvr_replicas
-#  availability_zone = element(data.aws_availability_zones.available.names, count.index % length(data.aws_availability_zones.available.names))
-  availability_zone = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet) % var.shardsvr_replicas].availability_zone
+  availability_zone = data.aws_subnet.details[ count.index % var.shardsvr_replicas % var.subnet_count ].availability_zone
   size              = var.shardsvr_volume_size
   type              = var.data_disk_type
   tags = {
-    Name = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-data"
+    Name = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-data"
     environment    = var.env_tag
   }
 }
@@ -14,20 +13,17 @@ resource "aws_instance" "shard" {
   count               = var.shard_count * var.shardsvr_replicas
   ami                 = lookup(var.image, var.region)
   instance_type       = var.shardsvr_type
-  #availability_zone   = element(data.aws_availability_zones.available.names, count.index % length(data.aws_availability_zones.available.names))
-  availability_zone   = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet) % var.shardsvr_replicas].availability_zone
-  key_name            = aws_key_pair.my_key_pair.key_name
-  subnet_id           = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet) % var.shardsvr_replicas].id
+  subnet_id           = data.aws_subnet.details[ count.index % var.shardsvr_replicas % var.subnet_count ].id
+  key_name            = data.aws_key_pair.my_key_pair.key_name
   tags = {
-    Name = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
+    Name = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
     ansible-group = floor(count.index / var.shardsvr_replicas )
     ansible-index = count.index % var.shardsvr_replicas
-    environment = var.env_tag
   }  
   user_data = <<-EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}.${var.env_tag}"
+    hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts    
@@ -55,13 +51,12 @@ resource "aws_volume_attachment" "shard_volume_attachment" {
 }
 
 resource "aws_security_group" "mongodb_shardsvr_sg" {
-  name        = "${var.env_tag}-${var.shardsvr_tag}-sg"
+  name        = "${var.cluster_name}-${var.shardsvr_tag}-sg"
   description = "Allow traffic to MongoDB shardsvr instances"
-  vpc_id      = aws_vpc.vpc-network.id
+  vpc_id      = data.aws_vpc.vpc-network.id
 
   tags = {
-    Name        = "${var.env_tag}-${var.shardsvr_tag}-sg"
-    environment = var.env_tag
+    Name        = "${var.cluster_name}-${var.shardsvr_tag}-sg"
   }
 }
 
@@ -98,8 +93,8 @@ resource "aws_security_group_rule" "mongodb-shardsvr-egress" {
 
 resource "aws_route53_record" "shard_dns_record" {
   count   = var.shard_count * var.shardsvr_replicas
-  zone_id = aws_route53_zone.private_zone.zone_id
-  name    = "${var.env_tag}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
+  zone_id = data.aws_route53_zone.private_zone.zone_id
+  name    = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
   type    = "A"
   ttl     = "300"
   records = [aws_instance.shard[count.index].private_ip]

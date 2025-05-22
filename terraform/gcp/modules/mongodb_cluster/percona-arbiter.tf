@@ -5,7 +5,7 @@ resource "google_compute_instance" "arbiter" {
   count = var.shard_count * var.arbiters_per_replset
   tags = ["${var.cluster_name}-${var.arbiter_tag}"]
   labels = { 
-    ansible-group = floor(count.index / var.arbiters_per_replset ),
+    ansible-group = floor(count.index / var.arbiters_per_replset),
     ansible-index = count.index % var.arbiters_per_replset,
     environment = var.env_tag
   }  

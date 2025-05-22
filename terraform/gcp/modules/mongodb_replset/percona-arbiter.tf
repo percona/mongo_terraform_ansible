@@ -1,5 +1,5 @@
 resource "google_compute_instance" "arbiter" {
-  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+  name  = "${var.rs_name}-${var.replset_tag}arb${count.index % var.arbiters_per_replset}"
   machine_type = var.arbiter_type
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names) % var.arbiters_per_replset]
   count = var.arbiters_per_replset
@@ -29,7 +29,7 @@ resource "google_compute_instance" "arbiter" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+    hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}arb${count.index % var.arbiters_per_replset}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname)" >> /etc/hosts    

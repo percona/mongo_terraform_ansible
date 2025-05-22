@@ -55,7 +55,6 @@ resource "local_file" "SSHConfigCluster" {
     ip_arbiters            = each.value.ip_arbiters
     my_ssh_user            = var.my_ssh_user
     enable_ssh_gateway     = var.enable_ssh_gateway
-    region                 = each.value.region
     hostname_pmm           = local.pmm_host
     public_ip_pmm          = google_compute_instance.pmm.network_interface.0.access_config.0.nat_ip
   })
@@ -102,7 +101,6 @@ resource "local_file" "SSHConfigRS" {
     ip_arbiters            = each.value.ip_arbiters
     my_ssh_user            = var.my_ssh_user
     enable_ssh_gateway     = var.enable_ssh_gateway
-    region                 = each.value.region
     hostname_pmm           = local.pmm_host
     public_ip_pmm          = google_compute_instance.pmm.network_interface.0.access_config.0.nat_ip
   })

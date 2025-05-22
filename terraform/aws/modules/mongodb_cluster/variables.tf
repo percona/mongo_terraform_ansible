@@ -12,16 +12,13 @@ variable "env_tag" {
   description = "Name of Environment"
 }
 
-variable "gce_ssh_users" {
-  description = "SSH user names, and their public key files to be added to authorized_keys"
-  default = {
-    ivan_groenewold = "ivan.pub"
-#    ,user2 = "user2.pub"
-  }
+variable "ssh_public_key_path" {
+  description = "SSH public key file to be added to authorized_keys"
+  default =  "ivan.pub"
 }
 
 variable "my_ssh_user" {
-  default = "ivan_groenewold"
+  default = "ec2-user"
   description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"  
 }
 
@@ -70,7 +67,7 @@ variable "shardsvr_tag" {
 }
 
 variable "shardsvr_type" {
-  default = "e2-medium"
+  default = "t3.medium"
   description = "instance type of the shard server"
 }
 
@@ -79,9 +76,9 @@ variable "shardsvr_volume_size" {
   description = "storage size for the shard server"
 }
 
-variable "shard_ports" {
+variable "shardsvr_ports" {
   type = list(number)
-  default = [ 27018 ]
+  default = [ 22, 27018 ]
 }
 
 ################
@@ -94,7 +91,7 @@ variable "configsvr_tag" {
 }
 
 variable "configsvr_type" {
-  default = "e2-medium"
+  default = "t3.medium"
   description = "instance type of the config server"
 }
 
@@ -105,7 +102,7 @@ variable "configsvr_volume_size" {
 
 variable "configsvr_ports" {
   type = list(number)
-  default = [ 27019 ]
+  default = [ 22, 27019 ]
 }
 
 ################
@@ -118,13 +115,13 @@ variable "mongos_tag" {
 }
 
 variable "mongos_type" {
-  default = "e2-medium"
+  default = "t3.medium"
   description = "instance type of the mongos servers"
 }
 
 variable "mongos_ports" {
   type = list(number)
-  default = [ 27017 ]
+  default = [ 22, 27017 ]
 }
 
 #############
@@ -137,13 +134,41 @@ variable "arbiter_tag" {
 }
 
 variable "arbiter_type" {
-  default = "e2-medium"
+  default = "t3.medium"
   description = "instance type of the arbiter server"
 }
 
 variable "arbiter_ports" {
   type = list(number)
-  default = [ 27018 ]
+  default = [ 22, 27018 ]
+}
+
+#############
+# PMM
+#############
+
+variable "pmm_tag" {
+  description = "Name of the PMM server"
+  default = "percona-pmm"
+}
+
+variable "pmm_disk_type" {
+   default = "gp2"
+}
+
+variable "pmm_type" {
+  default = "t3.large"
+  description = "instance type of the PMM server"
+}
+
+variable "pmm_volume_size" {
+  default = "100"
+  description = "storage size for the PMM server"
+}
+
+variable "pmm_ports" {
+  type = list(number)
+  default = [ 22, 443 ]
 }
 
 #############
@@ -153,18 +178,18 @@ variable "arbiter_ports" {
 variable "image" {
   description = "Available images by region"
   default = {
-    northamerica-northeast1 = "projects/centos-cloud/global/images/centos-stream-9-v20231115"
+    us-west-2 = "ami-0ad8bfd4b10994785"
   }
 }
 
-# Save money by running spot instances but they may be terminated by google at any time
+# Save money by running spot instances but they may be terminated by AWS at any time
 variable "use_spot_instances" {
   type = bool
   default = false
 }
 
 variable "data_disk_type" {
-  default = "pd-standard"
+  default = "gp2"
 }
 
 #############
@@ -173,7 +198,7 @@ variable "data_disk_type" {
 
 variable "region" {
   type    = string
-  default = "northamerica-northeast1"
+  default = "us-west-2"
 }
 
 variable "vpc" {
@@ -181,9 +206,10 @@ variable "vpc" {
   default = "mongo-terraform"
 }
 
-variable "subnet_name" {
-  type = string
-  default = "mongo-subnet"
+variable "subnet_count" {
+  type = number
+  default = 3
+  description = "How many subnets to use"
 }
 
 variable "subnet_cidr" {

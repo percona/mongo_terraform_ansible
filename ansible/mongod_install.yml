@@ -140,8 +140,8 @@
       shell: |
         mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} --port {{ mongo_port }} --host 127.0.0.1 --quiet --eval 'rs.status().members.filter(m => m.stateStr == "PRIMARY").length' | grep -q '1'
       register: primary_check
-      retries: 20
-      delay: 1
+      retries: 10
+      delay: 2
       until: primary_check.rc == 0
       changed_when: false
 
@@ -169,12 +169,12 @@
       when: mongodb_primary is defined and mongodb_primary
 
     - name: Create the PBM and PMM users and roles
-      shell: mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ inventory_hostname }} < /tmp/createUsers.js
+      shell: mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ ansible_fqdn }} < /tmp/createUsers.js
       when: mongodb_primary is defined and mongodb_primary
 
     - name: Set up an alias to login easily
       become: yes
       lineinfile:
         dest: /etc/profile
-        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ inventory_hostname }}'
+        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ ansible_fqdn }}'
         state: present

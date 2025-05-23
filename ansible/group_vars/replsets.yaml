@@ -1,4 +1,3 @@
 mongo_port: 27017
 mongod_conf_template: mongod-replicaset.conf.j2
 rs_init_template: init-rs.js.j2
-cluster: None

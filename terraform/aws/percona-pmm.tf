@@ -102,14 +102,6 @@ resource "aws_security_group_rule" "mongodb-pmm-egress" {
   ipv6_cidr_blocks  = ["::/0"]       # Allow all outbound IPv6 traffic
 }
 
-resource "aws_route53_record" "replsetsvr_dns_record" {
-  count   = var.data_nodes_per_replset
-  zone_id = data.aws_route53_zone.private_zone.zone_id
-  name    = "${var.rs_name}-${var.replset_tag}svr${count.index % var.data_nodes_per_replset}"
-  type    = "A"
-  ttl     = "300"
-  records = [aws_instance.replset[count.index].private_ip]
-}
 # DNS
 resource "aws_route53_record" "pmm_dns_record" {
   zone_id = aws_route53_zone.private_zone.zone_id

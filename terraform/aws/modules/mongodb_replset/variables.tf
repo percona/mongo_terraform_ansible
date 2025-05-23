@@ -82,7 +82,7 @@ variable "arbiter_type" {
 
 variable "arbiter_ports" {
   type = list(number)
-  default = [ 22, 27018 ]
+  default = [ 22, 27017 ]
 }
 
 #############

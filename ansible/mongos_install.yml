@@ -56,7 +56,7 @@
       become: yes
       lineinfile:
         dest: /etc/profile
-        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ inventory_hostname }}'
+        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ ansible_fqdn }}'
         state: present
 
     - name: Set up shared mongo keyfile 

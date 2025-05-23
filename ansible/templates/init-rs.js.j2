@@ -9,7 +9,7 @@ rs.initiate(
       {% for h in groups[ group_names[0] ] %}
       { 
         _id : {{ loop.index }}, 
-        host : "{{ h }}:{{ mongo_port }}",
+        host : "{{ hostvars[h].ansible_fqdn  }}:{{ mongo_port }}",
         {% if hostvars[h].arbiter | default(false) %}
         arbiterOnly: true
         {% else %}

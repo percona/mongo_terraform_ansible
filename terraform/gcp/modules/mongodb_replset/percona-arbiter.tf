@@ -44,6 +44,6 @@ resource "google_compute_firewall" "mongodb-arbiter-firewall" {
   target_tags = ["${var.rs_name}-${var.arbiter_tag}"]
   allow {
     protocol = "tcp"
-    ports = "${var.arbiter_ports}"
+    ports = [ var.arbiter_port ]
   }
 }

@@ -66,6 +66,6 @@ resource "google_compute_firewall" "mongodb-replsetsvr-firewall" {
   target_tags = ["${var.rs_name}-${var.replset_tag}"]
   allow {
     protocol = "tcp"
-    ports = "${var.replsetsvr_ports}"
+    ports = [ var.replsetsvr_port ]
   }
 }

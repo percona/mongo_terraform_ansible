@@ -60,6 +60,6 @@ resource "google_compute_firewall" "percona-pmm-firewall" {
   target_tags = ["${local.pmm_host}"]
   allow {
     protocol = "tcp"
-    ports = "${var.pmm_port}"
+    ports = [ var.pmm_port ]
   }
 }

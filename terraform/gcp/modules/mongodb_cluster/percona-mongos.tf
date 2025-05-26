@@ -44,6 +44,6 @@ resource "google_compute_firewall" "mongodb-mongos-firewall" {
   target_tags = ["${var.cluster_name}-${var.mongos_tag}"]
   allow {
     protocol = "tcp"
-    ports = "${var.mongos_ports}"
+    ports = [ var.mongos_port ]
   }
 }

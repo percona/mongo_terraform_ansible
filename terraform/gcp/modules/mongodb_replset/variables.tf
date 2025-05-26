@@ -54,7 +54,7 @@ variable "replset_tag" {
   default = "mongodb-rs"
 }
 
-variable "replsetsvr_ports" {
+variable "replsetsvr_port" {
   type = number
   default = 27017
 }
@@ -83,7 +83,7 @@ variable "arbiter_type" {
   description = "instance type of the arbiter server"
 }
 
-variable "arbiter_ports" {
+variable "arbiter_port" {
   type = number
   default = 27017
 }

@@ -66,6 +66,6 @@ resource "google_compute_firewall" "mongodb-cfgsvr-firewall" {
   target_tags = ["${var.cluster_name}-${var.configsvr_tag}"]
   allow {
     protocol = "tcp"
-    ports = "${var.configsvr_ports}"
+    ports = [ var.configsvr_port ]
   }
 }

@@ -68,6 +68,6 @@ resource "google_compute_firewall" "mongodb-shardsvr-firewall" {
   target_tags = ["${var.cluster_name}-${var.shardsvr_tag}"]
   allow {
     protocol = "tcp"
-    ports = "${var.shard_ports}"
+    ports = [ var.shard_port ]
   }
 }

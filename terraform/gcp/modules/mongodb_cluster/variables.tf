@@ -79,7 +79,7 @@ variable "shardsvr_volume_size" {
   description = "storage size for the shard server"
 }
 
-variable "shard_ports" {
+variable "shard_port" {
   type = number
   default = 27018
 }
@@ -103,7 +103,7 @@ variable "configsvr_volume_size" {
   description = "storage size for the config server"
 }
 
-variable "configsvr_ports" {
+variable "configsvr_port" {
   type = number
   default = 27019
 }
@@ -122,7 +122,7 @@ variable "mongos_type" {
   description = "instance type of the mongos servers"
 }
 
-variable "mongos_ports" {
+variable "mongos_port" {
   type = number
   default = 27017
 }
@@ -141,7 +141,7 @@ variable "arbiter_type" {
   description = "instance type of the arbiter server"
 }
 
-variable "arbiter_ports" {
+variable "arbiter_port" {
   type = number
   default = 27018
 }

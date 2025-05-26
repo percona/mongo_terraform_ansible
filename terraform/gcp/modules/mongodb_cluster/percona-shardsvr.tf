@@ -44,7 +44,7 @@ resource "google_compute_instance" "shard" {
     hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname)" >> /etc/hosts    
+    echo "127.0.0.1 $(hostname)" > /etc/hosts    
 
     DEVICE=$(readlink -f /dev/disk/by-id/google-persistent-disk-1)            
 

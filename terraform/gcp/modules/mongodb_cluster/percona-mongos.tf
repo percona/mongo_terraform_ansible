@@ -32,7 +32,7 @@ resource "google_compute_instance" "mongos" {
     hostnamectl set-hostname "${var.cluster_name}-${var.mongos_tag}0${count.index}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname)" >> /etc/hosts    
+    echo "127.0.0.1 $(hostname)" > /etc/hosts    
   EOT
 }
 

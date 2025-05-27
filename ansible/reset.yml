@@ -3,24 +3,24 @@
   gather_facts: false
   become: yes
   tasks:
-    - name: remove server from PMM
+    - name: Remove server from PMM
       shell: pmm-admin unregister --force
       ignore_errors: yes
 
-    - name: stop pmm client
+    - name: Stop pmm client
       systemd:
         name: pmm-agent
         state: stopped
       ignore_errors: yes
 
-    - name: remove certificate related files    
+    - name: Remove certificate related files    
       shell: rm -f /etc/ssl/*.pem    
 
 - hosts: mongos
   gather_facts: false
   become: yes
   tasks:
-    - name: stop mongos service
+    - name: Stop mongos service
       systemd:
         name: mongos
         state: stopped
@@ -30,7 +30,7 @@
   gather_facts: false
   become: yes
   tasks:
-    - name: stop mongod service
+    - name: Stop mongod service
       systemd:
         name: "{{ item }}"
         state: stopped
@@ -39,24 +39,24 @@
         - pbm-agent
       ignore_errors: yes
 
-    - name: remove datadir contents
+    - name: Remove datadir contents
       shell: rm -rf {{ mongod_path }}/*
 
 - hosts: pmm
   gather_facts: false
   become: yes
   tasks:
-    - name: remove PMM server
+    - name: Remove PMM server
       shell: docker rm pmm-server watchtower renderer --force
       ignore_errors: yes
 
-    - name: remove PMM volume
+    - name: Remove PMM volume
       shell: docker volume rm pmm-data --force
       ignore_errors: yes            
 
-    - name: remove PMM network
+    - name: Remove PMM network
       shell: docker network rm pmm-network --force
       ignore_errors: yes   
 
-    - name: remove certificate related files    
+    - name: Remove certificate related files    
       shell: rm -f /etc/ssl/*.{crt,csr,pem,key,cnf,srl}

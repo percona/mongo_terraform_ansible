@@ -3,13 +3,13 @@
   become: yes
   gather_facts: false
   tasks:
-    - name: stop pmm agent
+    - name: Stop pmm agent
       systemd:
         name: pmm-agent
         state: stopped
       ignore_errors: yes
       
-    - name: stop mongos service
+    - name: Stop mongos service
       systemd:
         name: mongos
         state: stopped
@@ -18,7 +18,7 @@
   gather_facts: false
   become: yes
   tasks:
-    - name: stop pmm and pbm services
+    - name: Stop pmm and pbm services
       systemd:
         name: "{{ item }}"
         state: stopped
@@ -27,7 +27,7 @@
         - pmm-agent
       ignore_errors: yes        
         
-    - name: stop mongod service
+    - name: Stop mongod service
       systemd:
         name: "{{ item }}"
         state: stopped

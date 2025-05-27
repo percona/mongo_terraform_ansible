@@ -19,7 +19,6 @@ ${ arb_group == tostring(shard_index) ? join("", [ hostname_arbiters[arb_index],
 %{ endfor ~}
 
 %{ endfor ~}
-
 [mongos]
 %{ for index, group in ansible_group_mongos ~}
 ${hostname_mongos[index]} 
@@ -29,8 +28,7 @@ ${hostname_mongos[index]}
 ${hostname_pmm} 
 
 [all:vars]
-ansible_ssh_user=${gce_ssh_user}
-pmm_private_ip=${private_ip_pmm}
+ansible_ssh_user=${my_ssh_user}
 bucket=${bucket}
 region=${region}
 endpointUrl=${endpointUrl}

@@ -3,32 +3,30 @@ data "aws_availability_zones" "available" {
 }
 
 resource "aws_vpc" "vpc-network" {
-  cidr_block = var.subnet
+  cidr_block = var.subnet_cidr
   enable_dns_support = true
   enable_dns_hostnames = true
   tags = {
-    Name = "${var.env_tag}-${var.network_name}-vpc"
-    environment    = var.env_tag
+    Name = local.vpc
   }
 }
 
 resource "aws_subnet" "vpc-subnet" {
   vpc_id            = aws_vpc.vpc-network.id
-  cidr_block        = cidrsubnet(var.subnet, 8, count.index)
-  availability_zone = data.aws_availability_zones.available.names[count.index]
+  cidr_block        = cidrsubnet(var.subnet_cidr, 8, count.index)
+  availability_zone = data.aws_availability_zones.available.names[count.index]  
   map_public_ip_on_launch = true
-  count = length(data.aws_availability_zones.available.names)
+  count = var.subnet_count
   tags = {
-    Name = "${var.env_tag}-${var.subnet_name}-${count.index}"
-    environment    = var.env_tag
+    Name = "${local.vpc}-subnet-${count.index}"
+    AvailabilityZone = data.aws_availability_zones.available.names[count.index]    
   }
 }
 
 resource "aws_internet_gateway" "vpc-igw" {
   vpc_id = aws_vpc.vpc-network.id
   tags = {
-    Name = "${var.env_tag}-${var.network_name}-IGW"
-    environment    = var.env_tag
+    Name = "${local.vpc}-IGW"
   }
 }
 
@@ -39,25 +37,26 @@ resource "aws_route_table" "public_route_table" {
     gateway_id = aws_internet_gateway.vpc-igw.id
   }
   tags = {
-    Name           = "${var.env_tag}-${var.network_name}-PublicRouteTable"
-    environment    = var.env_tag    
+    Name           = "${local.vpc}-PublicRouteTable"
   }
 }
 
 resource "aws_route_table_association" "public_subnet_association" {
-  count          = length(data.aws_availability_zones.available.names)
+  count          = var.subnet_count
   subnet_id      = aws_subnet.vpc-subnet[count.index].id
   route_table_id = aws_route_table.public_route_table.id
 }
 
+# DNS
 resource "aws_route53_zone" "private_zone" {
-  name = var.env_tag
+  name = local.vpc
   vpc {
     vpc_id = aws_vpc.vpc-network.id 
   }
 }
 
+# Key pair for SSH access
 resource "aws_key_pair" "my_key_pair" {
-  key_name   = "${var.env_tag}-mongo-${var.my_ssh_user}-key"
+  key_name   = "${var.my_ssh_user}-key"
   public_key = file(var.ssh_public_key_path)
 }

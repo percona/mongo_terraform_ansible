@@ -12,12 +12,12 @@ resource "docker_container" "minio" {
   ports {
     internal = var.minio_port
     external = var.minio_port
-    ip = "127.0.0.1"
+    ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
   }
   ports {
     internal = var.minio_console_port
     external = var.minio_console_port
-    ip = "127.0.0.1"
+    ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
   }
   networks_advanced {
     name = docker_network.mongo_network.id

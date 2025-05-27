@@ -1,10 +1,10 @@
 ---
-- name: install MongoDB
+- name: Install MongoDB
   hosts: cfg:shards:replsets
   become: yes
   tags: install
   environment:
-    PERCONA_TELEMETRY_DISABLE: 1
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
     - name: Create MongoDB datadir
       file:
@@ -12,24 +12,24 @@
         state: directory
         mode: 0770
 
-    - name: copy RPM files from local machine
+    - name: Copy RPM files from local machine
       block:
         - name: copy files
           copy:
             src: "{{ local_rpm_location }}"
             dest: "{{ target_rpm_location }}"
 
-        - name: find copied RPMs
+        - name: Find copied RPMs
           find:
             paths: "{{ target_rpm_location }}"
             patterns: "*.rpm"
           register: percona_rpms
 
-        - name: get the paths of copied files
+        - name: Get the paths of copied files
           set_fact:
             rpm_list: "{{ percona_rpms.files | map(attribute='path') | list }}"
 
-        - name: install copied RPM files
+        - name: Install copied RPM files
           yum:
             name: "{{ rpm_list }}"
             state: present
@@ -37,12 +37,12 @@
 
       when: copy_files | bool
 
-    - name: install mongod files from repository
+    - name: Install mongod files from repository
       block:
         - name: Enable the specific MongoDB version
           shell: "/usr/bin/percona-release enable {{ mongo_release }}"
 
-        - name: install mongod RPMs from repository
+        - name: Install mongod RPMs from repository
           package:
             name: "{{ item }}"
             state: present
@@ -50,19 +50,20 @@
 
       when: not copy_files | bool
 
-    - name: disable Percona telemetry
+    - name: Disable Percona telemetry
       systemd:
         name: percona-telemetry-agent
         enabled: false
         state: stopped
         daemon_reload: yes
       ignore_errors: true
+      when: disable_telemetry | bool
 
-- name: prepare the configuration
+- name: Prepare the configuration
   hosts: cfg:shards:replsets
   tags: bootstrap_rs
   tasks:
-    - name: set up keyfile 
+    - name: Set up shared mongo keyfile 
       become: yes
       copy:
         dest: "{{ keyFile_location }}"
@@ -72,7 +73,7 @@
         mode: 0600
       when: not use_tls | bool
 
-    - name: copy mongod.conf 
+    - name: Copy mongod.conf 
       become: yes
       template:
         src: "{{ mongod_conf_template }}"
@@ -81,7 +82,7 @@
         group: root
         mode: 0644
 
-    - name: create the MongoDB datadir
+    - name: Create the MongoDB datadir
       become: yes
       file:
         path: "{{ mongod_path }}"
@@ -89,7 +90,7 @@
         mode: '0750'
         state: directory
 
-    - name: set up keyfile for encryption at rest
+    - name: Set up keyfile for encryption at rest
       become: yes
       copy:
         dest: "{{ encryption_keyfile }}"
@@ -99,7 +100,7 @@
         mode: 0600
       when: keyfile_encryption | bool
 
-    - name: set up Vault tokenfile
+    - name: Set up Vault tokenfile
       become: yes
       copy:
         dest: "{{ vault_tokenfile }}"
@@ -109,7 +110,7 @@
         mode: 0600
       when: vault_encryption | bool
 
-    - name: start mongod on replica set member
+    - name: Start mongod on replica set member
       become: yes
       service:
         name: mongod
@@ -124,14 +125,14 @@
       until: mongo_ping.rc == 0
       changed_when: false
 
-    - name: prepare the init command for replica set
+    - name: Prepare the init command for replica set
       template:
         src: "{{ rs_init_template }}"
         dest: /tmp/init-rs.js
         mode: 0644
       when: mongodb_primary is defined and mongodb_primary
 
-    - name: run the init command for replica set
+    - name: Run the init command for replica set
       shell: mongosh {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} --port {{ mongo_port }} --host 127.0.0.1 < /tmp/init-rs.js
       when: mongodb_primary is defined and mongodb_primary
 
@@ -139,41 +140,41 @@
       shell: |
         mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} --port {{ mongo_port }} --host 127.0.0.1 --quiet --eval 'rs.status().members.filter(m => m.stateStr == "PRIMARY").length' | grep -q '1'
       register: primary_check
-      retries: 20
-      delay: 1
+      retries: 10
+      delay: 2
       until: primary_check.rc == 0
       changed_when: false
 
-- name: create the local users & logrotate
+- name: Create the local users & logrotate
   hosts: cfg:shards:replsets
   tags: os_conf
   tasks:
-    - name: copy logrotate conf
+    - name: Copy logrotate conf
       become: yes
       template:
         src: templates/logrotate-mongod.conf.j2
         dest: /etc/logrotate.d/mongod
         mode: 0644
 
-    - name: create the MongoDB root user
+    - name: Create the MongoDB root user
       shell: |
         mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} --port {{ mongo_port }} --host 127.0.0.1 --eval 'db.createUser({user: "{{ mongo_admin_user }}", pwd: "{{ mongo_admin_password }}", roles: ["root"]})'
       when: mongodb_primary is defined and mongodb_primary
 
-    - name: prepare the commands to create the PBM and PMM users and roles
+    - name: Prepare the commands to create the PBM and PMM users and roles
       template:
         src: templates/createUsers.js.j2
         dest: /tmp/createUsers.js
         mode: 0644
       when: mongodb_primary is defined and mongodb_primary
 
-    - name: create the PBM and PMM users and roles
-      shell: mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ inventory_hostname }} < /tmp/createUsers.js
+    - name: Create the PBM and PMM users and roles
+      shell: mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ ansible_fqdn }} < /tmp/createUsers.js
       when: mongodb_primary is defined and mongodb_primary
 
-    - name: set up an alias to login easily
+    - name: Set up an alias to login easily
       become: yes
       lineinfile:
         dest: /etc/profile
-        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ inventory_hostname }}'
+        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ ansible_fqdn }}'
         state: present

@@ -39,4 +39,4 @@ operationProfiling:
    rateLimit: 100
 
 sharding:
-  configDB: {{ cluster }}-cfg/{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}
+  configDB: {{ cluster }}-cfg/{% for h in groups[ 'cfg' ] %}{{ hostvars[h].ansible_fqdn  }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}

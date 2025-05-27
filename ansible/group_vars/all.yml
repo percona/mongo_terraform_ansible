@@ -41,6 +41,8 @@ local_rpm_location: /home/my-user/mongo/
 # where to copy rpm files to in the target hosts
 target_rpm_location: /tmp/
 
+disable_telemetry: false
+
 ##########
 # MongoDB 
 ##########
@@ -110,7 +112,7 @@ pmm_image: docker.io/percona/pmm-server:latest
 # For PMM 3 pmm_port is 8443. For PMM 2 it is 443
 #pmm_port: 443
 pmm_port: 8443
-pmm_external_port: 443
+pmm_external_port: 8443
 
 #pmm_client_repo: pmm2-client experimental
 #pmm_client_repo: pmm2-client
@@ -127,6 +129,9 @@ pmm_server_pwd: admin
 # PMM agent parameters
 mongodb_pmm_user: mongodb_exporter
 mongodb_pmm_user_pwd: percona
+
+# Watchtower token. Replace with your own
+watchtower_token: 89220f28d5017b6a5806a7c589485c2b
 
 env_tag: test
 # The pmm-admin --cluster argument is only applicable for sharded clusters.

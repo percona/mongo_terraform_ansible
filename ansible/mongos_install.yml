@@ -1,29 +1,29 @@
 ---
-- name: install mongos routers
+- name: Install mongos routers
   hosts: mongos
   become: yes
   tags: mongos
   environment:
-    PERCONA_TELEMETRY_DISABLE: 1
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: copy RPM files from local machine
+    - name: Copy RPM files from local machine
       block:
-        - name: copy files
+        - name: Copy files
           copy:
             src: "{{ local_rpm_location }}"
             dest: "{{ target_rpm_location }}"
 
-        - name: find copied RPMs
+        - name: Find copied RPMs
           find:
             paths: "{{ target_rpm_location }}"
             patterns: "*.rpm"
           register: percona_rpms
 
-        - name: get the paths of copied files
+        - name: Get the paths of copied files
           set_fact:
             rpm_list: "{{ percona_rpms.files | map(attribute='path') | list }}"
 
-        - name: install copied RPM files
+        - name: Install copied RPM files
           yum:
             name: "{{ rpm_list }}"
             state: present
@@ -31,12 +31,12 @@
 
       when: copy_files | bool
 
-    - name: install mongod files from repository
+    - name: Install mongod files from repository
       block:
         - name: Enable specific MongoDB version
           shell: "/usr/bin/percona-release enable {{ mongo_release }}"
 
-        - name: install mongos RPM from repository
+        - name: Install mongos RPM from repository
           package:
             name: "{{ item }}"
             state: present
@@ -44,7 +44,7 @@
 
       when: not copy_files | bool
 
-    - name: create logs directory
+    - name: Create logs directory
       file:
         path: "{{ mongod_log_path }}"
         state: directory
@@ -52,14 +52,14 @@
         owner: mongod
         group: mongod
 
-    - name: set up an alias to login easily to mongos
+    - name: Set up an alias to login easily to mongos
       become: yes
       lineinfile:
         dest: /etc/profile
-        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ inventory_hostname }}'
+        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ ansible_fqdn }}'
         state: present
 
-    - name: set up keyfile 
+    - name: Set up shared mongo keyfile 
       become: yes
       copy:
         dest: "{{ keyFile_location }}"
@@ -69,7 +69,7 @@
         mode: 0600
       when: not use_tls | bool
 
-    - name: copy mongos.conf
+    - name: Copy mongos.conf
       template:
         src: templates/mongos.conf.j2
         dest: /etc/mongos.conf
@@ -77,30 +77,31 @@
         group: root
         mode: 0644
 
-    - name: setup logrotate conf for mongos
+    - name: Setup logrotate conf for mongos
       template:
         src: templates/logrotate-mongos.conf.j2
         dest: /etc/logrotate.d/mongos
         mode: 0644
 
-    - name: copy systemd template file for mongos
+    - name: Copy systemd template file for mongos
       template:
         src: templates/mongos.service.j2
         dest: /usr/lib/systemd/system/mongos.service
         mode: 0644
 
-    - name: disable SELinux
+    - name: Disable SELinux
       shell: /usr/sbin/setenforce 0
 
-    - name: disable Percona telemetry
+    - name: Disable Percona telemetry
       systemd:
         name: percona-telemetry-agent
         enabled: false
         state: stopped
         daemon_reload: yes
       ignore_errors: true
+      when: disable_telemetry | bool
 
-    - name: start the mongos router service
+    - name: Start the mongos router service
       systemd:
         name: mongos
         state: started

@@ -2,34 +2,30 @@ resource "aws_instance" "mongos" {
   count               = var.mongos_count
   ami                 = lookup(var.image, var.region)
   instance_type       = var.mongos_type
-  #availability_zone   = element(data.aws_availability_zones.available.names, count.index % length(data.aws_availability_zones.available.names))
-  availability_zone   = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet)].availability_zone
-  key_name            = aws_key_pair.my_key_pair.key_name
-  subnet_id           = aws_subnet.vpc-subnet[count.index % length(aws_subnet.vpc-subnet)].id
+  subnet_id           = data.aws_subnet.details[count.index % var.subnet_count].id
+  key_name            = data.aws_key_pair.my_key_pair.key_name
   tags = {
-    Name = "${var.env_tag}-${var.mongos_tag}0${count.index}"
+    Name = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
     ansible-group  = "mongos"
-    environment    = var.env_tag
   }
   vpc_security_group_ids = [aws_security_group.mongodb_mongos_sg.id]
   user_data = <<-EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.env_tag}-${var.mongos_tag}0${count.index}.${var.env_tag}"
+    hostnamectl set-hostname "${var.cluster_name}-${var.mongos_tag}0${count.index}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname)" >> /etc/hosts    
+    echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname)" > /etc/hosts    
   EOT
 }
 
 resource "aws_security_group" "mongodb_mongos_sg" {
-  name        = "${var.env_tag}-${var.mongos_tag}-sg"
+  name        = "${var.cluster_name}-${var.mongos_tag}-sg"
   description = "Allow traffic to MongoDB mongos instances"
-  vpc_id      = aws_vpc.vpc-network.id
+  vpc_id      = data.aws_vpc.vpc-network.id
 
   tags = {
-    Name        = "${var.env_tag}-${var.mongos_tag}-sg"
-    environment = var.env_tag
+    Name        = "${var.cluster_name}-${var.mongos_tag}-sg"
   }
 }
 
@@ -40,7 +36,18 @@ resource "aws_security_group_rule" "mongodb-mongos-ingress" {
   to_port           = each.value
   protocol          = "tcp"
   security_group_id = aws_security_group.mongodb_mongos_sg.id
-  cidr_blocks       = ["0.0.0.0/0"]  # Allow from any IP address; adjust based on your needs
+  cidr_blocks       = [var.subnet_cidr]  
+}
+
+# Ingress rule (SSH from anywhere)
+resource "aws_security_group_rule" "mongodb-mongos-ssh_inbound" {
+  type              = "ingress"
+  from_port         = 22
+  to_port           = 22
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.mongodb_mongos_sg.id
+  description       = "SSH from anywhere"
 }
 
 # Ingress rule for ICMP (ping) traffic
@@ -66,8 +73,8 @@ resource "aws_security_group_rule" "mongodb-mongos-egress" {
 
 resource "aws_route53_record" "mongos_dns_record" {
   count   = var.mongos_count
-  zone_id = aws_route53_zone.private_zone.zone_id
-  name    = "${var.env_tag}-${var.mongos_tag}0${count.index}"
+  zone_id = data.aws_route53_zone.private_zone.zone_id
+  name    = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
   type    = "A"
   ttl     = "300"
   records = [aws_instance.mongos[count.index].private_ip]

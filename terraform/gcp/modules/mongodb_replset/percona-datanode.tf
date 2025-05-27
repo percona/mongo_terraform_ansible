@@ -1,19 +1,19 @@
-resource "google_compute_disk" "cfg_disk" {
-  name  = "${var.env_tag}-${var.configsvr_tag}0${count.index}-data"
+resource "google_compute_disk" "replset_disk" {
+  name  = "${var.rs_name}-${var.replset_tag}svr${count.index % var.data_nodes_per_replset}-data"
   type  = var.data_disk_type
-  size  = var.configsvr_volume_size
+  size  = var.replsetsvr_volume_size
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)]
-  count = var.configsvr_count
+  count = var.data_nodes_per_replset
 }
 
-resource "google_compute_instance" "cfg" {
-  name = "${var.env_tag}-${var.configsvr_tag}0${count.index}"
-  machine_type = var.configsvr_type
+resource "google_compute_instance" "replset" {
+  name = "${var.rs_name}-${var.replset_tag}svr${count.index % var.data_nodes_per_replset}"
+  machine_type = var.replsetsvr_type
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)]
-  count = var.configsvr_count
-  tags = ["${var.env_tag}-${var.configsvr_tag}"]
+  count = var.data_nodes_per_replset
+  tags = ["${var.rs_name}-${var.replset_tag}"]
   labels = { 
-    ansible-group = "cfg",
+    ansible-group = var.replset_tag,
     environment = var.env_tag
   }  
   boot_disk {
@@ -22,11 +22,11 @@ resource "google_compute_instance" "cfg" {
     }
   }
   attached_disk {
-    source = element(google_compute_disk.cfg_disk.*.self_link, count.index)
+    source = element(google_compute_disk.replset_disk.*.self_link, count.index)
   }   
   network_interface {
-    network = google_compute_network.vpc-network.id
-    subnetwork = google_compute_subnetwork.vpc-subnet.id
+    network = var.vpc
+    subnetwork = var.subnet_name
     access_config {}
   }
   metadata = {
@@ -40,10 +40,10 @@ resource "google_compute_instance" "cfg" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.env_tag}-${var.configsvr_tag}0${count.index}"
+    hostnamectl set-hostname "$${var.rs_name}-${var.replset_tag}0${count.index}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname)" >> /etc/hosts    
+    echo "127.0.0.1 $(hostname)" > /etc/hosts    
 
     DEVICE=$(readlink -f /dev/disk/by-id/google-persistent-disk-1)            
 
@@ -58,14 +58,14 @@ resource "google_compute_instance" "cfg" {
   EOT
 }
 
-resource "google_compute_firewall" "mongodb-cfgsvr-firewall" {
-  name = "${var.env_tag}-${var.configsvr_tag}-firewall"
-  network = google_compute_network.vpc-network.name
+resource "google_compute_firewall" "mongodb-replsetsvr-firewall" {
+  name = "${var.rs_name}-${var.replset_tag}-firewall"
+  network = var.vpc
   direction = "INGRESS"
-  source_ranges = ["0.0.0.0/0"]
-  target_tags = ["${var.env_tag}-${var.configsvr_tag}"]
+  source_ranges = ["${var.subnet_cidr}"]
+  target_tags = ["${var.rs_name}-${var.replset_tag}"]
   allow {
     protocol = "tcp"
-    ports = "${var.configsvr_ports}"
+    ports = [ var.replsetsvr_port ]
   }
 }

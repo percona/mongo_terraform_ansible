@@ -1,11 +1,15 @@
 rs.initiate(
   {
-    _id: "{{ cluster }}-{{ group_names[0] }}",
+    {% if cluster is defined %}
+    _id: "{{ cluster }}-{{ (group_names | difference(['replsets','shards']))[0] }}",
+    {% else %}
+    _id: "{{ (group_names | difference(['replsets', 'shards']))[0] }}",
+    {% endif %}
     members: [
       {% for h in groups[ group_names[0] ] %}
       { 
         _id : {{ loop.index }}, 
-        host : "{{ h }}:{{ mongo_port }}",
+        host : "{{ hostvars[h].ansible_fqdn  }}:{{ mongo_port }}",
         {% if hostvars[h].arbiter | default(false) %}
         arbiterOnly: true
         {% else %}

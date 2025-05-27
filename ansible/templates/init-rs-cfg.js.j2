@@ -4,7 +4,7 @@ rs.initiate(
     configsvr: true,
     members: [
       {% for h in groups['cfg'] %}
-         { _id : {{ loop.index }}, host : "{{ h }}:{{ cfg_server_port }}", priority: {% if hostvars[h].mongodb_primary | default(false) %}10{% else %}1{% endif %} }{% if not loop.last %},{% endif %}
+         { _id : {{ loop.index }}, host : "{{ hostvars[h].ansible_fqdn  }}:{{ cfg_server_port }}", priority: {% if hostvars[h].mongodb_primary | default(false) %}10{% else %}1{% endif %} }{% if not loop.last %},{% endif %}
       {% endfor %}
     ]
   }

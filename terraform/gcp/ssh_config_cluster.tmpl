@@ -3,31 +3,28 @@ Host ${hostname_shards[index]}
   Hostname ${ip_shards[index]}
   User ${my_ssh_user}
   %{ if enable_ssh_gateway }ProxyCommand ssh -W %h:%p gateway%{ endif }
-
 %{ endfor ~}
 %{ for index, host in hostname_arbiters ~}
 Host ${hostname_arbiters[index]}
   Hostname ${ip_arbiters[index]}
   User ${my_ssh_user}
   %{ if enable_ssh_gateway }ProxyCommand ssh -W %h:%p gateway%{ endif }
-
 %{ endfor ~}
 %{ for index, group in ansible_group_cfg ~}
 Host ${hostname_cfg[index]}
   Hostname ${ip_cfg[index]}
   User ${my_ssh_user}
   %{ if enable_ssh_gateway }ProxyCommand ssh -W %h:%p gateway%{ endif }
-
 %{ endfor ~}
 %{ for index, group in ansible_group_mongos ~}
 Host ${hostname_mongos[index]}
   Hostname ${ip_mongos[index]}
   User ${my_ssh_user}
   %{ if enable_ssh_gateway }ProxyCommand ssh -W %h:%p gateway%{ endif }
-
 %{ endfor ~}
 Host ${hostname_pmm}
   Hostname ${public_ip_pmm}
   User ${my_ssh_user}
-  LocalForward 23443 127.0.0.1:443
+  LocalForward 23443 127.0.0.1:${pmm_port}
   %{ if enable_ssh_gateway }ProxyCommand ssh -W %h:%p gateway%{ endif }
+  

@@ -2,7 +2,7 @@
 # Project
 ################
 
-# By default we deploy 1 sharded cluster, named test01. The configuration can be customized by adding the optional values listed.
+# By default we deploy 1 sharded cluster, named test01. The configuration can be customized by adding any of the optional values listed below.
 
 variable "clusters" {
   description = "MongoDB clusters to deploy"
@@ -17,6 +17,7 @@ variable "clusters" {
     pmm_port              = optional(number, 8443)                  # Port of PMM Server
     minio_server          = optional(string, "minio")               # Hostname of Minio server
     minio_port            = optional(number, 9000)                  # Port of Minio Server
+    bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0
   }))
 
   default = {
@@ -26,8 +27,8 @@ variable "clusters" {
   }
 }
 
-# More sharded clusters can be deployed by appending to the list. 
-# The below example provisions another cluster named prod01 with a custom number of mongos in addition to the test01 cluster:
+# More than 1 sharded clusters can be deployed by adding them to the default value. 
+# The below example provisions a second cluster named prod01 with a custom number of mongos, in addition to the test01 cluster:
 #
 # default = {
 #   test01 = {
@@ -39,8 +40,8 @@ variable "clusters" {
 #   }
 # }
 
-# By default, no replica sets are deployed (except those needed for the sharded clusters).
-# If you want to provision separate replica sets, uncomment the code below.
+# By default, no  replica sets are provisioned (except those needed for each shard of the sharded clusters).
+# If you want to provision separate replica sets, change the default value of replsets below.
 
 variable "replsets" {
    description = "MongoDB replica sets to deploy"
@@ -52,6 +53,7 @@ variable "replsets" {
      pmm_port                  = optional(number, 8443)                 # Port of PMM Server
      minio_server              = optional(string, "minio")              # Hostname of Minio server
      minio_port                = optional(number, 9000)                 # Port of Minio Server
+     bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
    })) 
 
    default = {
@@ -96,7 +98,7 @@ variable "pmm_port" {
 
 variable "pmm_external_port" {
   description = "Port of the PMM server as seen from outside docker"
-  default = "443"
+  default = "8443"
   type = string
 }
 
@@ -241,4 +243,10 @@ variable "ycsb_image" {
 variable "network_name" {
   type    = string
   default = "mongo-terraform"
+}
+
+variable "bind_to_localhost" {
+  type = bool
+  default = true 
+  description = "Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0"
 }

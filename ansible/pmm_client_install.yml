@@ -1,17 +1,26 @@
 ---
-- name: install PMM client
+- name: Gather facts from the PMM server
+  hosts: pmm
+  gather_facts: yes
+  tags: monitoring
+  tasks:
+    - name: Dummy task to force fact gathering
+      debug:
+        msg: "Facts collected for PMM server"
+
+- name: Install PMM client
   hosts: cfg:shards:replsets:mongos
   become: yes
   tags: install
   environment:
-    PERCONA_TELEMETRY_DISABLE: 1
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: install RPM files from repository
+    - name: Install RPM files from repository
       block:
         - name: Enable PMM client repository
           shell: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
 
-        - name: install pmm-client RPM from repository
+        - name: Install pmm-client RPM from repository
           package:
             name: "{{ item }}"
             state: present
@@ -19,32 +28,35 @@
 
       when: not copy_files | bool
 
-    - name: disable Percona telemetry
+    - name: Disable Percona telemetry
       systemd:
         name: percona-telemetry-agent
         enabled: false
         state: stopped
         daemon_reload: yes
       ignore_errors: true
+      when: disable_telemetry | bool
 
-- name: configure monitoring with PMM
+- name: Configure monitoring with PMM
   hosts: cfg:shards:replsets:mongos
   become: true
   tags: monitoring
   tasks:
-    - name: ensure pmm-agent is started
+    - name: Ensure pmm-agent is started
       service:
         name: pmm-agent
         state: started
 
-    - name: point pmm-agent to the PMM server
-      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ pmm_private_ip }}:{{ pmm_external_port }} --server-insecure-tls --force
+    - name: Point pmm-agent to the PMM server
+      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].ansible_fqdn }}:{{ pmm_external_port }} --server-insecure-tls --force
 
     - name: Add MongoDB metrics collector
       shell: >
         pmm-admin add mongodb
         --environment={{ env_tag }}
+        {% if cluster is defined %}
         --cluster {{ cluster }}
+        {% endif %}
         --host={{ ansible_fqdn }}
         --port={{ mongo_port }}
         --tls-skip-verify

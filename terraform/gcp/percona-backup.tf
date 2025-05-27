@@ -1,5 +1,5 @@
 resource "google_storage_bucket" "mongo-backups" {
-  name          = "${var.env_tag}-${var.bucket_name}"
+  name          = local.bucket_name
   location      = var.region
   force_destroy = true
   uniform_bucket_level_access = true
@@ -15,7 +15,7 @@ resource "google_storage_bucket" "mongo-backups" {
 }
 
 resource "google_service_account" "mongo-backup-service-account" {
-  account_id   = "${var.env_tag}-mongo-backup-sa"
+  account_id   = "${var.prefix}-mongo-backup-sa"
   display_name = "Mongo Backup Service Account"
 }
 
@@ -24,7 +24,7 @@ resource "google_storage_hmac_key" "mongo-backup-service-account" {
 }
 
 resource "google_storage_bucket_iam_binding" "binding" {
-  bucket = google_storage_bucket.mongo-backups.name
+  bucket = local.bucket_name
   role = "roles/storage.admin"
     members = [
       "serviceAccount:${google_service_account.mongo-backup-service-account.email}",

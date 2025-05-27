@@ -123,7 +123,7 @@ If no errors, proceed to the next section.
 
 ## PMM Monitoring
 
-- You can access the PMM Server by opening a web browser at https://127.0.0.1:443. The default credentials are `admin/admin`.
+- You can access the PMM Server by opening a web browser at https://127.0.0.1:8443. The default credentials are `admin/admin`.
 
 - Grafana renderer is installed and configured in order to be able to export any PMM graphic as a PNG image.
 

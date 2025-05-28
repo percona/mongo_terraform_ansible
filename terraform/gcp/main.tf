@@ -29,7 +29,7 @@ module "mongodb_clusters" {
   subnet_name       = var.subnet_name
   region            = var.region
   subnet_cidr       = var.subnet_cidr
-  my_key_pair       = local.my_key_pair
+  gce_ssh_users     = var.gce_ssh_users
   my_ssh_user       = var.my_ssh_user
   image             = var.image
   use_spot_instances = var.use_spot_instances
@@ -49,8 +49,8 @@ module "mongodb_replsets" {
   vpc                = local.vpc
   subnet_name        = var.subnet_name
   region             = var.region
-  my_key_pair        = local.my_key_pair
   my_ssh_user        = var.my_ssh_user
+  gce_ssh_users      = var.gce_ssh_users
   image              = var.image
   use_spot_instances = var.use_spot_instances
   data_disk_type     = var.data_disk_type     

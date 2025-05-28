@@ -57,6 +57,6 @@ resource "aws_route53_zone" "private_zone" {
 
 # Key pair for SSH access
 resource "aws_key_pair" "my_key_pair" {
-  key_name   = "${var.my_ssh_user}-key"
+  key_name   = "${var.prefix}-${var.my_ssh_user}-key"
   public_key = file(var.ssh_public_key_path)
 }

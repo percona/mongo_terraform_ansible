@@ -2,6 +2,12 @@
 # Project
 ################
 
+variable "prefix" {
+  type    = string
+  default = "ig"
+  description = "Prefix to be applied to the resources created, make sure to change it to avoid collisions with other users projects"
+}
+
 variable "cluster_name" {
   description = "Name of the MongoDB cluster"
   default = "cluster01"

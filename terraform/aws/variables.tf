@@ -8,7 +8,7 @@ variable "prefix" {
   description = "Prefix to be applied to the resources created, make sure to change it to avoid collisions with other users projects"
 }
 
-# By default we deploy 1 sharded cluster, named ig01-s01. Make sure to change the default name (ig01-s01) to avoid duplicates. The configuration can be customized by adding the optional values listed.
+# By default we deploy 1 sharded cluster, named ig-cl01. Make sure to change the default name and prefix (ig-cl01) to avoid duplicates. The configuration can be customized by adding the optional values listed.
 variable "clusters" {
   description = "MongoDB clusters to deploy"
   type = map(object({
@@ -32,23 +32,23 @@ variable "clusters" {
 }
 
 # By default, no replica sets are deployed (except those needed for the sharded clusters).
-# If you want to provision separate replica sets, uncomment the default below. Make sure to change the default names (ig01-rs01) to avoid duplicates. 
+# If you want to provision separate replica sets, uncomment the default below. Make sure to change the default name and prefix (ig-rs01) to avoid duplicates. 
 variable "replsets" {
-   description = "MongoDB replica sets to deploy"
-   type = map(object({
-     env_tag                   = optional(string, "test")               # Name of Environment
-     data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members per replset
-     arbiters_per_replset      = optional(number, 1)                    # Number of arbiters per replica set
-   })) 
+  description = "MongoDB replica sets to deploy"
+  type = map(object({
+    env_tag                = optional(string, "test")               # Name of Environment
+    data_nodes_per_replset = optional(number, 2)                    # Number of data bearing members per replset
+    arbiters_per_replset   = optional(number, 1)                    # Number of arbiters per replica set
+  })) 
 
-   default = {
-#     ig-rs01 = {
-#       env_tag = "test"
-#     }
-#     ig-rs02 = {
-#       env_tag = "prod"
-#     }
-   }
+  default = {
+#    ig-rs01 = {
+#      env_tag = "test"
+#    }
+#    ig-rs02 = {
+#      env_tag = "prod"
+#    }
+  }
 }
 
 variable "ssh_public_key_path" {
@@ -59,6 +59,16 @@ variable "ssh_public_key_path" {
 variable "my_ssh_user" {
   default = "ec2-user"
   description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"  
+}
+
+variable "default_key_pair" {
+  description = "Base key pair name"
+  type        = string
+  default     = "key"
+}
+
+locals {
+  my_key_pair = "${var.prefix}-${var.my_ssh_user}-${var.default_key_pair}"
 }
 
 variable "enable_ssh_gateway" {

@@ -1,42 +1,64 @@
 ---
+- name: Gather facts from the config servers
+  hosts: cfg
+  gather_facts: yes
+  tags: mongos
+  tasks:
+    - name: Dummy task to force fact gathering
+      debug:
+        msg: "Facts collected for cfg servers"
+
 - name: Install mongos routers
   hosts: mongos
   become: yes
   tags: mongos
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
-  tasks:
-    - name: Copy RPM files from local machine
+  tasks:    
+    - name: Install packages from local filesystem
       block:
-        - name: Copy files
+        
+        - name: copy files
           copy:
-            src: "{{ local_rpm_location }}"
-            dest: "{{ target_rpm_location }}"
+            src: "{{ mongos_local_package_location }}"
+            dest: "{{ mongos_target_package_location }}"
 
-        - name: Find copied RPMs
+        - name: Find and register copied packages
           find:
-            paths: "{{ target_rpm_location }}"
-            patterns: "*.rpm"
-          register: percona_rpms
+            paths: "{{ mongos_target_package_location }}"
+            patterns:
+              - "*.rpm"
+              - "*.deb"
+          register: copied_packages  
 
         - name: Get the paths of copied files
           set_fact:
-            rpm_list: "{{ percona_rpms.files | map(attribute='path') | list }}"
+            mongos_package_list: "{{ copied_packages.files | map(attribute='path') | list }}"      
 
-        - name: Install copied RPM files
+        - name: Install copied RPM packages (RedHat)
           yum:
-            name: "{{ rpm_list }}"
+            name: "{{ mongos_package_list }}"
             state: present
             disablerepo: "*"
+          when:
+            - ansible_os_family == 'RedHat'
+
+        - name: Install copied DEB packages (Debian/Ubuntu)
+          apt:
+            deb: "{{ item }}"
+            state: present
+          loop: "{{ mongos_package_list }}"
+          when:
+            - ansible_os_family == 'Debian'
 
       when: copy_files | bool
 
-    - name: Install mongod files from repository
+    - name: Install mongos from repository
       block:
         - name: Enable specific MongoDB version
           shell: "/usr/bin/percona-release enable {{ mongo_release }}"
 
-        - name: Install mongos RPM from repository
+        - name: Install mongos packages from repository
           package:
             name: "{{ item }}"
             state: present
@@ -44,7 +66,16 @@
 
       when: not copy_files | bool
 
-    - name: Create logs directory
+    - name: Disable Percona telemetry
+      systemd:
+        name: percona-telemetry-agent
+        enabled: false
+        state: stopped
+        daemon_reload: yes
+      ignore_errors: true
+      when: disable_telemetry | bool
+
+    - name: Create logs directory for mongos 
       file:
         path: "{{ mongod_log_path }}"
         state: directory
@@ -89,21 +120,21 @@
         dest: /usr/lib/systemd/system/mongos.service
         mode: 0644
 
-    - name: Disable SELinux
-      shell: /usr/sbin/setenforce 0
+    - name: Set SELinux to disabled until reboot
+      command: /usr/sbin/setenforce 0
+      when: ansible_selinux.status == "enabled"
+      ignore_errors: yes
 
-    - name: Disable Percona telemetry
-      systemd:
-        name: percona-telemetry-agent
-        enabled: false
-        state: stopped
-        daemon_reload: yes
-      ignore_errors: true
-      when: disable_telemetry | bool
+    - name: Disable SELinux permanently
+      lineinfile:
+        path: ansible_facts['selinux']['config_file']
+        regexp: '^SELINUX='
+        line: 'SELINUX=disabled'
+      when: ansible_facts['selinux'] is defined and ansible_facts['selinux']['config_file'] is defined
 
     - name: Start the mongos router service
       systemd:
         name: mongos
-        state: started
+        state: restarted
         enabled: yes
         daemon_reload: yes

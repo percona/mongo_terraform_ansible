@@ -3,6 +3,8 @@
   hosts: pmm
   tags: pmm_server
   become: true
+  vars_files:
+    - "vars/{{ ansible_os_family }}.yml"  
   tasks:
     - name: Create PMM directory
       file:
@@ -12,19 +14,61 @@
         group: root
         mode: 0710
 
-    - name: Install yum utils
-      yum:
-        name: yum-utils
-        state: present
+    - name: Install Docker on Ubuntu
+      block:
 
-    - name: add the Docker repository
-      shell: yum-config-manager --add-repo {{ docker_repo }}
+        - name: Install required packages
+          apt:
+            name:
+              - ca-certificates
+              - curl
+            state: present
+            update_cache: true
 
-    - name: Install Docker
-      yum:
-        name: "{{ item }}"
-        state: present
-      with_items: "{{ docker_packages }}"
+        - name: Create keyrings directory
+          file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: '0755'
+
+        - name: Add Docker’s official GPG key
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+
+        - name: Add Docker repository
+          apt_repository:
+            repo: "deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            filename: docker
+            state: present
+
+        - name: Install Docker
+          apt:
+            name: "{{ item }}"
+            state: latest
+            update_cache: true
+          with_items: "{{ docker_packages }}"
+
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Docker on RedHat
+      block:
+        
+        - name: Install yum utils
+          yum:
+            name: yum-utils
+            state: present
+
+        - name: add the Docker repository
+          shell: yum-config-manager --add-repo {{ docker_repo }}
+
+        - name: Install Docker
+          yum:
+            name: "{{ item }}"
+            state: present
+          with_items: "{{ docker_packages }}"
+
+      when: ansible_os_family == 'RedHat'
 
     - name: Start Docker
       service:

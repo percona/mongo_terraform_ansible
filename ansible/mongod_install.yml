@@ -6,47 +6,53 @@
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: Create MongoDB datadir
-      file:
-        path: "{{ mongod_path }}"
-        state: directory
-        mode: 0770
-
-    - name: Copy RPM files from local machine
+    - name: Install packages from local filesystem
       block:
         - name: copy files
           copy:
-            src: "{{ local_rpm_location }}"
-            dest: "{{ target_rpm_location }}"
+            src: "{{ mongod_local_package_location }}"
+            dest: "{{ mongod_target_package_location }}"
 
-        - name: Find copied RPMs
+        - name: Find and register copied packages
           find:
-            paths: "{{ target_rpm_location }}"
-            patterns: "*.rpm"
-          register: percona_rpms
+            paths: "{{ mongod_target_package_location }}"
+            patterns:
+              - "*.rpm"
+              - "*.deb"
+          register: copied_packages  
 
         - name: Get the paths of copied files
           set_fact:
-            rpm_list: "{{ percona_rpms.files | map(attribute='path') | list }}"
+            mongod_package_list: "{{ copied_packages.files | map(attribute='path') | list }}"      
 
-        - name: Install copied RPM files
+        - name: Install copied RPM packages (RedHat)
           yum:
-            name: "{{ rpm_list }}"
+            name: "{{ mongod_package_list }}"
             state: present
             disablerepo: "*"
+          when:
+            - ansible_os_family == 'RedHat'
+
+        - name: Install copied DEB packages (Debian/Ubuntu)
+          apt:
+            deb: "{{ item }}"
+            state: present
+          loop: "{{ mongod_package_list }}"
+          when:
+            - ansible_os_family == 'Debian'
 
       when: copy_files | bool
 
-    - name: Install mongod files from repository
+    - name: Install mongod from repository
       block:
         - name: Enable the specific MongoDB version
           shell: "/usr/bin/percona-release enable {{ mongo_release }}"
 
-        - name: Install mongod RPMs from repository
+        - name: Install mongod packages from repository
           package:
             name: "{{ item }}"
             state: present
-          with_items: "{{ mongod_packages }}"
+          loop: "{{ mongod_packages }}"
 
       when: not copy_files | bool
 
@@ -82,13 +88,16 @@
         group: root
         mode: 0644
 
-    - name: Create the MongoDB datadir
+    - name: Create the MongoDB directories
       become: yes
       file:
-        path: "{{ mongod_path }}"
+        path: "{{ item }}"
         owner: mongod
         mode: '0750'
         state: directory
+      with_items:
+        - "{{ mongod_path }}"
+        - "{{ mongod_log_path }}"
 
     - name: Set up keyfile for encryption at rest
       become: yes
@@ -114,7 +123,7 @@
       become: yes
       service:
         name: mongod
-        state: started
+        state: restarted
 
     - name: Wait until mongod responds to ping
       shell: |

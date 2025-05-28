@@ -1,17 +1,57 @@
 ---
-- name: Prepare OS configuration
-  hosts: cfg:shards:replsets:mongos
+- name: Prepare nodes
   tags: os_conf
-  become : yes
+  hosts: cfg:shards:replsets:mongos
+  become: yes
   environment:
-    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"  
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"    
+  vars_files:
+    - "vars/{{ ansible_os_family }}.yml"
   tasks:
-    - name: Install Percona GPG key
-      rpm_key:
-        key: "{{ percona_key_location }}"
-        state: present
+    - name: Install percona release for Ubuntu
+      block:
 
-    - name: Install percona-release package 
-      package:
-        name: "{{ percona_release_package }}"
-        state: present
+        - name: Install dependencies for percona-release
+          apt:
+            name:
+              - curl
+              - gnupg2
+              - lsb-release 
+            state: present
+            update_cache: yes
+                  
+        - name: Install Percona GPG key
+          apt_key:
+            url: "{{ percona_key_location }}"
+            state: present
+
+        - name: Download percona-release package
+          get_url:
+            url: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+            dest: /tmp/percona-release_latest.deb
+
+        - name: Install percona-release package
+          apt:
+            deb: /tmp/percona-release_latest.deb
+            state: present
+
+        - name: Update apt package cache
+          apt:
+            update_cache: yes
+
+      when: ansible_os_family == 'Debian'
+
+    - name: Install percona release for RedHat
+      block:
+        
+        - name: Install Percona GPG key
+          rpm_key:
+            key: "{{ percona_key_location }}"
+            state: present
+
+        - name: Install percona-release package 
+          package:
+            name: "{{ percona_release_package }}"
+            state: present    
+
+      when: ansible_os_family == 'RedHat'

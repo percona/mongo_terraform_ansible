@@ -1,0 +1,10 @@
+percona_key_location: https://downloads.percona.com/downloads/deb-percona-keyring.gpg
+percona_release_package: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+
+docker_repo: https://download.docker.com/linux/centos/docker-ce.repo
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+
+pbm_env_file: /etc/default/pbm-agent

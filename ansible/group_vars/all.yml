@@ -14,16 +14,26 @@
 ## General configuration
 #########################
 
-percona_key_location: https://repo.percona.com/yum/PERCONA-PACKAGING-KEY
-percona_release_package: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
-
 # MongoDB version as per "percona-release". Availability of MongoDB version depend on the OS version.
 # e.g. -> Available repositories for centos7: psmdb-36 psmdb-40 psmdb-42 psmdb-44 psmdb-50 psmdb-60
 #mongo_release: psmdb-70
 mongo_release: psmdb-80
 
-# packages and router_packages lists are only relevant if copy_files: false
-# you can use a specific version instead of the default `latest` by passing the package names and version e.g. percona-server-mongodb-7.0.12-7.el9
+# We can also use perconalab/pmm-server-fb:PR-number-hash or perconalab/pmm-server:dev-latest. In that case set experimental to true.
+#pmm_image: perconalab/pmm-server:3-dev-latest
+pmm_image: docker.io/percona/pmm-server:latest
+#pmm_image: docker.io/percona/pmm-server:3
+
+#pmm_client_repo: pmm2-client experimental
+#pmm_client_repo: pmm2-client
+pmm_client_repo: pmm3-client
+
+#########################
+## Package sources
+#########################
+
+# "mongod_packages" and "mongos_packages" lists are only relevant if copy_files: false
+# you can use a specific version instead of the default `latest` by passing the package names and version e.g. "percona-server-mongodb-7.0.12-7.el9"
 mongod_packages:
   - percona-server-mongodb
   - percona-mongodb-mongosh
@@ -32,14 +42,26 @@ mongos_packages:
    - percona-server-mongodb-mongos
    - percona-mongodb-mongosh   
 
-# copy rpm files from a local path. If false yum will be used to download from a configured repository
+pbm_package:
+  - percona-backup-mongodb
+
+pmm_client_package:
+  - pmm-client
+
+# copy package files from a local path on your machine. Useful in environments without direct access to the Internet
+# If set to false, package manager will try to download packages from the repository
 copy_files: false
 
-# where to copy rpm files from if copy_files:true. We need to have pbm, pmm2-client and percona-server-mongodb packages available on this directory
-local_rpm_location: /home/my-user/mongo/
-
+# where to copy package files from if copy_files:true. We need to have pbm, pmm-client and percona-server-mongodb packages available
+mongod_local_package_location: /home/my-user/mongod
+mongos_local_package_location: /home/my-user/mongos
+pbm_local_package_location: /home/my-user/pbm
+pmm_local_package_location: /home/my-user/pmm-client
 # where to copy rpm files to in the target hosts
-target_rpm_location: /tmp/
+mongod_target_package_location: /tmp/mongod/
+mongos_target_package_location: /tmp/mongos
+pbm_target_package_location: /tmp/pbm
+pmm_target_package_location: /tmp/pmm-client
 
 disable_telemetry: false
 
@@ -48,6 +70,7 @@ disable_telemetry: false
 ##########
 
 mongo_admin_user: root
+# Warning! This is just an example, replace with your own for prod use!
 mongo_admin_password: percona
 
 mongod_log_path: /var/log/mongo/
@@ -64,6 +87,8 @@ use_tls: false
 
 # keyFile is only relevant if use_tls: false. Run `openssl rand -base64 741` to generate a new key
 keyFile_location: /etc/mongod_keyfile
+
+# Warning! This is just an example, replace with your own for prod use!
 keyfile_content: |
   8pYcxvCqoe89kcp33KuTtKVf5MoHGEFjTnudrq5BosvWRoIxLowmdjrmUpVfAivh
   CHjqM6w0zVBytAxH1lW+7teMYe6eDn2S/O/1YlRRiW57bWU3zjliW3VdguJar5i9
@@ -78,8 +103,11 @@ CAFile: /etc/ssl/test-ca.pem
 
 # keyfile_encryption: true/false
 keyfile_encryption: false
+
+# Warning! This is just an example, replace with your own for prod use!
 encryption_key_content: |
   vvMTZ3dnSbG7wc6DkPpt+rp3Cc+jF8lJsYlq6QE1yEM=
+
 # path to the keyfile to encrypt
 encryption_keyfile: /opt/mongodb.key
 
@@ -89,6 +117,7 @@ vault_server: vault.example.com
 vault_port: 8200
 # path to the token used by MongoDB to access Vault
 vault_tokenfile: /etc/mongodb/token
+# Warning! This is just an example, replace with your own for prod use!
 vault_tokenfile_content: |
   s.uTrHtzsZnEE7KyHeA797CkWA
 vault_cafile: /etc/mongodb/vault.crt
@@ -99,38 +128,23 @@ vault_secret: secret/data/dc/psmongodb1
 ## Monitoring
 ##################
 
-docker_repo: https://download.docker.com/linux/centos/docker-ce.repo
-docker_packages:
-  - docker-ce
-  - docker-ce-cli
-  - containerd.io
-
-# Can also use perconalab/pmm-server-fb:PR-number-hash or perconalab/pmm-server:dev-latest. In that case set experimental to true.
-#pmm_image: perconalab/pmm-server:3-dev-latest
-pmm_image: docker.io/percona/pmm-server:latest
-#pmm_image: docker.io/percona/pmm-server:3
 # For PMM 3 pmm_port is 8443. For PMM 2 it is 443
 #pmm_port: 443
 pmm_port: 8443
 pmm_external_port: 8443
 
-#pmm_client_repo: pmm2-client experimental
-#pmm_client_repo: pmm2-client
-pmm_client_repo: pmm3-client
-
-pmm_client_package:
-  - pmm-client
-
 # PMM server parameters
 pmm_dir: /var/lib/docker
 pmm_server_user: admin
+# Warning! This is just an example, replace with your own for prod use!
 pmm_server_pwd: admin
 
 # PMM agent parameters
 mongodb_pmm_user: mongodb_exporter
+# Warning! This is just an example, replace with your own for prod use!
 mongodb_pmm_user_pwd: percona
 
-# Watchtower token. Replace with your own
+# Warning! This is just an example, replace with your own for prod use!
 watchtower_token: 89220f28d5017b6a5806a7c589485c2b
 
 env_tag: test
@@ -143,11 +157,9 @@ env_tag: test
 ###############
 ## Backup
 ###############
-
-pbm_package:
-  - percona-backup-mongodb
   
 pbmuser: pbm
+# Warning! This is just an example, replace with your own for prod use!
 pbmpwd: secretpwd
 pbm_backup_type: physical
 pbm_retention_days: 3
@@ -156,6 +168,8 @@ pbm_backup_minute: 2
 pbm_purge_hour: 0
 pbm_purge_minute: 2
 pbm_os_user: mongod
+
+pbm_config_path: /etc/pbm-storage.conf
 
 # backup location - set true for locally mounted NFS drive or false for S3-compatible storage bucket
 pbm_local: false

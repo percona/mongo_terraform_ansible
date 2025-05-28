@@ -153,8 +153,8 @@ variable "arbiter_port" {
 variable "image" {
   description = "Available images by region"
   default = {
-    #northamerica-northeast1 = "projects/centos-cloud/global/images/centos-stream-9-v20231115"
-    northamerica-northeast1 = "ubuntu-2404-noble-amd64-v20250527"
+    northamerica-northeast1 = "projects/centos-cloud/global/images/centos-stream-9-v20231115"
+    #northamerica-northeast1 = "ubuntu-2404-noble-amd64-v20250527"
   }
 }
 

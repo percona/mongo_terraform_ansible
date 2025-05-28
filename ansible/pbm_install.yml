@@ -8,7 +8,7 @@
   tasks:
     - name: Install packages from local filesystem
       block:
-        
+
         - name: copy files
           copy:
             src: "{{ pbm_local_package_location }}"
@@ -118,7 +118,7 @@
     - name: Prepare storage details file for PBM
       template:
         src: templates/pbm-storage.conf.j2
-        dest: " {{ pbm_config_path }}"
+        dest: "{{ pbm_config_path }}"
       when: arbiter is not defined
 
 - name: Configure backup process

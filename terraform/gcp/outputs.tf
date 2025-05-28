@@ -29,7 +29,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       region                   = each.value.region
       hostname_pmm             = local.pmm_host
       bucket                   = google_storage_bucket.mongo-backups.name
-      endpointUrl              = var.gcloud_storage_endpoint
+      endpointUrl              = local.storage_endpoint
       access_key               = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key        = google_storage_hmac_key.mongo-backup-service-account.secret      
     }
@@ -81,7 +81,7 @@ resource "local_file" "AnsibleInventoryRS" {
       region                   = each.value.region
       hostname_pmm             = local.pmm_host
       bucket                   = google_storage_bucket.mongo-backups.name
-      endpointUrl              = var.gcloud_storage_endpoint
+      endpointUrl              = local.storage_endpoint
       access_key               = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key        = google_storage_hmac_key.mongo-backup-service-account.secret      
     }

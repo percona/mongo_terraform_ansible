@@ -1,6 +1,12 @@
 ################
-# Project/access
+# Project
 ################
+
+variable "prefix" {
+  type    = string
+  default = "ig"
+  description = "Prefix to be applied to the resources created, make sure to change it to avoid collisions with other users projects"
+}
 
 variable "project_id" {
   type    = string
@@ -8,9 +14,47 @@ variable "project_id" {
   description = "GCP project name. Replace with the project your GCP account belongs to"
 }
 
-variable "env_tag" {
-  default = "gcp-test"
-  description = "Name of Environment. Replace these with your own custom name to avoid collisions"
+# By default we deploy 1 sharded cluster, named ig01-s01. Make sure to change the default name (ig01-s01) to avoid duplicates. The configuration can be customized by adding the optional values listed.
+variable "clusters" {
+  description = "MongoDB clusters to deploy"
+  type = map(object({
+    env_tag               = optional(string, "test")                # Name of Environment for the cluster
+    configsvr_count       = optional(number, 3)                     # Number of config servers to be used
+    shard_count           = optional(number, 2)                     # Number of shards to be used
+    shardsvr_replicas     = optional(number, 2)                     # How many data bearing nodes per shard
+    arbiters_per_replset  = optional(number, 1)                     # Number of arbiters per replica set
+    mongos_count          = optional(number, 2)                     # Number of mongos to provision
+  }))
+
+  default = {
+    ig-cl01 = {
+      env_tag = "test"
+    }
+#    ig-cl02 = {
+#      env_tag = "prod"
+#      mongos_count = 1
+#   }
+  }
+}
+
+# By default, no replica sets are deployed (except those needed for the sharded clusters).
+# If you want to provision separate replica sets, uncomment the default below. Make sure to change the default names (ig01-rs01) to avoid duplicates. 
+variable "replsets" {
+   description = "MongoDB replica sets to deploy"
+   type = map(object({
+     env_tag                   = optional(string, "test")               # Name of Environment
+     data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members per replset
+     arbiters_per_replset      = optional(number, 1)                    # Number of arbiters per replica set
+   })) 
+
+   default = {
+#     ig-rs01 = {
+#       env_tag = "test"
+#     }
+#     ig-rs02 = {
+#       env_tag = "prod"
+#     }
+   }
 }
 
 variable "gce_ssh_users" {
@@ -32,128 +76,18 @@ variable "enable_ssh_gateway" {
   description = "Adds proxycommand lines with a gateway/jump host to the generated ssh_config file"
 }
 
-##################
-# MongoDB topology
-##################
-
-variable "configsvr_count" {
-  default = "3"
-  description = "Number of config servers to be used"
-}
-
-variable "shard_count" {
-  default = "2"
-  description = "Number of shards to be used"
-}
-
-variable "shardsvr_replicas" {
-  default = "2"
-  description = "How many data bearing nodes per shard"
-}
-
-variable "arbiters_per_replset" {
-  default = "1"
-  description = "Number of arbiters per replica set"
-}
-
-variable "mongos_count" {
-  default = "1"
-  description = "Number of mongos to provision"
-}
-
-################
-# Shards
-################
-
-variable "shardsvr_tag" {
-  description = "Name of the shard servers"
-  default = "mongodb-shard"
-}
-
-variable "shardsvr_type" {
-  default = "e2-medium"
-  description = "instance type of the shard server"
-}
-
-variable "shardsvr_volume_size" {
-  default = "50"
-  description = "storage size for the shard server"
-}
-
-variable "shard_ports" {
-  type = list(number)
-  default = [ 22, 27018 ]
-}
-
-################
-# CSRS
-################
-
-variable "configsvr_tag" {
-  description = "Name of the config servers"
-  default = "mongodb-cfg"
-}
-
-variable "configsvr_type" {
-  default = "e2-medium"
-  description = "instance type of the config server"
-}
-
-variable "configsvr_volume_size" {
-  default = "20"
-  description = "storage size for the config server"
-}
-
-variable "configsvr_ports" {
-  type = list(number)
-  default = [ 22, 27019 ]
-}
-
-################
-# Mongos routers
-################
-
-variable "mongos_tag" {
-  description = "Name of the mongos router servers"
-  default = "mongodb-mongos"
-}
-
-variable "mongos_type" {
-  default = "e2-medium"
-  description = "instance type of the mongos servers"
-}
-
-variable "mongos_ports" {
-  type = list(number)
-  default = [ 22, 27017 ]
-}
-
-#############
-# Arbiters
-#############
-
-variable "arbiter_tag" {
-  description = "Name of the arbiter servers"
-  default = "mongodb-arb"
-}
-
-variable "arbiter_type" {
-  default = "e2-medium"
-  description = "instance type of the arbiter server"
-}
-
-variable "arbiter_ports" {
-  type = list(number)
-  default = [ 22, 27018 ]
-}
-
 #############
 # PMM
 #############
 
-variable "pmm_tag" {
-  description = "Name of the PMM server"
-  default = "percona-pmm"
+variable "default_pmm_host" {
+  description = "Base PMM host name"
+  type        = string
+  default     = "pmm-server"
+}
+
+locals {
+  pmm_host = "${var.prefix}-${var.default_pmm_host}"
 }
 
 variable "pmm_disk_type" {
@@ -170,19 +104,28 @@ variable "pmm_volume_size" {
   description = "storage size for the PMM server"
 }
 
-variable "pmm_ports" {
-  type = list(number)
-  default = [ 22, 443 ]
+variable "pmm_port" {
+  type = number
+  default = 8443
 }
 
 #############
-# Bucket
+# Backup
 #############
 
-variable bucket_name { 
-  default = "mongo-backups"
-  description = "S3-compatible storage to put backups"
- }
+locals {
+  storage_endpoint = "https://storage.googleapis.com"
+}
+
+variable "default_bucket_name" {
+  description = "Base bucket name"
+  type        = string
+  default     = "mongo-bkp-storage"
+}
+
+locals {
+  bucket_name = "${var.prefix}-${var.default_bucket_name}"
+}
 
 variable "backup_retention" {
   default = "2"
@@ -197,6 +140,7 @@ variable "image" {
   description = "Available images by region"
   default = {
     northamerica-northeast1 = "projects/centos-cloud/global/images/centos-stream-9-v20231115"
+    #northamerica-northeast1 = "ubuntu-2404-noble-amd64-v20250527"
   }
 }
 
@@ -219,17 +163,28 @@ variable "region" {
   default = "northamerica-northeast1"
 }
 
-variable "network_name" {
-  type    = string
-  default = "mongo-terraform"
+variable "default_vpc_name" {
+  description = "Base VPC name"
+  type        = string
+  default     = "mongo"
 }
 
-variable "subnet" {
-  type    = string
-  default = "10.128.0.0/20"
+locals {
+  vpc = "${var.prefix}-${var.default_vpc_name}"
 }
 
 variable "subnet_name" {
   type = string
   default = "mongo-subnet"
+}
+
+variable "subnet_cidr" {
+  type    = string
+  default = "10.128.0.0/20"
+}
+
+# source IPs that will connect to the cluster from outside the VPC
+variable "source_ranges" {
+  type    = string
+  default = "0.0.0.0/0"
 }

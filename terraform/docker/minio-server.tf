@@ -1,7 +1,12 @@
 # MinIO Docker container
+resource "docker_image" "minio_image" {
+  name         = var.minio_image
+  keep_locally = !var.force_pull_latest
+}
+
 resource "docker_container" "minio" {
   name  = var.minio_server
-  image = var.minio_image
+  image = docker_image.minio_image.name
   env = [
     "MINIO_ROOT_USER=${var.minio_access_key}",
     "MINIO_ROOT_PASSWORD=${var.minio_secret_key}",

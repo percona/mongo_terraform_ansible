@@ -57,8 +57,8 @@ variable "ssh_public_key_path" {
 }
 
 variable "my_ssh_user" {
-  #default = "ec2-user" # For Centos AMIs
-  default = "ubuntu" # For Ubuntu AMIs
+  default = "ec2-user" # For Centos AMIs
+  #default = "ubuntu" # For Ubuntu AMIs
   description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"  
 }
 
@@ -141,9 +141,9 @@ variable "backup_retention" {
 variable "image" {
   description = "Available images by region"
   default = {
-    #us-west-2 = "ami-0ad8bfd4b10994785" # Centos 9
+    us-west-2 = "ami-0ad8bfd4b10994785" # Centos 9
     #us-west-2 = "ami-04999cd8f2624f834" # AL2023
-    us-west-2 = "ami-075686beab831bb7f" # Ubuntu 24.04
+    #us-west-2 = "ami-075686beab831bb7f" # Ubuntu 24.04
   }
 }
 

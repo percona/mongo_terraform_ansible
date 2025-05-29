@@ -125,3 +125,18 @@
         -e PMM_WATCHTOWER_TOKEN={{ watchtower_token }}
         {{ pmm_image }}
       when: not pmm_server_exists
+
+    - name: Wait until PMM server is healthy
+      uri:
+        url: "https://127.0.0.1:{{ pmm_external_port }}/v1/readyz"
+        method: GET
+        validate_certs: no  # set to 'yes' if using valid TLS certs
+      register: pmm_ready
+      until: pmm_ready.status == 200
+      retries: 20
+      delay: 2      
+
+    - name: Configure PMM server admin password
+      shell: >
+        docker exec -t pmm-server change-admin-password {{ pmm_server_pwd }}
+      when: not pmm_server_exists        

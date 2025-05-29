@@ -54,6 +54,8 @@ resource "local_file" "SSHConfigCluster" {
     ip_arbiters            = each.value.ip_arbiters
     my_ssh_user            = var.my_ssh_user
     enable_ssh_gateway     = var.enable_ssh_gateway
+    port_to_forward        = var.port_to_forward    
+    ssh_gateway_name       = var.ssh_gateway_name       
     hostname_pmm           = aws_instance.pmm.tags["Name"]
     public_ip_pmm          = aws_instance.pmm.public_ip
     pmm_port               = var.pmm_port
@@ -100,6 +102,8 @@ resource "local_file" "SSHConfigRS" {
     ip_arbiters                = each.value.ip_arbiters
     my_ssh_user                = var.my_ssh_user
     enable_ssh_gateway         = var.enable_ssh_gateway
+    port_to_forward            = var.port_to_forward    
+    ssh_gateway_name           = var.ssh_gateway_name       
     hostname_pmm               = aws_instance.pmm.tags["Name"]
     public_ip_pmm              = aws_instance.pmm.public_ip
     pmm_port                   = var.pmm_port    

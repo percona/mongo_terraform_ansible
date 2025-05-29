@@ -7,19 +7,21 @@
 2. Edit the [variable files](group_vars/all.yml) files to choose the options, passwords, ports, etc.
 
 3. Run the `main.yml` playbook pointing Ansible to the desired inventory file. For example:
-```
-cd ./ansible
-ansible-playbook main.yml -i inventory_ig-cl01
-```
 
-The installation process takes around 15 min for a 2-shard cluster.
-There is a helper script provisioned in `/etc/profile` to connect to each server. You can run `mongo` on any host to connect locally with the proper credentials.
+   ```
+   cd ./ansible
+   ansible-playbook main.yml -i inventory_ig-cl01
+   ```
 
-## Inventory file
+- The installation process takes about 15 min for a 2-shard cluster.
 
-- Keep a separate inventory file per environment (for example dev, test, prod).
+- There is a helper script provisioned in `/etc/profile` to connect to each server. You can run `mongo` on any host to connect locally with the proper credentials.
 
-- If you have more than one cluster per environment, then keep one inventory per cluster as well (for example devrs1, devrs2, devshard1, devshard2).
+## Inventory files
+
+### Sharded Clusters
+
+- Keep a separate inventory file per sharded cluster (for example: devshard1, devshard2).
 
 - On each inventory file, we have to specify:
   - a group for each shard's replicaset (for example `shardXXXX`). Set all these groups as children of `shards`.
@@ -28,9 +30,12 @@ There is a helper script provisioned in `/etc/profile` to connect to each server
 
 - You can specify a server in more than one group only for the case of deploying a mongos + config server on the same host. Any other combinations are currently not supported and cause execution to fail.
 
+- The `mongodb_primary` tag will make that server become the primary by giving it higher priority in the replicaset configuration.
+
 - Arbiters are specified by adding `arbiter=True` tag to each arbiter host
 
 - Example of an inventory for a sharded cluster (GCP):
+
 ```
 [cfg]
 mongodb-cfg00 mongodb_primary=True
@@ -67,7 +72,14 @@ access_key_id=GOOG1E2TPIJ5*****
 secret_access_key=******
 ```
 
+- Only 1 sharded cluster per inventory file is supported at this time. If you need more then use separate inventory files (See above instructions).
+
+### Replica Sets
+
+- Standalone replica sets can be kept in the same inventory file (for example: rs1, rs2).
+
 - For each standalone replicaset you need to create a group and put it as children of `replsets` group:
+
 ```
 [replsets:children]
 rs0
@@ -95,64 +107,68 @@ access_key_id=GOOG1E2TPI*******
 secret_access_key=******
 ```
 
-The `mongodb_primary` tag will make that server become the primary by giving it higher priority in the replicaset configuration.
-Only 1 sharded cluster per inventory file is supported at this time. If you need more then use separate inventory files (See above instructions).
+- The `mongodb_primary` tag will make that server become the primary by giving it higher priority in the replicaset configuration.
 
 ## Configuration
 
-* The [all variables file](group_vars/all.yml) contains all the user-modifiable parameters. Each of these come with a small description to clarify the purpose, unless it is self-explanatory.
+* The [all variables file](group_vars/all.yml) contains most the user-modifiable parameters. Each of these come with a small description to clarify the purpose, unless it is self-explanatory.
 
 * The rest of the variable files contain per-role variables you can also modify.
+
 You should review and modify these files as needed before making the deployment.
 
 Note: The PMM user and password are used to login to PMM UI via the web browser. If you want to change the default PMM credentials (admin/admin), you will need to login to PMM via the web browser and change the PMM password there after deployment finishes.
 
 ## Running
 
-* The playbook is meant to handle a deployment from scratch, unless run with some specific tags. Be extra careful if you are running it against servers that already have data.
+* The playbook is meant to handle a deployment from scratch, unless ran with some specific tags. Be extra careful if you are running it against servers that already have data. Examples:
 
 * Deploy a replica set or sharded cluster from scratch:
 ```
 ansible-playbook main.yml -i inventory
 ```
+
 * Add a new shard (e.g. shard3) to an existing cluster:
 ```
 ansible-playbook main.yml -i inventory --limit shard3
 ```
-* Deploy skip the monitoring and backup parts
+
+* Deploy only base MongoDB, don't configure PMM or PBM
 ```
 ansible-playbook main.yml -i inventory --skip-tags monitoring,backup
 ```
 
-## TLS Setup
+* Deploy and configure PBM
+```
+ansible-playbook main.yml -i inventory --tags backup
+```
 
-There is an extra playbook `tls-setup.yml` that generates a test CA on the PMM server, then proceeds to create server certificates for each host. Finally certificates are copied to the configured location on each host. Run this playbook before the `main.yml` if you want a TLS-enabled setup and you don't have any certificates prepared in advance. Remember to set `use_tls: true` in the variables file in advance.
+
+## TLS-enabled Setup
+
+There is an extra playbook `cert-setup.yml` that generates a test CA on the PMM server, then proceeds to create server certificates for each host. Finally certificates are copied to the configured location on each host. Run this playbook before the `main.yml` if you want a TLS-enabled setup and you don't have certificates prepared in advance. Remember to set `use_tls: true` in the variables file after all certificates are in place.
 
 ```
-ansible-playbook tls-setup.yml -i inventory
+ansible-playbook cert-setup.yml -i inventory
 ```
 
 ### Available tags for `main.yml`:
   - os_conf
-    - Tunes the OS for MongoDB
+    - Tunes the OS for MongoDB, configures log rotation
   - install
     - Installs packages at the OS level
-  - mongo_cfgsrv
-    - Configures the config servers
-  - mongo_rs
-    - Configures the replica sets
   - bootstrap_rs
-    - Bootstraps the replica sets (rs.initiate())
+    - Bootstraps the replica sets, run `rs.initiate()`
   - mongos
     - Configures the mongos routers
   - add_shards
-    - Runs the sh.addShard() command on a mongos router
+    - Runs the `sh.addShard()` command on a mongos router
   - backup
-    - Deploys & configures the pbm agent    
+    - Deploys & configures the PBM agent, configures backup crons
   - pmm_server
-    - Deploys a PMM server with docker
+    - Deploys a PMM server using Docker
   - monitoring
-    - Deploys PMM client and registers with a pmm server
+    - Deploys PMM client and registers with a PMM Server
 
 ### Available tags for `cert-setup.yml`:
   - ca

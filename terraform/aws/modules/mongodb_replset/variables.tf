@@ -2,6 +2,12 @@
 # Project
 ################
 
+variable "prefix" {
+  type    = string
+  default = "ig"
+  description = "Prefix to be applied to the resources created, make sure to change it to avoid collisions with other users projects"
+}
+
 variable "rs_name" {
   description = "Name of the MongoDB cluster"
   default = "rs01"
@@ -12,20 +18,15 @@ variable "env_tag" {
   description = "Name of Environment"
 }
 
-variable "ssh_public_key_path" {
-  description = "SSH public key file to be added to authorized_keys"
-  default =  "ivan.pub"
-}
-
 variable "my_ssh_user" {
   default = "ec2-user"
   description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"  
 }
 
-variable "enable_ssh_gateway" {
-  type = bool
-  default = false
-  description = "Adds proxycommand lines with a gateway/jump host to the generated ssh_config file"
+variable "my_key_pair" {
+  description = "Name of key pair to login via SSH"
+  type        = string
+  default     = "key"
 }
 
 ##################

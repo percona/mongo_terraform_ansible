@@ -1,7 +1,7 @@
 resource "local_file" "AnsibleInventoryCluster" {
   for_each = module.mongodb_clusters
 
-  content = templatefile("inventory_cluster.tmpl", {
+  content = templatefile("cluster_inventory.tmpl", {
     ansible_group_shards     = each.value.ansible_group_shards
     ansible_group_index      = each.value.ansible_group_index
     hostname_shards          = each.value.hostname_shards
@@ -40,7 +40,7 @@ resource "local_file" "AnsibleInventoryCluster" {
 resource "local_file" "SSHConfigCluster" {
   for_each = module.mongodb_clusters
 
-  content = templatefile("ssh_config_cluster.tmpl", {
+  content = templatefile("cluster_ssh_config.tmpl", {
     ansible_group_shards   = each.value.ansible_group_shards
     hostname_shards        = each.value.hostname_shards
     ip_shards              = each.value.ip_shards
@@ -65,7 +65,7 @@ resource "local_file" "SSHConfigCluster" {
 resource "local_file" "AnsibleInventoryRS" {
   for_each = module.mongodb_replsets
 
-  content = templatefile("inventory_replset.tmpl", {
+  content = templatefile("replset_inventory.tmpl", {
     ansible_group_replsets   = each.value.ansible_group_replsets
     hostname_replsets        = each.value.hostname_replsets
     ip_replsets              = each.value.ip_replsets
@@ -91,7 +91,7 @@ resource "local_file" "AnsibleInventoryRS" {
 resource "local_file" "SSHConfigRS" {
   for_each = module.mongodb_replsets
 
-  content = templatefile("ssh_config_rs.tmpl", {
+  content = templatefile("rs_ssh_config.tmpl", {
     ansible_group_replsets     = each.value.ansible_group_replsets
     hostname_replsets          = each.value.hostname_replsets
     ip_replsets                = each.value.ip_replsets

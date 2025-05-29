@@ -2,20 +2,59 @@
 - name: Install PBM client
   hosts: cfg:shards:replsets
   become: yes
-  tags: install
+  tags: install,backup
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: Install RPM files from repository
+    - name: Install packages from local filesystem
+      block:
+
+        - name: copy files
+          copy:
+            src: "{{ pbm_local_package_location }}"
+            dest: "{{ pbm_target_package_location }}"
+
+        - name: Find and register copied packages
+          find:
+            paths: "{{ pbm_target_package_location }}"
+            patterns:
+              - "*.rpm"
+              - "*.deb"
+          register: copied_packages  
+
+        - name: Get the paths of copied files
+          set_fact:
+            pbm_package_list: "{{ copied_packages.files | map(attribute='path') | list }}"      
+
+        - name: Install copied RPM packages (RedHat)
+          yum:
+            name: "{{ pbm_package_list }}"
+            state: present
+            disablerepo: "*"
+          when:
+            - ansible_os_family == 'RedHat'
+
+        - name: Install copied DEB packages (Debian/Ubuntu)
+          apt:
+            deb: "{{ item }}"
+            state: present
+          loop: "{{ pbm_package_list }}"
+          when:
+            - ansible_os_family == 'Debian'
+
+      when: copy_files | bool
+
+    - name: Install PBM package files from repository
       block:
         - name: Enable PBM repository
           shell: "/usr/bin/percona-release enable pbm release"
 
-        - name: Install pbm RPM from repository
+        - name: Install pbm packages from repository
           package:
             name: "{{ item }}"
             state: present
           with_items: "{{ pbm_package }}"
+
       when: not copy_files | bool
 
     - name: Disable Percona telemetry
@@ -55,6 +94,8 @@
   hosts: cfg:shards:replsets
   tags: backup
   become: true
+  vars_files:
+    - "vars/{{ ansible_os_family }}.yml"     
   tasks:
     - name: set up PBM_MONGODB_URI
       lineinfile:
@@ -65,7 +106,7 @@
     - name: Configure credentials file for PBM agent
       template:
         src: templates/pbm-agent.j2
-        dest: /etc/sysconfig/pbm-agent
+        dest: "{{ pbm_env_file }}"
       when: arbiter is not defined
 
     - name: Start PBM agent
@@ -77,7 +118,7 @@
     - name: Prepare storage details file for PBM
       template:
         src: templates/pbm-storage.conf.j2
-        dest: /etc/pbm-storage.conf
+        dest: "{{ pbm_config_path }}"
       when: arbiter is not defined
 
 - name: Configure backup process
@@ -86,7 +127,7 @@
   tags: backup
   tasks:
     - name: set up storage location for PBM
-      shell: pbm config --file /etc/pbm-storage.conf --mongodb-uri '{{ mongodb_uri }}'
+      shell: pbm config --file '{{ pbm_config_path }}' --mongodb-uri '{{ mongodb_uri }}'
       when: mongodb_primary is defined and mongodb_primary
 
     - name: Set up backup cron job

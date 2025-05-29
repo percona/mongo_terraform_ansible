@@ -1,0 +1,10 @@
+percona_key_location: https://repo.percona.com/yum/PERCONA-PACKAGING-KEY
+percona_release_package: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+
+docker_repo: https://download.docker.com/linux/centos/docker-ce.repo
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+
+pbm_env_file: /etc/sysconfig/pbm-agent

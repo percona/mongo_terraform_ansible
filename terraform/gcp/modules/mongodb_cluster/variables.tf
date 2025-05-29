@@ -2,6 +2,12 @@
 # Project
 ################
 
+variable "prefix" {
+  type    = string
+  default = "ig"
+  description = "Prefix to be applied to the resources created, make sure to change it to avoid collisions with other users projects"
+}
+
 variable "cluster_name" {
   description = "Name of the MongoDB cluster"
   default = "cluster01"
@@ -13,7 +19,7 @@ variable "env_tag" {
 }
 
 variable "gce_ssh_users" {
-  description = "SSH user names, and their public key files to be added to authorized_keys"
+  description = "SSH user names, and the path to public key files on your machine to be added to authorized_keys"
   default = {
     ivan_groenewold = "ivan.pub"
 #    ,user2 = "user2.pub"
@@ -23,12 +29,6 @@ variable "gce_ssh_users" {
 variable "my_ssh_user" {
   default = "ivan_groenewold"
   description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"  
-}
-
-variable "enable_ssh_gateway" {
-  type = bool
-  default = false
-  description = "Adds proxycommand lines with a gateway/jump host to the generated ssh_config file"
 }
 
 ##################

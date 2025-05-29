@@ -31,7 +31,7 @@ data "aws_subnet" "details" {
 
 # Get the existing key pair object
 data "aws_key_pair" "my_key_pair" {
-  key_name = "${var.my_ssh_user}-key"
+  key_name = var.my_key_pair
 }
 
 # Get the existing DNS zone

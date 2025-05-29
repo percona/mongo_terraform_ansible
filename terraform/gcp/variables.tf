@@ -14,7 +14,7 @@ variable "project_id" {
   description = "GCP project name. Replace with the project your GCP account belongs to"
 }
 
-# By default we deploy 1 sharded cluster, named ig01-s01. Make sure to change the default name (ig01-s01) to avoid duplicates. The configuration can be customized by adding the optional values listed.
+# By default we deploy 1 sharded cluster, named ig01-s01. Make sure to change the default name and prefix (ig-cl01) to avoid duplicates. The configuration can be customized by adding the optional values listed.
 variable "clusters" {
   description = "MongoDB clusters to deploy"
   type = map(object({
@@ -38,7 +38,7 @@ variable "clusters" {
 }
 
 # By default, no replica sets are deployed (except those needed for the sharded clusters).
-# If you want to provision separate replica sets, uncomment the default below. Make sure to change the default names (ig01-rs01) to avoid duplicates. 
+# If you want to provision separate replica sets, uncomment the default below. Make sure to change the default name and prefix (ig-rs01) to avoid duplicates. 
 variable "replsets" {
    description = "MongoDB replica sets to deploy"
    type = map(object({

@@ -26,6 +26,13 @@ resource "aws_instance" "replset" {
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname)" > /etc/hosts    
+
+    DEVICE="/dev/nvme1n1"
+    while [ ! -b "$DEVICE" ]; do
+      echo "Waiting for $DEVICE to be attached..."
+      sleep 2
+    done
+        
     # Add a dash to lsblk output to match the Terraform volume ID 
     DEVICE=$(lsblk -o NAME,SERIAL | sed 's/l/l-/' | grep "${aws_ebs_volume.replset_disk[count.index].id}" | awk '{print "/dev/" $1}')
 

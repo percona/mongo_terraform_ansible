@@ -9,17 +9,13 @@
     gcloud auth application-default login
     ``` 
 
-3. Upload your SSH key to Google Cloud platform
-   
-    Login to [Google Cloud console](console.cloud.google.com), go to `Compute Engine` -> `Metadata`. Select the SSH keys tab and click the `Edit` button. Upload your public SSH key and write down the associated username. This user and key will be used to login to the instances created.
-
-4. Clone this repository on your machine and `cd` to it
+3. Clone this repository on your machine and `cd` to it
 
     ```
     cd mongo_terraform_ansible/terraform/gcp
     ```
 
-5. Initialize Terraform 
+4. Initialize Terraform 
 
     ```
     terraform init

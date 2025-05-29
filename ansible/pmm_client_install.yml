@@ -11,16 +11,55 @@
 - name: Install PMM client
   hosts: cfg:shards:replsets:mongos
   become: yes
-  tags: install
+  tags: install,monitoring
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: Install RPM files from repository
+    - name: Install packages from local filesystem
       block:
+
+        - name: copy files
+          copy:
+            src: "{{ pmm_local_package_location }}"
+            dest: "{{ pmm_target_package_location }}"
+
+        - name: Find and register copied packages
+          find:
+            paths: "{{ pmm_target_package_location }}"
+            patterns:
+              - "*.rpm"
+              - "*.deb"
+          register: copied_packages  
+
+        - name: Get the paths of copied files
+          set_fact:
+            pmm_package_list: "{{ copied_packages.files | map(attribute='path') | list }}"      
+
+        - name: Install copied RPM packages (RedHat)
+          yum:
+            name: "{{ pmm_package_list }}"
+            state: present
+            disablerepo: "*"
+          when:
+            - ansible_os_family == 'RedHat'
+
+        - name: Install copied DEB packages (Debian/Ubuntu)
+          apt:
+            deb: "{{ item }}"
+            state: present
+          loop: "{{ pmm_package_list }}"
+          when:
+            - ansible_os_family == 'Debian'
+
+      when: copy_files | bool
+
+    - name: Install PMM client package from repository
+      block:
+
         - name: Enable PMM client repository
           shell: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
 
-        - name: Install pmm-client RPM from repository
+        - name: Install pmm-client package from repository
           package:
             name: "{{ item }}"
             state: present
@@ -49,6 +88,10 @@
 
     - name: Point pmm-agent to the PMM server
       shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].ansible_fqdn }}:{{ pmm_external_port }} --server-insecure-tls --force
+      register: pmm_config_result
+      retries: 3
+      delay: 1
+      until: pmm_config_result.rc == 0      
 
     - name: Add MongoDB metrics collector
       shell: >

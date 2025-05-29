@@ -154,7 +154,7 @@ ansible-playbook tls-setup.yml -i inventory
   - monitoring
     - Deploys PMM client and registers with a pmm server
 
-### Available tags for `tls-setup.yml`:
+### Available tags for `cert-setup.yml`:
   - ca
     - Deploys the CA on PMM-server
   - create_certs

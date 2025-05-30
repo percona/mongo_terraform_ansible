@@ -27,9 +27,9 @@ variable "clusters" {
   }))
 
   default = {
-    ig-cl01 = {
-      env_tag = "test"
-    }
+#    ig-cl01 = {
+#      env_tag = "test"
+#    }
 #    ig-cl02 = {
 #      env_tag = "prod"
 #      mongos_count = 1
@@ -48,12 +48,12 @@ variable "replsets" {
    })) 
 
    default = {
-#     ig-rs01 = {
-#       env_tag = "test"
-#     }
-#     ig-rs02 = {
-#       env_tag = "prod"
-#     }
+     ig-rs01 = {
+       env_tag = "test"
+     }
+     ig-rs02 = {
+       env_tag = "prod"
+     }
    }
 }
 

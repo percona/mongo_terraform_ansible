@@ -6,10 +6,9 @@
 
 2. Edit the [variable files](group_vars/all.yml) files to choose the options, passwords, ports, etc.
 
-3. Run the `main.yml` playbook pointing Ansible to the desired inventory file. For example:
+3. Run the `main.yml` playbook pointing Ansible to the desired inventory file(s). For example:
 
    ```
-   cd ./ansible
    ansible-playbook main.yml -i inventory_ig-cl01
    ```
 

@@ -13,27 +13,33 @@ locals {
 #  })      
 }
 
-# Prepare the PBM docker image
+# Write PBM Dockerfile to disk
 resource "local_file" "pbm_mongod_image_dockerfile_content" {
   filename = "${path.module}/${var.pbm_mongod_image}.Dockerfile"
   content  = local.pbm_mongod_image_dockerfile_content
 }
 
-resource "null_resource" "docker_build_pbm_mongod_image" {
-  provisioner "local-exec" {
-    command = "docker build -t ${var.pbm_mongod_image} -f ${path.module}/${var.pbm_mongod_image}.Dockerfile ."
+# Build PBM Docker image with the MongoDB binary of the version in use (required for physical restore)
+resource "docker_image" "pbm_mongod" {
+  name = var.pbm_mongod_image
+  build {
+    context    = path.module
+    dockerfile = local_file.pbm_mongod_image_dockerfile_content.filename
   }
 }
 
-# Prepare the YCSB docker image
-resource "local_file" "ycsdb_dockerfile_content" {
+# Write YCSB Dockerfile to disk
+resource "local_file" "ycsb_dockerfile_content" {
   filename = "${path.module}/${var.ycsb_image}.Dockerfile"
   content  = local.ycsb_dockerfile_content
 }
 
-resource "null_resource" "docker_build_ycsb" {
-  provisioner "local-exec" {
-    command = "docker build -t ${var.ycsb_image} -f ${path.module}/${var.ycsb_image}.Dockerfile ."
+# Build YCSB Docker image
+resource "docker_image" "ycsb" {
+  name = var.ycsb_image
+  build {
+    context    = path.module
+    dockerfile = local_file.ycsb_dockerfile_content.filename
   }
 }
 

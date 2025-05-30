@@ -171,7 +171,7 @@ resource "null_resource" "configure_pmm_client_rs" {
     command = <<-EOT
       until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
         pmm-admin config ${each.key} container ${each.key} \
-        --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} \
+        --server-url=https://${var.pmm_server_user}:${var.pmm_server_pwd}@${var.pmm_host}:${var.pmm_port} \
         --server-insecure-tls --force; do
           echo "Retrying pmm-admin config for ${each.key} (rs)..."
           sleep 1
@@ -210,7 +210,7 @@ resource "null_resource" "configure_pmm_client_arb" {
     command = <<-EOT
       until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
         pmm-admin config ${each.key} container ${each.key} \
-        --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} \
+        --server-url=https://${var.pmm_server_user}:${var.pmm_server_pwd}@${var.pmm_host}:${var.pmm_port} \
         --server-insecure-tls --force; do
           echo "Retrying pmm-admin config for ${each.key} (arb)..."
           sleep 1

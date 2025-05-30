@@ -15,6 +15,8 @@ variable "clusters" {
     mongos_count          = optional(number, 2)                     # Number of mongos to provision
     pmm_host              = optional(string, "pmm-server")          # Hostname of PMM server
     pmm_port              = optional(number, 8443)                  # Port of PMM Server
+    pmm_server_user       = optional(string, "admin")               # PMM Server user
+    pmm_server_pwd        = optional(string, "admin")               # PMM Server password
     minio_server          = optional(string, "minio")               # Hostname of Minio server
     minio_port            = optional(number, 9000)                  # Port of Minio Server
     bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0
@@ -46,14 +48,16 @@ variable "clusters" {
 variable "replsets" {
    description = "MongoDB replica sets to deploy"
    type = map(object({
-     env_tag                   = optional(string, "test")               # Name of Environment
-     data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members per replset
-     arbiters_per_replset      = optional(number, 1)                    # Number of arbiters per replica set
-     pmm_host                  = optional(string, "pmm-server")         # Hostname of PMM server
-     pmm_port                  = optional(number, 8443)                 # Port of PMM Server
-     minio_server              = optional(string, "minio")              # Hostname of Minio server
-     minio_port                = optional(number, 9000)                 # Port of Minio Server
-     bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
+    env_tag                   = optional(string, "test")               # Name of Environment for the rs
+    data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members per replset
+    arbiters_per_replset      = optional(number, 1)                    # Number of arbiters per replica set
+    pmm_host                  = optional(string, "pmm-server")         # Hostname of PMM server
+    pmm_port                  = optional(number, 8443)                 # Port of PMM Server
+    pmm_server_user           = optional(string, "admin")              # PMM Server user
+    pmm_server_pwd            = optional(string, "admin")              # PMM Server password     
+    minio_server              = optional(string, "minio")              # Hostname of Minio server
+    minio_port                = optional(number, 9000)                 # Port of Minio Server
+    bind_to_localhost         = optional(bool, true)                   # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
    })) 
 
    default = {
@@ -69,6 +73,19 @@ variable "replsets" {
 #############
 # PMM
 #############
+
+variable "pmm_server_user" {
+  description = "Name of the PMM server admin user"
+  default = "admin"
+  type = string
+}
+
+variable "pmm_server_pwd" {
+  description = "Password of the PMM server admin user"
+  default = "admin"
+  type = string
+  sensitive   = true
+}
 
 variable "pmm_host" {
   description = "Name of the PMM server"
@@ -133,6 +150,7 @@ variable "minio_region" {
 variable "minio_access_key" {
   default = "minio"
   type = string
+  sensitive   = true
 }
 
 variable "minio_server" {
@@ -153,6 +171,7 @@ variable "minio_console_port" {
 variable "minio_secret_key" {
   default = "minioadmin"
   type = string
+  sensitive   = true
 }
 
 variable "bucket_name" {
@@ -170,6 +189,12 @@ variable "backup_retention" {
 ###############
 # Docker Images
 ###############
+
+variable "force_pull_latest" {
+  description = "Force pull latest Docker image by setting keep_locally to false"
+  type        = bool
+  default     = true
+}
 
 variable "renderer_image" {
   description = "Docker image for Grafana renderer container"

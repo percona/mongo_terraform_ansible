@@ -17,7 +17,7 @@ resource "aws_instance" "arbiter" {
     hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}arb${count.index % var.arbiters_per_replset}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname)" > /etc/hosts    
+    echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname) localhost" > /etc/hosts    
   EOT
 }
 

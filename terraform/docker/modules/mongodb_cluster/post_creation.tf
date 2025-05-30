@@ -283,7 +283,7 @@ resource "null_resource" "add_shards" {
   }
 }
 
-# Configure PBM
+# Configure PBM Storage
 resource "null_resource" "configure_pbm" {
   depends_on = [
     null_resource.add_shards,
@@ -300,143 +300,61 @@ resource "null_resource" "configure_pbm" {
   }
 }
 
-# Configure PMM for config servers
-resource "null_resource" "configure_pmm_client_cfg" {
+# Register with PMM server
+resource "null_resource" "register_pmm_client" {
   depends_on = [
     docker_container.pmm_cfg,
-    docker_container.cfg,
-    null_resource.create_ycsb_collection
-  ]
-  for_each = toset([for i in docker_container.cfg : tostring(i.name)])
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
-        pmm-admin config ${each.key} container ${each.key} \
-        --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} \
-        --server-insecure-tls --force; do
-          echo "Retrying pmm-admin config for ${each.key} (cfg)..."
-          sleep 1
-      done
-    EOT
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
-        pmm-admin add mongodb \
-        --environment=${var.env_tag} \
-        --cluster ${var.cluster_name} \
-        --username=${var.mongodb_pmm_user} \
-        --password=${var.mongodb_pmm_password} \
-        --host=${each.key} \
-        --port=${var.configsvr_port} \
-        --service-name=${each.key}-mongodb \
-        --tls-skip-verify --enable-all-collectors; do
-          echo "Retrying pmm-admin add mongodb for ${each.key} (cfg)..."
-          sleep 1
-      done
-    EOT
-  }
-}
-
-# Configure PMM for shard servers
-resource "null_resource" "configure_pmm_client_shards" {
-  depends_on = [
+    docker_container.pmm_arb,
     docker_container.pmm_shard,
+    docker_container.pmm_mongos,
+    docker_container.cfg,
     docker_container.shard,
-    null_resource.create_ycsb_collection
-  ]
-  for_each = toset([for i in docker_container.shard : tostring(i.name)])
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
-        pmm-admin config ${each.key} container ${each.key} \
-        --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} \
-        --server-insecure-tls --force; do
-          echo "Retrying pmm-admin config for ${each.key} (shard)..."
-          sleep 1
-      done
-    EOT
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
-        pmm-admin add mongodb \
-        --environment=${var.env_tag} \
-        --cluster ${var.cluster_name} \
-        --username=${var.mongodb_pmm_user} \
-        --password=${var.mongodb_pmm_password} \
-        --host=${each.key} \
-        --port=${var.shardsvr_port} \
-        --service-name=${each.key}-mongodb \
-        --tls-skip-verify --enable-all-collectors; do
-          echo "Retrying pmm-admin add mongodb for ${each.key} (shard)..."
-          sleep 1
-      done
-    EOT
-  }
-}
-
-# Configure PMM for arbiters
-resource "null_resource" "configure_pmm_client_arb" {
-  depends_on = [
-    docker_container.pmm_arb, 
     docker_container.arbiter,
-    null_resource.create_ycsb_collection
+    docker_container.mongos
   ]
-  for_each = toset([for i in docker_container.arbiter : tostring(i.name)])
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
-        pmm-admin config ${each.key} container ${each.key} \
-        --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} \
-        --server-insecure-tls --force; do
-          echo "Retrying pmm-admin config for ${each.key} (arb)..."
-          sleep 1
-      done
-    EOT
+  for_each = {
+    for c in concat(
+      docker_container.cfg,
+      docker_container.shard,
+      docker_container.arbiter,
+      docker_container.mongos
+    ) : c.name => c
   }
 
   provisioner "local-exec" {
     command = <<-EOT
       until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
-        pmm-admin add mongodb \
-        --environment=${var.env_tag} \
-        --cluster ${var.cluster_name} \
-        --host=${each.key} \
-        --port=${var.shardsvr_port} \
-        --service-name=${each.key}-mongodb \
-        --tls-skip-verify; do
-          echo "Retrying pmm-admin add mongodb for ${each.key} (arb)..."
+        pmm-admin config ${each.key} container ${each.key} \
+        --server-url=https://${var.pmm_server_user}:${var.pmm_server_pwd}@${var.pmm_host}:${var.pmm_port} \
+        --server-insecure-tls --force; do
+          echo "Retrying pmm-admin config for ${each.key}..."
           sleep 1
       done
     EOT
   }
 }
 
-# Configure PMM for mongos routers
-resource "null_resource" "configure_pmm_client_mongos" {
+# Configure MongoDB collectors
+resource "null_resource" "configure_pmm_clients" {
   depends_on = [
-    docker_container.pmm_mongos, 
+    docker_container.pmm_cfg,
+    docker_container.pmm_shard,
+    docker_container.pmm_arb,
+    docker_container.pmm_mongos,
+    docker_container.cfg,
+    docker_container.shard,
+    docker_container.arbiter,
     docker_container.mongos,
     null_resource.create_ycsb_collection
   ]
-  for_each = toset([for i in docker_container.mongos : tostring(i.name)])
 
-  provisioner "local-exec" {
-    command = <<-EOT
-      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
-        pmm-admin config ${each.key} container ${each.key} \
-        --server-url=https://${var.pmm_user}:${var.pmm_password}@${var.pmm_host}:${var.pmm_port} \
-        --server-insecure-tls --force; do
-          echo "Retrying pmm-admin config for ${each.key} (mongos)..."
-          sleep 1
-      done
-    EOT
+  for_each = {
+    for inst in flatten([
+      [for i in docker_container.cfg     : { name = i.name, type = "cfg",    port = var.configsvr_port, use_auth = true,  collectors = true  }],
+      [for i in docker_container.shard   : { name = i.name, type = "shard",  port = var.shardsvr_port,  use_auth = true,  collectors = true  }],
+      [for i in docker_container.arbiter : { name = i.name, type = "arb",    port = var.shardsvr_port,  use_auth = false, collectors = false }],
+      [for i in docker_container.mongos  : { name = i.name, type = "mongos", port = var.mongos_port,    use_auth = true,  collectors = true  }]
+    ]) : inst.name => inst
   }
 
   provisioner "local-exec" {
@@ -445,13 +363,12 @@ resource "null_resource" "configure_pmm_client_mongos" {
         pmm-admin add mongodb \
         --environment=${var.env_tag} \
         --cluster ${var.cluster_name} \
-        --username=${var.mongodb_pmm_user} \
-        --password=${var.mongodb_pmm_password} \
         --host=${each.key} \
-        --port=${var.mongos_port} \
+        --port=${each.value.port} \
+        ${each.value.use_auth ? "--username=${var.mongodb_pmm_user} --password=${var.mongodb_pmm_password}" : ""} \
         --service-name=${each.key}-mongodb \
-        --tls-skip-verify --enable-all-collectors; do
-          echo "Retrying pmm-admin add mongodb for ${each.key} (mongos)..."
+        --tls-skip-verify ${each.value.collectors ? "--enable-all-collectors" : ""}; do
+          echo "Retrying pmm-admin add mongodb for ${each.key} (${each.value.type})..."
           sleep 1
       done
     EOT

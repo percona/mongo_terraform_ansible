@@ -29,6 +29,7 @@ variable "arbiters_per_replset" {
 variable "keyfile_contents" {
   default = "KYYVuRIooX+S2Ee6GDUpYiI6rpx879XYYwWD44tF/WtogW0o8Z4Ua0/Fs+Nez4GO"
   description = "Content of the keyfile for MongoDB replicaset member authentication"
+  sensitive   = true  
 }
 
 variable "keyfile_path" {
@@ -49,6 +50,7 @@ variable "mongodb_root_user" {
 variable "mongodb_root_password" {
   default = "percona"
   description = "MongoDB root user password"
+  sensitive   = true
 }
 
 ######################
@@ -88,6 +90,19 @@ variable "pmm_host" {
   default = "pmm-server"
 }
 
+variable "pmm_server_user" {
+  description = "Name of the PMM server admin user"
+  default = "admin"
+  type = string
+}
+
+variable "pmm_server_pwd" {
+  description = "Password of the PMM server admin user"
+  default = "admin"
+  type = string
+  sensitive   = true  
+}
+
 variable "pmm_client_container_suffix" {
   default = "pmm-client"
   description = "Suffix for PMM client container"
@@ -100,16 +115,6 @@ variable "pmm_port" {
   default = "8443"
 }
 
-variable "pmm_user" {
-  description = "Username for PMM web interface and clients"
-  default = "admin"
-}
-
-variable "pmm_password" {
-  description = "Password for PMM web interface and clients"
-  default = "admin"
-}
-
 variable "mongodb_pmm_user" {
   default = "pmm"
   description = "MongoDB user to be created with for PBM"
@@ -118,6 +123,7 @@ variable "mongodb_pmm_user" {
 variable "mongodb_pmm_password" {
   default = "percona"
   description = "MongoDB PBM user password"
+  sensitive   = true  
 }
 
 #############
@@ -142,6 +148,7 @@ variable "mongodb_pbm_user" {
 variable "mongodb_pbm_password" {
   default = "percona"
   description = "MongoDB PBM user password"
+  sensitive   = true  
 }
 
 #############
@@ -155,6 +162,7 @@ variable "minio_region" {
 
 variable "minio_access_key" {
   default = "minio"
+  sensitive   = true  
 }
 
 variable "minio_server" {
@@ -167,6 +175,7 @@ variable "minio_port" {
 
 variable "minio_secret_key" {
   default = "minioadmin"
+  sensitive   = true  
 }
 
 variable "bucket_name" {
@@ -177,6 +186,12 @@ variable "bucket_name" {
 ###############
 # Docker Images
 ###############
+
+variable "force_pull_latest" {
+  description = "Force pull latest Docker image by setting keep_locally to false"
+  type        = bool
+  default     = true
+}
 
 variable "psmdb_image" {
   description = "Docker image for MongoDB"

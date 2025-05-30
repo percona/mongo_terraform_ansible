@@ -6,7 +6,7 @@ resource "docker_volume" "shard_volume" {
 resource "docker_container" "shard" {
   count = var.shard_count * var.shardsvr_replicas
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
-  image = var.psmdb_image
+  image = docker_image.psmdb_image.name 
   mounts {
     source = docker_volume.keyfile_volume.name
     target = "${var.keyfile_path}"
@@ -94,7 +94,7 @@ resource "docker_volume" "shard_volume_pmm" {
 
 resource "docker_container" "pmm_shard" {
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-${var.pmm_client_container_suffix}"
-  image = var.pmm_client_image 
+  image = docker_image.pmm_client_image.name  
   count = var.shard_count * var.shardsvr_replicas
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {

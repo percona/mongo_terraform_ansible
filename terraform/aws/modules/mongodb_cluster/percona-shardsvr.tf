@@ -26,7 +26,7 @@ resource "aws_instance" "shard" {
     hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname)" > /etc/hosts    
+    echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname) localhost" > /etc/hosts    
 
     DEVICE="/dev/nvme1n1"
     while [ ! -b "$DEVICE" ]; do

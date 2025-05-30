@@ -5,7 +5,7 @@ resource "docker_volume" "cfg_volume" {
 
 resource "docker_container" "cfg" {
   name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
-  image = var.psmdb_image 
+  image = docker_image.psmdb_image.name
   mounts {
     source = docker_volume.keyfile_volume.name
     target = "${var.keyfile_path}"
@@ -62,7 +62,7 @@ resource "docker_container" "cfg" {
 
 resource "docker_container" "pbm_cfg" {
   name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-${var.pbm_container_suffix}"
-  image = var.pbm_mongod_image 
+  image = var.pbm_mongod_image
   count = var.configsvr_count
   user  = var.uid
   command = [
@@ -95,7 +95,7 @@ resource "docker_volume" "cfg_volume_pmm" {
 
 resource "docker_container" "pmm_cfg" {
   name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-${var.pmm_client_container_suffix}"
-  image = var.pmm_client_image 
+  image = docker_image.pmm_client_image.name  
   count = var.configsvr_count
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {

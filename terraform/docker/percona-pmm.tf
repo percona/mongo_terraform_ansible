@@ -1,8 +1,12 @@
-
 # Create a Docker container for the Grafana renderer
+resource "docker_image" "renderer" {
+  name         = var.renderer_image
+  keep_locally = !var.force_pull_latest
+}
+
 resource "docker_container" "renderer" {
   name  = var.renderer_tag
-  image = var.renderer_image
+  image = docker_image.renderer.name
   env = [ "IGNORE_HTTPS_ERRORS=true" ]
   networks_advanced {
     name = docker_network.mongo_network.id
@@ -18,10 +22,15 @@ resource "docker_container" "renderer" {
   restart = "on-failure"
 }
 
+resource "docker_image" "watchtower" {
+  name         = var.watchtower_image
+  keep_locally = !var.force_pull_latest
+}
+
 # Create a Docker container for Watchtower
 resource "docker_container" "watchtower" {
   name  = var.watchtower_tag
-  image = var.watchtower_image
+  image = docker_image.watchtower.name
   env = [ "WATCHTOWER_HTTP_API_TOKEN=${var.watchtower_token}", "WATCHTOWER_HTTP_API_UPDATE=1" ]
   mounts {
     target = "/var/run/docker.sock"
@@ -40,6 +49,11 @@ resource "docker_volume" "pmm_volume" {
   name = "${var.pmm_host}-data"
 }
 
+resource "docker_image" "pmm" {
+  name         = var.pmm_server_image
+  keep_locally = !var.force_pull_latest
+}
+
 # Create a Docker container for the PMM server
 resource "docker_container" "pmm" {
   name  = var.pmm_host
@@ -47,7 +61,7 @@ resource "docker_container" "pmm" {
     docker_container.renderer,
     docker_container.watchtower
   ]  
-  image = var.pmm_server_image
+  image = docker_image.pmm.name
   env = [ "GF_RENDERING_SERVER_URL=http://${docker_container.renderer.name}:${var.renderer_port}/render", "GF_RENDERING_CALLBACK_URL=https://${var.pmm_host}:${var.pmm_port}/graph/", "PMM_WATCHTOWER_HOST=http://${docker_container.watchtower.name}:${var.watchtower_port}","PMM_WATCHTOWER_TOKEN=${var.watchtower_token}" ]
   mounts {
     type = "volume"
@@ -71,4 +85,16 @@ resource "docker_container" "pmm" {
   }    
   wait = true
   restart = "on-failure"
+}
+
+resource "null_resource" "change_pmm_admin_password" {
+  depends_on = [
+    docker_container.pmm
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      docker exec -t ${var.pmm_host} change-admin-password ${var.pmm_server_pwd}
+    EOT
+  }
 }

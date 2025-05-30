@@ -27,9 +27,9 @@ variable "clusters" {
   }))
 
   default = {
-    ig-cl01 = {
-      env_tag = "test"
-    }
+#    ig-cl01 = {
+#      env_tag = "test"
+#    }
 #    ig-cl02 = {
 #      env_tag = "prod"
 #      mongos_count = 1
@@ -48,12 +48,12 @@ variable "replsets" {
    })) 
 
    default = {
-#     ig-rs01 = {
-#       env_tag = "test"
-#     }
-#     ig-rs02 = {
-#       env_tag = "prod"
-#     }
+     ig-rs01 = {
+       env_tag = "test"
+     }
+     ig-rs02 = {
+       env_tag = "prod"
+     }
    }
 }
 
@@ -74,6 +74,18 @@ variable "enable_ssh_gateway" {
   type = bool
   default = false
   description = "Adds proxycommand lines with a gateway/jump host to the generated ssh_config file"
+}
+
+variable "ssh_gateway_name" {
+  type = string
+  default = "gateway"
+  description = "Name of your jump host to use for ssh_config"
+}
+
+variable "port_to_forward" {
+  type = string
+  default = "23443"
+  description = "Local port number to forward via SSH to access PMM UI over localhost"
 }
 
 #############

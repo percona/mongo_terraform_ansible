@@ -50,7 +50,7 @@ resource "docker_volume" "mongos_volume_pmm" {
 
 resource "docker_container" "pmm_mongos" {
   name  = "${var.cluster_name}-${var.mongos_tag}0${count.index}-${var.pmm_client_container_suffix}"
-  image = var.pmm_client_image 
+  image = docker_image.pmm_client_image.name  
   count = var.mongos_count
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {

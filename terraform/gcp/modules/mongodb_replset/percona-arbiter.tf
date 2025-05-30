@@ -32,7 +32,7 @@ resource "google_compute_instance" "arbiter" {
     hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}arb${count.index % var.arbiters_per_replset}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname)" > /etc/hosts    
+    echo "127.0.0.1 $(hostname) localhost" > /etc/hosts    
   EOT
 }
 

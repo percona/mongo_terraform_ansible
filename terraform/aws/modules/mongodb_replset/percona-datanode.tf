@@ -25,7 +25,7 @@ resource "aws_instance" "replset" {
     hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}svr${count.index % var.data_nodes_per_replset}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname)" > /etc/hosts    
+    echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname) localhost" > /etc/hosts    
 
     DEVICE="/dev/nvme1n1"
     while [ ! -b "$DEVICE" ]; do

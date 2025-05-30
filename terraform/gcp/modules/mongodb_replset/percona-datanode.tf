@@ -43,7 +43,7 @@ resource "google_compute_instance" "replset" {
     hostnamectl set-hostname "$${var.rs_name}-${var.replset_tag}0${count.index}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname)" > /etc/hosts    
+    echo "127.0.0.1 $(hostname) localhost" > /etc/hosts    
 
     DEVICE=$(readlink -f /dev/disk/by-id/google-persistent-disk-1)            
 

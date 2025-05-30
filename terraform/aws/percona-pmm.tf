@@ -24,10 +24,10 @@ resource "aws_instance" "pmm" {
   user_data = <<-EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${local.pmm_host}.${aws_route53_zone.private_zone.name}"
+    hostnamectl set-hostname "${local.pmm_host}"
 
     # Update /etc/hosts to reflect the hostname change
-    echo "127.0.0.1 $(hostname)" > /etc/hosts  
+    echo "127.0.0.1 ${local.pmm_host}.${aws_route53_zone.private_zone.name} $(hostname) localhost" > /etc/hosts  
 
     DEVICE="/dev/nvme1n1"
     while [ ! -b "$DEVICE" ]; do

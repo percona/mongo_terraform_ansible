@@ -78,6 +78,18 @@ variable "enable_ssh_gateway" {
   description = "Adds proxycommand lines with a gateway/jump host to the generated ssh_config file"
 }
 
+variable "ssh_gateway_name" {
+  type = string
+  default = "gateway"
+  description = "Name of your jump host to use for ssh_config"
+}
+
+variable "port_to_forward" {
+  type = string
+  default = "23443"
+  description = "Local port number to forward via SSH to access PMM UI over localhost"
+}
+
 #############
 # PMM
 #############

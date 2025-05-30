@@ -6,7 +6,7 @@ resource "docker_volume" "arb_volume" {
 resource "docker_container" "arbiter" {
   count = var.shard_count * var.arbiters_per_replset
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
-  image = var.psmdb_image 
+  image = docker_image.psmdb_image.name 
   mounts {
     source = docker_volume.keyfile_volume.name
     target = "${var.keyfile_path}"
@@ -61,7 +61,7 @@ resource "docker_volume" "arb_volume_pmm" {
 
 resource "docker_container" "pmm_arb" {
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}-${var.pmm_client_container_suffix}"
-  image = var.pmm_client_image 
+  image = docker_image.pmm_client_image.name  
   count = var.shard_count * var.arbiters_per_replset
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {

@@ -184,6 +184,7 @@ resource "null_resource" "configure_pmm_client_rs" {
       until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
         pmm-admin add mongodb \
         --environment=${var.env_tag} \
+        --cluster=${var.rs_name} \
         --username=${var.mongodb_pmm_user} \
         --password=${var.mongodb_pmm_password} \
         --host=${each.key} \
@@ -223,6 +224,7 @@ resource "null_resource" "configure_pmm_client_arb" {
       until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
         pmm-admin add mongodb \
         --environment=${var.env_tag} \
+        --cluster=${var.rs_name} \
         --host=${each.key} \
         --port=${var.arbiter_port} \
         --service-name=${each.key}-mongodb \

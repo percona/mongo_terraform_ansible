@@ -1,13 +1,14 @@
 # Create a Docker container for the Grafana renderer
 resource "docker_image" "renderer" {
   name         = var.renderer_image
-  keep_locally = !var.force_pull_latest
+  keep_locally = true
 }
 
 resource "docker_container" "renderer" {
   name  = var.renderer_tag
-  image = docker_image.renderer.name
+  image = docker_image.renderer.image_id
   env = [ "IGNORE_HTTPS_ERRORS=true" ]
+  network_mode = "bridge"
   networks_advanced {
     name = docker_network.mongo_network.id
   }
@@ -24,19 +25,20 @@ resource "docker_container" "renderer" {
 
 resource "docker_image" "watchtower" {
   name         = var.watchtower_image
-  keep_locally = !var.force_pull_latest
+  keep_locally = true
 }
 
 # Create a Docker container for Watchtower
 resource "docker_container" "watchtower" {
   name  = var.watchtower_tag
-  image = docker_image.watchtower.name
+  image = docker_image.watchtower.image_id
   env = [ "WATCHTOWER_HTTP_API_TOKEN=${var.watchtower_token}", "WATCHTOWER_HTTP_API_UPDATE=1" ]
   mounts {
-    target = "/var/run/docker.sock"
-    source = "/var/run/docker.sock"
+    target = var.docker_socket
+    source = var.docker_socket
     type   = "bind"
   }  
+  network_mode = "bridge"
   networks_advanced {
     name = docker_network.mongo_network.id
   }
@@ -51,7 +53,7 @@ resource "docker_volume" "pmm_volume" {
 
 resource "docker_image" "pmm" {
   name         = var.pmm_server_image
-  keep_locally = !var.force_pull_latest
+  keep_locally = true
 }
 
 # Create a Docker container for the PMM server
@@ -61,13 +63,14 @@ resource "docker_container" "pmm" {
     docker_container.renderer,
     docker_container.watchtower
   ]  
-  image = docker_image.pmm.name
+  image = docker_image.pmm.image_id
   env = [ "GF_RENDERING_SERVER_URL=http://${docker_container.renderer.name}:${var.renderer_port}/render", "GF_RENDERING_CALLBACK_URL=https://${var.pmm_host}:${var.pmm_port}/graph/", "PMM_WATCHTOWER_HOST=http://${docker_container.watchtower.name}:${var.watchtower_port}","PMM_WATCHTOWER_TOKEN=${var.watchtower_token}" ]
   mounts {
     type = "volume"
     target = "/srv"
     source = docker_volume.pmm_volume.name
   }
+  network_mode = "bridge"
   networks_advanced {
     name = docker_network.mongo_network.id
   }

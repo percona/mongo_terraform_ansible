@@ -1,13 +1,26 @@
-locals {
-  storage_config_content = templatefile("${path.module}/pbm-storage.tmpl", {
-    minio_region     = var.minio_region
-    bucket_name      = var.bucket_name
-    cluster_name     = var.cluster_name
-    minio_server     = var.minio_server
-    minio_port       = var.minio_port
-    minio_access_key = var.minio_access_key
-    minio_secret_key = var.minio_secret_key  
-  })
+resource "docker_image" "psmdb" {
+  name         = var.psmdb_image
+  keep_locally = true
+}
+
+resource "docker_image" "pbm" {
+  name         = var.pbm_image
+  keep_locally = true
+}
+
+resource "docker_image" "pmm_client" {
+  name         = var.pmm_client_image
+  keep_locally = true
+}
+
+resource "docker_image" "base_os" {
+  name         = var.base_os_image
+  keep_locally = true
+}
+
+resource "docker_image" "pbm_mongod" {
+  name         = var.pbm_mongod_image
+  keep_locally = true
 }
 
 # Prepare the temporary container to initialize the keyfile volume
@@ -15,9 +28,10 @@ resource "docker_volume" "keyfile_volume" {
   name = "shared_keyfile"
 }
 
-resource "docker_container" "init_keyfile_container" {
+resource "docker_container" "init_keyfile" {
   name  = "${var.cluster_name}-init_keyfile_container"
-  image = var.base_os_image
+  image = docker_image.base_os.image_id
+  network_mode = "bridge"
   command = [
     "sh",
     "-c",
@@ -30,17 +44,5 @@ resource "docker_container" "init_keyfile_container" {
   }
   user = "root"
   must_run = false
-}
-
-resource "null_resource" "remove_init_keyfile_container" {
-  depends_on = [docker_container.init_keyfile_container]
-  provisioner "local-exec" {
-    command = "docker rm -f ${docker_container.init_keyfile_container.name}"
-  }
-}
-
-# Create the PBM configuration file
-resource "local_file" "storage_config" {
-  filename = "${path.module}/pbm-storage.conf.${var.cluster_name}"
-  content  = local.storage_config_content
+  #rm = true
 }

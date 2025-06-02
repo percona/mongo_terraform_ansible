@@ -5,7 +5,7 @@ resource "docker_volume" "cfg_volume" {
 
 resource "docker_container" "cfg" {
   name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
-  image = docker_image.psmdb_image.name
+  image = docker_image.psmdb.image_id
   mounts {
     source = docker_volume.keyfile_volume.name
     target = "${var.keyfile_path}"
@@ -45,6 +45,7 @@ resource "docker_container" "cfg" {
     target = "/data/db"
     source = docker_volume.cfg_volume[count.index].name
   }
+  network_mode = "bridge"     
   networks_advanced {
     name = "${var.network_name}"
   }
@@ -57,12 +58,12 @@ resource "docker_container" "cfg" {
   }
   wait = true
   restart = "no"
-  depends_on = [docker_container.init_keyfile_container]
+  depends_on = [docker_container.init_keyfile]
 }
 
 resource "docker_container" "pbm_cfg" {
   name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-${var.pbm_container_suffix}"
-  image = var.pbm_mongod_image
+  image = docker_image.pbm_mongod.image_id
   count = var.configsvr_count
   user  = var.uid
   command = [
@@ -74,6 +75,7 @@ resource "docker_container" "pbm_cfg" {
     target = "/data/db"
     source = docker_volume.cfg_volume[count.index].name
   }
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }
@@ -95,7 +97,7 @@ resource "docker_volume" "cfg_volume_pmm" {
 
 resource "docker_container" "pmm_cfg" {
   name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-${var.pmm_client_container_suffix}"
-  image = docker_image.pmm_client_image.name  
+  image = docker_image.pmm_client.image_id  
   count = var.configsvr_count
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {
@@ -103,6 +105,7 @@ resource "docker_container" "pmm_cfg" {
     target = "/srv"
     source = docker_volume.cfg_volume_pmm[count.index].name
   }
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }

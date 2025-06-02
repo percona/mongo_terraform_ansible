@@ -2,7 +2,7 @@
 resource "docker_container" "mongos" {
   count = var.mongos_count
   name  = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
-  image = var.mongos_image
+  image = docker_image.psmdb.image_id
   command = [
     "mongos",
     "--configdb", "${lookup({for label in docker_container.cfg[0].labels : label.label => label.value}, "replsetName", null)}/${join(",", [for i in range(var.configsvr_count) : "${docker_container.cfg[i].name}:${var.configsvr_port}" ])}",
@@ -28,6 +28,7 @@ resource "docker_container" "mongos" {
     label = "environment"
     value = var.env_tag
   }  
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }
@@ -40,7 +41,7 @@ resource "docker_container" "mongos" {
   }  
   wait = true
   restart = "no"
-  depends_on = [docker_container.init_keyfile_container]
+  depends_on = [docker_container.init_keyfile]
 }
 
 resource "docker_volume" "mongos_volume_pmm" {
@@ -50,7 +51,7 @@ resource "docker_volume" "mongos_volume_pmm" {
 
 resource "docker_container" "pmm_mongos" {
   name  = "${var.cluster_name}-${var.mongos_tag}0${count.index}-${var.pmm_client_container_suffix}"
-  image = docker_image.pmm_client_image.name  
+  image = docker_image.pmm_client.image_id  
   count = var.mongos_count
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {
@@ -58,6 +59,7 @@ resource "docker_container" "pmm_mongos" {
     target = "/srv"
     source = docker_volume.mongos_volume_pmm[count.index].name
   }
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }

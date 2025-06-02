@@ -32,7 +32,7 @@ module "mongodb_clusters" {
   minio_port = each.value.minio_port
   bind_to_localhost = each.value.bind_to_localhost
 
-  depends_on = [docker_container.pmm, null_resource.minio_bucket, docker_image.ycsb, docker_image.pbm_mongod ]
+  depends_on = [docker_container.pmm,null_resource.minio_bucket,docker_image.pbm_mongod]
 }
 
 module "mongodb_replsets" {
@@ -50,5 +50,5 @@ module "mongodb_replsets" {
   minio_port = each.value.minio_port
   bind_to_localhost = each.value.bind_to_localhost
   
-  depends_on = [docker_container.pmm, null_resource.minio_bucket, docker_image.ycsb, docker_image.pbm_mongod ]
+  depends_on = [docker_container.pmm,null_resource.minio_bucket,docker_image.pbm_mongod]
 }

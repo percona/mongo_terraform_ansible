@@ -187,12 +187,6 @@ variable "bucket_name" {
 # Docker Images
 ###############
 
-variable "force_pull_latest" {
-  description = "Force pull latest Docker image by setting keep_locally to false"
-  type        = bool
-  default     = true
-}
-
 variable "psmdb_image" {
   description = "Docker image for MongoDB"
   default = "percona/percona-server-mongodb:latest"
@@ -217,33 +211,14 @@ variable "base_os_image" {
   #default = "redhat/ubi9"
 }
 
-variable "ycsb_os_image" {
-  description = "Base OS image for the custom Docker image created with YCSB"
-  default = "redhat/ubi8"
-}
-
 variable "pbm_mongod_image" {
   description = "Name of the local Docker image to be created for pbm-agent + current mongod version. Required for physical restores"
-  default = "percona/pbm-agent-custom"
-}
-
-variable "ycsb_image" {
-  description = "Name of the local Docker image to be created for YCSB benchmark"
-  default = "percona/ycsb"
+  default = "percona/pbm-agent"
 }
 
 variable "uid" {
   description = "The user id under which the main process runs in the container created for pbm-agent + current mongod version"
   default = 1001
-}
-
-#############
-# YCSB
-#############
-
-variable "ycsb_container_suffix" {
-  default = "ycsb"
-  description = "Suffix for YCSB container"
 }
 
 #############
@@ -254,7 +229,6 @@ variable "network_name" {
   type    = string
   default = "mongo-terraform"
 }
-
 
 variable "bind_to_localhost" {
   type = bool

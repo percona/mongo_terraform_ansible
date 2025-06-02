@@ -6,7 +6,7 @@ resource "docker_volume" "shard_volume" {
 resource "docker_container" "shard" {
   count = var.shard_count * var.shardsvr_replicas
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
-  image = docker_image.psmdb_image.name 
+  image = docker_image.psmdb.image_id 
   mounts {
     source = docker_volume.keyfile_volume.name
     target = "${var.keyfile_path}"
@@ -39,6 +39,7 @@ resource "docker_container" "shard" {
     label = "environment"
     value = var.env_tag
   }  
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }
@@ -56,13 +57,13 @@ resource "docker_container" "shard" {
   }
   wait = true
   restart = "no"
-  depends_on = [docker_container.init_keyfile_container]
+  depends_on = [docker_container.init_keyfile]
 }
 
 resource "docker_container" "pbm_shard" {
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-${var.pbm_container_suffix}"
   count = var.shard_count * var.shardsvr_replicas
-  image = var.pbm_mongod_image 
+  image = docker_image.pbm_mongod.image_id
   user  = var.uid
   command = [
     "pbm-agent"
@@ -73,6 +74,7 @@ resource "docker_container" "pbm_shard" {
     target = "/data/db"
     source = docker_volume.shard_volume[count.index].name
   }
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }
@@ -94,7 +96,7 @@ resource "docker_volume" "shard_volume_pmm" {
 
 resource "docker_container" "pmm_shard" {
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-${var.pmm_client_container_suffix}"
-  image = docker_image.pmm_client_image.name  
+  image = docker_image.pmm_client.image_id  
   count = var.shard_count * var.shardsvr_replicas
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {
@@ -102,6 +104,7 @@ resource "docker_container" "pmm_shard" {
     target = "/srv"
     source = docker_volume.shard_volume_pmm[count.index].name
   }
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }

@@ -1,12 +1,12 @@
 # MinIO Docker container
-resource "docker_image" "minio_image" {
+resource "docker_image" "minio" {
   name         = var.minio_image
-  keep_locally = !var.force_pull_latest
+  keep_locally = true  
 }
 
 resource "docker_container" "minio" {
   name  = var.minio_server
-  image = docker_image.minio_image.name
+  image = docker_image.minio.image_id
   env = [
     "MINIO_ROOT_USER=${var.minio_access_key}",
     "MINIO_ROOT_PASSWORD=${var.minio_secret_key}",
@@ -24,6 +24,7 @@ resource "docker_container" "minio" {
     external = var.minio_console_port
     ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
   }
+  network_mode = "bridge"
   networks_advanced {
     name = docker_network.mongo_network.id
   }

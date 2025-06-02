@@ -51,9 +51,9 @@ variable "replsets" {
      ig-rs01 = {
        env_tag = "test"
      }
-     ig-rs02 = {
-       env_tag = "prod"
-     }
+     #ig-rs02 = {
+       #env_tag = "prod"
+     #}
    }
 }
 

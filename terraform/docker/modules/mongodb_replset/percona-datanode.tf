@@ -6,7 +6,7 @@ resource "docker_volume" "rs_volume" {
 resource "docker_container" "rs" {
   count = var.data_nodes_per_replset
   name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}"
-  image = docker_image.psmdb_image.name 
+  image = docker_image.psmdb.image_id 
   mounts {
     source = docker_volume.keyfile_volume.name
     target = "${var.keyfile_path}"
@@ -38,6 +38,7 @@ resource "docker_container" "rs" {
     label = "environment"
     value = var.env_tag
   }  
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }
@@ -55,13 +56,13 @@ resource "docker_container" "rs" {
   }
   wait = true
   restart = "no"
-  depends_on = [docker_container.init_keyfile_container]
+  depends_on = [docker_container.init_keyfile]
 }
 
 resource "docker_container" "pbm_rs" {
   name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-${var.pbm_container_suffix}"
   count = var.data_nodes_per_replset
-  image = var.pbm_mongod_image 
+  image = docker_image.pbm_mongod.image_id
   user  = var.uid
   command = [
     "pbm-agent"
@@ -72,6 +73,7 @@ resource "docker_container" "pbm_rs" {
     target = "/data/db"
     source = docker_volume.rs_volume[count.index].name
   }
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }
@@ -93,7 +95,7 @@ resource "docker_volume" "rs_volume_pmm" {
 
 resource "docker_container" "pmm_rs" {
   name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-${var.pmm_client_container_suffix}"
-  image = docker_image.pmm_client_image.name  
+  image = docker_image.pmm_client.image_id  
   count = var.data_nodes_per_replset
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {
@@ -101,6 +103,7 @@ resource "docker_container" "pmm_rs" {
     target = "/srv"
     source = docker_volume.rs_volume_pmm[count.index].name
   }
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }

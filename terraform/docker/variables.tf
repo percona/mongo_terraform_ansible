@@ -190,10 +190,27 @@ variable "backup_retention" {
 # Docker Images
 ###############
 
-variable "force_pull_latest" {
-  description = "Force pull latest Docker image by setting keep_locally to false"
-  type        = bool
-  default     = true
+variable "base_os_image" {
+  description = "Base OS image for the custom Docker image created with pbm-agent and mongod. Required for physical restores"
+  #default = "quay.io/centos/centos:stream9"
+  #default = "oraclelinux:8"
+  default = "redhat/ubi9-minimal"
+  #default = "redhat/ubi9"
+}
+
+variable "psmdb_image" {
+  description = "Docker image for MongoDB"
+  default = "percona/percona-server-mongodb:latest"
+}
+
+variable "pbm_image" {
+  description = "Docker image for PBM"
+  default = "percona/percona-backup-mongodb:latest"
+}
+
+variable "pbm_mongod_image" {
+  description = "Name of the local Docker image to be created for pbm-agent + current mongod version. Required for physical restores"
+  default = "percona/pbm-agent"
 }
 
 variable "renderer_image" {
@@ -214,18 +231,6 @@ variable "minio_image" {
   type = string
 }
 
-variable "psmdb_image" {
-  description = "Docker image for MongoDB"
-  default = "percona/percona-server-mongodb:latest"
-  type = string
-}
-
-variable "pbm_image" {
-  description = "Docker image for PBM"
-  default = "percona/percona-backup-mongodb:latest"
-  type = string
-}
-
 variable "pmm_server_image" {
   description = "Docker image for PMM server"
   #default = "perconalab/pmm-server:3-dev-latest"
@@ -234,31 +239,35 @@ variable "pmm_server_image" {
   type = string
 }
 
-variable "base_os_image" {
-  description = "Base OS image for the custom Docker image created with pbm-agent and mongod. Required for physical restores"
-  #default = "quay.io/centos/centos:stream9"
-  #default = "oraclelinux:8"
-  default = "redhat/ubi9-minimal"
-  #default = "redhat/ubi9"
+variable "pmm_client_image" {
+  description = "Docker image for PMM client"
+  default = "percona/pmm-client:latest"
+  #default = "perconalab/pmm-client:3-dev-latest"
+}
+
+variable "docker_socket" {
+  description = "Location of the socket file for docker"
+  default = "/var/run/docker.sock"
   type = string
+}
+
+#############
+# YCSB
+#############
+
+variable "ycsb_container_suffix" {
+  default = "ycsb"
+  description = "Suffix for YCSB container"
 }
 
 variable "ycsb_os_image" {
   description = "Base OS image for the custom Docker image created with YCSB"
   default = "redhat/ubi8-minimal"
-  type = string
-}
-
-variable "pbm_mongod_image" {
-  description = "Name of the local Docker image to be created for pbm-agent + current mongod version. Required for physical restores"
-  default = "percona/pbm-agent-custom"
-  type = string
 }
 
 variable "ycsb_image" {
   description = "Name of the local Docker image to be created for YCSB benchmark"
   default = "percona/ycsb"
-  type = string
 }
 
 #############

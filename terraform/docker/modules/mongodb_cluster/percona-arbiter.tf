@@ -6,7 +6,7 @@ resource "docker_volume" "arb_volume" {
 resource "docker_container" "arbiter" {
   count = var.shard_count * var.arbiters_per_replset
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
-  image = docker_image.psmdb_image.name 
+  image = docker_image.psmdb.image_id 
   mounts {
     source = docker_volume.keyfile_volume.name
     target = "${var.keyfile_path}"
@@ -33,7 +33,8 @@ resource "docker_container" "arbiter" {
   labels { 
     label = "environment" 
     value = var.env_tag
-  }      
+  }
+  network_mode = "bridge"     
   networks_advanced {
     name = "${var.network_name}"
   }
@@ -51,7 +52,7 @@ resource "docker_container" "arbiter" {
   }   
   wait = true
   restart = "no"
-  depends_on = [docker_container.init_keyfile_container]
+  depends_on = [docker_container.init_keyfile]
 }
 
 resource "docker_volume" "arb_volume_pmm" {
@@ -61,7 +62,7 @@ resource "docker_volume" "arb_volume_pmm" {
 
 resource "docker_container" "pmm_arb" {
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}-${var.pmm_client_container_suffix}"
-  image = docker_image.pmm_client_image.name  
+  image = docker_image.pmm_client.image_id  
   count = var.shard_count * var.arbiters_per_replset
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
   mounts {
@@ -69,6 +70,7 @@ resource "docker_container" "pmm_arb" {
     target = "/srv"
     source = docker_volume.arb_volume_pmm[count.index].name
   }
+  network_mode = "bridge"
   networks_advanced {
     name = "${var.network_name}"
   }

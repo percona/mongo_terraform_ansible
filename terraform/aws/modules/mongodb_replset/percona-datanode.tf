@@ -4,7 +4,7 @@ resource "aws_ebs_volume" "replset_disk" {
   size               = var.replsetsvr_volume_size
   type               = var.data_disk_type
   tags = {
-    Name = "${var.rs_name}-${var.replset_tag}svr${count.index % var.data_nodes_per_replset}-data"
+    Name = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-data"
   }
 }
 
@@ -15,14 +15,14 @@ resource "aws_instance" "replset" {
   subnet_id           = data.aws_subnet.details[count.index % var.subnet_count].id
   key_name            = data.aws_key_pair.my_key_pair.key_name
     tags = {
-    Name = "${var.rs_name}-${var.replset_tag}svr${count.index % var.data_nodes_per_replset}"
+    Name = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
     ansible-group  = var.replset_tag
   }
   vpc_security_group_ids = [aws_security_group.replsetsvr_sg.id]
   user_data = <<-EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}svr${count.index % var.data_nodes_per_replset}"
+    hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname) localhost" > /etc/hosts    
@@ -108,7 +108,7 @@ resource "aws_security_group_rule" "mongodb-replset-egress" {
 resource "aws_route53_record" "replsetsvr_dns_record" {
   count   = var.data_nodes_per_replset
   zone_id = data.aws_route53_zone.private_zone.zone_id
-  name    = "${var.rs_name}-${var.replset_tag}svr${count.index % var.data_nodes_per_replset}"
+  name    = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
   type    = "A"
   ttl     = "300"
   records = [aws_instance.replset[count.index].private_ip]

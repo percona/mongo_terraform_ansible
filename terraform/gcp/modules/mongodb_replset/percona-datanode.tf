@@ -1,5 +1,5 @@
 resource "google_compute_disk" "replset_disk" {
-  name  = "${var.rs_name}-${var.replset_tag}svr${count.index % var.data_nodes_per_replset}-data"
+  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-data"
   type  = var.data_disk_type
   size  = var.replsetsvr_volume_size
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)]
@@ -7,7 +7,7 @@ resource "google_compute_disk" "replset_disk" {
 }
 
 resource "google_compute_instance" "replset" {
-  name = "${var.rs_name}-${var.replset_tag}svr${count.index % var.data_nodes_per_replset}"
+  name = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
   machine_type = var.replsetsvr_type
   zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)]
   count = var.data_nodes_per_replset

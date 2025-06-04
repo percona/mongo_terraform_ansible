@@ -26,21 +26,12 @@ variable "clusters" {
     test01 = {
       env_tag = "test"
     }
+#    test02 = {
+#      env_tag = "prod"
+#      mongos_count = 1
+#   }
   }
 }
-
-# More than 1 sharded clusters can be deployed by adding them to the default value. 
-# The below example provisions a second cluster named prod01 with a custom number of mongos, in addition to the test01 cluster:
-#
-# default = {
-#   test01 = {
-#     env_tag = "test"
-#   }
-#   prod01 = {
-#     env_tag = "prod"
-#     mongos_count = 1
-#   }
-# }
 
 # By default, no  replica sets are provisioned (except those needed for each shard of the sharded clusters).
 # If you want to provision separate replica sets, change the default value of replsets below.

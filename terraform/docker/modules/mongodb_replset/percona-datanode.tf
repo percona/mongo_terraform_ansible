@@ -1,11 +1,11 @@
 resource "docker_volume" "rs_volume" {
   count = var.data_nodes_per_replset
-  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-data"
+  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-data"
 }
 
 resource "docker_container" "rs" {
   count = var.data_nodes_per_replset
-  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}"
+  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
   image = docker_image.psmdb.image_id 
   mounts {
     source = docker_volume.keyfile_volume.name
@@ -15,7 +15,7 @@ resource "docker_container" "rs" {
   }  
   command = [
     "mongod",
-    "--replSet", "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}",  
+    "--replSet", "${var.rs_name}",  
     "--bind_ip_all",    
     "--port", "${var.replset_port}",
     "--oplogSize", "200",
@@ -32,7 +32,7 @@ resource "docker_container" "rs" {
   }  
   labels { 
     label = "replsetName"
-    value = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}"
+    value = "${var.rs_name}"
   }    
   labels { 
     label = "environment"
@@ -60,7 +60,7 @@ resource "docker_container" "rs" {
 }
 
 resource "docker_container" "pbm_rs" {
-  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-${var.pbm_container_suffix}"
+  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-${var.pbm_container_suffix}"
   count = var.data_nodes_per_replset
   image = docker_image.pbm_mongod.image_id
   user  = var.uid
@@ -90,11 +90,11 @@ resource "docker_container" "pbm_rs" {
 
 resource "docker_volume" "rs_volume_pmm" {
   count = var.data_nodes_per_replset
-  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-pmm-client-data"
+  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-pmm-client-data"
 }
 
 resource "docker_container" "pmm_rs" {
-  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.data_nodes_per_replset)}svr${count.index % var.data_nodes_per_replset}-${var.pmm_client_container_suffix}"
+  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-${var.pmm_client_container_suffix}"
   image = docker_image.pmm_client.image_id  
   count = var.data_nodes_per_replset
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]

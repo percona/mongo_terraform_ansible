@@ -24,12 +24,12 @@ module "mongodb_clusters" {
   shardsvr_replicas = each.value.shardsvr_replicas
   arbiters_per_replset = each.value.arbiters_per_replset
   mongos_count = each.value.mongos_count  
-  pmm_host = each.value.pmm_host
-  pmm_port = each.value.pmm_port  
-  pmm_server_user = each.value.pmm_server_user
-  pmm_server_pwd = each.value.pmm_server_pwd
-  minio_server = each.value.minio_server
-  minio_port = each.value.minio_port
+  pmm_host = var.pmm_host
+  pmm_port = var.pmm_port  
+  pmm_server_user =var.pmm_server_user
+  pmm_server_pwd = var.pmm_server_pwd
+  minio_server = var.minio_server
+  minio_port = var.minio_port
   bind_to_localhost = each.value.bind_to_localhost
 
   depends_on = [docker_container.pmm,null_resource.minio_bucket,docker_image.pbm_mongod]
@@ -42,12 +42,12 @@ module "mongodb_replsets" {
   env_tag    = each.value.env_tag
   data_nodes_per_replset = each.value.data_nodes_per_replset
   arbiters_per_replset = each.value.arbiters_per_replset
-  pmm_host = each.value.pmm_host
-  pmm_port = each.value.pmm_port  
-  pmm_server_user = each.value.pmm_server_user
-  pmm_server_pwd = each.value.pmm_server_pwd
-  minio_server = each.value.minio_server
-  minio_port = each.value.minio_port
+  pmm_host = var.pmm_host
+  pmm_port = var.pmm_port  
+  pmm_server_user = var.pmm_server_user
+  pmm_server_pwd = var.pmm_server_pwd
+  minio_server = var.minio_server
+  minio_port = var.minio_port
   bind_to_localhost = each.value.bind_to_localhost
   
   depends_on = [docker_container.pmm,null_resource.minio_bucket,docker_image.pbm_mongod]

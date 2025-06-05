@@ -7,18 +7,12 @@
 variable "clusters" {
   description = "MongoDB clusters to deploy"
   type = map(object({
-    env_tag               = optional(string, "test")                # Name of Environment for the cluster
+    env_tag               = optional(string, "test")                # Name of the environment for the cluster
     configsvr_count       = optional(number, 3)                     # Number of config servers to be used
-    shard_count           = optional(number, 2)                     # Number of shards to be used
-    shardsvr_replicas     = optional(number, 2)                     # How many data bearing nodes per shard
-    arbiters_per_replset  = optional(number, 1)                     # Number of arbiters per replica set
-    mongos_count          = optional(number, 2)                     # Number of mongos to provision
-    pmm_host              = optional(string, "pmm-server")          # Hostname of PMM server
-    pmm_port              = optional(number, 8443)                  # Port of PMM Server
-    pmm_server_user       = optional(string, "admin")               # PMM Server user
-    pmm_server_pwd        = optional(string, "admin")               # PMM Server password
-    minio_server          = optional(string, "minio")               # Hostname of Minio server
-    minio_port            = optional(number, 9000)                  # Port of Minio Server
+    shard_count           = optional(number, 2)                     # Number of shards to be created
+    shardsvr_replicas     = optional(number, 2)                     # How many data-bearing nodes for each shard's replica set
+    arbiters_per_replset  = optional(number, 1)                     # Number of arbiters for each shard's replica set
+    mongos_count          = optional(number, 2)                     # Number of mongos routers to provision
     bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0
   }))
 
@@ -39,15 +33,9 @@ variable "clusters" {
 variable "replsets" {
    description = "MongoDB replica sets to deploy"
    type = map(object({
-    env_tag                   = optional(string, "test")               # Name of Environment for the rs
-    data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members per replset
-    arbiters_per_replset      = optional(number, 1)                    # Number of arbiters per replica set
-    pmm_host                  = optional(string, "pmm-server")         # Hostname of PMM server
-    pmm_port                  = optional(number, 8443)                 # Port of PMM Server
-    pmm_server_user           = optional(string, "admin")              # PMM Server user
-    pmm_server_pwd            = optional(string, "admin")              # PMM Server password     
-    minio_server              = optional(string, "minio")              # Hostname of Minio server
-    minio_port                = optional(number, 9000)                 # Port of Minio Server
+    env_tag                   = optional(string, "test")               # Name of the environment for the replica set
+    data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members for the replica set
+    arbiters_per_replset      = optional(number, 1)                    # Number of arbiters for the replica set
     bind_to_localhost         = optional(bool, true)                   # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
    })) 
 

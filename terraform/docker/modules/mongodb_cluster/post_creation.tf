@@ -128,8 +128,8 @@ resource "null_resource" "initiate_cfg_replset" {
 resource "null_resource" "initiate_shard_replset" {
   depends_on = [docker_container.arbiter, docker_container.shard]
 
-  # Initiate the shards replica sets 
   for_each = toset([for i in range(var.shard_count) : tostring(i)])
+
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh --port ${var.shardsvr_port} --eval '
@@ -142,6 +142,18 @@ resource "null_resource" "initiate_shard_replset" {
           ]
         });
       '
+    EOT
+  }
+}
+
+# Check primary elected
+resource "null_resource" "check_primary" {
+  depends_on = [null_resource.initiate_shard_replset]
+
+  for_each = toset([for i in range(var.shard_count) : tostring(i)]) 
+
+  provisioner "local-exec" {
+    command = <<-EOT
       retries=30
       success=false
       while [ $retries -gt 0 ]; do
@@ -165,6 +177,13 @@ resource "null_resource" "initiate_shard_replset" {
       fi
     EOT
   }
+}
+
+# Create users
+resource "null_resource" "create_users" {
+  depends_on = [null_resource.check_primary]
+
+  for_each = toset([for i in range(var.shard_count) : tostring(i)]) 
 
   # Create the root user on the shards
   provisioner "local-exec" {

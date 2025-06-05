@@ -97,7 +97,7 @@ resource "null_resource" "change_pmm_admin_password" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -t ${var.pmm_host} change-admin-password ${var.pmm_server_pwd}
+      docker exec -t ${var.pmm_host} bash -c  "grafana cli --homepath /usr/share/grafana --config=/etc/grafana/grafana.ini admin reset-admin-password ${var.pmm_server_pwd}"
     EOT
   }
 }

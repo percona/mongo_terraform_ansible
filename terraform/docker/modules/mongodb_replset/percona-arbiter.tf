@@ -1,11 +1,11 @@
 resource "docker_volume" "arb_volume" {
   count = var.arbiters_per_replset
-  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}-data"
+  name  = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}-data"
 }
 
 resource "docker_container" "arbiter" {
   count = var.arbiters_per_replset
-  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+  name  = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}"
   image = docker_image.psmdb.image_id  
   mounts {
     source = docker_volume.keyfile_volume.id
@@ -15,7 +15,7 @@ resource "docker_container" "arbiter" {
   }  
   command = [
     "mongod",
-    "--replSet", "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.arbiters_per_replset)}",  
+    "--replSet", "${var.rs_name}",  
     "--bind_ip_all",   
     "--port", "${var.arbiter_port}",
     "--keyFile", "${var.keyfile_path}/${var.keyfile_name}"
@@ -27,7 +27,7 @@ resource "docker_container" "arbiter" {
   user = var.uid
   labels { 
     label = "replsetName"
-    value = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.arbiters_per_replset)}"
+    value = "${var.rs_name}"
   }  
   labels { 
     label = "environment" 
@@ -55,12 +55,12 @@ resource "docker_container" "arbiter" {
 }
 
 resource "docker_volume" "arb_volume_pmm" {
-  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}-pmm-client-data"
+  name  = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}-pmm-client-data"
   count = var.arbiters_per_replset
 }
 
 resource "docker_container" "pmm_arb" {
-  name  = "${var.rs_name}-${var.replset_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}-${var.pmm_client_container_suffix}"
+  name  = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}-${var.pmm_client_container_suffix}"
   image = docker_image.pmm_client.image_id  
   count = var.arbiters_per_replset
   env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]

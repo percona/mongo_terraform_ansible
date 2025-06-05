@@ -51,7 +51,7 @@ variable "arbiters_per_replset" {
 
 variable "replset_tag" {
   description = "Name of the replicaset servers"
-  default = "mongodb-rs"
+  default = "mongodb-svr"
 }
 
 variable "replsetsvr_port" {

@@ -75,3 +75,7 @@ output "my_ssh_user" {
 output "cluster" {
   value = var.cluster_name
 }
+
+output "env_tag" {
+  value = var.env_tag
+}

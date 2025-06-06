@@ -104,7 +104,7 @@
         --port={{ mongo_port }}
         --tls-skip-verify
         {% if arbiter is not defined %}
-        --username={{ mongodb_pmm_user }} --password={{ mongodb_pmm_user_pwd }}
+        --username={{ mongodb_pmm_user }} --password='{{ mongodb_pmm_user_pwd }}'
         {% if use_tls | bool %}
         --tls --tls-certificate-key-file={{ certificateKeyFile }} --tls-ca-file={{ CAFile }}
         {% endif %}

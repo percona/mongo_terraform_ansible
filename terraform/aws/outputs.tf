@@ -29,6 +29,8 @@ resource "local_file" "AnsibleInventoryCluster" {
     region                   = aws_s3_bucket.mongo_backups.region
     endpointUrl              = local.storage_endpoint
     cluster                  = each.value.cluster
+    env_tag                 = each.value.env_tag
+
     access_key               = aws_iam_access_key.mongo_backup_access_key.id
     secret_access_key        = aws_iam_access_key.mongo_backup_access_key.secret
     })
@@ -78,6 +80,8 @@ resource "local_file" "AnsibleInventoryRS" {
 
     my_ssh_user              = var.my_ssh_user
     rs_name                  = each.value.rs_name
+    env_tag                 = each.value.env_tag
+    
     region                   = aws_s3_bucket.mongo_backups.region
     hostname_pmm             = aws_instance.pmm.tags["Name"]
     bucket                   = aws_s3_bucket.mongo_backups.bucket

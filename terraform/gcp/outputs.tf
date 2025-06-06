@@ -26,6 +26,8 @@ resource "local_file" "AnsibleInventoryCluster" {
 
       my_ssh_user              = var.my_ssh_user
       cluster                  = each.value.cluster
+      env_tag                  = each.value.env_tag
+
       region                   = each.value.region
       hostname_pmm             = local.pmm_host
       bucket                   = google_storage_bucket.mongo-backups.name
@@ -80,6 +82,7 @@ resource "local_file" "AnsibleInventoryRS" {
 
       my_ssh_user              = var.my_ssh_user
       rs_name                  = each.value.rs_name
+      env_tag                  = each.value.env_tag
       region                   = each.value.region
       hostname_pmm             = local.pmm_host
       bucket                   = google_storage_bucket.mongo-backups.name

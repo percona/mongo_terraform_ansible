@@ -42,3 +42,7 @@ output "gce_ssh_user" {
 output "rs_name" {
   value = var.rs_name
 }
+
+output "env_tag" {
+  value = var.env_tag
+}

@@ -17,17 +17,17 @@ variable "clusters" {
   }))
 
   default = {
-    test01 = {
+    cl01 = {
       env_tag = "test"
     }
-#    test02 = {
+#    cl02 = {
 #      env_tag = "prod"
 #      mongos_count = 1
 #   }
   }
 }
 
-# By default, no  replica sets are provisioned (except those needed for each shard of the sharded clusters).
+# By default, no replica sets are provisioned (except those needed for each shard of the sharded clusters).
 # If you want to provision separate replica sets, change the default value of replsets below.
 
 variable "replsets" {

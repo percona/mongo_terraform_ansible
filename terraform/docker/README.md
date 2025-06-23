@@ -1,27 +1,70 @@
-# Deploy hardware for MongoDB clusters using Terraform in Docker
+# Deploy MongoDB in Docker using Terraform
 
-Deploy the full stack of Percona MongoDB software on Docker containers:
+Deploys the full stack of Percona MongoDB software on Docker containers:
 
 - Percona Server for MongoDB
 - Percona Backup for MongoDB
 - PMM Client
-- PMM Server with Grafana Renderer
+- PMM Server (with Grafana Renderer)
 
-A MinIO server with a storage bucket is created for PBM backups. Logical and physical backup functionality works. 
+A storage bucket in MinIO server is created for PBM backups. Logical and physical backup works. 
 
-By default 1 sharded cluster with 2 shards is created, where each shard is a 3-node Replica Set using a PSA topology. Additional clusters or replica sets can be created by customizing the variables.tf file
+By default 1 sharded cluster with 2 shards is created, where each shard is a 3-node Replica Set using a PSA topology. Additional clusters can be created by customizing the `clusters` variable in the `variables.tf` file (you can also override the variable's default value via tfvars):
+
+```
+variable "clusters" {
+  description = "MongoDB clusters to deploy"
+  type = map(object({
+    env_tag               = optional(string, "test")                # Name of the environment for the cluster
+    configsvr_count       = optional(number, 3)                     # Number of config servers to be used
+    shard_count           = optional(number, 2)                     # Number of shards to be created
+    shardsvr_replicas     = optional(number, 2)                     # How many data-bearing nodes for each shard's replica set
+    arbiters_per_replset  = optional(number, 1)                     # Number of arbiters for each shard's replica set
+    mongos_count          = optional(number, 2)                     # Number of mongos routers to provision
+    bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0
+  }))
+
+  default = {
+    test01 = {
+      env_tag = "test"
+    }
+}
+```
+
+By default, no stand-alone replica sets are provisioned. If you want to provision any replica sets not part of a sharded cluster, change the default value of the `replsets` variable in the `variables.tf` file (you can also override the variable's default value via tfvars):
+
+```
+variable "replsets" {
+   description = "MongoDB replica sets to deploy"
+   type = map(object({
+    env_tag                   = optional(string, "test")               # Name of the environment for the replica set
+    data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members for the replica set
+    arbiters_per_replset      = optional(number, 1)                    # Number of arbiters for the replica set
+    bind_to_localhost         = optional(bool, true)                   # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
+   })) 
+
+   default = {
+#     rs01 = {
+#       env_tag = "test"
+#     }
+   }
+}
+```
 
 ## Pre-requisites
 
+- Terraform
+- Docker
+
 ### Mac
 
-- It is recommended to install Homebrew. From a Terminal run:
+- It is recommended to use Homebrew. From a Terminal run the following to install it:
   
   ```
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   ```
 
-- Install Terraform. Using Homebrew you can do:
+- Install Terraform. If using Homebrew you can do:
   
   ```
   brew install terraform
@@ -29,7 +72,7 @@ By default 1 sharded cluster with 2 shards is created, where each shard is a 3-n
   
   See the [Terraform installation documentation](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli#install-terraform) for detailed instructions.
 
-- Install Docker. Using Homebrew run:
+- Install Docker Desktop. Using Homebrew run:
   
   ```
   brew install docker --cask
@@ -44,7 +87,7 @@ You can check the [Docker installation documentation](https://docs.docker.com/en
 ### Windows
 
 - Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
-  Open PowerShell or Windows Command Prompt in administrator mode by right-clicking and selecting "Run as administrator".
+  Open PowerShell or Windows Command Prompt in administrator mode by right-clicking and selecting "Run as Administrator".
 
   ```
   wsl --install
@@ -112,53 +155,61 @@ If no errors, proceed to the next section.
     ```
     Status should be `Up` and `healthy`.
 
-4. Connect to a mongos router to access the cluster. For example:
+4. For a sharded cluster, connect to a mongos router to access it. For example:
 
     ```
-    docker exec -it test01-mongos00 mongosh admin -u root -p percona
+    docker exec -it cl01-mongos00 mongosh admin -u root -p percona
     sh.status()
     ```
 
-- There is no need to run the Ansible playbook for the Docker deployments.
+5. For a replica set, connect to any member to access it. For example:
+
+    ```
+    docker exec -it rs01-svr0 mongosh admin -u root -p percona
+    rs.status()
+    ```
+
+- There is no need to run the Ansible playbook for the Docker-based deployments.
 
 ## PMM Monitoring
 
 - You can access the PMM Server by opening a web browser at https://127.0.0.1:8443. The default credentials are `admin/admin`.
 
-- Grafana renderer is installed and configured in order to be able to export any PMM graphic as a PNG image.
+- Grafana renderer is installed and configured, in order to be able to export any PMM graphic as a PNG image.
 
 ## PBM Backup
 
 - A dedicated `pbm-cli` container is deployed where you can run PBM commands. Example:
 
 ```
-docker exec -it test01-pbm-cli pbm status
+docker exec -it cl01-pbm-cli pbm status
 ```
 
-- You can access the Minio web interface at http://127.0.0.1:9001 to inspect the backup storage/files. The default credentials are `minio/minioadmin`.
+- You can access the Minio Server web interface at http://127.0.0.1:9001 to inspect the backup storage/files. The default credentials are `minio/minioadmin`.
 
 ## Simulating a workload
 
-- To be able to run test workloads, a YCSB container is created as part of the stack. A sharded `ycsb.usertable` collection is automatically created with `{_id: hashed }` as the shard key. 
+- To be able to run test workloads, a YCSB container is created as part of the stack. 
+- For sharded clusters, a sharded `ycsb.usertable` collection is automatically created with `{_id: hashed }` as the shard key. 
 
 - To run a YCSB workload:
 
   1. Start a shell session inside the YCSB container
 
      ```
-     docker exec -it test01-ycsb /bin/bash
+     docker exec -it ycsb /bin/bash
      ```
 
   2. Perform initial data load against one of the mongos containers, using the correct credentials and port number.
 
      ```
-     /ycsb/bin/ycsb load mongodb -P /ycsb/workloads/workloada -p mongodb.url="mongodb://root:percona@test01-mongos00:27017/"
+     /ycsb/bin/ycsb load mongodb -P /ycsb/workloads/workloada -p mongodb.url="mongodb://root:percona@cl01-mongos00:27017/"
      ```
 
   3. Run the benchmark
 
      ```
-     /ycsb/bin/ycsb run mongodb -s -P /ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url="mongodb://root:percona@test01-mongos00:27017/"
+     /ycsb/bin/ycsb run mongodb -s -P /ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url="mongodb://root:percona@cl01-mongos00:27017/"
      ```
 
 ## Cleanup

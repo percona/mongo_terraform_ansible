@@ -1,6 +1,6 @@
 variable "cluster_name" {
   description = "Name of the MongoDB cluster"
-  default = "cluster01"
+  default = "cl01"
 }
 
 variable "env_tag" {

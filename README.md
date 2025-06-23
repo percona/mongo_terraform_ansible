@@ -7,7 +7,10 @@ This automation is meant to deploy the full stack of Percona MongoDB software ea
 - PMM Client
 - PMM Server
 
-The code creates instances in Google Cloud or AWS using Terraform, and relies on Ansible to install the software. You also have the option to run all components on a single server using Docker containers (e.g. your own laptop).
+Choose between:
+
+- Creating resources in public cloud platforms using a combination of Terraform and Ansible.
+- Run everything in Docker containers on a single server (even your own laptop) with Terraform alone. 
 
 ## Instructions
 

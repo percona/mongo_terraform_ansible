@@ -10,7 +10,7 @@ resource "docker_container" "renderer" {
   env = [ "IGNORE_HTTPS_ERRORS=true" ]
   network_mode = "bridge"
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = var.network_name
   }
   healthcheck {
     test        = ["CMD", "node", "--version" ]
@@ -40,7 +40,7 @@ resource "docker_container" "watchtower" {
   }  
   network_mode = "bridge"
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = var.network_name
   }
   wait = true
   restart = "on-failure"
@@ -72,7 +72,7 @@ resource "docker_container" "pmm" {
   }
   network_mode = "bridge"
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = var.network_name
   }
   ports {
     internal = var.pmm_port

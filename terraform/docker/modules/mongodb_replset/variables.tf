@@ -5,7 +5,7 @@ variable "rs_name" {
 
 variable "env_tag" {
   description = "Name of the Environment"
-  default = "qa"
+  default = "test"
 }
 
 ##################

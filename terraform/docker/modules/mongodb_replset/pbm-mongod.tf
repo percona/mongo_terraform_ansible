@@ -24,7 +24,7 @@ resource "docker_image" "base_os" {
 
 # Write PBM Dockerfile to disk
 resource "local_file" "pbm_mongod_image_dockerfile_content" {
-  filename = "${path.module}/${var.pbm_mongod_image}.Dockerfile"
+  filename = "${path.module}/${var.rs_name}-${var.pbm_mongod_image}.Dockerfile"
   content  = local.pbm_mongod_image_dockerfile_content
 }
 
@@ -39,6 +39,6 @@ resource "docker_image" "pbm_mongod" {
   name = var.pbm_mongod_image
   build {
     context    = path.module
-    dockerfile = "${var.pbm_mongod_image}.Dockerfile"
+    dockerfile = "${var.rs_name}-${var.pbm_mongod_image}.Dockerfile"
   }
 }

@@ -26,7 +26,7 @@ resource "docker_container" "minio" {
   }
   network_mode = "bridge"
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = var.network_name
   }
   healthcheck {
     test        = [ "CMD", "curl", "-k", "-f", "http://${var.minio_server}:${var.minio_port}/minio/health/live" ]
@@ -45,7 +45,7 @@ resource "null_resource" "minio_bucket" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      docker run --rm --network ${docker_network.mongo_network.name} \
+      docker run --rm --network ${var.network_name} \
         -e MC_HOST_minio="http://${var.minio_access_key}:${var.minio_secret_key}@${docker_container.minio.name}:${var.minio_port}" \
         minio/mc mb minio/${var.bucket_name} --region=${var.minio_region}
     EOT
@@ -53,7 +53,7 @@ resource "null_resource" "minio_bucket" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      docker run --rm --network ${docker_network.mongo_network.name} \
+      docker run --rm --network ${var.network_name} \
         -e MC_HOST_minio="http://${var.minio_access_key}:${var.minio_secret_key}@${docker_container.minio.name}:${var.minio_port}" \
         minio/mc ilm rule add --expire-days ${var.backup_retention} minio/${var.bucket_name} 
     EOT

@@ -5,6 +5,8 @@ resource "docker_volume" "cfg_volume" {
 
 resource "docker_container" "cfg" {
   name = "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
+  hostname = "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
+  domainname = var.domain_name
   image = docker_image.psmdb.image_id
   mounts {
     source = docker_volume.keyfile_volume.name

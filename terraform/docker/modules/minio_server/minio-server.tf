@@ -6,6 +6,8 @@ resource "docker_image" "minio" {
 
 resource "docker_container" "minio" {
   name  = var.minio_server
+  hostname = var.minio_server
+  domainname = var.domain_name
   image = docker_image.minio.image_id
   env = [
     "MINIO_ROOT_USER=${var.minio_access_key}",

@@ -8,6 +8,11 @@ variable "env_tag" {
   default = "test"
 }
 
+variable "domain_name" {
+  description = "Name of the DNS domain"
+  default = "tp.int.percona.com"
+}
+
 ##################
 # MongoDB topology
 ##################

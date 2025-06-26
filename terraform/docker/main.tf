@@ -18,6 +18,7 @@ module "mongodb_clusters" {
   source                  = "./modules/mongodb_cluster"
   for_each                = var.clusters
   cluster_name            = each.key
+  domain_name             = each.value.domain_name
   env_tag                 = each.value.env_tag
   configsvr_count         = each.value.configsvr_count
   shard_count             = each.value.shard_count
@@ -47,6 +48,7 @@ module "mongodb_replsets" {
   source                  = "./modules/mongodb_replset"
   for_each                = var.replsets
   rs_name                 = each.key
+  domain_name             = each.value.domain_name
   env_tag                 = each.value.env_tag
   data_nodes_per_replset  = each.value.data_nodes_per_replset
   arbiters_per_replset    = each.value.arbiters_per_replset
@@ -73,6 +75,7 @@ module "pmm_server" {
   source                  = "./modules/pmm_server"
   for_each                = var.pmm_servers
   pmm_host                = each.key
+  domain_name             = each.value.domain_name
   env_tag                 = each.value.env_tag
   pmm_server_image        = each.value.pmm_server_image
   pmm_port                = each.value.pmm_port
@@ -90,6 +93,7 @@ module "minio_server" {
   source                  = "./modules/minio_server"
   for_each                = var.minio_servers
   minio_server            = each.key
+  domain_name             = each.value.domain_name  
   env_tag                 = each.value.env_tag
   minio_image             = each.value.minio_image
   minio_port              = each.value.minio_port

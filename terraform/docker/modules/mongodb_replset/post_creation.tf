@@ -5,13 +5,13 @@ resource "null_resource" "initiate_replset" {
   # Run rs.initiate()
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.rs[0].name} mongosh --port ${var.replset_port} --eval '
+      docker exec -i ${docker_container.rs[0].name} mongosh --port ${docker_container.rs[0].ports[0].internal} --eval '
         rs.initiate({
           "_id": "${lookup({for label in docker_container.rs[0].labels : label.label => label.value}, "replsetName", null)}",
           "members": [
             { "_id": 0, "host": "${docker_container.rs[0].name}:${var.replset_port}", "priority": 2 },
-            ${join(",", [for i in range(1, var.data_nodes_per_replset) : "{ _id: ${i}, host: \"${docker_container.rs[i].name}:${var.replset_port}\" }"])}
-            ${join(",", [for i in range(var.arbiters_per_replset) : ",{ _id: ${var.data_nodes_per_replset + i}, host: \"${docker_container.arbiter[i].name}:${var.arbiter_port}\", arbiterOnly: true }"])}
+            ${join(",", [for i in range(1, var.data_nodes_per_replset) : "{ _id: ${i}, host: \"${docker_container.rs[i].name}:${docker_container.rs[i].ports[0].internal}\" }"])}
+            ${join(",", [for i in range(var.arbiters_per_replset) : ",{ _id: ${var.data_nodes_per_replset + i}, host: \"${docker_container.arbiter[i].name}:${docker_container.arbiter[i].ports[0].internal}\", arbiterOnly: true }"])}
           ]
         });
       '
@@ -25,7 +25,7 @@ resource "null_resource" "initiate_replset" {
       success=false
       while [ $retries -gt 0 ]; do
         # Check the replica set status and look for a primary
-        primary=$(docker exec -i ${docker_container.rs[0].name} mongosh --port ${var.replset_port} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
+        primary=$(docker exec -i ${docker_container.rs[0].name} mongosh --port ${docker_container.rs[0].ports[0].internal} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
         
         if test "$primary" = "true"; then
           echo "Primary has been elected in replica set"
@@ -48,7 +48,7 @@ resource "null_resource" "initiate_replset" {
   # Create root user on the rs servers
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.rs[0].name} mongosh admin --port ${var.replset_port} --eval '
+      docker exec -i ${docker_container.rs[0].name} mongosh admin --port ${docker_container.rs[0].ports[0].internal} --eval '
         db.createUser({
           "user": "${var.mongodb_root_user}",
           "pwd": "${var.mongodb_root_password}",
@@ -63,7 +63,7 @@ resource "null_resource" "initiate_replset" {
   # Create user for PBM on rs servers
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.rs[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.replset_port} --eval '
+      docker exec -i ${docker_container.rs[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${docker_container.rs[0].ports[0].internal} --eval '
         db.createRole({
           "role": "pbmAnyAction",
           "privileges": [
@@ -89,7 +89,7 @@ resource "null_resource" "initiate_replset" {
   # Create user for PMM on rs servers
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.rs[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.replset_port} --eval '
+      docker exec -i ${docker_container.rs[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${docker_container.rs[0].ports[0].internal} --eval '
         db.createRole({
           role: "explainRole",
           privileges: [{
@@ -132,7 +132,7 @@ resource "null_resource" "change_default_write_concern" {
   ]
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.rs[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.replset_port} --eval '
+      docker exec -i ${docker_container.rs[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${docker_container.rs[0].ports[0].internal} --eval '
         db.adminCommand({
           "setDefaultRWConcern" : 1,
           "defaultWriteConcern" : { "w" : 1 },
@@ -165,12 +165,17 @@ resource "null_resource" "configure_pmm_client_rs" {
     docker_container.pmm_rs,
     docker_container.rs
   ]
-  for_each = toset([for i in docker_container.rs : tostring(i.name)])
-
+  for_each = {
+    for k, container in docker_container.rs :
+    container.name => {
+      name    = container.hostname
+      port    = container.ports[0].internal
+    }
+  }
   provisioner "local-exec" {
     command = <<-EOT
-      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
-        pmm-admin config ${each.key} container ${each.key} \
+      until docker exec -i ${each.value.name}-${var.pmm_client_container_suffix} \
+        pmm-admin config ${each.value.name} container ${each.key} \
         --server-url=https://${var.pmm_server_user}:${var.pmm_server_pwd}@${var.pmm_host}:${var.pmm_port} \
         --server-insecure-tls --force; do
           echo "Retrying pmm-admin config for ${each.key} (rs)..."
@@ -181,15 +186,15 @@ resource "null_resource" "configure_pmm_client_rs" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
+      until docker exec -i ${each.value.name}-${var.pmm_client_container_suffix} \
         pmm-admin add mongodb \
         --environment=${var.env_tag} \
         --cluster=${var.rs_name} \
         --username=${var.mongodb_pmm_user} \
         --password=${var.mongodb_pmm_password} \
-        --host=${each.key} \
-        --port=${var.replset_port} \
-        --service-name=${each.key}-mongodb \
+        --host=${each.value.name} \
+        --port=${each.value.port} \
+        --service-name=${each.value.name}-mongodb \
         --tls-skip-verify --enable-all-collectors; do
           echo "Retrying pmm-admin add mongodb for ${each.key} (rs)..."
           sleep 1
@@ -205,12 +210,17 @@ resource "null_resource" "configure_pmm_client_arb" {
     docker_container.pmm_arb, 
     docker_container.arbiter
   ]
-  for_each = toset([for i in docker_container.arbiter : tostring(i.name)])
-
+  for_each = {
+    for container in docker_container.arbiter :
+    container.name => {
+      name = container.hostname
+      port = container.ports[0].internal
+    }
+  }
   provisioner "local-exec" {
     command = <<-EOT
-      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
-        pmm-admin config ${each.key} container ${each.key} \
+      until docker exec -i ${each.value.name}-${var.pmm_client_container_suffix} \
+        pmm-admin config ${each.value.name} container ${each.key} \
         --server-url=https://${var.pmm_server_user}:${var.pmm_server_pwd}@${var.pmm_host}:${var.pmm_port} \
         --server-insecure-tls --force; do
           echo "Retrying pmm-admin config for ${each.key} (arb)..."
@@ -221,13 +231,13 @@ resource "null_resource" "configure_pmm_client_arb" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      until docker exec -i ${each.key}-${var.pmm_client_container_suffix} \
+      until docker exec -i ${each.value.name}-${var.pmm_client_container_suffix} \
         pmm-admin add mongodb \
         --environment=${var.env_tag} \
         --cluster=${var.rs_name} \
-        --host=${each.key} \
-        --port=${var.arbiter_port} \
-        --service-name=${each.key}-mongodb \
+        --host=${each.value.name} \
+        --port=${each.value.port} \
+        --service-name=${each.value.name}-mongodb \
         --tls-skip-verify; do
           echo "Retrying pmm-admin add mongodb for ${each.key} (arb)..."
           sleep 1

@@ -6,6 +6,8 @@ resource "docker_volume" "arb_volume" {
 resource "docker_container" "arbiter" {
   count = var.shard_count * var.arbiters_per_replset
   name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+  hostname = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+  domainname = var.domain_name
   image = docker_image.psmdb.image_id 
   mounts {
     source = docker_volume.keyfile_volume.name

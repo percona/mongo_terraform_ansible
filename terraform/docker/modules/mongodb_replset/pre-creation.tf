@@ -1,25 +1,5 @@
-resource "docker_image" "psmdb" {
-  name         = var.psmdb_image
-  keep_locally = true
-}
-
-resource "docker_image" "pbm" {
-  name         = var.pbm_image
-  keep_locally = true
-}
-
 resource "docker_image" "pmm_client" {
   name         = var.pmm_client_image
-  keep_locally = true
-}
-
-resource "docker_image" "base_os" {
-  name         = var.base_os_image
-  keep_locally = true
-}
-
-resource "docker_image" "pbm_mongod" {
-  name         = var.pbm_mongod_image
   keep_locally = true
 }
 

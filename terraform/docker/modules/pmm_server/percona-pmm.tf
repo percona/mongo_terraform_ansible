@@ -6,11 +6,12 @@ resource "docker_image" "renderer" {
 
 resource "docker_container" "renderer" {
   name  = var.renderer_tag
+  hostname = var.renderer_tag
   image = docker_image.renderer.image_id
   env = [ "IGNORE_HTTPS_ERRORS=true" ]
   network_mode = "bridge"
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = var.network_name
   }
   healthcheck {
     test        = ["CMD", "node", "--version" ]
@@ -31,6 +32,7 @@ resource "docker_image" "watchtower" {
 # Create a Docker container for Watchtower
 resource "docker_container" "watchtower" {
   name  = var.watchtower_tag
+  hostname = var.watchtower_tag
   image = docker_image.watchtower.image_id
   env = [ "WATCHTOWER_HTTP_API_TOKEN=${var.watchtower_token}", "WATCHTOWER_HTTP_API_UPDATE=1" ]
   mounts {
@@ -40,7 +42,7 @@ resource "docker_container" "watchtower" {
   }  
   network_mode = "bridge"
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = var.network_name
   }
   wait = true
   restart = "on-failure"
@@ -59,9 +61,10 @@ resource "docker_image" "pmm" {
 # Create a Docker container for the PMM server
 resource "docker_container" "pmm" {
   name  = var.pmm_host
+  hostname  = var.pmm_host
+  domainname = var.domain_name
   depends_on = [
-    docker_container.renderer,
-    docker_container.watchtower
+    docker_container.renderer
   ]  
   image = docker_image.pmm.image_id
   env = [ "GF_RENDERING_SERVER_URL=http://${docker_container.renderer.name}:${var.renderer_port}/render", "GF_RENDERING_CALLBACK_URL=https://${var.pmm_host}:${var.pmm_port}/graph/", "PMM_WATCHTOWER_HOST=http://${docker_container.watchtower.name}:${var.watchtower_port}","PMM_WATCHTOWER_TOKEN=${var.watchtower_token}" ]
@@ -72,7 +75,7 @@ resource "docker_container" "pmm" {
   }
   network_mode = "bridge"
   networks_advanced {
-    name = docker_network.mongo_network.id
+    name = var.network_name
   }
   ports {
     internal = var.pmm_port

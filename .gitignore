@@ -5,3 +5,4 @@
 *.pub
 ssh_config
 .DS_Store
+*.tfvars

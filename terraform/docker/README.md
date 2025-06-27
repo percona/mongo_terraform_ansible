@@ -9,7 +9,7 @@ Deploys the full stack of Percona MongoDB software on Docker containers:
 
 A storage bucket in MinIO server is created for PBM backups. Logical and physical backup works. 
 
-By default 1 sharded cluster with 2 shards is created, where each shard is a 3-node Replica Set using a PSA topology. Additional clusters can be created by customizing the `clusters` variable in the `variables.tf` file (you can also override the variable's default value via tfvars):
+By default a sharded cluster with 2 shards is created, where each shard is a 3-node Replica Set using a PSA topology. Additional clusters can be created by customizing the `clusters` variable in the `variables.tf` file (you can also override the variable's default value via tfvars):
 
 ```
 variable "clusters" {
@@ -21,7 +21,7 @@ variable "clusters" {
     shardsvr_replicas     = optional(number, 2)                     # How many data-bearing nodes for each shard's replica set
     arbiters_per_replset  = optional(number, 1)                     # Number of arbiters for each shard's replica set
     mongos_count          = optional(number, 2)                     # Number of mongos routers to provision
-    bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0
+    ...
   }))
 
   default = {
@@ -40,7 +40,7 @@ variable "replsets" {
     env_tag                   = optional(string, "test")               # Name of the environment for the replica set
     data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members for the replica set
     arbiters_per_replset      = optional(number, 1)                    # Number of arbiters for the replica set
-    bind_to_localhost         = optional(bool, true)                   # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
+    ...
    })) 
 
    default = {

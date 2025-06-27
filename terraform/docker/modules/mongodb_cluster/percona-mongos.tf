@@ -1,7 +1,9 @@
 # Create Docker containers for MongoDB mongos
 resource "docker_container" "mongos" {
   count = var.mongos_count
-  name  = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+  name = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+  hostname = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+  domainname = var.domain_name  
   image = docker_image.psmdb.image_id
   command = [
     "mongos",

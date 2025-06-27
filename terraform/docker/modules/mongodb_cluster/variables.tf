@@ -5,7 +5,12 @@ variable "cluster_name" {
 
 variable "env_tag" {
   description = "Name of the Environment"
-  default = "qa"
+  default = "test"
+}
+
+variable "domain_name" {
+  description = "Name of the DNS domain"
+  default = "tp.int.percona.com"
 }
 
 ##################

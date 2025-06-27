@@ -13,6 +13,7 @@ variable "clusters" {
     shardsvr_replicas     = optional(number, 2)                     # How many data-bearing nodes for each shard's replica set
     arbiters_per_replset  = optional(number, 1)                     # Number of arbiters for each shard's replica set
     mongos_count          = optional(number, 2)                     # Number of mongos routers to provision
+    mongodb_root_password = optional(string, "percona")
     domain_name           = optional(string, "tp.int.percona.com")
     pmm_host              = optional(string, "pmm-server")
     pmm_port              = optional(number, 8443)
@@ -53,6 +54,7 @@ variable "replsets" {
     env_tag                   = optional(string, "test")               # Name of the environment for the replica set
     data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members for the replica set
     arbiters_per_replset      = optional(number, 1)                    # Number of arbiters for the replica set
+    mongodb_root_password     = optional(string, "percona")
     domain_name               = optional(string, "tp.int.percona.com")
     pmm_host                  = optional(string, "pmm-server")
     pmm_port                  = optional(number, 8443)

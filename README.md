@@ -27,3 +27,10 @@ Choose between:
     ```
     
 3. Follow the instructions on the README inside the subdirectory of your desired platform.
+
+    - [Ansible README](./ansible/README.md)
+    - [Terraform AWS README](./terraform/aws/README.md)
+    - [Terraform GCP README](./terraform/gcp/README.md)
+    - [Terraform Docker README](./terraform/docker/README.md)
+
+    📚 Each one has clear steps to help you get started on that specific platform.

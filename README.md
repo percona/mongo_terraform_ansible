@@ -1,16 +1,15 @@
 # Deploy MongoDB environments using Terraform/Ansible
 
-This automation is meant to deploy the full stack of Percona MongoDB software easily:
+This automation framework deploys the full stack of Percona Software for MongoDB easily:
 
-- Percona Server for MongoDB
-- Percona Backup for MongoDB
-- PMM Client
-- PMM Server
+- Percona Server for MongoDB (PSMDB)
+- Percona Backup for MongoDB (PBM)
+- Percona Monitoring & Management (PMM)
 
-Choose between:
+You can choose between:
 
-- Creating resources in public cloud platforms using a combination of Terraform and Ansible.
-- Run everything in Docker containers on a single server (even your own laptop) with Terraform alone. 
+- Creating all resources in a public cloud platform, using a combination of Terraform and Ansible.
+- Run everything in Docker containers on a single server (even your own laptop) with Terraform (Ansible is not required in this case).
 
 ## Instructions
 
@@ -25,12 +24,11 @@ Choose between:
     ```
     cd terraform/gcp
     ```
-    
+
 3. Follow the instructions on the README inside the subdirectory of your desired platform.
 
-    - [Ansible README](./ansible/README.md)
-    - [Terraform AWS README](./terraform/aws/README.md)
-    - [Terraform GCP README](./terraform/gcp/README.md)
-    - [Terraform Docker README](./terraform/docker/README.md)
+    - [AWS](./terraform/aws/README.md)
+    - [GCP](./terraform/gcp/README.md)
+    - [Azure](./terraform/azure/README.md)
+    - [Docker](./terraform/docker/README.md)
 
-    📚 Each one has clear steps to help you get started on that specific platform.

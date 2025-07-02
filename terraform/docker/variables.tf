@@ -14,7 +14,7 @@ variable "clusters" {
     arbiters_per_replset  = optional(number, 1)                     # Number of arbiters for each shard's replica set
     mongos_count          = optional(number, 2)                     # Number of mongos routers to provision
     mongodb_root_password = optional(string, "percona")
-    domain_name           = optional(string, "tp.int.percona.com")
+    domain_name           = optional(string, "")                    # DNS domain name
     pmm_host              = optional(string, "pmm-server")
     pmm_port              = optional(number, 8443)
     pmm_server_user       = optional(string, "admin")
@@ -55,7 +55,7 @@ variable "replsets" {
     data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members for the replica set
     arbiters_per_replset      = optional(number, 1)                    # Number of arbiters for the replica set
     mongodb_root_password     = optional(string, "percona")
-    domain_name               = optional(string, "tp.int.percona.com")
+    domain_name               = optional(string, "")                   # DNS domain name
     pmm_host                  = optional(string, "pmm-server")
     pmm_port                  = optional(number, 8443)
     pmm_server_user           = optional(string, "admin")
@@ -89,7 +89,7 @@ variable "pmm_servers" {
    description = "PMM Servers to deploy"
    type = map(object({
     env_tag                   = optional(string, "test")               # Name of the environment
-    domain_name               = optional(string, "tp.int.percona.com")
+    domain_name               = optional(string, "")                   # DNS domain name
     pmm_server_image          = optional(string, "percona/pmm-server:latest") 
     pmm_port                  = optional(number, 8443)
     pmm_external_port         = optional(number, 8443)                 # Port of the PMM server as seen from outside docker
@@ -120,7 +120,7 @@ variable "minio_servers" {
    description = "Minio Servers to deploy"
    type = map(object({
     env_tag                   = optional(string, "test")               # Name of the environment
-    domain_name               = optional(string, "tp.int.percona.com")
+    domain_name               = optional(string, "")                   # DNS domain name
     minio_image               = optional(string, "minio/minio")
     minio_port                = optional(number, 9000)
     minio_console_port        = optional(number, 9001)                 

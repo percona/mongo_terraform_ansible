@@ -69,7 +69,7 @@ variable "shardsvr_tag" {
 }
 
 variable "shardsvr_type" {
-  default     = "Standard_D2s_v3"
+  default     = "Standard_B2s"
   description = "Azure VM size of the shard server"
 }
 

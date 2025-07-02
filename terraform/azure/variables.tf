@@ -99,7 +99,7 @@ variable "pmm_disk_type" {
 }
 
 variable "pmm_type" {
-  default     = "Standard_B2s"
+  default     = "Standard_D2s_v3"
   description = "Azure VM type for PMM server"
 }
 

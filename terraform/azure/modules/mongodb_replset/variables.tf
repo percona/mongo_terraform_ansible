@@ -69,7 +69,7 @@ variable "replsetsvr_volume_size" {
 
 variable "replsetsvr_type" {
   type        = string
-  default     = "Standard_D2s_v3"
+  default     = "Standard_B2s"
   description = "Azure VM size for replica set members"
 }
 

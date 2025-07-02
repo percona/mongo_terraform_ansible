@@ -67,6 +67,12 @@ variable "minio_image" {
   type = string
 }
 
+variable "minio_mc_image" {
+  description = "Minio MC Docker image"
+  default = "minio/mc"
+  type = string
+}
+
 #############
 # Networking
 #############

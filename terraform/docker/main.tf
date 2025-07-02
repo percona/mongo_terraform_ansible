@@ -98,6 +98,7 @@ module "minio_server" {
   domain_name             = each.value.domain_name  
   env_tag                 = each.value.env_tag
   minio_image             = each.value.minio_image
+  minio_mc_image          = each.value.minio_mc_image
   minio_port              = each.value.minio_port
   minio_console_port      = each.value.minio_console_port
   minio_access_key        = each.value.minio_access_key

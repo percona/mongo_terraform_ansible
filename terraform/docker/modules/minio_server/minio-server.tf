@@ -4,6 +4,12 @@ resource "docker_image" "minio" {
   keep_locally = true  
 }
 
+# MinIO MC Command container
+resource "docker_image" "minio_mc" {
+  name         = var.minio_mc_image
+  keep_locally = true
+}
+
 resource "docker_container" "minio" {
   name  = var.minio_server
   hostname = var.minio_server
@@ -49,7 +55,7 @@ resource "null_resource" "minio_bucket" {
     command = <<-EOT
       docker run --rm --network ${var.network_name} \
         -e MC_HOST_minio="http://${var.minio_access_key}:${var.minio_secret_key}@${docker_container.minio.name}:${var.minio_port}" \
-        minio/mc mb minio/${var.bucket_name} --region=${var.minio_region}
+        ${var.minio_mc_image} mb minio/${var.bucket_name} --region=${var.minio_region}
     EOT
   }
 
@@ -57,7 +63,7 @@ resource "null_resource" "minio_bucket" {
     command = <<-EOT
       docker run --rm --network ${var.network_name} \
         -e MC_HOST_minio="http://${var.minio_access_key}:${var.minio_secret_key}@${docker_container.minio.name}:${var.minio_port}" \
-        minio/mc ilm rule add --expire-days ${var.backup_retention} minio/${var.bucket_name} 
+        ${var.minio_mc_image} ilm rule add --expire-days ${var.backup_retention} minio/${var.bucket_name} 
     EOT
   }  
 }

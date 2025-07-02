@@ -122,6 +122,7 @@ variable "minio_servers" {
     env_tag                   = optional(string, "test")               # Name of the environment
     domain_name               = optional(string, "tp.int.percona.com")
     minio_image               = optional(string, "minio/minio")
+    minio_mc_image            = optional(string, "minio/mc")
     minio_port                = optional(number, 9000)
     minio_console_port        = optional(number, 9001)                 
     minio_access_key          = optional(string, "minio")

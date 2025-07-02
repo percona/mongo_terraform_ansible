@@ -4,8 +4,8 @@ resource "docker_image" "minio" {
   keep_locally = true  
 }
 
-# MinIO MC command container
-resource "docker_image" "minio" {
+# MinIO MC Command container
+resource "docker_image" "minio_mc" {
   name         = var.minio_mc_image
   keep_locally = true
 }

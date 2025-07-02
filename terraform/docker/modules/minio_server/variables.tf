@@ -69,7 +69,7 @@ variable "minio_image" {
 
 variable "minio_mc_image" {
   description = "Minio MC Docker image"
-  default = "minio/minio"
+  default = "minio/mc"
   type = string
 }
 

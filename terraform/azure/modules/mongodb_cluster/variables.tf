@@ -93,7 +93,7 @@ variable "configsvr_tag" {
 }
 
 variable "configsvr_type" {
-  default     = "Standard_D2s_v3"
+  default     = "Standard_B2s"
   description = "Azure VM size of the config server"
 }
 
@@ -117,7 +117,7 @@ variable "mongos_tag" {
 }
 
 variable "mongos_type" {
-  default     = "Standard_D2s_v3"
+  default     = "Standard_B2s"
   description = "Azure VM size of the mongos servers"
 }
 
@@ -136,7 +136,7 @@ variable "arbiter_tag" {
 }
 
 variable "arbiter_type" {
-  default     = "Standard_D2s_v3"
+  default     = "Standard_B2s"
   description = "Azure VM size of the arbiter server"
 }
 

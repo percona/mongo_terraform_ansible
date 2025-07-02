@@ -6,21 +6,21 @@ storage:
 {% else %}
 storage:
   type: {{ storage_provider }}
-  {% if storage_provider == "gcs" %}
+{% if storage_provider == "gcs" %}
   gcs:
     bucket: {{ bucket }}
     prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
     credentials:
       HMACAccessKey: {{ access_key_id }}
       HMACSecret: {{ secret_access_key }}
-  {% elif storage_provider == "azure" %}
+{% elif storage_provider == "azure" %}
   azure:
     account: {{ account }}
     container: {{ bucket }}
     prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
     credentials:
       key: {{ key }}
-  {% else %}
+{% else %}
   s3:
     region: {{ region }}
     bucket: {{ bucket }}
@@ -29,5 +29,5 @@ storage:
     credentials:
       access-key-id: {{ access_key_id }}
       secret-access-key: {{ secret_access_key }}
-  {% endif %}
+{% endif %}
 {% endif %}

@@ -5,14 +5,29 @@ storage:
     path: {{ pbm_path }}
 {% else %}
 storage:
- type: s3
- s3:
-     region: {{ region }}
-     bucket: {{ bucket }}
-     prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
-     endpointUrl: {{ endpointUrl }}
-     credentials:
-       access-key-id: {{ access_key_id }}
-       secret-access-key: {{ secret_access_key }}
+  type: {{ storage_provider }}
+{% if storage_provider == "gcs" %}
+  gcs:
+    bucket: {{ bucket }}
+    prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
+    credentials:
+      HMACAccessKey: {{ access_key_id }}
+      HMACSecret: {{ secret_access_key }}
+{% elif storage_provider == "azure" %}
+  azure:
+    account: {{ account }}
+    container: {{ bucket }}
+    prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
+    credentials:
+      key: {{ key }}
+{% else %}
+  s3:
+    region: {{ region }}
+    bucket: {{ bucket }}
+    prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
+    endpointUrl: {{ endpointUrl }}
+    credentials:
+      access-key-id: {{ access_key_id }}
+      secret-access-key: {{ secret_access_key }}
 {% endif %}
-
+{% endif %}

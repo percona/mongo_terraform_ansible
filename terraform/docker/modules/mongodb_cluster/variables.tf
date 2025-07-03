@@ -10,7 +10,7 @@ variable "env_tag" {
 
 variable "domain_name" {
   description = "Name of the DNS domain"
-  default = "tp.int.percona.com"
+  default = ""
 }
 
 ##################

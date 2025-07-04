@@ -5,7 +5,7 @@ resource "docker_volume" "rs_volume" {
 
 resource "docker_container" "rs" {
   count = var.data_nodes_per_replset
-  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}.${var.domain_name}"
+  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}${var.domain_name != "" ? ".${var.domain_name}" : ""}"
   hostname = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
   domainname = var.domain_name
   image = docker_image.psmdb.image_id 
@@ -15,7 +15,8 @@ resource "docker_container" "rs" {
     type   = "volume"
     read_only = true
   }  
-  command = [
+  command = concat(
+  [
     "mongod",
     "--replSet", "${var.rs_name}",  
     "--bind_ip_all",    
@@ -26,7 +27,17 @@ resource "docker_container" "rs" {
     "--profile", "2",
     "--slowms", "200",
     "--rateLimit", "100"
-  ]  
+  ],
+  var.enable_ldap ? [
+    "--ldap.authenticationMechanisms=PLAIN",
+    "--setParameter", "authenticationMechanisms=PLAIN,SCRAM-SHA-256",
+    "--security.ldap.bind.method=simple",
+    "--security.ldap.bind.queryUser=${var.ldap_bind_dn}",
+    "--security.ldap.bind.queryPassword=${var.ldap_bind_pw}",
+    "--security.ldap.userToDNMapping=[{\"match\": \"(.*)\", \"substitution\": \"uid=$$1,${var.ldap_user_search_base}\"}]",
+    "--security.ldap.server=${var.ldap_uri}"
+  ] : []
+  )
   user = var.uid
   ports {
     internal = var.replset_port + count.index

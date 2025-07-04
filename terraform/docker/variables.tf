@@ -27,13 +27,18 @@ variable "clusters" {
     pbm_image             = optional(string, "percona/percona-backup-mongodb:latest")
     pmm_client_image      = optional(string, "percona/pmm-client:latest")
     network_name          = optional(string, "mongo-terraform")
+    enable_ldap           = optional(bool, false)
+    ldap_uri              = optional(string, "ldap://ldap:389")
+    ldap_bind_dn          = optional(string, "cn=admin,dc=example,dc=org")
+    ldap_bind_pw          = optional(string, "admin")
+    ldap_user_search_base = optional(string, "ou=users,dc=example,dc=org")    
     bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0
   }))
 
   default = {
-    cl01 = {
-      env_tag = "test"
-    }
+#    cl01 = {
+#      env_tag = "test"
+#    }
 #    cl02 = {
 #      env_tag = "prod"
 #      mongos_count = 1
@@ -68,13 +73,18 @@ variable "replsets" {
     pbm_image                 = optional(string, "percona/percona-backup-mongodb:latest")
     pmm_client_image          = optional(string, "percona/pmm-client:latest")    
     network_name              = optional(string, "mongo-terraform")
+    enable_ldap               = optional(bool, false)
+    ldap_uri                  = optional(string, "ldap://ldap:389")
+    ldap_bind_dn              = optional(string, "cn=admin,dc=example,dc=org")
+    ldap_bind_pw              = optional(string, "admin")
+    ldap_user_search_base     = optional(string, "ou=users,dc=example,dc=org")       
     bind_to_localhost         = optional(bool, true)                   # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
    })) 
 
    default = {
-#     rs01 = {
-#       env_tag = "test"
-#     }
+     rs01 = {
+       env_tag = "test"
+     }
 #     rs02 = {
 #       env_tag = "prod"
 #     }
@@ -138,6 +148,56 @@ variable "minio_servers" {
        env_tag = "test"
      }
 #     minio-prod = {
+#       env_tag = "prod"
+#     }
+   }
+}
+
+###############
+# LDAP Servers
+###############
+
+variable "ldap_servers" {
+   description = "LDAP Servers to deploy"
+   type = map(object({
+    env_tag                   = optional(string, "test")               # Name of the environment
+    domain_name               = optional(string, "")                   # DNS domain name
+    ldap_image                = optional(string, "osixia/openldap:1.5.0")
+    ldap_admin_image          = optional(string, "osixia/phpldapadmin:0.9.0")
+    ldap_port                 = optional(number, 389)
+    ldap_admin_port           = optional(number, 80)
+    ldap_domain               = optional(string, "example.org")                 
+    ldap_org                  = optional(string, "Example Inc")
+    ldap_admin_password       = optional(string, "admin")
+    ldap_users                = optional(list(object({
+      uid      = string
+      cn       = string
+      sn       = string
+      password = string
+    })), [])    
+    network_name              = optional(string, "mongo-terraform")
+    bind_to_localhost         = optional(bool, true)                   # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
+   })) 
+
+   default = {
+     ldap = {
+       env_tag = "test"
+       ldap_users  = [
+         {
+           uid      = "alice"
+           cn       = "Alice"
+           sn       = "Admin"
+           password = "secret123"
+         },
+         {
+           uid      = "bob"
+           cn       = "Bob"
+           sn       = "User"
+           password = "supersecure"
+         }
+        ]
+      }
+#     ldap-prod = {
 #       env_tag = "prod"
 #     }
    }

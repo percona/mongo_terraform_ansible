@@ -5,7 +5,7 @@ resource "docker_container" "mongos" {
   hostname = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
   domainname = var.domain_name  
   image = docker_image.psmdb.image_id
-  command = [
+  command = concat([
     "mongos",
     "--configdb", "${lookup({for label in docker_container.cfg[0].labels : label.label => label.value}, "replsetName", null)}/${join(",", [for i in range(var.configsvr_count) : "${docker_container.cfg[i].name}:${var.configsvr_port}" ])}",
     "--bind_ip_all",    
@@ -14,7 +14,16 @@ resource "docker_container" "mongos" {
     "--slowms", "200",
     "--rateLimit", "100",
     "--setParameter", "diagnosticDataCollectionDirectoryPath=/var/log/mongo/mongos.diagnostic.data/"        
-  ]    
+  ],
+  var.enable_ldap ? [
+    "--setParameter", "authenticationMechanisms=PLAIN,SCRAM-SHA-256",
+    "--ldapQueryUser","${var.ldap_bind_dn}",
+    "--ldapQueryPassword","${var.ldap_bind_pw}",
+    "--ldapUserToDNMapping","[{\"match\": \"(.+)\", \"ldapQuery\": \"${var.ldap_user_search_base}??sub?(uid={0})\"}]",
+    "--ldapServers","${var.ldap_servers}",
+    "--ldapTransportSecurity","none"
+  ] : []
+  )
   ports {
     internal = var.mongos_port
     ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"    

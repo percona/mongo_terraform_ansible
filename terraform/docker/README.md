@@ -212,6 +212,24 @@ docker exec -it cl01-pbm-cli pbm status
      /ycsb/bin/ycsb run mongodb -s -P /ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url="mongodb://root:percona@cl01-mongos00:27017/"
      ```
 
+## LDAP
+
+- Connect to the LDAP management interface at http://127.0.0.1:8080 using `cn=admin,dc=example,dc=org`. Default password is `admin`
+
+- By default `example.org` organization is created. You can pre-create some LDAP users with Teerraform or use the management interface to do it manually.
+
+- Create the LDAP users in MongoDB and assign them a role. For example:
+
+  ```
+  docker exec -it cl01-mongos00 mongosh admin -u root -p percona
+  db.getSiblingDB("$external").createUser( { user: "bob", roles: [ { role: "read", db: "test" } ] } );
+  ```
+
+  Then you can authenticate as that user with:
+  ```
+  mongosh -u bob -p ***** --port 27017 --authenticationMechanism=PLAIN --authenticationDatabase=$external
+  ```
+
 ## Cleanup
 
 - Run terraform to remove all the resources and start from scratch

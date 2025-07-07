@@ -18,7 +18,8 @@ resource "docker_container" "ldap_server" {
     "LDAP_ORGANISATION=${var.ldap_org}",
     "LDAP_DOMAIN=${var.ldap_domain}",
     "LDAP_BASE_DN=dc=${replace(var.ldap_domain, ".", ",dc=")}",
-    "LDAP_ADMIN_PASSWORD=${var.ldap_admin_password}"
+    "LDAP_ADMIN_PASSWORD=${var.ldap_admin_password}",
+    "LDAP_TLS=false"
   ]
 
   volumes {

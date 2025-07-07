@@ -15,7 +15,7 @@ resource "docker_container" "cfg" {
     read_only = true
   }  
   count = var.configsvr_count
-  command = [
+  command = concat([
     "mongod",
     "--replSet", "${var.cluster_name}-${var.configsvr_tag}",  
     "--bind_ip_all",    
@@ -28,7 +28,16 @@ resource "docker_container" "cfg" {
     "--profile", "2",
     "--slowms", "200",
     "--rateLimit", "100"
-  ]  
+  ],
+  var.enable_ldap ? [
+    "--setParameter", "authenticationMechanisms=PLAIN,SCRAM-SHA-256",
+    "--ldapQueryUser","${var.ldap_bind_dn}",
+    "--ldapQueryPassword","${var.ldap_bind_pw}",
+    "--ldapUserToDNMapping","[{\"match\": \"(.+)\", \"ldapQuery\": \"${var.ldap_user_search_base}??sub?(uid={0})\"}]",
+    "--ldapServers","${var.ldap_servers}",
+    "--ldapTransportSecurity","none"
+  ] : []
+  )
   ports {
     internal = var.configsvr_port
     ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"   

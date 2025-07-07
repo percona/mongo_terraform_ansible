@@ -29,13 +29,12 @@ resource "docker_container" "rs" {
     "--rateLimit", "100"
   ],
   var.enable_ldap ? [
-    "--ldap.authenticationMechanisms=PLAIN",
     "--setParameter", "authenticationMechanisms=PLAIN,SCRAM-SHA-256",
-    "--security.ldap.bind.method=simple",
-    "--security.ldap.bind.queryUser=${var.ldap_bind_dn}",
-    "--security.ldap.bind.queryPassword=${var.ldap_bind_pw}",
-    "--security.ldap.userToDNMapping=[{\"match\": \"(.*)\", \"substitution\": \"uid=$$1,${var.ldap_user_search_base}\"}]",
-    "--security.ldap.server=${var.ldap_uri}"
+    "--ldapQueryUser","${var.ldap_bind_dn}",
+    "--ldapQueryPassword","${var.ldap_bind_pw}",
+    "--ldapUserToDNMapping","[{\"match\": \"(.+)\", \"ldapQuery\": \"${var.ldap_user_search_base}??sub?(uid={0})\"}]",
+    "--ldapServers","${var.ldap_servers}",
+    "--ldapTransportSecurity","none"
   ] : []
   )
   user = var.uid

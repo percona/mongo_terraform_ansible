@@ -38,7 +38,7 @@ module "mongodb_clusters" {
   pmm_client_image        = each.value.pmm_client_image
   network_name            = each.value.network_name
   enable_ldap             = each.value.enable_ldap
-  ldap_uri                = each.value.ldap_uri
+  ldap_servers            = each.value.ldap_servers
   ldap_bind_dn            = each.value.ldap_bind_dn
   ldap_bind_pw            = each.value.ldap_bind_pw
   ldap_user_search_base   = each.value.ldap_user_search_base    
@@ -46,7 +46,8 @@ module "mongodb_clusters" {
 
   depends_on = [
     module.pmm_server,
-    module.minio_server  
+    module.minio_server,
+    module.ldap_server
   ]
 }
 
@@ -71,7 +72,7 @@ module "mongodb_replsets" {
   pmm_client_image        = each.value.pmm_client_image  
   network_name            = each.value.network_name  
   enable_ldap             = each.value.enable_ldap
-  ldap_uri                = each.value.ldap_uri
+  ldap_servers            = each.value.ldap_servers
   ldap_bind_dn            = each.value.ldap_bind_dn
   ldap_bind_pw            = each.value.ldap_bind_pw
   ldap_user_search_base   = each.value.ldap_user_search_base     
@@ -79,7 +80,8 @@ module "mongodb_replsets" {
 
   depends_on = [
     module.pmm_server,
-    module.minio_server
+    module.minio_server,
+    module.ldap_server
   ]
 }
 

@@ -251,26 +251,26 @@ variable "enable_ldap" {
   default     = false
 }
 
-variable "ldap_uri" {
+variable "ldap_servers" {
   type        = string
-  description = "URI of the LDAP server"
-  default     = ""
+  description = "Name of the LDAP servers"
+  default     = "ldap:389"
 }
 
 variable "ldap_bind_dn" {
   type        = string
   description = "LDAP bind DN for authentication"
-  default     = ""
+  default     = "cn=admin,dc=example,dc=org"
 }
 
 variable "ldap_bind_pw" {
   type        = string
   description = "LDAP bind password"
-  default     = ""
+  default     = "admin"
 }
 
 variable "ldap_user_search_base" {
   type        = string
   description = "Base DN used for user search in LDAP"
-  default     = ""
+  default     = "dc=example,dc=org"
 }

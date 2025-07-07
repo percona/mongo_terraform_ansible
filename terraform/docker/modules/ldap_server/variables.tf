@@ -49,36 +49,6 @@ variable "env_tag" {
   default = "test"
 }
 
-variable "enable_ldap" {
-  type        = bool
-  description = "Enable LDAP authentication"
-  default     = false
-}
-
-variable "ldap_uri" {
-  type        = string
-  description = "URI of the LDAP server"
-  default     = "ldap://ldap:389"
-}
-
-variable "ldap_bind_dn" {
-  type        = string
-  description = "LDAP bind DN for authentication"
-  default     = "cn=admin,dc=example,dc=org"
-}
-
-variable "ldap_bind_pw" {
-  type        = string
-  description = "LDAP bind password"
-  default     = "admin"
-}
-
-variable "ldap_user_search_base" {
-  type        = string
-  description = "Base DN used for user search in LDAP"
-  default     = "ou=users,dc=example,dc=org"
-}
-
 variable "ldap_domain" {
   default = "example.org"
 }

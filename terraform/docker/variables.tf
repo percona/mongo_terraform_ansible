@@ -28,17 +28,18 @@ variable "clusters" {
     pmm_client_image      = optional(string, "percona/pmm-client:latest")
     network_name          = optional(string, "mongo-terraform")
     enable_ldap           = optional(bool, false)
-    ldap_uri              = optional(string, "ldap://ldap:389")
+    ldap_servers          = optional(string, "ldap:389")
     ldap_bind_dn          = optional(string, "cn=admin,dc=example,dc=org")
     ldap_bind_pw          = optional(string, "admin")
-    ldap_user_search_base = optional(string, "ou=users,dc=example,dc=org")    
+    ldap_user_search_base = optional(string, "dc=example,dc=org")    
     bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0
   }))
 
   default = {
-#    cl01 = {
-#      env_tag = "test"
-#    }
+    cl01 = {
+      env_tag = "test"
+#       enable_ldap = true
+    }
 #    cl02 = {
 #      env_tag = "prod"
 #      mongos_count = 1
@@ -74,17 +75,18 @@ variable "replsets" {
     pmm_client_image          = optional(string, "percona/pmm-client:latest")    
     network_name              = optional(string, "mongo-terraform")
     enable_ldap               = optional(bool, false)
-    ldap_uri                  = optional(string, "ldap://ldap:389")
+    ldap_servers              = optional(string, "ldap:389")
     ldap_bind_dn              = optional(string, "cn=admin,dc=example,dc=org")
     ldap_bind_pw              = optional(string, "admin")
-    ldap_user_search_base     = optional(string, "ou=users,dc=example,dc=org")       
+    ldap_user_search_base     = optional(string, "dc=example,dc=org")       
     bind_to_localhost         = optional(bool, true)                   # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
    })) 
 
    default = {
-     rs01 = {
-       env_tag = "test"
-     }
+#     rs01 = {
+#       env_tag = "test"
+#       enable_ldap = true
+#     }
 #     rs02 = {
 #       env_tag = "prod"
 #     }
@@ -180,23 +182,23 @@ variable "ldap_servers" {
    })) 
 
    default = {
-     ldap = {
-       env_tag = "test"
-       ldap_users  = [
-         {
-           uid      = "alice"
-           cn       = "Alice"
-           sn       = "Admin"
-           password = "secret123"
-         },
-         {
-           uid      = "bob"
-           cn       = "Bob"
-           sn       = "User"
-           password = "supersecure"
-         }
-        ]
-      }
+#     ldap = {
+#       env_tag = "test"
+#       ldap_users  = [
+#         {
+#           uid      = "alice"
+#           cn       = "Alice"
+#           sn       = "Admin"
+#           password = "secret123"
+#         },
+#         {
+#           uid      = "bob"
+#           cn       = "Bob"
+#           sn       = "User"
+#           password = "supersecure"
+#         }
+#        ]
+#      }
 #     ldap-prod = {
 #       env_tag = "prod"
 #     }

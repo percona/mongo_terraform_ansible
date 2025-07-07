@@ -290,3 +290,37 @@ variable "bind_to_localhost" {
   default = true 
   description = "Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0"
 }
+
+######
+# LDAP
+######
+
+variable "enable_ldap" {
+  type        = bool
+  description = "Enable LDAP authentication"
+  default     = false
+}
+
+variable "ldap_servers" {
+  type        = string
+  description = "Name of the LDAP servers"
+  default     = "ldap:389"
+}
+
+variable "ldap_bind_dn" {
+  type        = string
+  description = "LDAP bind DN for authentication"
+  default     = "cn=admin,dc=example,dc=org"
+}
+
+variable "ldap_bind_pw" {
+  type        = string
+  description = "LDAP bind password"
+  default     = "admin"
+}
+
+variable "ldap_user_search_base" {
+  type        = string
+  description = "Base DN used for user search in LDAP"
+  default     = "dc=example,dc=org"
+}

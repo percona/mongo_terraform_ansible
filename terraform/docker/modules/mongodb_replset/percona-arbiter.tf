@@ -5,7 +5,7 @@ resource "docker_volume" "arb_volume" {
 
 resource "docker_container" "arbiter" {
   count = var.arbiters_per_replset
-  name  = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}.${var.domain_name}"
+  name = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}${var.domain_name != "" ? ".${var.domain_name}" : ""}"
   hostname = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}"
   domainname = var.domain_name
   image = docker_image.psmdb.image_id  

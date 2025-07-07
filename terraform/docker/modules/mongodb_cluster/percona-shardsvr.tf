@@ -15,7 +15,7 @@ resource "docker_container" "shard" {
     type   = "volume"
     read_only = true
   }  
-  command = [
+  command = concat([
     "mongod",
     "--replSet", "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}",  
     "--bind_ip_all",    
@@ -27,7 +27,16 @@ resource "docker_container" "shard" {
     "--profile", "2",
     "--slowms", "200",
     "--rateLimit", "100"
-  ]  
+  ],
+  var.enable_ldap ? [
+    "--setParameter", "authenticationMechanisms=PLAIN,SCRAM-SHA-256",
+    "--ldapQueryUser","${var.ldap_bind_dn}",
+    "--ldapQueryPassword","${var.ldap_bind_pw}",
+    "--ldapUserToDNMapping","[{\"match\": \"(.+)\", \"ldapQuery\": \"${var.ldap_user_search_base}??sub?(uid={0})\"}]",
+    "--ldapServers","${var.ldap_servers}",
+    "--ldapTransportSecurity","none"
+  ] : []
+  )
   user = var.uid
   ports {
     internal = var.shardsvr_port

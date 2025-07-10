@@ -32,3 +32,4 @@ You can choose between:
     - [Azure](./terraform/azure/README.md)
     - [Docker](./terraform/docker/README.md)
 
+## Disclaimer: This code is not supported by Percona. It has been provided solely as a community-contributed example and is not covered under any Percona services agreement.

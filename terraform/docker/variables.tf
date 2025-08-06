@@ -38,6 +38,15 @@ variable "clusters" {
     ldap_bind_dn          = optional(string, "cn=admin,dc=example,dc=org")
     ldap_bind_pw          = optional(string, "admin")
     ldap_user_search_base = optional(string, "dc=example,dc=org")        
+#    enable_tls              = optional(bool, false)
+#    tls_cert_file           = optional(string,"./certs/mongo.crt")
+#    tls_key_file            = optional(string,"./certs/mongo.key")
+#    tls_ca_file             = optional(string,"./certs/ca.crt")
+#    enable_encryption_rest  = optional(bool, false)
+#    vault_addr              = optional(string, "http://vault:8200")    
+#    vault_token             = optional(string, "root")    
+#    vault_kv_path           = optional(string, "kv/mongo-key")   
+#    vault_pki_role          = optional(string, "mongo")   
   }))
 
   default = {
@@ -91,27 +100,29 @@ variable "replsets" {
     ldap_servers              = optional(string, "ldap:389")
     ldap_bind_dn              = optional(string, "cn=admin,dc=example,dc=org")
     ldap_bind_pw              = optional(string, "admin")
-    ldap_user_search_base     = optional(string, "dc=example,dc=org")       
+    ldap_user_search_base     = optional(string, "dc=example,dc=org")
+#    enable_tls                = optional(bool, false)
+#    tls_cert_file             = optional(string,"./certs/mongo.crt")
+#    tls_key_file              = optional(string,"./certs/mongo.key")
+#    tls_ca_file               = optional(string,"./certs/ca.crt")    
+#    enable_encryption_rest    = optional(bool, false)
+#    vault_addr                = optional(string, "http://vault:8200")    
+#    vault_token               = optional(string, "root")    
+#    vault_kv_path             = optional(string, "kv/mongo-key")   
+#    vault_pki_role            = optional(string, "mongo")      
    })) 
 
    default = {
 #     rs01 = {
-#        env_tag = "test"
-#        enable_pmm = true
-#        enable_pbm = true       
+#       env_tag = "test"
+#       data_nodes_per_replset = 3
+#       arbiters_per_replset = 0
+#       enable_ldap = true
 #     }
 #     rs02 = {
 #       env_tag = "prod"
 #       replset_port = 27020
 #       arbiter_port = 27027
-#     }
-#     rs03 = {
-#       env_tag = "test"
-#       replset_port = 27030
-#       arbiter_port = 27037
-#       pmm_client_image = "percona/pmm-client:2.42"
-#       pmm_port = 443
-#       enable_ldap = true
 #     }
    }
 }

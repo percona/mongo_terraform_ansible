@@ -336,3 +336,34 @@ variable "ldap_user_search_base" {
   description = "Base DN used for user search in LDAP"
   default     = "dc=example,dc=org"
 }
+
+############
+# Encryption
+############
+
+variable "enable_tls" {
+  type    = bool
+  default = true
+}
+
+variable "enable_encryption_rest" {
+  type    = bool
+  default = true
+}
+
+variable "vault_token" {
+  default = "root"
+  sensitive = true
+}
+
+variable "vault_addr" {
+  default = "http://vault:8200"
+}
+
+variable "vault_kv_path" {
+  default = "kv/mongo-key"
+}
+
+variable "vault_pki_role" {
+  default = "mongo"
+}

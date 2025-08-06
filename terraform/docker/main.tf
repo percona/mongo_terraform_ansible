@@ -59,6 +59,8 @@ module "mongodb_replsets" {
   env_tag                 = each.value.env_tag
   data_nodes_per_replset  = each.value.data_nodes_per_replset
   arbiters_per_replset    = each.value.arbiters_per_replset
+  replset_port            = each.value.replset_port
+  arbiter_port            = each.value.arbiter_port
   mongodb_root_password   = each.value.mongodb_root_password  
   pmm_host                = each.value.pmm_host
   pmm_port                = each.value.pmm_port

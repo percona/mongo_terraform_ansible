@@ -38,11 +38,11 @@ variable "clusters" {
   default = {
     cl01 = {
       env_tag = "test"
-#       enable_ldap = true
     }
 #    cl02 = {
 #      env_tag = "prod"
 #      mongos_count = 1
+#       enable_ldap = true
 #   }
   }
 }
@@ -60,6 +60,8 @@ variable "replsets" {
     env_tag                   = optional(string, "test")               # Name of the environment for the replica set
     data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members for the replica set
     arbiters_per_replset      = optional(number, 1)                    # Number of arbiters for the replica set
+    replset_port              = optional(number, 27017)                # Starting port for the replica set
+    arbiter_port              = optional(number, 27017)                # Starting port for the replica set arbiters
     mongodb_root_password     = optional(string, "percona")
     domain_name               = optional(string, "")                   # DNS domain name
     pmm_host                  = optional(string, "pmm-server")
@@ -85,11 +87,20 @@ variable "replsets" {
    default = {
 #     rs01 = {
 #       env_tag = "test"
-#       enable_ldap = true
 #     }
 #     rs02 = {
 #       env_tag = "prod"
+#       replset_port = 27020
+#       arbiter_port = 27027
 #     }
+#     rs03 = {
+#       env_tag = "test"
+#       replset_port = 27030
+#       arbiter_port = 27037
+#       pmm_client_image = "percona/pmm-client:2.42"
+#       pmm_port = 443
+#       enable_ldap = true
+     }
    }
 }
 
@@ -120,6 +131,10 @@ variable "pmm_servers" {
      }
 #     pmm-server-prod = {
 #       env_tag = "prod"
+#     }
+#     pmm-server-old = {
+#       pmm_server_image = "percona/pmm-server:2.42"
+#       pmm_port = 443
 #     }
    }
 }

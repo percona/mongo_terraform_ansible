@@ -58,6 +58,23 @@ resource "docker_image" "pmm" {
   keep_locally = true
 }
 
+locals {
+  # Extract version tag, e.g., "2.38.1" from "percona/pmm-server:2.38.1"
+  image_tag = split(":", var.pmm_server_image)[1]
+
+  is_v2 = startswith(local.image_tag, "2")
+
+  readiness_path = local.is_v2 ? "/graph/login" : "/v1/readyz"
+
+  test_cmd = [
+    "CMD",
+    "curl",
+    "-k",
+    "-f",
+    "https://${var.pmm_host}:${var.pmm_port}${local.readiness_path}"
+  ]
+}
+
 # Create a Docker container for the PMM server
 resource "docker_container" "pmm" {
   name  = var.pmm_host
@@ -83,7 +100,7 @@ resource "docker_container" "pmm" {
     ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
   }  
   healthcheck {
-    test        = ["CMD", "curl", "-k", "-f", "https://${var.pmm_host}:${var.pmm_port}/v1/readyz" ]
+    test        = local.test_cmd
     interval    = "10s"
     timeout     = "10s"
     retries     = 5

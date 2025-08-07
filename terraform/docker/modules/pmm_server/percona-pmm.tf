@@ -60,7 +60,8 @@ resource "docker_image" "pmm" {
 
 locals {
   # Extract version tag, e.g., "2.38.1" from "percona/pmm-server:2.38.1"
-  image_tag = split(":", var.pmm_server_image)[1]
+  image_parts = split(":", var.pmm_server_image)
+  image_tag = length(local.image_parts) > 1 ? local.image_parts[length(local.image_parts) - 1] : "latest"
 
   is_v2 = startswith(local.image_tag, "2")
 

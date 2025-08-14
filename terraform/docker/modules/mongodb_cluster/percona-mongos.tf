@@ -54,33 +54,3 @@ resource "docker_container" "mongos" {
   restart = "no"
   depends_on = [docker_container.init_keyfile]
 }
-
-resource "docker_volume" "mongos_volume_pmm" {
-  name  = "${var.cluster_name}-${var.mongos_tag}0${count.index}-pmm-client-data"
-  count = var.mongos_count
-}
-
-resource "docker_container" "pmm_mongos" {
-  name  = "${var.cluster_name}-${var.mongos_tag}0${count.index}-${var.pmm_client_container_suffix}"
-  image = docker_image.pmm_client.image_id  
-  count = var.mongos_count
-  env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
-  mounts {
-    type = "volume"
-    target = "/srv"
-    source = docker_volume.mongos_volume_pmm[count.index].name
-  }
-  network_mode = "bridge"
-  networks_advanced {
-    name = "${var.network_name}"
-  }
-  healthcheck {
-    test        = ["CMD-SHELL", "pmm-admin status"]
-    interval    = "10s"
-    timeout     = "10s"
-    retries     = 5
-    start_period = "30s"
-  }   
-  wait = false  
-  restart = "on-failure"
-}

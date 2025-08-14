@@ -13,26 +13,31 @@ variable "clusters" {
     shardsvr_replicas     = optional(number, 2)                     # How many data-bearing nodes for each shard's replica set
     arbiters_per_replset  = optional(number, 1)                     # Number of arbiters for each shard's replica set
     mongos_count          = optional(number, 2)                     # Number of mongos routers to provision
+    psmdb_image           = optional(string, "percona/percona-server-mongodb:latest")
     mongodb_root_password = optional(string, "percona")
     domain_name           = optional(string, "")                    # DNS domain name
+    network_name          = optional(string, "mongo-terraform")
+    bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0    
+    # PMM
+    enable_pmm            = optional(bool, true)                    
     pmm_host              = optional(string, "pmm-server")
     pmm_port              = optional(number, 8443)
     pmm_server_user       = optional(string, "admin")
     pmm_server_pwd        = optional(string, "admin")
+    pmm_client_image      = optional(string, "percona/pmm-client:latest")    
+    # PBM
+    enable_pbm            = optional(bool, true)                    
+    base_os_image         = optional(string, "redhat/ubi9-minimal")
+    pbm_image             = optional(string, "percona/percona-backup-mongodb:latest")
     minio_server          = optional(string, "minio")
     minio_port            = optional(number, 9000)
-    bucket_name           = optional(string, "mongo-backups")
-    base_os_image         = optional(string, "redhat/ubi9-minimal")
-    psmdb_image           = optional(string, "percona/percona-server-mongodb:latest")
-    pbm_image             = optional(string, "percona/percona-backup-mongodb:latest")
-    pmm_client_image      = optional(string, "percona/pmm-client:latest")
-    network_name          = optional(string, "mongo-terraform")
+    bucket_name           = optional(string, "mongo-backups")        
+    # LDAP
     enable_ldap           = optional(bool, false)
     ldap_servers          = optional(string, "ldap:389")
     ldap_bind_dn          = optional(string, "cn=admin,dc=example,dc=org")
     ldap_bind_pw          = optional(string, "admin")
-    ldap_user_search_base = optional(string, "dc=example,dc=org")    
-    bind_to_localhost     = optional(bool, true)                    # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0
+    ldap_user_search_base = optional(string, "dc=example,dc=org")        
   }))
 
   default = {
@@ -62,31 +67,38 @@ variable "replsets" {
     arbiters_per_replset      = optional(number, 1)                    # Number of arbiters for the replica set
     replset_port              = optional(number, 27017)                # Starting port for the replica set
     arbiter_port              = optional(number, 27017)                # Starting port for the replica set arbiters
+    psmdb_image               = optional(string, "percona/percona-server-mongodb:latest")
     mongodb_root_password     = optional(string, "percona")
     domain_name               = optional(string, "")                   # DNS domain name
+    network_name              = optional(string, "mongo-terraform")    
+    bind_to_localhost         = optional(bool, true)                   # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
+    # PMM
+    enable_pmm                = optional(bool, true)                    
     pmm_host                  = optional(string, "pmm-server")
     pmm_port                  = optional(number, 8443)
     pmm_server_user           = optional(string, "admin")
     pmm_server_pwd            = optional(string, "admin")
+    pmm_client_image          = optional(string, "percona/pmm-client:latest")    
+    # PBM
+    enable_pbm                = optional(bool, true)                    
+    base_os_image             = optional(string, "redhat/ubi9-minimal")    
+    pbm_image                 = optional(string, "percona/percona-backup-mongodb:latest")
     minio_server              = optional(string, "minio")
     minio_port                = optional(number, 9000)
-    bucket_name               = optional(string, "mongo-backups")
-    base_os_image             = optional(string, "redhat/ubi9-minimal")    
-    psmdb_image               = optional(string, "percona/percona-server-mongodb:latest")
-    pbm_image                 = optional(string, "percona/percona-backup-mongodb:latest")
-    pmm_client_image          = optional(string, "percona/pmm-client:latest")    
-    network_name              = optional(string, "mongo-terraform")
+    bucket_name               = optional(string, "mongo-backups")        
+    # LDAP
     enable_ldap               = optional(bool, false)
     ldap_servers              = optional(string, "ldap:389")
     ldap_bind_dn              = optional(string, "cn=admin,dc=example,dc=org")
     ldap_bind_pw              = optional(string, "admin")
     ldap_user_search_base     = optional(string, "dc=example,dc=org")       
-    bind_to_localhost         = optional(bool, true)                   # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
    })) 
 
    default = {
 #     rs01 = {
-#       env_tag = "test"
+#        env_tag = "test"
+#        enable_pmm = true
+#        enable_pbm = true       
 #     }
 #     rs02 = {
 #       env_tag = "prod"

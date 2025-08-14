@@ -145,6 +145,8 @@ resource "null_resource" "change_default_write_concern" {
 
 # Configure PBM
 resource "null_resource" "configure_pbm" {
+  count = var.enable_pbm ? 1 : 0
+
   depends_on = [
     null_resource.initiate_replset,
     docker_container.rs,
@@ -166,16 +168,16 @@ resource "null_resource" "configure_pmm_client_rs" {
     docker_container.rs
   ]
   for_each = {
-    for k, container in docker_container.rs :
+    for k, container in docker_container.pmm_rs :
     container.name => {
-      name    = container.hostname
-      port    = container.ports[0].internal
+      name    = docker_container.rs[k].hostname
+      port    = docker_container.rs[k].ports[0].internal      
     }
   }
   provisioner "local-exec" {
     command = <<-EOT
-      until docker exec -i ${each.value.name}-${var.pmm_client_container_suffix} \
-        pmm-admin config ${each.value.name} container ${each.key} \
+      until docker exec -i ${each.key} \
+        pmm-admin config ${each.value.name} container ${each.value.name} \
         --server-url=https://${var.pmm_server_user}:${var.pmm_server_pwd}@${var.pmm_host}:${var.pmm_port} \
         --server-insecure-tls --force; do
           echo "Retrying pmm-admin config for ${each.key} (rs)..."
@@ -186,7 +188,7 @@ resource "null_resource" "configure_pmm_client_rs" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      until docker exec -i ${each.value.name}-${var.pmm_client_container_suffix} \
+      until docker exec -i ${each.key} \
         pmm-admin add mongodb \
         --environment=${var.env_tag} \
         --cluster=${var.rs_name} \
@@ -211,16 +213,16 @@ resource "null_resource" "configure_pmm_client_arb" {
     docker_container.arbiter
   ]
   for_each = {
-    for container in docker_container.arbiter :
+    for k, container in docker_container.pmm_arb :
     container.name => {
-      name = container.hostname
-      port = container.ports[0].internal
+      name = docker_container.arbiter[k].hostname
+      port = docker_container.arbiter[k].ports[0].internal
     }
   }
   provisioner "local-exec" {
     command = <<-EOT
-      until docker exec -i ${each.value.name}-${var.pmm_client_container_suffix} \
-        pmm-admin config ${each.value.name} container ${each.key} \
+      until docker exec -i ${each.key} \
+        pmm-admin config ${each.value.name} container ${each.value.name} \
         --server-url=https://${var.pmm_server_user}:${var.pmm_server_pwd}@${var.pmm_host}:${var.pmm_port} \
         --server-insecure-tls --force; do
           echo "Retrying pmm-admin config for ${each.key} (arb)..."
@@ -231,7 +233,7 @@ resource "null_resource" "configure_pmm_client_arb" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      until docker exec -i ${each.value.name}-${var.pmm_client_container_suffix} \
+      until docker exec -i ${each.key} \
         pmm-admin add mongodb \
         --environment=${var.env_tag} \
         --cluster=${var.rs_name} \

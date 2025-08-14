@@ -90,6 +90,12 @@ variable "arbiter_port" {
 # PMM
 #############
 
+variable "enable_pmm" {
+  type        = bool
+  description = "Enable PMM client"
+  default     = false
+}
+
 variable "pmm_host" {
   description = "Name of the PMM server"
   default = "pmm-server"
@@ -134,6 +140,12 @@ variable "mongodb_pmm_password" {
 #############
 # PBM
 #############
+
+variable "enable_pbm" {
+  type        = bool
+  description = "Enable PBM agent"
+  default     = false
+}
 
 variable "pbm_container_suffix" {
   default = "pbm-agent"

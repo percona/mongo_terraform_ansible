@@ -56,33 +56,3 @@ resource "docker_container" "arbiter" {
   restart = "no"
   depends_on = [docker_container.init_keyfile]
 }
-
-resource "docker_volume" "arb_volume_pmm" {
-  name  = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}-pmm-client-data"
-  count = var.arbiters_per_replset
-}
-
-resource "docker_container" "pmm_arb" {
-  name  = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}-${var.pmm_client_container_suffix}"
-  image = docker_image.pmm_client.image_id  
-  count = var.arbiters_per_replset
-  env = [ "PMM_AGENT_SETUP=0", "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml" ]
-  mounts {
-    type = "volume"
-    target = "/srv"
-    source = docker_volume.arb_volume_pmm[count.index].name
-  }
-  network_mode = "bridge"
-  networks_advanced {
-    name = "${var.network_name}"
-  }
-  healthcheck {
-    test        = ["CMD-SHELL", "pmm-admin status"]
-    interval    = "10s"
-    timeout     = "10s"
-    retries     = 5
-    start_period = "30s"
-  }   
-  wait = false  
-  restart = "on-failure"
-}

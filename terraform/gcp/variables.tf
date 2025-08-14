@@ -27,9 +27,9 @@ variable "clusters" {
   }))
 
   default = {
-    ig-cl01 = {
-      env_tag = "test"
-    }
+#    ig-cl01 = {
+#      env_tag = "test"
+#    }
 #    ig-cl02 = {
 #      env_tag = "prod"
 #      mongos_count = 1
@@ -48,9 +48,9 @@ variable "replsets" {
    })) 
 
    default = {
-#     ig-rs01 = {
-#       env_tag = "test"
-#     }
+     ig-rs01 = {
+       env_tag = "test"
+     }
 #     ig-rs02 = {
 #       env_tag = "prod"
 #     }
@@ -151,7 +151,8 @@ variable "backup_retention" {
 variable "image" {
   description = "Available images by region"
   default = {
-    northamerica-northeast1 = "projects/centos-cloud/global/images/centos-stream-9-v20231115"
+    northamerica-northeast1 = "projects/ubuntu-os-cloud/global/images/ubuntu-2204-jammy-v20250805"
+    #northamerica-northeast1 = "projects/centos-cloud/global/images/centos-stream-9-v20231115"
     #northamerica-northeast1 = "ubuntu-2404-noble-amd64-v20250527"
   }
 }

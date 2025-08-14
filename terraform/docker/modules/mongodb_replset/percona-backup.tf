@@ -19,7 +19,7 @@ resource "local_file" "storage_config" {
 # PBM CLI container
 resource "docker_container" "pbm_cli" {
   name  = "${var.rs_name}-${var.pbm_cli_container_suffix}"
-  count = 1
+  count = var.enable_pbm ? 1 : 0
   image = docker_image.pbm.image_id
   command = ["/bin/sh", "-c", "while true; do sleep 86400; done;"]
   env = [ "PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.rs[0].name}:${var.replset_port}" ]

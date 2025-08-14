@@ -37,12 +37,13 @@ module "mongodb_clusters" {
   pbm_image               = each.value.pbm_image
   pmm_client_image        = each.value.pmm_client_image
   network_name            = each.value.network_name
-  enable_ldap             = each.value.enable_ldap
   ldap_servers            = each.value.ldap_servers
   ldap_bind_dn            = each.value.ldap_bind_dn
   ldap_bind_pw            = each.value.ldap_bind_pw
   ldap_user_search_base   = each.value.ldap_user_search_base    
   bind_to_localhost       = each.value.bind_to_localhost
+  enable_pmm              = each.value.enable_pmm
+  enable_pbm              = each.value.enable_pbm
 
   depends_on = [
     module.pmm_server,
@@ -79,6 +80,8 @@ module "mongodb_replsets" {
   ldap_bind_pw            = each.value.ldap_bind_pw
   ldap_user_search_base   = each.value.ldap_user_search_base     
   bind_to_localhost       = each.value.bind_to_localhost
+  enable_pmm              = each.value.enable_pmm
+  enable_pbm              = each.value.enable_pbm
 
   depends_on = [
     module.pmm_server,

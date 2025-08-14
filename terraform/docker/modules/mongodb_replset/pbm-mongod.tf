@@ -29,14 +29,14 @@ resource "local_file" "pbm_mongod_image_dockerfile_content" {
 }
 
 # Build PBM custom Docker image 
-resource "docker_image" "pbm_mongod" {
+resource "docker_image" "pbm_mongod_rs" {
   depends_on = [
     local_file.pbm_mongod_image_dockerfile_content,
     docker_image.psmdb,
     docker_image.pbm,
     docker_image.base_os
   ]  
-  name = var.pbm_mongod_image
+  name = "${var.rs_name}-${var.pbm_mongod_image}"
   build {
     context    = path.module
     dockerfile = "${var.rs_name}-${var.pbm_mongod_image}.Dockerfile"

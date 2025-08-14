@@ -7,48 +7,88 @@ Deploys the full stack of Percona MongoDB software on Docker containers:
 - PMM Client
 - PMM Server (with Grafana Renderer)
 
-A storage bucket in MinIO server is created for PBM backups. Logical and physical backup works. 
+In addition to this, the following resources are also created:
 
-By default a sharded cluster with 2 shards is created, where each shard is a 3-node Replica Set using a PSA topology. Additional clusters can be created by customizing the `clusters` variable in the `variables.tf` file (you can also override the variable's default value via tfvars):
+- MinIO server (with a storage bucket for PBM backups)
+- YCSB container (for generating workloads)
+- LDAP Server (optional for authentication)
+
+By default we deploy a sharded cluster (2 shards), where each shard is a 3-node PSA Replica Set running the latest versions of every component. 
+
+Additional clusters can be created by customizing the `clusters` variables by creating a `tfvars` file. Examples:
 
 ```
-variable "clusters" {
-  description = "MongoDB clusters to deploy"
-  type = map(object({
-    env_tag               = optional(string, "test")                # Name of the environment for the cluster
-    configsvr_count       = optional(number, 3)                     # Number of config servers to be used
-    shard_count           = optional(number, 2)                     # Number of shards to be created
-    shardsvr_replicas     = optional(number, 2)                     # How many data-bearing nodes for each shard's replica set
-    arbiters_per_replset  = optional(number, 1)                     # Number of arbiters for each shard's replica set
-    mongos_count          = optional(number, 2)                     # Number of mongos routers to provision
-    ...
-  }))
-
-  default = {
-    test01 = {
-      env_tag = "test"
+clusters = {
+    "cl01" = {
+        env_tag               = "test"
+        configsvr_count       = 3
+        shard_count           = 2
+        shardsvr_replicas     = 3
+        arbiters_per_replset  = 0
+        mongos_count          = 2
     }
+    "cl02" = {
+        env_tag               = "prod"
+        configsvr_count       = 3
+        shard_count           = 2
+        shardsvr_replicas     = 3
+        arbiters_per_replset  = 0
+        mongos_count          = 2
+    }    
 }
+
+replsets = {}
+
+pmm_servers = {
+  "pmm-server" = {}
+}
+
+minio_servers = {
+  "minio" = {}
+}
+
+ldap_servers = {}
 ```
 
-By default, no stand-alone replica sets are provisioned. If you want to provision any replica sets not part of a sharded cluster, change the default value of the `replsets` variable in the `variables.tf` file (you can also override the variable's default value via tfvars):
+By default, no stand-alone replica sets are created. If you want to provision any replica sets not part of a sharded cluster, create a `tfvars` file as follows:
 
 ```
-variable "replsets" {
-   description = "MongoDB replica sets to deploy"
-   type = map(object({
-    env_tag                   = optional(string, "test")               # Name of the environment for the replica set
-    data_nodes_per_replset    = optional(number, 2)                    # Number of data bearing members for the replica set
-    arbiters_per_replset      = optional(number, 1)                    # Number of arbiters for the replica set
-    ...
-   })) 
+clusters = {}
 
-   default = {
-#     rs01 = {
-#       env_tag = "test"
-#     }
-   }
+replsets = {
+    "rs01" = {
+        env_tag      = "test"
+        replset_port = 27020
+        arbiter_port = 27027
 }
+
+pmm_servers = {
+  "pmm-server" = {}
+}
+
+minio_servers = {
+  "minio" = {}
+}
+
+ldap_servers = {}
+```
+
+If you want just a replica set with no other components, you can use:
+```
+clusters = {}
+
+replsets = {
+    "rs01" = {
+        env_tag      = "test"
+        enable_pmm = false
+        enable_pbm = false
+}
+
+pmm_servers = {}
+
+minio_servers = {}
+
+ldap_servers = {}
 ```
 
 ## Pre-requisites
@@ -98,7 +138,7 @@ You can check the [Docker installation documentation](https://docs.docker.com/en
 wsl --install -d  Ubuntu
 ```
 
-- Open `Ubuntu` app from Windows Menu and proceed with the creation of a Linux user and password of your choice.
+- Open the `Ubuntu` app from Windows Menu and proceed with the creation of a Linux user and password of your choice.
 
 - [Install Terraform](https://developer.hashicorp.com/terraform/install) inside Linux. Example for Ubuntu:
 
@@ -135,17 +175,16 @@ If no errors, proceed to the next section.
 
 ## User Guide
 
-1. Review and edit the configuration file as needed
-
+1. Create a `tfvars` file with your desired configuration. See the examples above.
 
     ```
-    vi variables.tf
+    vi example.tfvars
     ```
 
 2. Run Terraform to create the resources
 
     ```
-    terraform apply
+    terraform apply -var-file="example.tfvars"
     ``` 
 
 3. Check that all the created containers are running correctly
@@ -169,7 +208,7 @@ If no errors, proceed to the next section.
     rs.status()
     ```
 
-- There is no need to run the Ansible playbook for the Docker-based deployments.
+- There is no need to run the Ansible playbook for this Docker-based deployments.
 
 ## PMM Monitoring
 
@@ -187,7 +226,7 @@ docker exec -it cl01-pbm-cli pbm status
 
 - You can access the Minio Server web interface at http://127.0.0.1:9001 to inspect the backup storage/files. The default credentials are `minio/minioadmin`.
 
-## Simulating a workload
+## Simulating a workload with YCSB
 
 - To be able to run test workloads, a YCSB container is created as part of the stack. 
 - For sharded clusters, a sharded `ycsb.usertable` collection is automatically created with `{_id: hashed }` as the shard key. 

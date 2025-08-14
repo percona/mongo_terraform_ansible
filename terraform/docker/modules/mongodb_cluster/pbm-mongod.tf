@@ -36,7 +36,7 @@ resource "docker_image" "pbm_mongod" {
     docker_image.pbm,
     docker_image.base_os
   ]  
-  name = var.pbm_mongod_image
+  name = "${var.cluster_name}-${var.pbm_mongod_image}"
   build {
     context    = path.module
     dockerfile = "${var.cluster_name}-${var.pbm_mongod_image}.Dockerfile"

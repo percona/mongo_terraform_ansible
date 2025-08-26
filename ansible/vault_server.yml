@@ -1,0 +1,195 @@
+---
+- name: Prepare Vault Server 
+  hosts: pmm
+  tags: vault
+  become: true
+  vars_files:
+    - "vars/{{ ansible_os_family }}.yml"    
+  tasks:
+    - name: Install Vault on Ubuntu
+      block:
+
+        - name: Create keyrings directory
+          file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: '0755'
+
+        - name: Add Vault's official GPG key
+          apt_key:
+            url: https://apt.releases.hashicorp.com/gpg 
+            state: present
+
+        - name: Add Vault repository
+          apt_repository:
+            repo: "deb https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+
+            filename: docker
+            state: present
+
+        - name: Install Vault
+          apt:
+            name: "{{ item }}"
+            state: latest
+            update_cache: true
+          with_items: "{{ vault_packages }}"
+
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Vault on RedHat
+      block:
+        
+        - name: Install yum utils
+          yum:
+            name: yum-utils
+            state: present
+
+        - name: add the Vault repository
+          shell: yum-config-manager --add-repo {{ vault_repo }}
+
+        - name: Install Vault
+          yum:
+            name: "{{ item }}"
+            state: present
+          with_items: "{{ vault_packages }}"
+
+      when: ansible_os_family == 'RedHat'
+
+    - name: Prepare config file for Vault
+      template:
+        src: templates/vault.hcl.j2
+        dest: "{{ vault_config_path }}"      
+
+    - name: Start Vault service
+      service:
+        name: vault
+        state: restarted
+
+    - name: Prepare SSL configuration for vault
+      template:
+        src: templates/vault_ssl.conf.j2
+        dest: /etc/vault.d/ssl.conf
+
+    - name: Generate Vault SSL key and certificate
+      shell: openssl req -config /etc/vault.d/ssl.conf -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout /etc/vault.d/vault.key -out /etc/vault.d/vault.crt
+
+    - name: Generate Vault PEM file
+      shell: cat /etc/vault.d/vault.crt /etc/vault.d/vault.key > /etc/vault.d/vault.pem
+
+    - name: Set owner and perms on vault cert and key
+      file:
+        path: "/etc/vault.d/{{ item }}"
+        owner: vault
+        group: vault
+        mode: '0600'
+      loop:
+        - vault.key
+        - vault.crt
+        - vault.pem
+
+    - name: Initialize Vault if uninitialized
+      shell: >
+        vault operator init -format json -tls-skip-verify
+      register: vault_init
+      failed_when: vault_init.rc != 0 and 'already initialized' not in vault_init.stderr
+      changed_when: "'root_token' in vault_init.stdout"
+
+    - name: Set fact vault_init_data
+      set_fact:
+        vault_init_data: "{{ vault_init.stdout | from_json }}"
+      when: vault_init.changed
+
+    - name: Unseal Vault
+      shell: >
+        vault operator unseal -tls-skip-verify {{ item }}
+      loop: "{{ vault_init_data.unseal_keys_b64 if vault_init_data is defined else [] }}"
+      when: vault_init.changed
+
+    - name: Save unseal keys to local file
+      become: false
+      copy:
+        dest: "./vault_unseal_keys.txt"
+        content: "{{ vault_init.stdout_lines | select('match', '^Unseal Key') | join('\n') }}"
+        mode: '0600'
+      delegate_to: localhost
+      when: vault_init.changed
+
+    - name: Save root token to local file
+      become: false 
+      copy:
+        dest: "./vault_root_token.txt"
+        content: "{{ vault_init.stdout_lines | select('match', '^Initial Root Token') | join('\n') }}"
+        mode: '0600'
+      delegate_to: localhost
+      when: vault_init.changed
+
+    - name: Login to vault
+      shell: vault login -tls-skip-verify "{{ vault_init_data.root_token | default(root_token) }}" 
+
+    - name: Enable KV-v2 secrets engine 
+      shell: vault secrets enable -tls-skip-verify -path secret kv-v2
+      register: vault_enable_kv
+      failed_when: vault_enable_kv.rc not in [0,2]
+      changed_when: vault_enable_kv.rc == 0   
+
+    - name: Create MongoDB policy
+      shell: |
+        vault policy write -tls-skip-verify {{ mongodb_policy_name }} - <<EOF
+        {{ mongodb_policy_hcl }}
+        EOF
+
+    - name: Create token for MongoDB
+      shell: >
+        vault token create -tls-skip-verify -policy={{ mongodb_policy_name }} -ttl={{ mongodb_token_ttl }} -format json
+      register: mongodb_token
+
+    - name: Save mongo token to local file
+      copy:
+        dest: "/tmp/mongo_token.txt"
+        content: "{{ (mongodb_token.stdout | from_json).auth.client_token }}"
+        mode: '0600'
+
+- name: Copy Vault PEM file and mongo token file to all servers
+  hosts: cfg:shards:replsets:mongos
+  tags: vault
+  become: true
+  tasks:
+    - name: Create directory for vault credentials
+      file:
+        path: /etc/mongodb
+        state: directory
+        owner: mongod
+        group: mongod
+        mode: 0500
+
+    - name: Fetch the Vault pem file
+      fetch:
+        src: /etc/vault.d/vault.pem
+        dest: ./vault.pem
+        flat: yes
+      delegate_to: "{{ groups['pmm'][0] }}"
+      run_once: true
+
+    - name: Copy vault certificate to MongoDB hosts
+      copy:
+        src: "{{ playbook_dir }}/vault.pem"
+        dest: "{{ vault_cafile }}"
+        owner: mongod
+        group: mongod
+        mode: '0400'
+
+    - name: Fetch the mongo token file
+      fetch:
+        src: /tmp/mongo_token.txt
+        dest: ./mongo_token.txt
+        flat: yes
+      delegate_to: "{{ groups['pmm'][0] }}"
+      run_once: true
+
+    - name: Copy token to MongoDB hosts
+      copy:
+        src: "{{ playbook_dir }}/mongo_token.txt"
+        dest: "{{ vault_tokenfile }}"
+        owner: mongod
+        group: mongod
+        mode: '0400'

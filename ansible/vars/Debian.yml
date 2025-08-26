@@ -8,3 +8,6 @@ docker_packages:
   - containerd.io
 
 pbm_env_file: /etc/default/pbm-agent
+
+vault_packages:
+  - vault

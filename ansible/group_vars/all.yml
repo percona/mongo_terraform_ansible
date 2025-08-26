@@ -103,11 +103,9 @@ CAFile: /etc/ssl/test-ca.pem
 
 # keyfile_encryption: true/false
 keyfile_encryption: false
-
 # Warning! This is just an example, replace with your own for prod use!
 encryption_key_content: |
   vvMTZ3dnSbG7wc6DkPpt+rp3Cc+jF8lJsYlq6QE1yEM=
-
 # path to the keyfile to encrypt
 encryption_keyfile: /opt/mongodb.key
 
@@ -120,9 +118,24 @@ vault_tokenfile: /etc/mongodb/token
 # Warning! This is just an example, replace with your own for prod use!
 vault_tokenfile_content: |
   s.uTrHtzsZnEE7KyHeA797CkWA
-vault_cafile: /etc/mongodb/vault.crt
+vault_cafile: /etc/mongodb/vault.pem
 # path to the secret within Vault
 vault_secret: secret/data/dc/psmongodb1
+
+##############
+# Vault Server
+##############
+
+vault_config_path: /etc/vault.d/vault.hcl
+root_token: |
+  s.uTrHtzsZnEE7KyHeA797CkWA
+mongodb_policy_name: "mongodb-policy"
+mongodb_policy_hcl: |
+  path "secret/data/dc/*" {
+    capabilities = ["create", "read", "update", "delete", "list"]
+  }
+
+mongodb_token_ttl: "30d"
 
 ##################
 ## Monitoring

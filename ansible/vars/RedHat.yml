@@ -8,3 +8,8 @@ docker_packages:
   - containerd.io
 
 pbm_env_file: /etc/sysconfig/pbm-agent
+
+vault_repo: https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+
+vault_packages:
+  - vault

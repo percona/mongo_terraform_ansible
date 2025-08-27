@@ -15,10 +15,8 @@ ${hostname_pmm}
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
 bucket=${bucket}
-region=${region}
-endpointUrl=${endpointUrl}
+cluster=${rs_name}
+env_tag=${env_tag}
 access_key_id=${access_key}
 secret_access_key=${secret_access_key}
-env_tag=${env_tag}
-# For now we access GCS in AWS-compatible style
-storage_provider=s3
+storage_provider=gcs

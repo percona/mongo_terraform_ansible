@@ -11,8 +11,8 @@ storage:
     bucket: {{ bucket }}
     prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
     credentials:
-      HMACAccessKey: {{ access_key_id }}
-      HMACSecret: {{ secret_access_key }}
+      hmacAccessKey: {{ access_key_id }}
+      hmacSecret: {{ secret_access_key }}
 {% elif storage_provider == "azure" %}
   azure:
     account: {{ account }}

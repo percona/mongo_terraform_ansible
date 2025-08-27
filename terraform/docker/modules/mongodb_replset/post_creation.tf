@@ -91,7 +91,7 @@ resource "null_resource" "initiate_replset" {
     command = <<-EOT
       docker exec -i ${docker_container.rs[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${docker_container.rs[0].ports[0].internal} --eval '
         db.createRole({
-          role: "explainRole",
+          role: "pmmMonitor",
           privileges: [{
             "resource": { "db": "", "collection": "" },
             "actions": [ "listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "indexStats", "find" ]
@@ -110,7 +110,7 @@ resource "null_resource" "initiate_replset" {
           "user": "${var.mongodb_pmm_user}",
           "pwd": "${var.mongodb_pmm_password}",
           "roles": [ 
-            { "role": "explainRole", "db": "admin" },
+            { "role": "pmmMonitor", "db": "admin" },
             { "role": "read", "db": "local" },
             { "db" : "admin", "role" : "readWrite", "collection": "" },
             { "db" : "admin", "role" : "backup" },

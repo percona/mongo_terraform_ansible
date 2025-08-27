@@ -155,7 +155,7 @@ pmm_server_user: admin
 pmm_server_pwd: admin
 
 # PMM agent parameters
-mongodb_pmm_user: mongodb_exporter
+mongodb_pmm_user: pmm
 # Warning! This is just an example, replace with your own for prod use!
 mongodb_pmm_user_pwd: percona
 

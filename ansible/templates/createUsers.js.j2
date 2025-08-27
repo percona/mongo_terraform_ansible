@@ -1,4 +1,4 @@
-db.createRole({ "role": "explainRole", "privileges": [ {
+db.createRole({ "role": "pmmMonitor", "privileges": [ {
          "resource": {
             "db": "", "collection":"" },
          "actions": [
@@ -7,9 +7,14 @@ db.createRole({ "role": "explainRole", "privileges": [ {
             "dbStats",
             "dbHash",
             "collStats",
+            "indexStats",
             "find"
          ]
       },
+      {
+         "resource": { "db": "", "collection": "system.version" },
+         "actions": [ "find" ]
+      },      
       {
          "resource": { "db": "", "collection": "system.profile" },
          "actions": [
@@ -35,14 +40,17 @@ db.getSiblingDB("admin").createUser({
     "user": "{{ mongodb_pmm_user }}",
     "pwd": "{{ mongodb_pmm_user_pwd }}",
     "roles": [
-        { "role": "explainRole", "db": "admin" },
+        { "role": "pmmMonitor", "db": "admin" },
         { "role": "clusterMonitor", "db": "admin" },
         { "role": "read", "db": "local" },
         { "db" : "admin", "role" : "readWrite", "collection": "" },
         { "db" : "admin", "role" : "backup" },
         { "db" : "admin", "role" : "clusterMonitor" },
         { "db" : "admin", "role" : "restore" },
-        { "db" : "admin", "role" : "pbmAnyAction" }        
+        { "db" : "admin", "role" : "pbmAnyAction" }
+{% if mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) > 70 %}
+         ,{ "db": "admin", "role": "directShardOperations" }
+{% endif %}         
     ]
 });
 

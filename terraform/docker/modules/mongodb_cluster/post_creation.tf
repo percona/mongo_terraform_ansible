@@ -91,7 +91,7 @@ resource "null_resource" "initiate_cfg_replset" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.configsvr_port} --eval '
         db.createRole({
-          role: "explainRole",
+          role: "pmmMonitor",
           privileges: [{
             "resource": { "db": "", "collection": "" },
             "actions": [ "listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "indexStats", "find" ]
@@ -110,7 +110,7 @@ resource "null_resource" "initiate_cfg_replset" {
           "user": "${var.mongodb_pmm_user}",
           "pwd": "${var.mongodb_pmm_password}",
           "roles": [ 
-            { "role": "explainRole", "db": "admin" },
+            { "role": "pmmMonitor", "db": "admin" },
             { "role": "read", "db": "local" },
             { "db" : "admin", "role" : "readWrite", "collection": "" },
             { "db" : "admin", "role" : "backup" },
@@ -231,7 +231,7 @@ resource "null_resource" "create_users" {
     command = <<-EOT
       docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.shardsvr_port} --eval '
         db.createRole({
-          "role": "explainRole",
+          "role": "pmmMonitor",
           "privileges": [{
             "resource": { "db": "", "collection": "" },
             "actions": ["listIndexes","listCollections","dbStats","dbHash","collStats","indexStats","find"]
@@ -250,7 +250,7 @@ resource "null_resource" "create_users" {
           "user": "${var.mongodb_pmm_user}",
           "pwd": "${var.mongodb_pmm_password}",
           "roles": [ 
-            { "role": "explainRole", "db": "admin" },
+            { "role": "pmmMonitor", "db": "admin" },
             { "role": "read", "db": "local" },
             { "db" : "admin", "role" : "readWrite", "collection": "" },
             { "db" : "admin", "role" : "backup" },

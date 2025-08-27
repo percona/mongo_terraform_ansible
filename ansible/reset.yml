@@ -42,6 +42,9 @@
     - name: Remove datadir contents
       shell: rm -rf {{ mongod_path }}/*
 
+    - name: Remove vault certificate and token stuff
+      shell: rm -rf /etc/mongodb
+
 - hosts: pmm
   gather_facts: false
   become: yes

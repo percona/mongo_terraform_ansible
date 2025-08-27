@@ -109,6 +109,56 @@
         mode: 0600
       when: keyfile_encryption | bool
 
+    - name: Copy Vault crt and mongo token file to all servers
+      block:
+
+        - name: Create directory for vault credentials
+          become: yes
+          file:
+            path: /etc/mongodb
+            state: directory
+            owner: mongod
+            group: mongod
+            mode: 0500
+
+        - name: Fetch the Vault crt file from Vault server to control machine
+          become: yes
+          fetch:
+            src: /etc/vault.d/vault.crt
+            dest: ./vault.crt
+            flat: yes
+          delegate_to: "{{ groups['pmm'][0] }}"
+          run_once: true
+
+        - name: Copy vault certificate to MongoDB hosts
+          become: yes
+          copy:
+            src: "{{ playbook_dir }}/vault.crt"
+            dest: "{{ vault_cafile }}"
+            owner: mongod
+            group: mongod
+            mode: '0400'
+
+        - name: Fetch the mongo token file from Vault server to control machine
+          become: yes
+          fetch:
+            src: /tmp/mongo_token.txt
+            dest: ./mongo_token.txt
+            flat: yes
+          delegate_to: "{{ groups['pmm'][0] }}"
+          run_once: true
+
+        - name: Copy token file to MongoDB hosts
+          become: yes
+          copy:
+            src: "{{ playbook_dir }}/mongo_token.txt"
+            dest: "{{ vault_tokenfile }}"
+            owner: mongod
+            group: mongod
+            mode: '0400'
+
+      when: vault_encryption | bool
+
     - name: Start mongod on replica set member
       become: yes
       service:

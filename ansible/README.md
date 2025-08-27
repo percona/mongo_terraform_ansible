@@ -151,7 +151,18 @@ There is an extra playbook `cert-setup.yml` that generates a test CA on the PMM 
 ansible-playbook cert-setup.yml -i inventory
 ```
 
+## Data-at-rest encryption with Vault
+
+There is an extra playbook `vault_server.yml` that generates a Vault on the PMM server, with the required configuration. A token for MongoDB is created and can be fetched by the `main.yml` playbook. 
+Run this playbook before the `main.yml` if you want a Vault-enabled setup and you don't have a Vault server already. Remember to set `vault_encryption: true` in the variables file.
+```
+ansible-playbook vault_server.yml -i inventory
+```
+
+## Tags
+
 ### Available tags for `main.yml`:
+
   - os_conf
     - Tunes the OS for MongoDB, configures log rotation
   - install
@@ -170,6 +181,7 @@ ansible-playbook cert-setup.yml -i inventory
     - Deploys PMM client and registers with a PMM Server
 
 ### Available tags for `cert-setup.yml`:
+
   - ca
     - Deploys the CA on PMM-server
   - create_certs
@@ -188,6 +200,8 @@ You can also use the `reset.yml` playbook to do this for you:
 ```
 ansible-playbook reset.yml -i inventory
 ```
+
+Be careful with this as all the contents of the datadir are going to be removed
 
 ## Stopping
 

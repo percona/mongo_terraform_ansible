@@ -109,16 +109,6 @@
         mode: 0600
       when: keyfile_encryption | bool
 
-    - name: Set up Vault tokenfile
-      become: yes
-      copy:
-        dest: "{{ vault_tokenfile }}"
-        content: "{{ vault_tokenfile_content }}"
-        owner: mongod
-        group: root
-        mode: 0600
-      when: vault_encryption | bool
-
     - name: Start mongod on replica set member
       become: yes
       service:

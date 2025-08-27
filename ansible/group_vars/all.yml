@@ -115,10 +115,7 @@ vault_server: vault.example.com
 vault_port: 8200
 # path to the token used by MongoDB to access Vault
 vault_tokenfile: /etc/mongodb/token
-# Warning! This is just an example, replace with your own for prod use!
-vault_tokenfile_content: |
-  s.uTrHtzsZnEE7KyHeA797CkWA
-vault_cafile: /etc/mongodb/vault.pem
+vault_cafile: /etc/mongodb/vault.crt
 # path to the secret within Vault
 vault_secret: secret/data/dc/psmongodb1
 
@@ -134,7 +131,12 @@ mongodb_policy_hcl: |
   path "secret/data/dc/*" {
     capabilities = ["create", "read", "update", "delete", "list"]
   }
-
+  path "secret/metadata/*" {
+    capabilities = ["read"]
+  }
+  path "secret/config" {
+    capabilities = ["read"]
+  }
 mongodb_token_ttl: "30d"
 
 ##################

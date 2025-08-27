@@ -60,11 +60,6 @@
         src: templates/vault.hcl.j2
         dest: "{{ vault_config_path }}"      
 
-    - name: Start Vault service
-      service:
-        name: vault
-        state: restarted
-
     - name: Prepare SSL configuration for vault
       template:
         src: templates/vault_ssl.conf.j2
@@ -72,9 +67,8 @@
 
     - name: Generate Vault SSL key and certificate
       shell: openssl req -config /etc/vault.d/ssl.conf -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout /etc/vault.d/vault.key -out /etc/vault.d/vault.crt
-
-    - name: Generate Vault PEM file
-      shell: cat /etc/vault.d/vault.crt /etc/vault.d/vault.key > /etc/vault.d/vault.pem
+      args:
+        creates: /etc/vault.d/vault.crt
 
     - name: Set owner and perms on vault cert and key
       file:
@@ -85,7 +79,11 @@
       loop:
         - vault.key
         - vault.crt
-        - vault.pem
+
+    - name: Start Vault service
+      service:
+        name: vault
+        state: restarted
 
     - name: Initialize Vault if uninitialized
       shell: >
@@ -149,7 +147,7 @@
         content: "{{ (mongodb_token.stdout | from_json).auth.client_token }}"
         mode: '0600'
 
-- name: Copy Vault PEM file and mongo token file to all servers
+- name: Copy Vault crt and mongo token file to all servers
   hosts: cfg:shards:replsets:mongos
   tags: vault
   become: true
@@ -162,17 +160,17 @@
         group: mongod
         mode: 0500
 
-    - name: Fetch the Vault pem file
+    - name: Fetch the Vault crt file
       fetch:
-        src: /etc/vault.d/vault.pem
-        dest: ./vault.pem
+        src: /etc/vault.d/vault.crt
+        dest: ./vault.crt
         flat: yes
       delegate_to: "{{ groups['pmm'][0] }}"
       run_once: true
 
     - name: Copy vault certificate to MongoDB hosts
       copy:
-        src: "{{ playbook_dir }}/vault.pem"
+        src: "{{ playbook_dir }}/vault.crt"
         dest: "{{ vault_cafile }}"
         owner: mongod
         group: mongod

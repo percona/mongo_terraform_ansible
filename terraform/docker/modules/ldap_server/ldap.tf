@@ -1,6 +1,11 @@
 # LDAP Docker container image
+data "docker_registry_image" "ldap" {
+  name = var.ldap_image
+}
+
 resource "docker_image" "ldap" {
   name         = var.ldap_image
+  pull_triggers = [data.docker_registry_image.ldap.sha256_digest]
   keep_locally = true  
 }
 
@@ -64,8 +69,13 @@ resource "null_resource" "ldap_users" {
 }
 
 # Admin container image
+data "docker_registry_image" "ldap_admin" {
+  name = var.ldap_admin_image
+}
+
 resource "docker_image" "ldap_admin" {
   name         = var.ldap_admin_image
+  pull_triggers = [data.docker_registry_image.ldap_admin.sha256_digest]
   keep_locally = true  
 }
 

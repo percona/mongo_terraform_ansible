@@ -1,5 +1,10 @@
+data "docker_registry_image" "vault" {
+  name = var.vault_image
+}
+
 resource "docker_image" "vault" {
   name = var.vault_image
+  pull_triggers = [data.docker_registry_image.vault.sha256_digest]
 }
 
 resource "docker_volume" "vault_data" {

@@ -7,18 +7,33 @@ locals {
   })  
 }
 
+data "docker_registry_image" "psmdb" {
+  name = var.psmdb_image
+}
+
 resource "docker_image" "psmdb" {
   name         = var.psmdb_image
+  pull_triggers = [data.docker_registry_image.psmdb.sha256_digest]
   keep_locally = true
+}
+
+data "docker_registry_image" "pbm" {
+  name = var.pbm_image
 }
 
 resource "docker_image" "pbm" {
   name         = var.pbm_image
+  pull_triggers = [data.docker_registry_image.pbm.sha256_digest]
   keep_locally = true
+}
+
+data "docker_registry_image" "base_os" {
+  name = var.base_os_image
 }
 
 resource "docker_image" "base_os" {
   name         = var.base_os_image
+  pull_triggers = [data.docker_registry_image.base_os.sha256_digest]
   keep_locally = true
 }
 

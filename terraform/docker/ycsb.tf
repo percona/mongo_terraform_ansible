@@ -11,8 +11,13 @@ resource "local_file" "ycsb_dockerfile_content" {
 }
 
 # Get base OS image
+data "docker_registry_image" "ycsb" {
+  name = var.ycsb_os_image
+}
+
 resource "docker_image" "ycsb_os" {
   name         = var.ycsb_os_image
+  pull_triggers = [data.docker_registry_image.ycsb.sha256_digest]
   keep_locally = true  
 }
 

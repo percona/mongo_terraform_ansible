@@ -1,6 +1,11 @@
 # Create a Docker container for the Grafana renderer
+data "docker_registry_image" "renderer" {
+  name = var.renderer_image
+}
+
 resource "docker_image" "renderer" {
   name         = var.renderer_image
+  pull_triggers = [data.docker_registry_image.renderer.sha256_digest]
   keep_locally = true
 }
 
@@ -24,8 +29,13 @@ resource "docker_container" "renderer" {
   restart = "on-failure"
 }
 
+data "docker_registry_image" "watchtower" {
+  name = var.watchtower_image
+}
+
 resource "docker_image" "watchtower" {
   name         = var.watchtower_image
+  pull_triggers = [data.docker_registry_image.watchtower.sha256_digest]
   keep_locally = true
 }
 
@@ -53,8 +63,13 @@ resource "docker_volume" "pmm_volume" {
   name = "${var.pmm_host}-data"
 }
 
+data "docker_registry_image" "pmm" {
+  name = var.pmm_server_image
+}
+
 resource "docker_image" "pmm" {
   name         = var.pmm_server_image
+  pull_triggers = [data.docker_registry_image.pmm.sha256_digest]
   keep_locally = true
 }
 

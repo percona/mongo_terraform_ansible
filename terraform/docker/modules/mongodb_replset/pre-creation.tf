@@ -1,8 +1,3 @@
-resource "docker_image" "pmm_client" {
-  name         = var.pmm_client_image
-  keep_locally = true
-}
-
 # Prepare the temporary container to initialize the keyfile volume
 resource "docker_volume" "keyfile_volume" {
   name = "shared_keyfile"

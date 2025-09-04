@@ -1,12 +1,21 @@
 # MinIO Docker container
+data "docker_registry_image" "minio" {
+  name = var.minio_image
+}
+
 resource "docker_image" "minio" {
   name         = var.minio_image
+  pull_triggers = [data.docker_registry_image.minio.sha256_digest]
   keep_locally = true  
 }
 
 # MinIO MC Command container
+data "docker_registry_image" "minio_mc" {
+  name = var.minio_mc_image
+}
 resource "docker_image" "minio_mc" {
   name         = var.minio_mc_image
+  pull_triggers = [data.docker_registry_image.minio_mc.sha256_digest]
   keep_locally = true
 }
 

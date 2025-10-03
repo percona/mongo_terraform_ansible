@@ -121,6 +121,38 @@
         dest: "{{ pbm_config_path }}"
       when: arbiter is not defined
 
+- name: Gather facts of NFS server if needed
+  hosts: pmm
+  gather_facts: yes
+  tags: backup
+  tasks:
+    - name: Collect minimal facts (if overall gather_facts disabled earlier)
+      ansible.builtin.setup:
+        filter: ansible_default_ipv4
+      when: storage_provider == "filesystem"
+
+- name: Configure NFS clients if needed
+  hosts: cfg:shards:replsets
+  tags: backup
+  become: true
+  tasks:
+    - name: Ensure mount directory exists
+      ansible.builtin.file:
+        path: "{{ pbm_path }}"
+        state: directory
+      when: storage_provider == "filesystem"
+
+    - name: Add NFS mount entry to /etc/fstab and mount it
+      ansible.posix.mount:
+        path: "{{ pbm_path }}"
+        src: "{{ hostvars[groups['pmm'][0]]['ansible_default_ipv4']['address'] }}:{{ pbm_path }}"
+        fstype: nfs
+        opts: rw
+        dump: 0
+        passno: 0
+        state: mounted
+      when: storage_provider == "filesystem"
+
 - name: Configure backup process
   hosts: cfg:replsets
   become: yes

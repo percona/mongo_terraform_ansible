@@ -9,6 +9,8 @@
 
 - import_playbook: sharding_setup.yml
 
+- import_playbook: nfs_server.yml
+
 - import_playbook: pbm_install.yml
 
 - import_playbook: pmm_server_install.yml

@@ -173,30 +173,36 @@ env_tag: test
 ## Backup
 ###############
   
+# PBM database user and password
 pbmuser: pbm
 # Warning! This is just an example, replace with your own for prod use!
 pbmpwd: secretpwd
+# also can be logical
 pbm_backup_type: physical
+# how long to keep backups
 pbm_retention_days: 3
+# use for the cron job with backup time
 pbm_backup_hour: 0
 pbm_backup_minute: 2
 pbm_purge_hour: 0
 pbm_purge_minute: 2
+# older pbm versions used a dedicated pbm user
 pbm_os_user: mongod
 
 pbm_config_path: /etc/pbm-storage.conf
 
-# backup location - set true for locally mounted NFS drive or false for S3-compatible storage bucket
-pbm_local: false
+# backup location - use 'filesystem' for locally mounted NFS drive. For cloud storage use gcs, azure or s3
+storage_provider: filesystem
 
-# only relevant if pbm_local: true
+# only relevant if for storage_provider: filesystem
 pbm_path: /backup
 
-# only relevant if pbm_local: false
-# custom prefix for the directory structure created by pbm inside the S3 bucket. By default the cluster name is used.
+# Below options are only relevant if you are using storage_provider != filesystem
+#
+# A custom prefix for the directory structure created by pbm inside the storage bucket. By default the cluster name is used.
 #prefix: pbm
 #
-# the region, bucket, endpoint and keys are put into the inventory file by Terraform. If not provisioning servers with Terraform uncomment the following lines:
+# The region, bucket, endpoint and keys are put into the inventory file by Terraform. If not provisioning servers with Terraform uncomment the following lines and modify as needed:
 #
 #region: northamerica-northeast1
 #bucket: dev-mongo-backups

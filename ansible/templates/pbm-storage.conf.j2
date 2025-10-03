@@ -1,12 +1,9 @@
-{% if pbm_local %}
-storage:
-  type: filesystem
-  filesystem:
-    path: {{ pbm_path }}
-{% else %}
 storage:
   type: {{ storage_provider }}
-{% if storage_provider == "gcs" %}
+{% if storage_provider == "filesystem" %}
+  filesystem:
+    path: {{ pbm_path }}
+{% elif storage_provider == "gcs" %}
   gcs:
     bucket: {{ bucket }}
     prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
@@ -20,7 +17,7 @@ storage:
     prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
     credentials:
       key: {{ key }}
-{% else %}
+{% elif storage_provider == "s3" %}
   s3:
     region: {{ region }}
     bucket: {{ bucket }}
@@ -29,5 +26,4 @@ storage:
     credentials:
       access-key-id: {{ access_key_id }}
       secret-access-key: {{ secret_access_key }}
-{% endif %}
 {% endif %}

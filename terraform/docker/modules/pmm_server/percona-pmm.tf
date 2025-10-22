@@ -18,13 +18,6 @@ resource "docker_container" "renderer" {
   networks_advanced {
     name = var.network_name
   }
-  healthcheck {
-    test        = ["CMD", "/nodejs/bin/node", "--version" ]
-    interval    = "10s"
-    timeout     = "10s"
-    retries     = 5
-    start_period = "30s"
-  }    
   wait = true
   restart = "on-failure"
 }

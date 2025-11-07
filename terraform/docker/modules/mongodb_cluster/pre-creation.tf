@@ -1,6 +1,6 @@
 # Prepare the temporary container to initialize the keyfile volume
 resource "docker_volume" "keyfile_volume" {
-  name = "shared_keyfile"
+  name = "${var.cluster_name}-shared_keyfile"
 }
 
 resource "docker_container" "init_keyfile" {

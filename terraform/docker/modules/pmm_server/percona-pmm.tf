@@ -42,7 +42,7 @@ resource "docker_container" "watchtower" {
     target = var.docker_socket
     source = var.docker_socket
     type   = "bind"
-  }  
+  }
   network_mode = "bridge"
   networks_advanced {
     name = var.network_name
@@ -91,9 +91,9 @@ resource "docker_container" "pmm" {
   domainname = var.domain_name
   depends_on = [
     docker_container.renderer
-  ]  
+  ]
   image = docker_image.pmm.image_id
-  env = [ "GF_RENDERING_SERVER_URL=http://${docker_container.renderer.name}:${var.renderer_port}/render", "GF_RENDERING_CALLBACK_URL=https://${var.pmm_host}:${var.pmm_port}/graph/", "PMM_WATCHTOWER_HOST=http://${docker_container.watchtower.name}:${var.watchtower_port}","PMM_WATCHTOWER_TOKEN=${var.watchtower_token}" ]
+  env = [ "PMM_ENABLE_ACCESS_CONTROL=${var.pmm_access_control}", "GF_RENDERING_SERVER_URL=http://${docker_container.renderer.name}:${var.renderer_port}/render", "GF_RENDERING_CALLBACK_URL=https://${var.pmm_host}:${var.pmm_port}/graph/", "PMM_WATCHTOWER_HOST=http://${docker_container.watchtower.name}:${var.watchtower_port}","PMM_WATCHTOWER_TOKEN=${var.watchtower_token}" ]
   mounts {
     type = "volume"
     target = "/srv"
@@ -107,14 +107,14 @@ resource "docker_container" "pmm" {
     internal = var.pmm_port
     external = var.pmm_external_port
     ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
-  }  
+  }
   healthcheck {
     test        = local.test_cmd
     interval    = "10s"
     timeout     = "10s"
     retries     = 5
     start_period = "30s"
-  }    
+  }
   wait = true
   restart = "on-failure"
 }

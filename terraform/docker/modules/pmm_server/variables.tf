@@ -34,13 +34,13 @@ variable "pmm_server_pwd" {
 variable "renderer_tag" {
   description = "Name of the Grafana image renderer container"
   default = "grafana-renderer"
-  type = string  
+  type = string
 }
 
 variable "watchtower_tag" {
   description = "Name of the Watchtower container"
   default = "watchtower"
-  type = string  
+  type = string
 }
 
 variable "pmm_port" {
@@ -72,6 +72,12 @@ variable "watchtower_port" {
 variable "watchtower_token" {
   description = "Watchtower API token"
   default = "1234567890"
+  type = string
+}
+
+variable "pmm_access_control" {
+  description = "Enable access control"
+  default = "1"
   type = string
 }
 
@@ -116,6 +122,6 @@ variable "network_name" {
 
 variable "bind_to_localhost" {
   type = bool
-  default = true 
+  default = true
   description = "Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0"
 }

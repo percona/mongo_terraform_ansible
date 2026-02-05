@@ -68,6 +68,9 @@ resource "libvirt_network" "priv" {
     enabled = true
     local_only = true
   }
+  
+  # Whether the network should be started automatically when the host boots
+  autostart = true
 
   #  list of subnets the addresses allowed for domains connected
   # also derived to define the host addresses

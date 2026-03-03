@@ -334,10 +334,9 @@ clusters     = {}
     -d "grant_type=password" | grep -o '"access_token":"[^"]*"' | sed 's/"access_token":"//;s/"//')
   ```
 
-  Then connect to MongoDB using the token:
+  Then connect to MongoDB using the token via the connection string:
   ```
-  mongosh --port 27017 --authenticationMechanism MONGODB-OIDC --authenticationDatabase '$external' \
-    --oidcAccessToken "$TOKEN"
+  mongosh "mongodb://localhost:27017/\$external?authMechanism=MONGODB-OIDC&authMechanismProperties=OIDC_ACCESS_TOKEN:${TOKEN}"
   ```
 
 ## Cleanup

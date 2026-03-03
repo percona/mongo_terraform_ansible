@@ -47,6 +47,7 @@ module "mongodb_clusters" {
   oidc_client_id          = each.value.oidc_client_id
   oidc_auth_name_prefix   = each.value.oidc_auth_name_prefix
   oidc_principal_name     = each.value.oidc_principal_name
+  oidc_authorization_claim = each.value.oidc_authorization_claim
 #  enable_tls              = each.value.enable_tls
 #  tls_cert_file           = each.value.tls_cert_file
 #  tls_key_file            = each.value.tls_key_file
@@ -101,6 +102,7 @@ module "mongodb_replsets" {
   oidc_client_id          = each.value.oidc_client_id
   oidc_auth_name_prefix   = each.value.oidc_auth_name_prefix
   oidc_principal_name     = each.value.oidc_principal_name
+  oidc_authorization_claim = each.value.oidc_authorization_claim
 #  enable_tls              = each.value.enable_tls
 #  tls_cert_file           = each.value.tls_cert_file
 #  tls_key_file            = each.value.tls_key_file

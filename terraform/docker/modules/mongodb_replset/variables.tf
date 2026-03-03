@@ -327,8 +327,11 @@ variable "oidc_principal_name" {
   default     = "preferred_username"
 }
 
-############
-# Encryption
+variable "oidc_authorization_claim" {
+  type        = string
+  description = "JWT claim used for OIDC authorization"
+  default     = "groups"
+}
 ############
 
 variable "enable_tls" {

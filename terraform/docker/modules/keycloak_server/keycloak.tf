@@ -63,23 +63,15 @@ resource "null_resource" "keycloak_realm" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      get_token() {
-        curl -sfL -X POST \
-          "http://localhost:${var.keycloak_external_port}/realms/master/protocol/openid-connect/token" \
-          -H "Content-Type: application/x-www-form-urlencoded" \
-          -d "client_id=admin-cli" \
-          -d "username=${var.keycloak_admin_user}" \
-          -d "password=${var.keycloak_admin_password}" \
-          -d "grant_type=password" | \
-          (command -v jq > /dev/null 2>&1 && jq -r '.access_token' || grep -o '"access_token":"[^"]*"' | sed 's/"access_token":"//;s/"//')
-      }
-
-      TOKEN=$(get_token)
-      curl -sfL -X POST \
-        "http://localhost:${var.keycloak_external_port}/admin/realms" \
-        -H "Authorization: Bearer $TOKEN" \
-        -H "Content-Type: application/json" \
-        -d '{"realm": "${var.oidc_realm}", "enabled": true, "displayName": "${var.oidc_realm}"}'
+      docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh config credentials \
+        --server http://localhost:${var.keycloak_port} \
+        --realm master \
+        --user ${var.keycloak_admin_user} \
+        --password ${var.keycloak_admin_password}
+      docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh create realms \
+        -s realm=${var.oidc_realm} \
+        -s enabled=true \
+        -s displayName=${var.oidc_realm}
     EOT
   }
 }
@@ -90,32 +82,21 @@ resource "null_resource" "keycloak_client" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      get_token() {
-        curl -sfL -X POST \
-          "http://localhost:${var.keycloak_external_port}/realms/master/protocol/openid-connect/token" \
-          -H "Content-Type: application/x-www-form-urlencoded" \
-          -d "client_id=admin-cli" \
-          -d "username=${var.keycloak_admin_user}" \
-          -d "password=${var.keycloak_admin_password}" \
-          -d "grant_type=password" | \
-          (command -v jq > /dev/null 2>&1 && jq -r '.access_token' || grep -o '"access_token":"[^"]*"' | sed 's/"access_token":"//;s/"//')
-      }
-
-      TOKEN=$(get_token)
-      curl -sfL -X POST \
-        "http://localhost:${var.keycloak_external_port}/admin/realms/${var.oidc_realm}/clients" \
-        -H "Authorization: Bearer $TOKEN" \
-        -H "Content-Type: application/json" \
-        -d '{
-          "clientId": "${var.oidc_client_id}",
-          "enabled": true,
-          "protocol": "openid-connect",
-          "publicClient": false,
-          "secret": "${var.oidc_client_secret}",
-          "standardFlowEnabled": true,
-          "directAccessGrantsEnabled": true,
-          "serviceAccountsEnabled": true
-        }'
+      docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh config credentials \
+        --server http://localhost:${var.keycloak_port} \
+        --realm master \
+        --user ${var.keycloak_admin_user} \
+        --password ${var.keycloak_admin_password}
+      docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh create clients \
+        -r ${var.oidc_realm} \
+        -s clientId=${var.oidc_client_id} \
+        -s enabled=true \
+        -s protocol=openid-connect \
+        -s publicClient=false \
+        -s secret=${var.oidc_client_secret} \
+        -s standardFlowEnabled=true \
+        -s directAccessGrantsEnabled=true \
+        -s serviceAccountsEnabled=true
     EOT
   }
 }
@@ -127,42 +108,23 @@ resource "null_resource" "keycloak_users" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      get_token() {
-        curl -sfL -X POST \
-          "http://localhost:${var.keycloak_external_port}/realms/master/protocol/openid-connect/token" \
-          -H "Content-Type: application/x-www-form-urlencoded" \
-          -d "client_id=admin-cli" \
-          -d "username=${var.keycloak_admin_user}" \
-          -d "password=${var.keycloak_admin_password}" \
-          -d "grant_type=password" | \
-          (command -v jq > /dev/null 2>&1 && jq -r '.access_token' || grep -o '"access_token":"[^"]*"' | sed 's/"access_token":"//;s/"//')
-      }
-
-      TOKEN=$(get_token)
-
-      # Create user and extract user ID from Location header
-      USER_ID=$(curl -sfL -X POST \
-        "http://localhost:${var.keycloak_external_port}/admin/realms/${var.oidc_realm}/users" \
-        -H "Authorization: Bearer $TOKEN" \
-        -H "Content-Type: application/json" \
-        -d '{
-          "username": "${var.oidc_users[count.index].username}",
-          "enabled": true,
-          "email": "${var.oidc_users[count.index].email}",
-          "firstName": "${var.oidc_users[count.index].first_name}",
-          "lastName": "${var.oidc_users[count.index].last_name}"
-        }' -D - | awk '/^[Ll]ocation:/{gsub(/\r/,"",$2); n=split($2,a,"/"); print a[n]}')
-
-      if [ -z "$USER_ID" ]; then
-        echo "Failed to create user ${var.oidc_users[count.index].username} or extract user ID"
-        exit 1
-      fi
-
-      curl -sfL -X PUT \
-        "http://localhost:${var.keycloak_external_port}/admin/realms/${var.oidc_realm}/users/$USER_ID/reset-password" \
-        -H "Authorization: Bearer $TOKEN" \
-        -H "Content-Type: application/json" \
-        -d '{"type": "password", "value": "${var.oidc_users[count.index].password}", "temporary": false}'
+      docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh config credentials \
+        --server http://localhost:${var.keycloak_port} \
+        --realm master \
+        --user ${var.keycloak_admin_user} \
+        --password ${var.keycloak_admin_password}
+      USER_ID=$(docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh create users \
+        -r ${var.oidc_realm} \
+        -s username=${var.oidc_users[count.index].username} \
+        -s enabled=true \
+        -s email=${var.oidc_users[count.index].email} \
+        -s firstName=${var.oidc_users[count.index].first_name} \
+        -s lastName=${var.oidc_users[count.index].last_name} \
+        -i)
+      docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh set-password \
+        -r ${var.oidc_realm} \
+        --userid "$USER_ID" \
+        --new-password ${var.oidc_users[count.index].password}
     EOT
   }
 }

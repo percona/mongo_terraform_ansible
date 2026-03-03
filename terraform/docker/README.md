@@ -340,8 +340,6 @@ clusters     = {}
     --oidcAccessToken "$TOKEN"
   ```
 
-  > **Note:** If `jq` is available on your system, use `| jq -r '.access_token'` instead of the `grep/sed` pipeline for more reliable JSON parsing.
-
 ## Cleanup
 
 - Run terraform to remove all the resources and start from scratch

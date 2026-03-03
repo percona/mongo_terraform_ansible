@@ -287,6 +287,40 @@ variable "ldap_user_search_base" {
   default     = "dc=example,dc=org"
 }
 
+######
+# OIDC
+######
+
+variable "enable_oidc" {
+  type        = bool
+  description = "Enable OIDC authentication"
+  default     = false
+}
+
+variable "oidc_issuer" {
+  type        = string
+  description = "OIDC issuer URL (e.g. http://keycloak:8080/realms/percona)"
+  default     = "http://keycloak:8080/realms/percona"
+}
+
+variable "oidc_audience" {
+  type        = string
+  description = "OIDC audience (must match the Keycloak client ID)"
+  default     = "mongodb"
+}
+
+variable "oidc_auth_name_prefix" {
+  type        = string
+  description = "Prefix applied to OIDC-authenticated usernames in MongoDB"
+  default     = "oidc"
+}
+
+variable "oidc_principal_name" {
+  type        = string
+  description = "JWT claim used as the MongoDB username"
+  default     = "preferred_username"
+}
+
 ############
 # Encryption
 ############

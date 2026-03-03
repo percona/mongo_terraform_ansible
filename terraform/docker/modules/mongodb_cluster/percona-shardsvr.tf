@@ -35,6 +35,10 @@ resource "docker_container" "shard" {
     "--ldapUserToDNMapping","[{\"match\": \"(.+)\", \"ldapQuery\": \"${var.ldap_user_search_base}??sub?(uid={0})\"}]",
     "--ldapServers","${var.ldap_servers}",
     "--ldapTransportSecurity","none"
+  ] : [],
+  var.enable_oidc ? [
+    "--setParameter", "authenticationMechanisms=MONGODB-OIDC,SCRAM-SHA-256",
+    "--setParameter", "oidcIdentityProviders=[{\"issuer\":\"${var.oidc_issuer}\",\"audience\":\"${var.oidc_audience}\",\"authNamePrefix\":\"${var.oidc_auth_name_prefix}\",\"supportsHumanFlows\":true,\"principalName\":\"${var.oidc_principal_name}\"}]"
   ] : []
   )
   user = var.uid

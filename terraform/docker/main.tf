@@ -41,6 +41,11 @@ module "mongodb_clusters" {
   ldap_bind_dn            = each.value.ldap_bind_dn
   ldap_bind_pw            = each.value.ldap_bind_pw
   ldap_user_search_base   = each.value.ldap_user_search_base    
+  enable_oidc             = each.value.enable_oidc
+  oidc_issuer             = each.value.oidc_issuer
+  oidc_audience           = each.value.oidc_audience
+  oidc_auth_name_prefix   = each.value.oidc_auth_name_prefix
+  oidc_principal_name     = each.value.oidc_principal_name
 #  enable_tls              = each.value.enable_tls
 #  tls_cert_file           = each.value.tls_cert_file
 #  tls_key_file            = each.value.tls_key_file
@@ -57,7 +62,8 @@ module "mongodb_clusters" {
   depends_on = [
     module.pmm_server,
     module.minio_server,
-    module.ldap_server
+    module.ldap_server,
+    module.keycloak_server
   ]
 }
 
@@ -88,6 +94,11 @@ module "mongodb_replsets" {
   ldap_bind_dn            = each.value.ldap_bind_dn
   ldap_bind_pw            = each.value.ldap_bind_pw
   ldap_user_search_base   = each.value.ldap_user_search_base
+  enable_oidc             = each.value.enable_oidc
+  oidc_issuer             = each.value.oidc_issuer
+  oidc_audience           = each.value.oidc_audience
+  oidc_auth_name_prefix   = each.value.oidc_auth_name_prefix
+  oidc_principal_name     = each.value.oidc_principal_name
 #  enable_tls              = each.value.enable_tls
 #  tls_cert_file           = each.value.tls_cert_file
 #  tls_key_file            = each.value.tls_key_file
@@ -104,7 +115,8 @@ module "mongodb_replsets" {
   depends_on = [
     module.pmm_server,
     module.minio_server,
-    module.ldap_server
+    module.ldap_server,
+    module.keycloak_server
   ]
 }
 
@@ -159,5 +171,24 @@ module "ldap_server" {
   ldap_admin_password     = each.value.ldap_admin_password
   ldap_users              = each.value.ldap_users
   network_name            = each.value.network_name  
+  bind_to_localhost       = each.value.bind_to_localhost
+}
+
+module "keycloak_server" {
+  source                  = "./modules/keycloak_server"
+  for_each                = var.keycloak_servers
+  keycloak_server         = each.key
+  domain_name             = each.value.domain_name
+  env_tag                 = each.value.env_tag
+  keycloak_image          = each.value.keycloak_image
+  keycloak_port           = each.value.keycloak_port
+  keycloak_external_port  = each.value.keycloak_external_port
+  keycloak_admin_user     = each.value.keycloak_admin_user
+  keycloak_admin_password = each.value.keycloak_admin_password
+  oidc_realm              = each.value.oidc_realm
+  oidc_client_id          = each.value.oidc_client_id
+  oidc_client_secret      = each.value.oidc_client_secret
+  oidc_users              = each.value.oidc_users
+  network_name            = each.value.network_name
   bind_to_localhost       = each.value.bind_to_localhost
 }

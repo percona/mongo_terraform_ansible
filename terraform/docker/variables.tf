@@ -38,6 +38,12 @@ variable "clusters" {
     ldap_bind_dn          = optional(string, "cn=admin,dc=example,dc=org")
     ldap_bind_pw          = optional(string, "admin")
     ldap_user_search_base = optional(string, "dc=example,dc=org")        
+    # OIDC
+    enable_oidc           = optional(bool, false)
+    oidc_issuer           = optional(string, "http://keycloak:8080/realms/percona")
+    oidc_audience         = optional(string, "mongodb")
+    oidc_auth_name_prefix = optional(string, "oidc")
+    oidc_principal_name   = optional(string, "preferred_username")
 #    enable_tls              = optional(bool, false)
 #    tls_cert_file           = optional(string,"./certs/mongo.crt")
 #    tls_key_file            = optional(string,"./certs/mongo.key")
@@ -101,6 +107,12 @@ variable "replsets" {
     ldap_bind_dn              = optional(string, "cn=admin,dc=example,dc=org")
     ldap_bind_pw              = optional(string, "admin")
     ldap_user_search_base     = optional(string, "dc=example,dc=org")
+    # OIDC
+    enable_oidc               = optional(bool, false)
+    oidc_issuer               = optional(string, "http://keycloak:8080/realms/percona")
+    oidc_audience             = optional(string, "mongodb")
+    oidc_auth_name_prefix     = optional(string, "oidc")
+    oidc_principal_name       = optional(string, "preferred_username")
 #    enable_tls                = optional(bool, false)
 #    tls_cert_file             = optional(string,"./certs/mongo.crt")
 #    tls_key_file              = optional(string,"./certs/mongo.key")
@@ -220,25 +232,76 @@ variable "ldap_servers" {
    })) 
 
    default = {
-#     ldap = {
+# #     ldap = {
+# #       env_tag = "test"
+# #       ldap_users  = [
+# #         {
+# #           uid      = "alice"
+# #           cn       = "Alice"
+# #           sn       = "Admin"
+# #           password = "secret123"
+# #         },
+# #         {
+# #           uid      = "bob"
+# #           cn       = "Bob"
+# #           sn       = "User"
+# #           password = "supersecure"
+# #         }
+# #        ]
+# #      }
+# #     ldap-prod = {
+# #       env_tag = "prod"
+# #     }
+   }
+}
+
+##################
+# Keycloak Servers
+##################
+
+variable "keycloak_servers" {
+   description = "Keycloak OIDC Servers to deploy"
+   type = map(object({
+    env_tag                   = optional(string, "test")               # Name of the environment
+    domain_name               = optional(string, "")                   # DNS domain name
+    keycloak_image            = optional(string, "quay.io/keycloak/keycloak:latest")
+    keycloak_port             = optional(number, 8080)
+    keycloak_external_port    = optional(number, 8080)                 # Port of Keycloak as seen from outside docker
+    keycloak_admin_user       = optional(string, "admin")
+    keycloak_admin_password   = optional(string, "admin")
+    oidc_realm                = optional(string, "percona")
+    oidc_client_id            = optional(string, "mongodb")
+    oidc_client_secret        = optional(string, "mongodb-secret")
+    oidc_users                = optional(list(object({
+      username   = string
+      password   = string
+      email      = string
+      first_name = string
+      last_name  = string
+    })), [])
+    network_name              = optional(string, "mongo-terraform")
+    bind_to_localhost         = optional(bool, true)                   # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0
+   }))
+
+   default = {
+#     keycloak = {
 #       env_tag = "test"
-#       ldap_users  = [
+#       oidc_users = [
 #         {
-#           uid      = "alice"
-#           cn       = "Alice"
-#           sn       = "Admin"
-#           password = "secret123"
+#           username   = "alice"
+#           password   = "secret123"
+#           email      = "alice@example.org"
+#           first_name = "Alice"
+#           last_name  = "Admin"
 #         },
 #         {
-#           uid      = "bob"
-#           cn       = "Bob"
-#           sn       = "User"
-#           password = "supersecure"
+#           username   = "bob"
+#           password   = "supersecure"
+#           email      = "bob@example.org"
+#           first_name = "Bob"
+#           last_name  = "User"
 #         }
-#        ]
-#      }
-#     ldap-prod = {
-#       env_tag = "prod"
+#       ]
 #     }
    }
 }

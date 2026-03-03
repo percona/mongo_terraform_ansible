@@ -269,6 +269,79 @@ docker exec -it cl01-pbm-cli pbm status
   mongosh -u bob -p ***** --port 27017 --authenticationMechanism=PLAIN --authenticationDatabase=$external
   ```
 
+## OIDC (with Keycloak)
+
+Percona Server for MongoDB supports OIDC authentication via the `MONGODB-OIDC` mechanism. Keycloak is used as the identity provider.
+
+To enable OIDC, set `enable_oidc = true` and deploy a Keycloak server in your `tfvars` file. Example:
+
+```
+keycloak_servers = {
+  "keycloak" = {
+    env_tag            = "test"
+    oidc_realm         = "percona"
+    oidc_client_id     = "mongodb"
+    oidc_client_secret = "mongodb-secret"
+    oidc_users         = [
+      {
+        username   = "alice"
+        password   = "secret123"
+        email      = "alice@example.org"
+        first_name = "Alice"
+        last_name  = "Admin"
+      }
+    ]
+  }
+}
+
+replsets = {
+  "rs01" = {
+    env_tag      = "test"
+    enable_pmm   = false
+    enable_pbm   = false
+    enable_oidc  = true
+    oidc_issuer  = "http://keycloak:8080/realms/percona"
+    oidc_audience = "mongodb"
+  }
+}
+
+pmm_servers  = {}
+minio_servers = {}
+ldap_servers = {}
+clusters     = {}
+```
+
+- The Keycloak admin console is accessible at http://127.0.0.1:8080. Default credentials are `admin/admin`.
+
+- Create the OIDC user in MongoDB and assign them a role. For example:
+
+  ```
+  docker exec -it rs01-svr0 mongosh admin -u root -p percona
+  db.getSiblingDB("$external").createUser( { user: "oidc/alice", roles: [ { role: "read", db: "test" } ] } );
+  ```
+
+  The username format is `<authNamePrefix>/<principalName claim value>`. With the defaults, the prefix is `oidc` and the claim is `preferred_username`.
+
+- To authenticate using OIDC, first obtain an access token from Keycloak:
+
+  ```
+  TOKEN=$(curl -s -X POST http://localhost:8080/realms/percona/protocol/openid-connect/token \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "client_id=mongodb" \
+    -d "client_secret=mongodb-secret" \
+    -d "username=alice" \
+    -d "password=secret123" \
+    -d "grant_type=password" | grep -o '"access_token":"[^"]*"' | sed 's/"access_token":"//;s/"//')
+  ```
+
+  Then connect to MongoDB using the token:
+  ```
+  mongosh --port 27017 --authenticationMechanism MONGODB-OIDC --authenticationDatabase '$external' \
+    --oidcAccessToken "$TOKEN"
+  ```
+
+  > **Note:** If `jq` is available on your system, use `| jq -r '.access_token'` instead of the `grep/sed` pipeline for more reliable JSON parsing.
+
 ## Cleanup
 
 - Run terraform to remove all the resources and start from scratch

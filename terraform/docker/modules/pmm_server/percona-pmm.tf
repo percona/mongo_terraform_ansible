@@ -30,6 +30,7 @@ resource "docker_image" "watchtower" {
   name         = var.watchtower_image
   pull_triggers = [data.docker_registry_image.watchtower.sha256_digest]
   keep_locally = true
+  platform     = "linux/amd64"
 }
 
 # Create a Docker container for Watchtower
@@ -64,6 +65,7 @@ resource "docker_image" "pmm" {
   name         = var.pmm_server_image
   pull_triggers = [data.docker_registry_image.pmm.sha256_digest]
   keep_locally = true
+  platform     = "linux/amd64"
 }
 
 locals {

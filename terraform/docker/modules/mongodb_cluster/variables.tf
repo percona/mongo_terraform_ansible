@@ -359,6 +359,12 @@ variable "oidc_audience" {
   default     = "mongodb"
 }
 
+variable "oidc_client_id" {
+  type        = string
+  description = "OIDC client ID used in supportsHumanFlows"
+  default     = "mongodb"
+}
+
 variable "oidc_auth_name_prefix" {
   type        = string
   description = "Prefix applied to OIDC-authenticated usernames in MongoDB"

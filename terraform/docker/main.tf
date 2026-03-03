@@ -44,6 +44,7 @@ module "mongodb_clusters" {
   enable_oidc             = each.value.enable_oidc
   oidc_issuer             = each.value.oidc_issuer
   oidc_audience           = each.value.oidc_audience
+  oidc_client_id          = each.value.oidc_client_id
   oidc_auth_name_prefix   = each.value.oidc_auth_name_prefix
   oidc_principal_name     = each.value.oidc_principal_name
 #  enable_tls              = each.value.enable_tls
@@ -97,6 +98,7 @@ module "mongodb_replsets" {
   enable_oidc             = each.value.enable_oidc
   oidc_issuer             = each.value.oidc_issuer
   oidc_audience           = each.value.oidc_audience
+  oidc_client_id          = each.value.oidc_client_id
   oidc_auth_name_prefix   = each.value.oidc_auth_name_prefix
   oidc_principal_name     = each.value.oidc_principal_name
 #  enable_tls              = each.value.enable_tls

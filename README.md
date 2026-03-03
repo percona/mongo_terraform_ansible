@@ -9,7 +9,7 @@ This automation framework deploys the full stack of Percona Software for MongoDB
 You can choose between:
 
 - Creating all resources in a public cloud platform, using a combination of Terraform and Ansible.
-- Run everything in a single server (even your own laptop) using Terraform alone (Ansible is not required in this case).
+- Run everything on a single server (even your own laptop) using Terraform alone (Ansible is not required in this case).
 
 ## Instructions
 

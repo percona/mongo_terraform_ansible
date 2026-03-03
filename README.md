@@ -9,7 +9,7 @@ This automation framework deploys the full stack of Percona Software for MongoDB
 You can choose between:
 
 - Creating all resources in a public cloud platform, using a combination of Terraform and Ansible.
-- Run everything in Docker containers on a single server (even your own laptop) with Terraform (Ansible is not required in this case).
+- Run everything in a single server (even your own laptop) using Terraform alone (Ansible is not required in this case).
 
 ## Instructions
 
@@ -30,6 +30,7 @@ You can choose between:
     - [AWS](./terraform/aws/README.md)
     - [GCP](./terraform/gcp/README.md)
     - [Azure](./terraform/azure/README.md)
-    - [Docker](./terraform/docker/README.md)
+    - [Local Docker containers](./terraform/docker/README.md)
+    - [Local libvirt/KVM virtual machines](./terraform/libvirt/README.md)
 
 ## Disclaimer: This code is not supported by Percona. It has been provided solely as a community-contributed example and is not covered under any Percona services agreement.

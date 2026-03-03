@@ -325,7 +325,7 @@ clusters     = {}
 - To authenticate using OIDC, first obtain an access token from Keycloak:
 
   ```
-  TOKEN=$(curl -s -X POST http://localhost:8080/realms/percona/protocol/openid-connect/token \
+  TOKEN=$(curl -sL -X POST http://localhost:8080/realms/percona/protocol/openid-connect/token \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "client_id=mongodb" \
     -d "client_secret=mongodb-secret" \

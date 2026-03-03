@@ -45,7 +45,7 @@ resource "docker_container" "keycloak_server" {
   }
 
   healthcheck {
-    test     = ["CMD-SHELL", "curl -f -s http://localhost:${var.keycloak_port}/realms/master > /dev/null || exit 1"]
+    test     = ["CMD-SHELL", "bash -c '</dev/tcp/localhost/${var.keycloak_port}' 2>/dev/null || exit 1"]
     interval = "15s"
     timeout  = "5s"
     retries  = 10
@@ -64,7 +64,7 @@ resource "null_resource" "keycloak_realm" {
   provisioner "local-exec" {
     command = <<-EOT
       get_token() {
-        curl -sf -X POST \
+        curl -sfL -X POST \
           "http://localhost:${var.keycloak_external_port}/realms/master/protocol/openid-connect/token" \
           -H "Content-Type: application/x-www-form-urlencoded" \
           -d "client_id=admin-cli" \
@@ -75,7 +75,7 @@ resource "null_resource" "keycloak_realm" {
       }
 
       TOKEN=$(get_token)
-      curl -sf -X POST \
+      curl -sfL -X POST \
         "http://localhost:${var.keycloak_external_port}/admin/realms" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
@@ -91,7 +91,7 @@ resource "null_resource" "keycloak_client" {
   provisioner "local-exec" {
     command = <<-EOT
       get_token() {
-        curl -sf -X POST \
+        curl -sfL -X POST \
           "http://localhost:${var.keycloak_external_port}/realms/master/protocol/openid-connect/token" \
           -H "Content-Type: application/x-www-form-urlencoded" \
           -d "client_id=admin-cli" \
@@ -102,7 +102,7 @@ resource "null_resource" "keycloak_client" {
       }
 
       TOKEN=$(get_token)
-      curl -sf -X POST \
+      curl -sfL -X POST \
         "http://localhost:${var.keycloak_external_port}/admin/realms/${var.oidc_realm}/clients" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
@@ -128,7 +128,7 @@ resource "null_resource" "keycloak_users" {
   provisioner "local-exec" {
     command = <<-EOT
       get_token() {
-        curl -sf -X POST \
+        curl -sfL -X POST \
           "http://localhost:${var.keycloak_external_port}/realms/master/protocol/openid-connect/token" \
           -H "Content-Type: application/x-www-form-urlencoded" \
           -d "client_id=admin-cli" \
@@ -141,7 +141,7 @@ resource "null_resource" "keycloak_users" {
       TOKEN=$(get_token)
 
       # Create user and extract user ID from Location header
-      USER_ID=$(curl -sf -X POST \
+      USER_ID=$(curl -sfL -X POST \
         "http://localhost:${var.keycloak_external_port}/admin/realms/${var.oidc_realm}/users" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
@@ -158,7 +158,7 @@ resource "null_resource" "keycloak_users" {
         exit 1
       fi
 
-      curl -sf -X PUT \
+      curl -sfL -X PUT \
         "http://localhost:${var.keycloak_external_port}/admin/realms/${var.oidc_realm}/users/$USER_ID/reset-password" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \

@@ -64,6 +64,15 @@ resource "docker_container" "rs" {
     target = "/data/db"
     source = docker_volume.rs_volume[count.index].name
   }
+  dynamic "mounts" {
+    for_each = var.enable_oidc && var.oidc_ca_cert_path != "" ? [1] : []
+    content {
+      type      = "bind"
+      source    = var.oidc_ca_cert_path
+      target    = "/etc/pki/ca-trust/source/anchors/oidc-ca.crt"
+      read_only = true
+    }
+  }
   healthcheck {
     test        = ["CMD-SHELL", "mongosh --port ${var.replset_port + count.index} --eval 'db.runCommand({ ping: 1 })'"]
     interval    = "10s"
@@ -74,4 +83,18 @@ resource "docker_container" "rs" {
   wait = true
   restart = "no"
   depends_on = [docker_container.init_keyfile]
+}
+
+resource "null_resource" "rs_oidc_ca_trust" {
+  count      = var.enable_oidc && var.oidc_ca_cert_path != "" ? 1 : 0
+  depends_on = [docker_container.rs]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      %{for name in docker_container.rs[*].name~}
+      docker exec --user root ${name} update-ca-trust
+      %{endfor~}
+    EOT
+  }
 }

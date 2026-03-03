@@ -296,12 +296,13 @@ keycloak_servers = {
 
 replsets = {
   "rs01" = {
-    env_tag      = "test"
-    enable_pmm   = false
-    enable_pbm   = false
-    enable_oidc  = true
-    oidc_issuer  = "http://keycloak:8080/realms/percona"
-    oidc_audience = "mongodb"
+    env_tag           = "test"
+    enable_pmm        = false
+    enable_pbm        = false
+    enable_oidc       = true
+    oidc_issuer       = "https://keycloak:8443/realms/percona"
+    oidc_audience     = "mongodb"
+    oidc_ca_cert_path = "/tmp/keycloak-certs/ca.crt"
   }
 }
 
@@ -311,7 +312,7 @@ ldap_servers = {}
 clusters     = {}
 ```
 
-- The Keycloak admin console is accessible at http://127.0.0.1:8080. Default credentials are `admin/admin`.
+- The Keycloak admin console is accessible at http://127.0.0.1:8080. Default credentials are `admin/admin`. Keycloak also serves HTTPS on port 8443 with a self-signed certificate (used as the OIDC issuer endpoint for MongoDB).
 
 - Create the OIDC user in MongoDB and assign them a role. For example:
 
@@ -322,7 +323,7 @@ clusters     = {}
 
   The username format is `<authNamePrefix>/<principalName claim value>`. With the defaults, the prefix is `oidc` and the claim is `preferred_username`.
 
-- To authenticate using OIDC, first obtain an access token from Keycloak:
+- To authenticate using OIDC, first obtain an access token from Keycloak (using the HTTP endpoint for simplicity):
 
   ```
   TOKEN=$(curl -sL -X POST http://localhost:8080/realms/percona/protocol/openid-connect/token \

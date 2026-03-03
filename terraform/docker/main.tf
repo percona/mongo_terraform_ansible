@@ -48,6 +48,7 @@ module "mongodb_clusters" {
   oidc_auth_name_prefix   = each.value.oidc_auth_name_prefix
   oidc_principal_name     = each.value.oidc_principal_name
   oidc_authorization_claim = each.value.oidc_authorization_claim
+  oidc_ca_cert_path       = each.value.oidc_ca_cert_path
 #  enable_tls              = each.value.enable_tls
 #  tls_cert_file           = each.value.tls_cert_file
 #  tls_key_file            = each.value.tls_key_file
@@ -103,6 +104,7 @@ module "mongodb_replsets" {
   oidc_auth_name_prefix   = each.value.oidc_auth_name_prefix
   oidc_principal_name     = each.value.oidc_principal_name
   oidc_authorization_claim = each.value.oidc_authorization_claim
+  oidc_ca_cert_path       = each.value.oidc_ca_cert_path
 #  enable_tls              = each.value.enable_tls
 #  tls_cert_file           = each.value.tls_cert_file
 #  tls_key_file            = each.value.tls_key_file
@@ -186,6 +188,8 @@ module "keycloak_server" {
   env_tag                 = each.value.env_tag
   keycloak_image          = each.value.keycloak_image
   keycloak_port           = each.value.keycloak_port
+  keycloak_https_port     = each.value.keycloak_https_port
+  keycloak_cert_dir       = each.value.keycloak_cert_dir
   keycloak_external_port  = each.value.keycloak_external_port
   keycloak_admin_user     = each.value.keycloak_admin_user
   keycloak_admin_password = each.value.keycloak_admin_password

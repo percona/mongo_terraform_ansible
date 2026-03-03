@@ -1,3 +1,25 @@
+# Generate self-signed TLS certificate for Keycloak HTTPS
+resource "null_resource" "keycloak_certs" {
+  triggers = {
+    keycloak_server = var.keycloak_server
+    cert_dir        = var.keycloak_cert_dir
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      mkdir -p ${var.keycloak_cert_dir}
+      openssl req -x509 -newkey rsa:2048 \
+        -keyout ${var.keycloak_cert_dir}/tls.key \
+        -out ${var.keycloak_cert_dir}/tls.crt \
+        -days 730 -nodes \
+        -subj "/CN=${var.keycloak_server}" \
+        -addext "subjectAltName=DNS:${var.keycloak_server},DNS:localhost,IP:127.0.0.1"
+      cp ${var.keycloak_cert_dir}/tls.crt ${var.keycloak_cert_dir}/ca.crt
+    EOT
+  }
+}
+
 # Keycloak Docker container image
 data "docker_registry_image" "keycloak" {
   name = var.keycloak_image
@@ -23,7 +45,11 @@ resource "docker_container" "keycloak_server" {
     "KEYCLOAK_ADMIN=${var.keycloak_admin_user}",
     "KEYCLOAK_ADMIN_PASSWORD=${var.keycloak_admin_password}",
     "KC_HTTP_PORT=${var.keycloak_port}",
-    "KC_HEALTH_ENABLED=true"
+    "KC_HEALTH_ENABLED=true",
+    "KC_HTTPS_CERTIFICATE_FILE=/opt/keycloak/certs/tls.crt",
+    "KC_HTTPS_CERTIFICATE_KEY_FILE=/opt/keycloak/certs/tls.key",
+    "KC_HTTPS_PORT=${var.keycloak_https_port}",
+    "KC_HOSTNAME_URL=https://${var.keycloak_server}:${var.keycloak_https_port}"
   ]
 
   command = ["start-dev"]
@@ -31,6 +57,20 @@ resource "docker_container" "keycloak_server" {
   volumes {
     volume_name    = docker_volume.keycloak_data.name
     container_path = "/opt/keycloak/data"
+  }
+
+  mounts {
+    type      = "bind"
+    source    = "${var.keycloak_cert_dir}/tls.crt"
+    target    = "/opt/keycloak/certs/tls.crt"
+    read_only = true
+  }
+
+  mounts {
+    type      = "bind"
+    source    = "${var.keycloak_cert_dir}/tls.key"
+    target    = "/opt/keycloak/certs/tls.key"
+    read_only = true
   }
 
   network_mode = "bridge"
@@ -41,6 +81,12 @@ resource "docker_container" "keycloak_server" {
   ports {
     internal = var.keycloak_port
     external = var.keycloak_external_port
+    ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
+  }
+
+  ports {
+    internal = var.keycloak_https_port
+    external = var.keycloak_https_port
     ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
   }
 
@@ -55,6 +101,7 @@ resource "docker_container" "keycloak_server" {
   wait         = true
   wait_timeout = 300
   restart      = "on-failure"
+  depends_on   = [null_resource.keycloak_certs]
 }
 
 # Create OIDC realm

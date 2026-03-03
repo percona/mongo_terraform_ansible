@@ -299,8 +299,8 @@ variable "enable_oidc" {
 
 variable "oidc_issuer" {
   type        = string
-  description = "OIDC issuer URL (e.g. http://keycloak:8080/realms/percona)"
-  default     = "http://keycloak:8080/realms/percona"
+  description = "OIDC issuer URL (e.g. https://keycloak:8443/realms/percona)"
+  default     = "https://keycloak:8443/realms/percona"
 }
 
 variable "oidc_audience" {
@@ -331,6 +331,12 @@ variable "oidc_authorization_claim" {
   type        = string
   description = "JWT claim used for OIDC authorization"
   default     = "groups"
+}
+
+variable "oidc_ca_cert_path" {
+  type        = string
+  description = "Host path to CA certificate for OIDC issuer TLS validation (for self-signed certs). Leave empty if issuer uses a public CA."
+  default     = ""
 }
 ############
 

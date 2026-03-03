@@ -12,6 +12,18 @@ variable "keycloak_port" {
   type    = number
 }
 
+variable "keycloak_https_port" {
+  default     = 8443
+  type        = number
+  description = "HTTPS port for Keycloak (used for OIDC issuer URL)"
+}
+
+variable "keycloak_cert_dir" {
+  default     = "/tmp/keycloak-certs"
+  type        = string
+  description = "Host directory where the self-signed TLS certificate for Keycloak HTTPS is generated and stored"
+}
+
 variable "keycloak_external_port" {
   default = 8080
   type    = number

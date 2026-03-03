@@ -31,6 +31,6 @@ You can choose between:
     - [GCP](./terraform/gcp/README.md)
     - [Azure](./terraform/azure/README.md)
     - [Local Docker containers](./terraform/docker/README.md)
-    - [Local libvirt/KVM virtual machines](./terraform/libvirt/README.md)
+    - [Local Libvirt/KVM virtual machines](./terraform/libvirt/README.md)
 
 ## Disclaimer: This code is not supported by Percona. It has been provided solely as a community-contributed example and is not covered under any Percona services agreement.

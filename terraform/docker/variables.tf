@@ -46,7 +46,7 @@ variable "clusters" {
     oidc_auth_name_prefix = optional(string, "oidc")
     oidc_principal_name   = optional(string, "preferred_username")
     oidc_authorization_claim = optional(string, "groups")
-    oidc_ca_cert_path     = optional(string, "")
+    pki_certs_volume_name = optional(string, "")
 #    enable_tls              = optional(bool, false)
 #    tls_cert_file           = optional(string,"./certs/mongo.crt")
 #    tls_key_file            = optional(string,"./certs/mongo.key")
@@ -118,7 +118,7 @@ variable "replsets" {
     oidc_auth_name_prefix     = optional(string, "oidc")
     oidc_principal_name       = optional(string, "preferred_username")
     oidc_authorization_claim  = optional(string, "groups")
-    oidc_ca_cert_path         = optional(string, "")
+    pki_certs_volume_name     = optional(string, "")
 #    enable_tls                = optional(bool, false)
 #    tls_cert_file             = optional(string,"./certs/mongo.crt")
 #    tls_key_file              = optional(string,"./certs/mongo.key")
@@ -262,6 +262,32 @@ variable "ldap_servers" {
 }
 
 ##################
+# Vault Servers
+##################
+
+variable "vault_servers" {
+   description = "HashiCorp Vault servers to deploy (used as PKI CA for OIDC and as KV store for MongoDB encryption keys)"
+   type = map(object({
+    env_tag               = optional(string, "test")
+    vault_image           = optional(string, "hashicorp/vault:latest")
+    vault_port            = optional(number, 8200)
+    vault_token           = optional(string, "root")
+    vault_pki_common_name = optional(string, "vault.local")
+    vault_cert_domain     = optional(string, "mongo.local")
+    vault_kv_path_prefix  = optional(string, "kv")
+    vault_kv_path         = optional(string, "kv/mongo-key")
+    vault_pki_role        = optional(string, "mongo")
+    vault_keycloak_role   = optional(string, "keycloak")
+    keycloak_common_name  = optional(string, "keycloak")              # Keycloak container hostname (SAN in issued TLS cert)
+    pki_certs_volume_name = optional(string, "vault-pki-certs")      # Shared Docker volume for PKI certs
+    network_name          = optional(string, "mongo-terraform")
+    bind_to_localhost     = optional(bool, true)
+   }))
+
+   default = {}
+}
+
+##################
 # Keycloak Servers
 ##################
 
@@ -274,7 +300,7 @@ variable "keycloak_servers" {
     keycloak_port             = optional(number, 8080)
     keycloak_https_port       = optional(number, 8443)
     keycloak_external_port    = optional(number, 8080)                 # Port of Keycloak as seen from outside docker
-    keycloak_cert_dir         = optional(string, "/tmp/keycloak-certs")
+    pki_certs_volume_name     = optional(string, "vault-pki-certs")    # Docker volume with PKI certs from Vault
     keycloak_admin_user       = optional(string, "admin")
     keycloak_admin_password   = optional(string, "admin")
     oidc_realm                = optional(string, "percona")

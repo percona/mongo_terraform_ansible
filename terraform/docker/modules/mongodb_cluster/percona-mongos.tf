@@ -39,13 +39,12 @@ resource "docker_container" "mongos" {
     type   = "volume"
     read_only = true
   }
-  dynamic "mounts" {
-    for_each = var.enable_oidc && var.oidc_ca_cert_path != "" ? [1] : []
+  dynamic "volumes" {
+    for_each = var.enable_oidc && var.pki_certs_volume_name != "" ? [1] : []
     content {
-      type      = "bind"
-      source    = var.oidc_ca_cert_path
-      target    = "/etc/pki/ca-trust/source/anchors/oidc-ca.crt"
-      read_only = true
+      volume_name    = var.pki_certs_volume_name
+      container_path = "/pki-certs"
+      read_only      = true
     }
   }
   labels { 
@@ -69,14 +68,14 @@ resource "docker_container" "mongos" {
 }
 
 resource "null_resource" "mongos_oidc_ca_trust" {
-  count      = var.enable_oidc && var.oidc_ca_cert_path != "" ? 1 : 0
+  count      = var.enable_oidc && var.pki_certs_volume_name != "" ? 1 : 0
   depends_on = [docker_container.mongos]
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
       %{for name in docker_container.mongos[*].name~}
-      docker exec --user root ${name} update-ca-trust
+      docker exec --user root ${name} sh -c 'cp /pki-certs/ca.crt /etc/pki/ca-trust/source/anchors/vault-ca.crt && update-ca-trust'
       %{endfor~}
     EOT
   }

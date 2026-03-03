@@ -1,25 +1,3 @@
-# Generate self-signed TLS certificate for Keycloak HTTPS
-resource "null_resource" "keycloak_certs" {
-  triggers = {
-    keycloak_server = var.keycloak_server
-    cert_dir        = var.keycloak_cert_dir
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      mkdir -p ${var.keycloak_cert_dir}
-      openssl req -x509 -newkey rsa:2048 \
-        -keyout ${var.keycloak_cert_dir}/tls.key \
-        -out ${var.keycloak_cert_dir}/tls.crt \
-        -days 730 -nodes \
-        -subj "/CN=${var.keycloak_server}" \
-        -addext "subjectAltName=DNS:${var.keycloak_server},DNS:localhost,IP:127.0.0.1"
-      cp ${var.keycloak_cert_dir}/tls.crt ${var.keycloak_cert_dir}/ca.crt
-    EOT
-  }
-}
-
 # Keycloak Docker container image
 data "docker_registry_image" "keycloak" {
   name = var.keycloak_image
@@ -59,18 +37,10 @@ resource "docker_container" "keycloak_server" {
     container_path = "/opt/keycloak/data"
   }
 
-  mounts {
-    type      = "bind"
-    source    = "${var.keycloak_cert_dir}/tls.crt"
-    target    = "/opt/keycloak/certs/tls.crt"
-    read_only = true
-  }
-
-  mounts {
-    type      = "bind"
-    source    = "${var.keycloak_cert_dir}/tls.key"
-    target    = "/opt/keycloak/certs/tls.key"
-    read_only = true
+  volumes {
+    volume_name    = var.pki_certs_volume_name
+    container_path = "/opt/keycloak/certs"
+    read_only      = true
   }
 
   network_mode = "bridge"
@@ -101,7 +71,6 @@ resource "docker_container" "keycloak_server" {
   wait         = true
   wait_timeout = 300
   restart      = "on-failure"
-  depends_on   = [null_resource.keycloak_certs]
 }
 
 # Create OIDC realm

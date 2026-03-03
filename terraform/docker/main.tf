@@ -48,7 +48,7 @@ module "mongodb_clusters" {
   oidc_auth_name_prefix   = each.value.oidc_auth_name_prefix
   oidc_principal_name     = each.value.oidc_principal_name
   oidc_authorization_claim = each.value.oidc_authorization_claim
-  oidc_ca_cert_path       = each.value.oidc_ca_cert_path
+  pki_certs_volume_name   = each.value.pki_certs_volume_name
 #  enable_tls              = each.value.enable_tls
 #  tls_cert_file           = each.value.tls_cert_file
 #  tls_key_file            = each.value.tls_key_file
@@ -66,6 +66,7 @@ module "mongodb_clusters" {
     module.pmm_server,
     module.minio_server,
     module.ldap_server,
+    module.vault_server,
     module.keycloak_server
   ]
 }
@@ -104,7 +105,7 @@ module "mongodb_replsets" {
   oidc_auth_name_prefix   = each.value.oidc_auth_name_prefix
   oidc_principal_name     = each.value.oidc_principal_name
   oidc_authorization_claim = each.value.oidc_authorization_claim
-  oidc_ca_cert_path       = each.value.oidc_ca_cert_path
+  pki_certs_volume_name   = each.value.pki_certs_volume_name
 #  enable_tls              = each.value.enable_tls
 #  tls_cert_file           = each.value.tls_cert_file
 #  tls_key_file            = each.value.tls_key_file
@@ -122,6 +123,7 @@ module "mongodb_replsets" {
     module.pmm_server,
     module.minio_server,
     module.ldap_server,
+    module.vault_server,
     module.keycloak_server
   ]
 }
@@ -189,7 +191,7 @@ module "keycloak_server" {
   keycloak_image          = each.value.keycloak_image
   keycloak_port           = each.value.keycloak_port
   keycloak_https_port     = each.value.keycloak_https_port
-  keycloak_cert_dir       = each.value.keycloak_cert_dir
+  pki_certs_volume_name   = each.value.pki_certs_volume_name
   keycloak_external_port  = each.value.keycloak_external_port
   keycloak_admin_user     = each.value.keycloak_admin_user
   keycloak_admin_password = each.value.keycloak_admin_password
@@ -199,4 +201,25 @@ module "keycloak_server" {
   oidc_users              = each.value.oidc_users
   network_name            = each.value.network_name
   bind_to_localhost       = each.value.bind_to_localhost
+
+  depends_on = [module.vault_server]
+}
+
+module "vault_server" {
+  source                = "./modules/vault_server"
+  for_each              = var.vault_servers
+  vault_container_name  = each.key
+  vault_image           = each.value.vault_image
+  vault_port            = each.value.vault_port
+  vault_token           = each.value.vault_token
+  vault_pki_common_name = each.value.vault_pki_common_name
+  vault_cert_domain     = each.value.vault_cert_domain
+  vault_kv_path_prefix  = each.value.vault_kv_path_prefix
+  vault_kv_path         = each.value.vault_kv_path
+  vault_pki_role        = each.value.vault_pki_role
+  vault_keycloak_role   = each.value.vault_keycloak_role
+  keycloak_common_name  = each.value.keycloak_common_name
+  pki_certs_volume_name = each.value.pki_certs_volume_name
+  network_name          = each.value.network_name
+  bind_to_localhost     = each.value.bind_to_localhost
 }

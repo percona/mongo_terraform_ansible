@@ -18,10 +18,10 @@ variable "keycloak_https_port" {
   description = "HTTPS port for Keycloak (used for OIDC issuer URL)"
 }
 
-variable "keycloak_cert_dir" {
-  default     = "/tmp/keycloak-certs"
+variable "pki_certs_volume_name" {
+  description = "Name of the Docker volume (created by the vault module) containing the PKI CA cert, Keycloak TLS cert, and Keycloak TLS key"
+  default     = "vault-pki-certs"
   type        = string
-  description = "Host directory where the self-signed TLS certificate for Keycloak HTTPS is generated and stored"
 }
 
 variable "keycloak_external_port" {

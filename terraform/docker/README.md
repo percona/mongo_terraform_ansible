@@ -271,18 +271,27 @@ docker exec -it cl01-pbm-cli pbm status
 
 ## OIDC (with Keycloak)
 
-Percona Server for MongoDB supports OIDC authentication via the `MONGODB-OIDC` mechanism. Keycloak is used as the identity provider.
+Percona Server for MongoDB supports OIDC authentication via the `MONGODB-OIDC` mechanism. Keycloak is used as the identity provider. HashiCorp Vault acts as a PKI CA: it issues the Keycloak HTTPS certificate and places the CA certificate in a shared Docker volume trusted by all MongoDB containers.
 
-To enable OIDC, set `enable_oidc = true` and deploy a Keycloak server in your `tfvars` file. Example:
+To enable OIDC, deploy a Vault server, a Keycloak server, and set `enable_oidc = true` in your `tfvars` file. All three must share the same Docker network and `pki_certs_volume_name`. Example:
 
 ```
+vault_servers = {
+  "vault" = {
+    env_tag              = "test"
+    keycloak_common_name = "keycloak"
+    pki_certs_volume_name = "vault-pki-certs"
+  }
+}
+
 keycloak_servers = {
   "keycloak" = {
-    env_tag            = "test"
-    oidc_realm         = "percona"
-    oidc_client_id     = "mongodb"
-    oidc_client_secret = "mongodb-secret"
-    oidc_users         = [
+    env_tag               = "test"
+    pki_certs_volume_name = "vault-pki-certs"
+    oidc_realm            = "percona"
+    oidc_client_id        = "mongodb"
+    oidc_client_secret    = "mongodb-secret"
+    oidc_users            = [
       {
         username   = "alice"
         password   = "secret123"
@@ -296,13 +305,13 @@ keycloak_servers = {
 
 replsets = {
   "rs01" = {
-    env_tag           = "test"
-    enable_pmm        = false
-    enable_pbm        = false
-    enable_oidc       = true
-    oidc_issuer       = "https://keycloak:8443/realms/percona"
-    oidc_audience     = "mongodb"
-    oidc_ca_cert_path = "/tmp/keycloak-certs/ca.crt"
+    env_tag               = "test"
+    enable_pmm            = false
+    enable_pbm            = false
+    enable_oidc           = true
+    oidc_issuer           = "https://keycloak:8443/realms/percona"
+    oidc_audience         = "mongodb"
+    pki_certs_volume_name = "vault-pki-certs"
   }
 }
 
@@ -312,7 +321,11 @@ ldap_servers = {}
 clusters     = {}
 ```
 
-- The Keycloak admin console is accessible at http://127.0.0.1:8080. Default credentials are `admin/admin`. Keycloak also serves HTTPS on port 8443 with a self-signed certificate (used as the OIDC issuer endpoint for MongoDB).
+- Vault starts first, enables its PKI secrets engine, generates a root CA, issues a TLS certificate for Keycloak (with the Keycloak hostname as the SAN), and writes `ca.crt`, `tls.crt`, and `tls.key` to the shared `vault-pki-certs` Docker volume.
+
+- Keycloak mounts the `vault-pki-certs` volume for its TLS certificate and serves HTTPS on port 8443. The Vault admin console is accessible at http://127.0.0.1:8200 (token: `root`). The Keycloak admin console is accessible at http://127.0.0.1:8080. Default credentials are `admin/admin`.
+
+- Each MongoDB container mounts the same `vault-pki-certs` volume, copies `ca.crt` into the system trust store, and runs `update-ca-trust` so that the Vault CA is trusted when validating the OIDC issuer URL.
 
 - Create the OIDC user in MongoDB and assign them a role. For example:
 

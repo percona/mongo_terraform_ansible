@@ -333,9 +333,9 @@ variable "oidc_authorization_claim" {
   default     = "groups"
 }
 
-variable "oidc_ca_cert_path" {
+variable "pki_certs_volume_name" {
   type        = string
-  description = "Host path to CA certificate for OIDC issuer TLS validation (for self-signed certs). Leave empty if issuer uses a public CA."
+  description = "Name of the Docker volume (created by the vault module) containing the Vault CA cert. When non-empty and enable_oidc=true, the CA is trusted in each MongoDB container."
   default     = ""
 }
 ############

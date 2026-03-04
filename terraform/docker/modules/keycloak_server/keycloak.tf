@@ -150,7 +150,7 @@ resource "null_resource" "keycloak_client" {
         -s standardFlowEnabled=true \
         -s directAccessGrantsEnabled=true \
         -s serviceAccountsEnabled=true \
-        -s oauth2DeviceAuthorizationGrantEnabled=true
+        -s 'attributes.oauth2DeviceAuthorizationGrantEnabled=true'
     EOT
   }
 }
@@ -158,7 +158,7 @@ resource "null_resource" "keycloak_client" {
 # Create OIDC users in Keycloak
 resource "null_resource" "keycloak_users" {
   count      = length(var.oidc_users)
-  depends_on = [null_resource.keycloak_realm]
+  depends_on = [null_resource.keycloak_client]
 
   provisioner "local-exec" {
     command = <<-EOT

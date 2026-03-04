@@ -313,7 +313,7 @@ ldap_servers = {}
 clusters     = {}
 ```
 
-- A temporary container (using the Keycloak image) generates a self-signed TLS certificate and CA and writes them to the `keycloak-certs` Docker volume. The Keycloak server then starts and serves HTTPS on port 8443.
+- A temporary `alpine:3.21` container generates a self-signed TLS certificate and CA and writes them to the `keycloak-certs` Docker volume. The Keycloak server then starts and serves HTTPS on port 8443 (internal; mapped to port 8444 on the host by default to avoid conflicts with PMM).
 
 - Each MongoDB container mounts the same `keycloak-certs` volume and runs `update-ca-trust` to add `ca.crt` to the system trust store, so OIDC token validation against `https://keycloak:8443` succeeds.
 

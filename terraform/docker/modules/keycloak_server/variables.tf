@@ -15,7 +15,13 @@ variable "keycloak_port" {
 variable "keycloak_https_port" {
   default     = 8443
   type        = number
-  description = "HTTPS port for Keycloak (used for OIDC issuer URL)"
+  description = "HTTPS port for Keycloak (used for OIDC issuer URL; internal Docker port)"
+}
+
+variable "keycloak_https_external_port" {
+  default     = 8444
+  type        = number
+  description = "External HTTPS port for Keycloak exposed on the host. Use a value other than 8443 to avoid conflicts with PMM."
 }
 
 variable "pki_certs_volume_name" {

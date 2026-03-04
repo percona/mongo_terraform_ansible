@@ -28,7 +28,8 @@ resource "null_resource" "generate_keycloak_cert" {
             -out /certs/tls.crt \
             -subj '/CN=${var.keycloak_server}' \
             -addext 'subjectAltName=DNS:${var.keycloak_server},DNS:localhost,IP:127.0.0.1' && \
-          cp /certs/tls.crt /certs/ca.crt"
+          cp /certs/tls.crt /certs/ca.crt && \
+          chmod 644 /certs/tls.key /certs/tls.crt /certs/ca.crt"
     EOT
   }
 }
@@ -91,7 +92,7 @@ resource "docker_container" "keycloak_server" {
 
   ports {
     internal = var.keycloak_https_port
-    external = var.keycloak_https_port
+    external = var.keycloak_https_external_port
     ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
   }
 

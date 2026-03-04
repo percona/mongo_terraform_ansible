@@ -293,6 +293,7 @@ variable "keycloak_servers" {
     keycloak_image            = optional(string, "quay.io/keycloak/keycloak:latest")
     keycloak_port             = optional(number, 8080)
     keycloak_https_port       = optional(number, 8443)
+    keycloak_https_external_port = optional(number, 8444)             # External HTTPS port; use != 8443 to avoid conflicts with PMM
     keycloak_external_port    = optional(number, 8080)                 # Port of Keycloak as seen from outside docker
     pki_certs_volume_name     = optional(string, "keycloak-certs")     # Docker volume created by Keycloak to store its TLS cert+CA
     keycloak_admin_user       = optional(string, "admin")

@@ -190,9 +190,10 @@ module "keycloak_server" {
   env_tag                 = each.value.env_tag
   keycloak_image          = each.value.keycloak_image
   keycloak_port           = each.value.keycloak_port
-  keycloak_https_port     = each.value.keycloak_https_port
-  pki_certs_volume_name   = each.value.pki_certs_volume_name
-  keycloak_external_port  = each.value.keycloak_external_port
+  keycloak_https_port          = each.value.keycloak_https_port
+  keycloak_https_external_port = each.value.keycloak_https_external_port
+  pki_certs_volume_name        = each.value.pki_certs_volume_name
+  keycloak_external_port       = each.value.keycloak_external_port
   keycloak_admin_user     = each.value.keycloak_admin_user
   keycloak_admin_password = each.value.keycloak_admin_password
   oidc_realm              = each.value.oidc_realm

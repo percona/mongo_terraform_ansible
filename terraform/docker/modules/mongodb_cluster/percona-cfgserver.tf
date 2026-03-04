@@ -60,16 +60,7 @@ resource "docker_container" "cfg" {
     target = "/data/db"
     source = docker_volume.cfg_volume[count.index].name
   }
-  dynamic "mounts" {
-    for_each = var.enable_oidc && var.pki_certs_volume_name != "" ? [1] : []
-    content {
-      source    = var.pki_certs_volume_name
-      target    = "/pki-certs"
-      type      = "volume"
-      read_only = true
-    }
-  }
-  env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/pki-certs/ca.crt"] : []
+  env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/etc/ssl/certs/keycloak-ca.crt"] : []
   network_mode = "bridge"     
   networks_advanced {
     name = "${var.network_name}"
@@ -86,16 +77,20 @@ resource "docker_container" "cfg" {
   depends_on = [docker_container.init_keyfile]
 }
 
-resource "null_resource" "cfg_oidc_ca_trust" {
+resource "null_resource" "cfg_copy_oidc_cert" {
   count      = var.enable_oidc && var.pki_certs_volume_name != "" ? 1 : 0
   depends_on = [docker_container.cfg]
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
+      docker run --rm -v ${var.pki_certs_volume_name}:/certs alpine:3.21 cat /certs/ca.crt > /tmp/keycloak-ca-${var.cluster_name}-cfg.crt
+      chmod 600 /tmp/keycloak-ca-${var.cluster_name}-cfg.crt
       %{for name in docker_container.cfg[*].name~}
-      docker exec --user root ${name} sh -c 'cp /pki-certs/ca.crt /etc/pki/ca-trust/source/anchors/keycloak-ca.crt && update-ca-trust'
+      docker cp /tmp/keycloak-ca-${var.cluster_name}-cfg.crt ${name}:/etc/ssl/certs/keycloak-ca.crt
+      docker exec --user root ${name} update-ca-trust
       %{endfor~}
+      rm -f /tmp/keycloak-ca-${var.cluster_name}-cfg.crt
     EOT
   }
 }

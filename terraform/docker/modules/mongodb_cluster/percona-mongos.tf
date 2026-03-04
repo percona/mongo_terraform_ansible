@@ -47,6 +47,7 @@ resource "docker_container" "mongos" {
       read_only      = true
     }
   }
+  env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/pki-certs/ca.crt"] : []
   labels { 
     label = "environment"
     value = var.env_tag
@@ -75,7 +76,7 @@ resource "null_resource" "mongos_oidc_ca_trust" {
     command = <<-EOT
       set -e
       %{for name in docker_container.mongos[*].name~}
-      docker exec --user root ${name} sh -c 'cp /pki-certs/ca.crt /etc/pki/ca-trust/source/anchors/vault-ca.crt && update-ca-trust'
+      docker exec --user root ${name} sh -c 'cp /pki-certs/ca.crt /etc/pki/ca-trust/source/anchors/keycloak-ca.crt && update-ca-trust'
       %{endfor~}
     EOT
   }

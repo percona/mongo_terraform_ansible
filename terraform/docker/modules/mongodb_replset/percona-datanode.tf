@@ -72,6 +72,7 @@ resource "docker_container" "rs" {
       read_only      = true
     }
   }
+  env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/pki-certs/ca.crt"] : []
   healthcheck {
     test        = ["CMD-SHELL", "mongosh --port ${var.replset_port + count.index} --eval 'db.runCommand({ ping: 1 })'"]
     interval    = "10s"
@@ -92,7 +93,7 @@ resource "null_resource" "rs_oidc_ca_trust" {
     command = <<-EOT
       set -e
       %{for name in docker_container.rs[*].name~}
-      docker exec --user root ${name} sh -c 'cp /pki-certs/ca.crt /etc/pki/ca-trust/source/anchors/vault-ca.crt && update-ca-trust'
+      docker exec --user root ${name} sh -c 'cp /pki-certs/ca.crt /etc/pki/ca-trust/source/anchors/keycloak-ca.crt && update-ca-trust'
       %{endfor~}
     EOT
   }

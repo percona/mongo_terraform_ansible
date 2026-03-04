@@ -315,7 +315,9 @@ clusters     = {}
 
 - A temporary `alpine:3.21` container generates a self-signed TLS certificate and CA and writes them to the `keycloak-certs` Docker volume. The Keycloak server then starts and serves HTTPS on port 8443 (internal; mapped to port 8444 on the host by default to avoid conflicts with PMM).
 
-- Each MongoDB container mounts the same `keycloak-certs` volume and runs `update-ca-trust` to add `ca.crt` to the system trust store, so OIDC token validation against `https://keycloak:8443` succeeds.
+- Each MongoDB container mounts the same `keycloak-certs` volume at `/pki-certs`. Two mechanisms ensure the Keycloak CA cert is trusted:
+  - `NODE_EXTRA_CA_CERTS=/pki-certs/ca.crt` is set as a container environment variable, so mongosh (Node.js) trusts the cert without any manual steps.
+  - `update-ca-trust` is also run inside each container so that mongod itself (C++/OpenSSL) can validate OIDC tokens against `https://keycloak:8443`.
 
 - The Keycloak admin console is accessible at http://127.0.0.1:8080. Default credentials are `admin/admin`.
 
@@ -328,7 +330,7 @@ clusters     = {}
 
   The username format is `<authNamePrefix>/<principalName claim value>`. With the defaults, the prefix is `oidc` and the claim is `preferred_username`.
 
-- To authenticate using OIDC, use the device authorization flow. Run mongosh **inside** one of the MongoDB containers (which already trusts the Keycloak CA) rather than from the host — this avoids the self-signed certificate error that occurs when mongosh runs on the host:
+- To authenticate using OIDC, use the device authorization flow. Run mongosh **inside** one of the MongoDB containers — the `NODE_EXTRA_CA_CERTS` env var is already set so mongosh trusts the Keycloak CA:
 
   ```
   docker exec -it rs01-svr0 mongosh "mongodb://rs01-svr0:27017/?authMechanism=MONGODB-OIDC" \

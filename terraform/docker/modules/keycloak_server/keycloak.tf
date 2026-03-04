@@ -3,8 +3,8 @@ resource "docker_volume" "keycloak_certs" {
   name = var.pki_certs_volume_name
 }
 
-# Generate a self-signed TLS cert inside a temporary Keycloak container.
-# The Keycloak image (UBI9-based) includes openssl, so no extra tools are needed.
+# Generate a self-signed TLS cert using an Alpine container (which has openssl available).
+# The Keycloak image (ubi9-minimal) does not include openssl.
 # ca.crt is a copy of tls.crt (self-signed cert is its own CA).
 resource "null_resource" "generate_keycloak_cert" {
   depends_on = [docker_volume.keycloak_certs]
@@ -18,16 +18,17 @@ resource "null_resource" "generate_keycloak_cert" {
     command = <<-EOT
       set -e
       docker run --rm \
-        -v ${docker_volume.keycloak_certs.name}:/opt/keycloak/certs \
+        -v ${docker_volume.keycloak_certs.name}:/certs \
         --entrypoint sh \
-        ${var.keycloak_image} \
-        -c "openssl req -newkey rsa:2048 -nodes \
-          -keyout /opt/keycloak/certs/tls.key \
-          -x509 -days 365 \
-          -out /opt/keycloak/certs/tls.crt \
-          -subj '/CN=${var.keycloak_server}' \
-          -addext 'subjectAltName=DNS:${var.keycloak_server},DNS:localhost,IP:127.0.0.1' && \
-          cp /opt/keycloak/certs/tls.crt /opt/keycloak/certs/ca.crt"
+        alpine:3.21 \
+        -c "apk add --no-cache openssl >/dev/null 2>&1 && \
+          openssl req -newkey rsa:2048 -nodes \
+            -keyout /certs/tls.key \
+            -x509 -days 365 \
+            -out /certs/tls.crt \
+            -subj '/CN=${var.keycloak_server}' \
+            -addext 'subjectAltName=DNS:${var.keycloak_server},DNS:localhost,IP:127.0.0.1' && \
+          cp /certs/tls.crt /certs/ca.crt"
     EOT
   }
 }

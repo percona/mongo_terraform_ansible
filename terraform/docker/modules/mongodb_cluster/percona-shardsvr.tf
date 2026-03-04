@@ -80,6 +80,10 @@ resource "null_resource" "shard_copy_oidc_cert" {
   count      = var.enable_oidc && var.pki_certs_volume_name != "" ? 1 : 0
   depends_on = [docker_container.shard]
 
+  triggers = {
+    container_ids = join(",", docker_container.shard[*].id)
+  }
+
   provisioner "local-exec" {
     command = <<-EOT
       set -e

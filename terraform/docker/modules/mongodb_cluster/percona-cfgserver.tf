@@ -81,6 +81,10 @@ resource "null_resource" "cfg_copy_oidc_cert" {
   count      = var.enable_oidc && var.pki_certs_volume_name != "" ? 1 : 0
   depends_on = [docker_container.cfg]
 
+  triggers = {
+    container_ids = join(",", docker_container.cfg[*].id)
+  }
+
   provisioner "local-exec" {
     command = <<-EOT
       set -e

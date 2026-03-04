@@ -266,20 +266,14 @@ variable "ldap_servers" {
 ##################
 
 variable "vault_servers" {
-   description = "HashiCorp Vault servers to deploy (used as PKI CA for OIDC and as KV store for MongoDB encryption keys)"
+   description = "HashiCorp Vault servers to deploy (used as KV store for MongoDB encryption keys)"
    type = map(object({
     env_tag               = optional(string, "test")
     vault_image           = optional(string, "hashicorp/vault:latest")
     vault_port            = optional(number, 8200)
     vault_token           = optional(string, "root")
-    vault_pki_common_name = optional(string, "vault.local")
-    vault_cert_domain     = optional(string, "mongo.local")
     vault_kv_path_prefix  = optional(string, "kv")
     vault_kv_path         = optional(string, "kv/mongo-key")
-    vault_pki_role        = optional(string, "mongo")
-    vault_keycloak_role   = optional(string, "keycloak")
-    keycloak_common_name  = optional(string, "keycloak")              # Keycloak container hostname (SAN in issued TLS cert)
-    pki_certs_volume_name = optional(string, "vault-pki-certs")      # Shared Docker volume for PKI certs
     network_name          = optional(string, "mongo-terraform")
     bind_to_localhost     = optional(bool, true)
    }))
@@ -300,8 +294,7 @@ variable "keycloak_servers" {
     keycloak_port             = optional(number, 8080)
     keycloak_https_port       = optional(number, 8443)
     keycloak_external_port    = optional(number, 8080)                 # Port of Keycloak as seen from outside docker
-    pki_certs_volume_name     = optional(string, "vault-pki-certs")    # Docker volume with PKI certs from Vault
-    vault_container_name      = optional(string, "")                   # Vault container name (for cert readiness check)
+    pki_certs_volume_name     = optional(string, "keycloak-certs")     # Docker volume created by Keycloak to store its TLS cert+CA
     keycloak_admin_user       = optional(string, "admin")
     keycloak_admin_password   = optional(string, "admin")
     oidc_realm                = optional(string, "percona")

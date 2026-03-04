@@ -271,24 +271,15 @@ docker exec -it cl01-pbm-cli pbm status
 
 ## OIDC (with Keycloak)
 
-Percona Server for MongoDB supports OIDC authentication via the `MONGODB-OIDC` mechanism. Keycloak is used as the identity provider. HashiCorp Vault acts as a PKI CA: it issues the Keycloak HTTPS certificate and places the CA certificate in a shared Docker volume trusted by all MongoDB containers.
+Percona Server for MongoDB supports OIDC authentication via the `MONGODB-OIDC` mechanism. Keycloak is used as the identity provider. A self-signed TLS certificate is generated directly inside the Keycloak container (using the Keycloak image's built-in OpenSSL), written to a Docker volume that is also mounted into each MongoDB container so the CA cert is automatically trusted.
 
-To enable OIDC, deploy a Vault server, a Keycloak server, and set `enable_oidc = true` in your `tfvars` file. All three must share the same Docker network and `pki_certs_volume_name`. Example:
+To enable OIDC, deploy a Keycloak server and set `enable_oidc = true` in your `tfvars` file. Both must share the same Docker network and `pki_certs_volume_name`. Example:
 
 ```
-vault_servers = {
-  "vault" = {
-    env_tag              = "test"
-    keycloak_common_name = "keycloak"
-    pki_certs_volume_name = "vault-pki-certs"
-  }
-}
-
 keycloak_servers = {
   "keycloak" = {
     env_tag               = "test"
-    pki_certs_volume_name = "vault-pki-certs"
-    vault_container_name  = "vault"
+    pki_certs_volume_name = "keycloak-certs"
     oidc_realm            = "percona"
     oidc_client_id        = "mongodb"
     oidc_client_secret    = "mongodb-secret"
@@ -312,7 +303,7 @@ replsets = {
     enable_oidc           = true
     oidc_issuer           = "https://keycloak:8443/realms/percona"
     oidc_audience         = "mongodb"
-    pki_certs_volume_name = "vault-pki-certs"
+    pki_certs_volume_name = "keycloak-certs"
   }
 }
 
@@ -322,11 +313,11 @@ ldap_servers = {}
 clusters     = {}
 ```
 
-- Vault starts first, enables its PKI secrets engine, generates a root CA, issues a TLS certificate for Keycloak (with the Keycloak hostname as the SAN), and writes `ca.crt`, `tls.crt`, and `tls.key` to the shared `vault-pki-certs` Docker volume.
+- A temporary container (using the Keycloak image) generates a self-signed TLS certificate and CA and writes them to the `keycloak-certs` Docker volume. The Keycloak server then starts and serves HTTPS on port 8443.
 
-- Keycloak mounts the `vault-pki-certs` volume for its TLS certificate and serves HTTPS on port 8443. The Vault admin console is accessible at http://127.0.0.1:8200 (token: `root`). The Keycloak admin console is accessible at http://127.0.0.1:8080. Default credentials are `admin/admin`.
+- Each MongoDB container mounts the same `keycloak-certs` volume and runs `update-ca-trust` to add `ca.crt` to the system trust store, so OIDC token validation against `https://keycloak:8443` succeeds.
 
-- Each MongoDB container mounts the same `vault-pki-certs` volume, copies `ca.crt` into the system trust store, and runs `update-ca-trust` so that the Vault CA is trusted when validating the OIDC issuer URL.
+- The Keycloak admin console is accessible at http://127.0.0.1:8080. Default credentials are `admin/admin`.
 
 - Create the OIDC user in MongoDB and assign them a role. For example:
 
@@ -337,22 +328,23 @@ clusters     = {}
 
   The username format is `<authNamePrefix>/<principalName claim value>`. With the defaults, the prefix is `oidc` and the claim is `preferred_username`.
 
-- To authenticate using OIDC, first obtain an access token from Keycloak (using the HTTP endpoint for simplicity):
+- To authenticate using OIDC, use the device authorization flow. mongosh initiates the flow and displays a URL and user code for browser-based authentication:
 
   ```
-  TOKEN=$(curl -sL -X POST http://localhost:8080/realms/percona/protocol/openid-connect/token \
-    -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "client_id=mongodb" \
-    -d "client_secret=mongodb-secret" \
-    -d "username=alice" \
-    -d "password=secret123" \
-    -d "grant_type=password" | grep -o '"access_token":"[^"]*"' | sed 's/"access_token":"//;s/"//')
+  mongosh "mongodb://localhost:27017/?authMechanism=MONGODB-OIDC" \
+    --authenticationDatabase '$external'
   ```
 
-  Then connect to MongoDB using the token via the connection string:
+  mongosh will print output similar to:
+
   ```
-  mongosh "mongodb://localhost:27017/\$external?authMechanism=MONGODB-OIDC&authMechanismProperties=OIDC_ACCESS_TOKEN:${TOKEN}"
+  To sign in, use a web browser to open the page https://keycloak:8443/realms/percona/device and enter the code XXXX-XXXX
   ```
+
+  Since `keycloak` is a Docker container hostname and not resolvable in your browser, open the equivalent URL via localhost instead:
+  `http://localhost:8080/realms/percona/device`
+
+  Enter the device code shown, log in as `alice`, and mongosh will automatically complete the authentication.
 
 ## Cleanup
 

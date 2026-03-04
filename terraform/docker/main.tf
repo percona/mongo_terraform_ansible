@@ -192,7 +192,6 @@ module "keycloak_server" {
   keycloak_port           = each.value.keycloak_port
   keycloak_https_port     = each.value.keycloak_https_port
   pki_certs_volume_name   = each.value.pki_certs_volume_name
-  vault_container_name    = each.value.vault_container_name
   keycloak_external_port  = each.value.keycloak_external_port
   keycloak_admin_user     = each.value.keycloak_admin_user
   keycloak_admin_password = each.value.keycloak_admin_password
@@ -202,8 +201,6 @@ module "keycloak_server" {
   oidc_users              = each.value.oidc_users
   network_name            = each.value.network_name
   bind_to_localhost       = each.value.bind_to_localhost
-
-  depends_on = [module.vault_server]
 }
 
 module "vault_server" {
@@ -213,14 +210,8 @@ module "vault_server" {
   vault_image           = each.value.vault_image
   vault_port            = each.value.vault_port
   vault_token           = each.value.vault_token
-  vault_pki_common_name = each.value.vault_pki_common_name
-  vault_cert_domain     = each.value.vault_cert_domain
   vault_kv_path_prefix  = each.value.vault_kv_path_prefix
   vault_kv_path         = each.value.vault_kv_path
-  vault_pki_role        = each.value.vault_pki_role
-  vault_keycloak_role   = each.value.vault_keycloak_role
-  keycloak_common_name  = each.value.keycloak_common_name
-  pki_certs_volume_name = each.value.pki_certs_volume_name
   network_name          = each.value.network_name
   bind_to_localhost     = each.value.bind_to_localhost
 }

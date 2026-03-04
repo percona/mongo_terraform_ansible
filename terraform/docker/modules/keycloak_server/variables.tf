@@ -19,19 +19,9 @@ variable "keycloak_https_port" {
 }
 
 variable "pki_certs_volume_name" {
-  description = "Name of the Docker volume (created by the vault module) containing the PKI CA cert, Keycloak TLS cert, and Keycloak TLS key"
-  default     = "vault-pki-certs"
+  description = "Name of the Docker volume created by this module to store the Keycloak TLS cert, key, and CA cert. Must match the value used in MongoDB modules so they can trust the Keycloak CA."
+  default     = "keycloak-certs"
   type        = string
-}
-
-variable "vault_container_name" {
-  description = "Name of the Vault container that writes certs to pki_certs_volume_name. When set, an explicit check ensures certs are present before Keycloak starts."
-  default     = ""
-  type        = string
-  validation {
-    condition     = var.vault_container_name == "" || can(regex("^[a-zA-Z0-9][a-zA-Z0-9_.-]*$", var.vault_container_name))
-    error_message = "vault_container_name must be empty or a valid Docker container name (alphanumeric, hyphens, underscores, and periods only)."
-  }
 }
 
 variable "keycloak_external_port" {

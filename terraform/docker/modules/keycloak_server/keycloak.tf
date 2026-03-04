@@ -1,31 +1,33 @@
-# Wait for Vault to write TLS certs to the shared PKI volume before starting Keycloak.
-# This ensures there is no race condition when Terraform's module-level depends_on
-# does not guarantee null_resource provisioners in vault_server finish first.
-resource "null_resource" "wait_for_vault_certs" {
-  count = var.pki_certs_volume_name != "" && var.vault_container_name != "" ? 1 : 0
+# Docker volume for Keycloak TLS certificate and CA cert (shared with MongoDB containers)
+resource "docker_volume" "keycloak_certs" {
+  name = var.pki_certs_volume_name
+}
+
+# Generate a self-signed TLS cert inside a temporary Keycloak container.
+# The Keycloak image (UBI9-based) includes openssl, so no extra tools are needed.
+# ca.crt is a copy of tls.crt (self-signed cert is its own CA).
+resource "null_resource" "generate_keycloak_cert" {
+  depends_on = [docker_volume.keycloak_certs]
 
   triggers = {
-    vault_container  = var.vault_container_name
-    pki_volume       = var.pki_certs_volume_name
+    keycloak_server = var.keycloak_server
+    certs_volume    = docker_volume.keycloak_certs.name
   }
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
-      RETRIES=40
-      INTERVAL=5
-      COUNT=0
-      echo "Waiting for PKI certs to appear in vault container '${var.vault_container_name}'..."
-      until docker exec ${var.vault_container_name} sh -c 'test -f /pki/tls.crt && test -f /pki/ca.crt && test -f /pki/tls.key'; do
-        COUNT=$((COUNT + 1))
-        if [ "$COUNT" -ge "$RETRIES" ]; then
-          echo "Timed out waiting for PKI certs in ${var.vault_container_name}:/pki"
-          exit 1
-        fi
-        echo "PKI certs not ready yet, retrying in ${INTERVAL}s ($COUNT/$RETRIES)..."
-        sleep $INTERVAL
-      done
-      echo "PKI certs are ready in volume ${var.pki_certs_volume_name}"
+      docker run --rm \
+        -v ${docker_volume.keycloak_certs.name}:/opt/keycloak/certs \
+        --entrypoint sh \
+        ${var.keycloak_image} \
+        -c "openssl req -newkey rsa:2048 -nodes \
+          -keyout /opt/keycloak/certs/tls.key \
+          -x509 -days 365 \
+          -out /opt/keycloak/certs/tls.crt \
+          -subj '/CN=${var.keycloak_server}' \
+          -addext 'subjectAltName=DNS:${var.keycloak_server},DNS:localhost,IP:127.0.0.1' && \
+          cp /opt/keycloak/certs/tls.crt /opt/keycloak/certs/ca.crt"
     EOT
   }
 }
@@ -70,7 +72,7 @@ resource "docker_container" "keycloak_server" {
   }
 
   volumes {
-    volume_name    = var.pki_certs_volume_name
+    volume_name    = docker_volume.keycloak_certs.name
     container_path = "/opt/keycloak/certs"
     read_only      = true
   }
@@ -103,7 +105,7 @@ resource "docker_container" "keycloak_server" {
   wait         = true
   wait_timeout = 300
   restart      = "on-failure"
-  depends_on   = [null_resource.wait_for_vault_certs]
+  depends_on   = [null_resource.generate_keycloak_cert]
 }
 
 # Create OIDC realm
@@ -145,7 +147,8 @@ resource "null_resource" "keycloak_client" {
         -s secret=${var.oidc_client_secret} \
         -s standardFlowEnabled=true \
         -s directAccessGrantsEnabled=true \
-        -s serviceAccountsEnabled=true
+        -s serviceAccountsEnabled=true \
+        -s oauth2DeviceAuthorizationGrantEnabled=true
     EOT
   }
 }

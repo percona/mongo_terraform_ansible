@@ -14,11 +14,11 @@ systemLog:
 storage:
   dbPath: {{ mongod_path }}
   directoryPerDB: true
+  wiredTiger:
+    engineConfig:
+      cacheSizeGB: {{ wired_tiger_cache_size_gb }}
 # journal:
 #   enabled: true
-# wiredTiger:
-#   engineConfig:
-#         directoryForIndexes: true
 
 # how the process runs
 processManagement:
@@ -29,7 +29,7 @@ processManagement:
 # network interfaces
 net:
   port: {{ mongo_port }}
-  bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
+  bindIpAll: true
 {% if use_tls %}
   tls:
     mode: requireTLS
@@ -66,6 +66,20 @@ operationProfiling:
 
 replication:
   replSetName: {{ cluster }}-{{ hostvars[inventory_hostname].group_names | reject('equalto', 'shards') | list | first }}
+  oplogSizeMB: {{ mongo_oplog_size_mb }}
 
 sharding:
   clusterRole: shardsvr
+{% if oidc_enabled %}
+
+setParameter:
+  authenticationMechanisms: MONGODB-OIDC,SCRAM-SHA-256
+  oidcIdentityProviders:
+    - issuer: "{{ oidc_issuer }}"
+      audience: "{{ oidc_audience }}"
+      clientId: "{{ oidc_client_id }}"
+      authNamePrefix: "{{ oidc_auth_name_prefix }}"
+      supportsHumanFlows: {{ oidc_supports_human_flows | lower }}
+      principalName: "{{ oidc_principal_name }}"
+      authorizationClaim: "{{ oidc_authorization_claim }}"
+{% endif %}

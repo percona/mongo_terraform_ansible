@@ -63,7 +63,16 @@ resource "docker_container" "shard" {
     target = "/data/db"
     source = docker_volume.shard_volume[count.index].name
   }
-  env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/etc/ssl/certs/keycloak-ca.crt"] : []
+  dynamic "mounts" {
+    for_each = var.enable_oidc && var.pki_certs_volume_name != "" ? [1] : []
+    content {
+      type      = "volume"
+      target    = "/etc/mongo/oidc-certs"
+      source    = var.pki_certs_volume_name
+      read_only = true
+    }
+  }
+  env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/etc/mongo/oidc-certs/ca.crt"] : []
   healthcheck {
     test        = ["CMD-SHELL", "mongosh --port ${var.shardsvr_port} --eval 'db.runCommand({ ping: 1 })'"]
     interval    = "10s"
@@ -74,26 +83,4 @@ resource "docker_container" "shard" {
   wait = true
   restart = "no"
   depends_on = [docker_container.init_keyfile]
-}
-
-resource "null_resource" "shard_copy_oidc_cert" {
-  count      = var.enable_oidc && var.pki_certs_volume_name != "" ? 1 : 0
-  depends_on = [docker_container.shard]
-
-  triggers = {
-    container_ids = join(",", docker_container.shard[*].id)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      docker run --rm -v ${var.pki_certs_volume_name}:/certs alpine:3.21 cat /certs/ca.crt > /tmp/keycloak-ca-${var.cluster_name}-shard.crt
-      chmod 600 /tmp/keycloak-ca-${var.cluster_name}-shard.crt
-      %{for name in docker_container.shard[*].name~}
-      docker cp /tmp/keycloak-ca-${var.cluster_name}-shard.crt ${name}:/etc/ssl/certs/keycloak-ca.crt
-      docker exec --user root ${name} update-ca-trust
-      %{endfor~}
-      rm -f /tmp/keycloak-ca-${var.cluster_name}-shard.crt
-    EOT
-  }
 }

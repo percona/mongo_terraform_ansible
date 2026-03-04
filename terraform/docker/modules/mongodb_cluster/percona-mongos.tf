@@ -39,7 +39,16 @@ resource "docker_container" "mongos" {
     type   = "volume"
     read_only = true
   }
-  env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/etc/ssl/certs/keycloak-ca.crt"] : []
+  dynamic "mounts" {
+    for_each = var.enable_oidc && var.pki_certs_volume_name != "" ? [1] : []
+    content {
+      type      = "volume"
+      target    = "/etc/mongo/oidc-certs"
+      source    = var.pki_certs_volume_name
+      read_only = true
+    }
+  }
+  env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/etc/mongo/oidc-certs/ca.crt"] : []
   labels { 
     label = "environment"
     value = var.env_tag
@@ -58,26 +67,4 @@ resource "docker_container" "mongos" {
   wait = true
   restart = "no"
   depends_on = [docker_container.init_keyfile]
-}
-
-resource "null_resource" "mongos_copy_oidc_cert" {
-  count      = var.enable_oidc && var.pki_certs_volume_name != "" ? 1 : 0
-  depends_on = [docker_container.mongos]
-
-  triggers = {
-    container_ids = join(",", docker_container.mongos[*].id)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      docker run --rm -v ${var.pki_certs_volume_name}:/certs alpine:3.21 cat /certs/ca.crt > /tmp/keycloak-ca-${var.cluster_name}-mongos.crt
-      chmod 600 /tmp/keycloak-ca-${var.cluster_name}-mongos.crt
-      %{for name in docker_container.mongos[*].name~}
-      docker cp /tmp/keycloak-ca-${var.cluster_name}-mongos.crt ${name}:/etc/ssl/certs/keycloak-ca.crt
-      docker exec --user root ${name} update-ca-trust
-      %{endfor~}
-      rm -f /tmp/keycloak-ca-${var.cluster_name}-mongos.crt
-    EOT
-  }
 }

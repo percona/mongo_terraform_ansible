@@ -3,35 +3,69 @@ resource "docker_volume" "keycloak_certs" {
   name = var.pki_certs_volume_name
 }
 
-# Generate a self-signed TLS cert using an Alpine container (which has openssl available).
-# The Keycloak image (ubi9-minimal) does not include openssl.
-# ca.crt is a copy of tls.crt (self-signed cert is its own CA).
-resource "null_resource" "generate_keycloak_cert" {
-  depends_on = [docker_volume.keycloak_certs]
+# Generate a self-signed TLS certificate using the Terraform TLS provider
+resource "tls_private_key" "keycloak" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
 
-  triggers = {
-    keycloak_server = var.keycloak_server
-    certs_volume    = docker_volume.keycloak_certs.name
+resource "tls_self_signed_cert" "keycloak" {
+  private_key_pem = tls_private_key.keycloak.private_key_pem
+
+  subject {
+    common_name = var.keycloak_server
   }
 
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      docker run --rm \
-        -v ${docker_volume.keycloak_certs.name}:/certs \
-        --entrypoint sh \
-        alpine:3.21 \
-        -c "apk add --no-cache openssl >/dev/null 2>&1 && \
-          openssl req -newkey rsa:2048 -nodes \
-            -keyout /certs/tls.key \
-            -x509 -days 365 \
-            -out /certs/tls.crt \
-            -subj '/CN=${var.keycloak_server}' \
-            -addext 'subjectAltName=DNS:${var.keycloak_server},DNS:localhost,IP:127.0.0.1' && \
-          cp /certs/tls.crt /certs/ca.crt && \
-          chmod 644 /certs/tls.key /certs/tls.crt /certs/ca.crt"
-    EOT
+  validity_period_hours = 8760 # 1 year
+
+  dns_names    = [var.keycloak_server, "localhost"]
+  ip_addresses = ["127.0.0.1"]
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+  ]
+}
+
+# Alpine image used by the cert init container
+data "docker_registry_image" "alpine" {
+  name = "alpine:3.21"
+}
+
+resource "docker_image" "alpine" {
+  name          = "alpine:3.21"
+  pull_triggers = [data.docker_registry_image.alpine.sha256_digest]
+  keep_locally  = true
+}
+
+# Write the generated cert and key into the shared Docker volume so that
+# Keycloak and MongoDB containers can mount it directly — no docker cp needed.
+resource "docker_container" "init_keycloak_certs" {
+  name         = "${var.keycloak_server}-init-certs"
+  image        = docker_image.alpine.image_id
+  network_mode = "bridge"
+  command = [
+    "sh", "-c",
+    join(" && ", [
+      "printf '%s' \"$TLS_CERT\" | base64 -d > /certs/tls.crt",
+      "cp /certs/tls.crt /certs/ca.crt",
+      "printf '%s' \"$TLS_KEY\" | base64 -d > /certs/tls.key",
+      "chmod 644 /certs/tls.crt /certs/tls.key /certs/ca.crt",
+    ])
+  ]
+  env = [
+    "TLS_CERT=${base64encode(tls_self_signed_cert.keycloak.cert_pem)}",
+    "TLS_KEY=${base64encode(tls_private_key.keycloak.private_key_pem)}",
+  ]
+  mounts {
+    target = "/certs"
+    source = docker_volume.keycloak_certs.name
+    type   = "volume"
   }
+  # must_run = false: this is an ephemeral init container; it exits after writing
+  # the certs to the volume and must not be kept running.
+  must_run = false
 }
 
 # Keycloak Docker container image
@@ -107,7 +141,7 @@ resource "docker_container" "keycloak_server" {
   wait         = true
   wait_timeout = 300
   restart      = "on-failure"
-  depends_on   = [null_resource.generate_keycloak_cert]
+  depends_on   = [docker_container.init_keycloak_certs]
 }
 
 # Create OIDC realm

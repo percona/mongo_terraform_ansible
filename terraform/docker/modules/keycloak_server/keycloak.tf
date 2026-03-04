@@ -1,3 +1,35 @@
+# Wait for Vault to write TLS certs to the shared PKI volume before starting Keycloak.
+# This ensures there is no race condition when Terraform's module-level depends_on
+# does not guarantee null_resource provisioners in vault_server finish first.
+resource "null_resource" "wait_for_vault_certs" {
+  count = var.pki_certs_volume_name != "" && var.vault_container_name != "" ? 1 : 0
+
+  triggers = {
+    vault_container  = var.vault_container_name
+    pki_volume       = var.pki_certs_volume_name
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      RETRIES=40
+      INTERVAL=5
+      COUNT=0
+      echo "Waiting for PKI certs to appear in vault container '${var.vault_container_name}'..."
+      until docker exec ${var.vault_container_name} sh -c 'test -f /pki/tls.crt && test -f /pki/ca.crt && test -f /pki/tls.key'; do
+        COUNT=$((COUNT + 1))
+        if [ "$COUNT" -ge "$RETRIES" ]; then
+          echo "Timed out waiting for PKI certs in ${var.vault_container_name}:/pki"
+          exit 1
+        fi
+        echo "PKI certs not ready yet, retrying in ${INTERVAL}s ($COUNT/$RETRIES)..."
+        sleep $INTERVAL
+      done
+      echo "PKI certs are ready in volume ${var.pki_certs_volume_name}"
+    EOT
+  }
+}
+
 # Keycloak Docker container image
 data "docker_registry_image" "keycloak" {
   name = var.keycloak_image
@@ -71,6 +103,7 @@ resource "docker_container" "keycloak_server" {
   wait         = true
   wait_timeout = 300
   restart      = "on-failure"
+  depends_on   = [null_resource.wait_for_vault_certs]
 }
 
 # Create OIDC realm

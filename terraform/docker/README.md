@@ -288,6 +288,7 @@ keycloak_servers = {
   "keycloak" = {
     env_tag               = "test"
     pki_certs_volume_name = "vault-pki-certs"
+    vault_container_name  = "vault"
     oidc_realm            = "percona"
     oidc_client_id        = "mongodb"
     oidc_client_secret    = "mongodb-secret"

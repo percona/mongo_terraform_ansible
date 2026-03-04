@@ -301,6 +301,7 @@ variable "keycloak_servers" {
     keycloak_https_port       = optional(number, 8443)
     keycloak_external_port    = optional(number, 8080)                 # Port of Keycloak as seen from outside docker
     pki_certs_volume_name     = optional(string, "vault-pki-certs")    # Docker volume with PKI certs from Vault
+    vault_container_name      = optional(string, "")                   # Vault container name (for cert readiness check)
     keycloak_admin_user       = optional(string, "admin")
     keycloak_admin_password   = optional(string, "admin")
     oidc_realm                = optional(string, "percona")

@@ -192,6 +192,7 @@ module "keycloak_server" {
   keycloak_port           = each.value.keycloak_port
   keycloak_https_port     = each.value.keycloak_https_port
   pki_certs_volume_name   = each.value.pki_certs_volume_name
+  vault_container_name    = each.value.vault_container_name
   keycloak_external_port  = each.value.keycloak_external_port
   keycloak_admin_user     = each.value.keycloak_admin_user
   keycloak_admin_password = each.value.keycloak_admin_password

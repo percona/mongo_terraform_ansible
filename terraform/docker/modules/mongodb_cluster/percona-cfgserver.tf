@@ -60,12 +60,13 @@ resource "docker_container" "cfg" {
     target = "/data/db"
     source = docker_volume.cfg_volume[count.index].name
   }
-  dynamic "volumes" {
+  dynamic "mounts" {
     for_each = var.enable_oidc && var.pki_certs_volume_name != "" ? [1] : []
     content {
-      volume_name    = var.pki_certs_volume_name
-      container_path = "/pki-certs"
-      read_only      = true
+      source    = var.pki_certs_volume_name
+      target    = "/pki-certs"
+      type      = "volume"
+      read_only = true
     }
   }
   env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/pki-certs/ca.crt"] : []

@@ -69,16 +69,6 @@
   hosts: cfg:shards:replsets
   tags: bootstrap_rs
   tasks:
-    - name: Create directory for mongo keyfile
-      become: yes
-      file:
-        path: /etc/mongo
-        state: directory
-        owner: mongod
-        group: root
-        mode: 0750
-      when: not use_tls | bool
-
     - name: Set up shared mongo keyfile 
       become: yes
       copy:

@@ -86,7 +86,7 @@ thp_location: /usr/lib/systemd/system/disable-thp.service
 use_tls: false
 
 # keyFile is only relevant if use_tls: false. Run `openssl rand -base64 741` to generate a new key
-keyFile_location: /etc/mongo/mongodb-keyfile.key
+keyFile_location: /etc/mongod_keyfile
 
 # Warning! This is just an example, replace with your own for prod use!
 keyfile_content: |
@@ -118,30 +118,6 @@ vault_tokenfile: /etc/mongodb/token
 vault_cafile: /etc/mongodb/vault.crt
 # path to the secret within Vault
 vault_secret: secret/data/dc/psmongodb1
-
-##############
-## Storage
-##############
-
-# WiredTiger cache size in GB
-wired_tiger_cache_size_gb: 0.25
-
-# Oplog size in MB
-mongo_oplog_size_mb: 200
-
-##################
-## OIDC
-##################
-
-# Set oidc_enabled to true to enable OIDC authentication alongside SCRAM-SHA-256
-oidc_enabled: false
-oidc_issuer: "https://keycloak:8443/realms/percona"
-oidc_audience: "mongodb"
-oidc_client_id: "mongodb"
-oidc_auth_name_prefix: "oidc"
-oidc_supports_human_flows: true
-oidc_principal_name: "preferred_username"
-oidc_authorization_claim: "groups"
 
 ##############
 # Vault Server

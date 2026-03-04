@@ -90,16 +90,6 @@
         line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ ansible_fqdn }}'
         state: present
 
-    - name: Create directory for mongo keyfile
-      become: yes
-      file:
-        path: /etc/mongo
-        state: directory
-        owner: mongod
-        group: root
-        mode: 0750
-      when: not use_tls | bool
-
     - name: Set up shared mongo keyfile 
       become: yes
       copy:

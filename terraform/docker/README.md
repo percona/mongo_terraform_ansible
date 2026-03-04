@@ -328,10 +328,17 @@ clusters     = {}
 
   The username format is `<authNamePrefix>/<principalName claim value>`. With the defaults, the prefix is `oidc` and the claim is `preferred_username`.
 
-- To authenticate using OIDC, use the device authorization flow. mongosh initiates the flow and displays a URL and user code for browser-based authentication:
+- To authenticate using OIDC, use the device authorization flow. Run mongosh **inside** one of the MongoDB containers (which already trusts the Keycloak CA) rather than from the host — this avoids the self-signed certificate error that occurs when mongosh runs on the host:
 
   ```
-  mongosh "mongodb://localhost:27017/?authMechanism=MONGODB-OIDC" \
+  docker exec -it rs01-svr0 mongosh "mongodb://rs01-svr0:27017/?authMechanism=MONGODB-OIDC" \
+    --authenticationDatabase '$external'
+  ```
+
+  For a sharded cluster, run it against one of the mongos routers:
+
+  ```
+  docker exec -it cl01-mongos00 mongosh "mongodb://cl01-mongos00:27017/?authMechanism=MONGODB-OIDC" \
     --authenticationDatabase '$external'
   ```
 

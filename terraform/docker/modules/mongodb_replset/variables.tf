@@ -335,8 +335,8 @@ variable "oidc_authorization_claim" {
 
 variable "pki_certs_volume_name" {
   type        = string
-  description = "Name of the Docker volume (created by the vault module) containing the Vault CA cert. When non-empty and enable_oidc=true, the CA is trusted in each MongoDB container."
-  default     = ""
+  description = "Name of the Docker volume (created by the Keycloak module) containing the CA cert. When non-empty and enable_oidc=true, the CA is trusted in each MongoDB container. Must match the value used in the keycloak_server module."
+  default     = "keycloak-certs"
 }
 ############
 

@@ -85,3 +85,19 @@ resource "docker_container" "rs" {
   restart = "no"
   depends_on = [docker_container.init_keyfile]
 }
+
+# Install the Keycloak CA cert into the system trust store so that both
+# mongod (OpenSSL) and mongosh (pkg-compiled Node.js) trust Keycloak's
+# self-signed certificate without requiring --tlsCAFile on every command.
+resource "null_resource" "install_oidc_ca" {
+  count      = var.enable_oidc && var.pki_certs_volume_name != "" ? var.data_nodes_per_replset : 0
+  depends_on = [docker_container.rs]
+
+  triggers = {
+    container_id = docker_container.rs[count.index].id
+  }
+
+  provisioner "local-exec" {
+    command = "docker exec --user root ${docker_container.rs[count.index].name} sh -c 'test -f /etc/oidc-certs/ca.crt || { echo >&2 \"ERROR: /etc/oidc-certs/ca.crt not found – check pki_certs_volume_name and cert init container\"; exit 1; }; cp /etc/oidc-certs/ca.crt /etc/pki/ca-trust/source/anchors/keycloak-ca.crt && update-ca-trust'"
+  }
+}

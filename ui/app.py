@@ -198,29 +198,35 @@ def write_tfvars(env_id: str, platform: str, config: dict):
         if var in config:
             lines.append(f"{var} = {_write_val(config[var])}")
 
-    # clusters (cloud)
-    if "clusters" in config and config["clusters"]:
-        lines.append("")
+    # clusters – always write (even as empty map) so the variable default is overridden.
+    # Without this, a user who configures only replica sets would get Terraform's default
+    # sharded cluster created because the key is absent from the tfvars file.
+    clusters = config.get("clusters") or {}
+    lines.append("")
+    if clusters:
         lines.append("clusters = {")
-        for cname, cval in config["clusters"].items():
+        for cname, cval in clusters.items():
             lines.append(f'  "{cname}" = {{')
             for k, v in cval.items():
                 lines.append(f"    {k} = {_write_val(v)}")
             lines.append("  }")
         lines.append("}")
+    else:
+        lines.append("clusters = {}")
 
-    # replsets (cloud)
-    if "replsets" in config and config["replsets"]:
-        lines.append("")
+    # replsets – always write (even as empty map) for the same reason.
+    replsets = config.get("replsets") or {}
+    lines.append("")
+    if replsets:
+        lines.append("replsets = {")
+        for rname, rval in replsets.items():
+            lines.append(f'  "{rname}" = {{')
+            for k, v in rval.items():
+                lines.append(f"    {k} = {_write_val(v)}")
+            lines.append("  }")
+        lines.append("}")
+    else:
         lines.append("replsets = {}")
-        if config["replsets"]:
-            lines[-1] = "replsets = {"
-            for rname, rval in config["replsets"].items():
-                lines.append(f'  "{rname}" = {{')
-                for k, v in rval.items():
-                    lines.append(f"    {k} = {_write_val(v)}")
-                lines.append("  }")
-            lines.append("}")
 
     # docker-specific: pmm_servers, minio_servers, ldap_servers
     for section in ("pmm_servers", "minio_servers", "ldap_servers"):
@@ -250,12 +256,13 @@ def job_status_path(job_id: str) -> Path:
     return JOBS_DIR / f"{job_id}.status"
 
 
-def _run_job(job_id: str, cmd: list[str], cwd: str, env: dict | None = None):
+def _run_job(job_id: str, cmd: list[str], cwd: str, env: dict | None = None, on_complete=None):
     """Run a command in a thread, writing output to a log file."""
     log = job_log_path(job_id)
     status = job_status_path(job_id)
     status.write_text("running")
     full_env = {**os.environ, **(env or {})}
+    final_status = "error"
     try:
         with open(log, "w") as f:
             proc = subprocess.Popen(
@@ -268,16 +275,22 @@ def _run_job(job_id: str, cmd: list[str], cwd: str, env: dict | None = None):
             )
             proc.wait()
         rc = proc.returncode
-        status.write_text("success" if rc == 0 else f"failed:{rc}")
+        final_status = "success" if rc == 0 else f"failed:{rc}"
+        status.write_text(final_status)
     except Exception as exc:
         with open(log, "a") as f:
             f.write(f"\nError: {exc}\n")
         status.write_text("error")
+    if on_complete:
+        try:
+            on_complete(final_status)
+        except Exception:
+            pass
 
 
-def start_job(cmd: list[str], cwd: str, env: dict | None = None) -> str:
+def start_job(cmd: list[str], cwd: str, env: dict | None = None, on_complete=None) -> str:
     job_id = str(uuid.uuid4())
-    t = threading.Thread(target=_run_job, args=(job_id, cmd, cwd, env), daemon=True)
+    t = threading.Thread(target=_run_job, args=(job_id, cmd, cwd, env, on_complete), daemon=True)
     t.start()
     return job_id
 
@@ -427,6 +440,19 @@ def _ansible_cmd(action: str, inventory: str) -> list[str]:
     return ["ansible-playbook", "-i", inventory, playbook]
 
 
+def _make_destroy_callback(env_id: str, platform: str):
+    """Return a callback that removes the env from inventory after a successful destroy."""
+    def _callback(status: str):
+        if status == "success":
+            state = load_state()
+            state.pop(env_id, None)
+            save_state(state)
+            p = tfvars_path(env_id, platform)
+            if p.exists():
+                p.unlink()
+    return _callback
+
+
 @app.route("/api/environment/<env_id>/action", methods=["POST"])
 def environment_action(env_id: str):
     """
@@ -473,10 +499,20 @@ def environment_action(env_id: str):
             f"terraform destroy -auto-approve -input=false -var-file={varfile}",
         ]
     elif action in ("stop", "restart"):
-        # For docker, use terraform; for cloud, use ansible
         if platform == "docker":
-            # docker stop/start via terraform taint or custom script – use terraform apply to reconcile
-            cmd = ["bash", "-c", f"terraform apply -auto-approve -input=false -var-file={varfile}"]
+            # Use docker stop / restart against containers whose names contain the
+            # env prefix.  Sanitise the prefix to prevent shell injection.
+            prefix = re.sub(r"[^a-zA-Z0-9_-]", "", env.get("config", {}).get("prefix", env_id))
+            if not prefix:
+                prefix = env_id
+            if action == "stop":
+                # Only target running containers (no -a flag)
+                cmd = ["bash", "-c",
+                    f"docker ps -q --filter 'name={prefix}-' | xargs -r docker stop"]
+            else:  # restart
+                # Target running and already-stopped containers
+                cmd = ["bash", "-c",
+                    f"docker ps -aq --filter 'name={prefix}-' | xargs -r docker restart"]
         else:
             inventory_guess = shlex.quote(str(ANSIBLE_DIR / "inventory"))
             playbook = shlex.quote(str(ANSIBLE_DIR / ("stop.yml" if action == "stop" else "restart.yml")))
@@ -484,7 +520,8 @@ def environment_action(env_id: str):
     else:
         return jsonify({"error": "Unhandled action"}), 500
 
-    job_id = start_job(cmd, cwd=tf_dir)
+    on_complete = _make_destroy_callback(env_id, platform) if action == "destroy" else None
+    job_id = start_job(cmd, cwd=tf_dir, on_complete=on_complete)
 
     # Update env status
     state[env_id]["status"] = f"{action}_in_progress"
@@ -525,7 +562,7 @@ def job_stream(job_id: str):
                     if chunk:
                         pos += len(chunk)
                         for line in chunk.splitlines():
-                            yield f"data: {json.dumps(line)}\n\n"
+                            yield f"data: {json.dumps(strip_ansi(line))}\n\n"
             # Check if job finished
             if status_path.exists():
                 status = status_path.read_text().strip()

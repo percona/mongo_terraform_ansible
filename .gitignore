@@ -12,3 +12,8 @@ ui/environments.json
 ui/jobs/
 ui/__pycache__/
 ui/*.pyc
+
+# Go UI runtime artifacts
+ui-go/environments.json
+ui-go/jobs/
+ui-go/mongodeploy

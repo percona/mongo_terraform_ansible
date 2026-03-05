@@ -1,0 +1,21 @@
+{{define "title"}}New Environment{{end}}
+{{define "content"}}
+<div class="page-header">
+  <h1>Choose a Platform</h1>
+  <p class="subtitle">Select the platform where you want to deploy your MongoDB environment.</p>
+</div>
+
+<div class="platform-grid">
+  {{range .Platforms}}
+  <a href="/configure/{{.}}" class="platform-card platform-card-{{.}}">
+    <div class="platform-icon">
+      {{if eq . "aws"}}☁️{{else if eq . "gcp"}}🌐{{else if eq . "azure"}}🔷{{else}}🐳{{end}}
+    </div>
+    <div class="platform-name">{{upper .}}</div>
+    <div class="platform-desc">
+      {{if eq . "aws"}}Amazon Web Services{{else if eq . "gcp"}}Google Cloud Platform{{else if eq . "azure"}}Microsoft Azure{{else}}Local Docker containers{{end}}
+    </div>
+  </a>
+  {{end}}
+</div>
+{{end}}

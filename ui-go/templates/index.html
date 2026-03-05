@@ -1,0 +1,42 @@
+{{define "title"}}Environments{{end}}
+{{define "content"}}
+<div class="page-header">
+  <h1>Environments</h1>
+  <a href="/new" class="btn btn-primary">+ New Environment</a>
+</div>
+
+{{if .Environments}}
+<div class="env-grid">
+  {{range .Environments}}
+  <div class="env-card" id="env-{{.ID}}">
+    <div class="env-card-header">
+      <span class="platform-badge platform-{{.Env.Platform}}">{{upper .Env.Platform}}</span>
+      <span class="env-id">{{.ID}}</span>
+    </div>
+    <div class="env-card-body">
+      <div class="status-row">
+        <span class="status-dot status-{{statusClass .Env.Status}}"></span>
+        <span class="status-label">{{statusLabel .Env.Status}}</span>
+      </div>
+      <div class="env-meta">
+        <small>Platform: <strong>{{.Env.Platform}}</strong></small>
+        <small>Updated: {{.Env.UpdatedAt}}</small>
+      </div>
+    </div>
+    <div class="env-card-actions">
+      <a href="/environment/{{.ID}}" class="btn btn-secondary btn-sm">Manage</a>
+      <a href="/configure/{{.Env.Platform}}?env_id={{.ID}}" class="btn btn-outline btn-sm">Edit</a>
+      <button class="btn btn-outline btn-sm" onclick="deleteEnvironment('{{.ID}}')">Remove</button>
+    </div>
+  </div>
+  {{end}}
+</div>
+{{else}}
+<div class="empty-state">
+  <div class="empty-icon">🍃</div>
+  <h2>No environments yet</h2>
+  <p>Get started by creating your first MongoDB environment.</p>
+  <a href="/new" class="btn btn-primary">Create Environment</a>
+</div>
+{{end}}
+{{end}}

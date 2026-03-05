@@ -1,0 +1,1039 @@
+{{define "title"}}Configure {{upper .Platform}}{{end}}
+{{define "content"}}
+{{$p := .Platform}}
+<div class="page-header">
+  <div>
+    <a href="/new" class="back-link">← Platforms</a>
+    <h1>Configure <span class="platform-badge platform-{{$p}}">{{upper $p}}</span> Environment</h1>
+  </div>
+</div>
+
+<form id="config-form" class="config-form" data-platform="{{$p}}" data-env-id="{{.EnvID}}">
+
+  <!-- ──────────── General ──────────── -->
+  <section class="form-section">
+    <h2>General</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="env_id_field">Environment ID</label>
+        <input type="text" id="env_id_field" name="env_id" placeholder="e.g. dev01"
+               value="{{.EnvID}}" maxlength="20" pattern="[a-zA-Z0-9_-]+"
+               title="Alphanumeric, hyphens and underscores only">
+        <small>Leave blank to auto-generate. Used as tfvars filename prefix.</small>
+      </div>
+      <div class="form-group">
+        <label for="prefix">Resource Prefix</label>
+        <input type="text" id="prefix" name="prefix"
+               value="{{strDefault .Config.Prefix "ig"}}" placeholder="ig">
+        <small>Prefix applied to all cloud resources to avoid naming collisions.</small>
+      </div>
+    </div>
+
+    {{if ne $p "docker"}}
+    <div class="form-row">
+      <div class="form-group">
+        <label for="mongo_release">MongoDB Release (Ansible)</label>
+        <select id="mongo_release" name="mongo_release">
+          {{$cur := .Config.MongoRelease}}
+          {{range .PSMDBVersions}}
+          <option value="{{.}}" {{if eq $cur .}}selected{{end}}>{{.}}</option>
+          {{end}}
+        </select>
+        <small>Percona repository identifier used by Ansible to install PSMDB.</small>
+      </div>
+    </div>
+    {{end}}
+  </section>
+
+  <!-- ──────────── Platform-specific settings ──────────── -->
+  {{if eq $p "gcp"}}
+  <section class="form-section">
+    <h2>GCP Settings</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="project_id">GCP Project ID</label>
+        <input type="text" id="project_id" name="project_id"
+               value="{{.Config.ProjectID}}" placeholder="my-gcp-project">
+      </div>
+      <div class="form-group">
+        <label for="region">Region</label>
+        <input type="text" id="region" name="region"
+               value="{{strDefault .Config.Region "northamerica-northeast1"}}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="my_ssh_user">SSH User</label>
+        <input type="text" id="my_ssh_user" name="my_ssh_user"
+               value="{{.Config.MySSHUser}}" placeholder="my_username">
+      </div>
+      <div class="form-group">
+        <label for="subnet_cidr">Subnet CIDR</label>
+        <input type="text" id="subnet_cidr" name="subnet_cidr"
+               value="{{strDefault .Config.SubnetCIDR "10.128.0.0/20"}}">
+      </div>
+    </div>
+  </section>
+
+  {{else if eq $p "aws"}}
+  <section class="form-section">
+    <h2>AWS Settings</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="region">Region</label>
+        <input type="text" id="region" name="region"
+               value="{{strDefault .Config.Region "us-west-2"}}">
+      </div>
+      <div class="form-group">
+        <label for="my_ssh_user">SSH User</label>
+        <input type="text" id="my_ssh_user" name="my_ssh_user"
+               value="{{strDefault .Config.MySSHUser "ec2-user"}}" placeholder="ec2-user">
+        <small>e.g. ec2-user (CentOS), ubuntu (Ubuntu)</small>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="ssh_public_key_path">SSH Public Key File</label>
+        <input type="text" id="ssh_public_key_path" name="ssh_public_key_path"
+               value="{{strDefault .Config.SSHPublicKeyPath "ivan.pub"}}">
+      </div>
+      <div class="form-group">
+        <label for="default_key_pair">Key Pair Name</label>
+        <input type="text" id="default_key_pair" name="default_key_pair"
+               value="{{strDefault .Config.DefaultKeyPair "key"}}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="subnet_cidr">Subnet CIDR</label>
+        <input type="text" id="subnet_cidr" name="subnet_cidr"
+               value="{{strDefault .Config.SubnetCIDR "10.128.0.0/20"}}">
+      </div>
+      <div class="form-group">
+        <label for="subnet_count">Subnet Count</label>
+        <input type="number" id="subnet_count" name="subnet_count" min="1" max="6"
+               value="{{intDefault .Config.SubnetCount 3}}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="use_spot_instances"
+                      {{if .Config.UseSpotInstances}}checked{{end}}>
+          Use Spot Instances <small>(cheaper but may be terminated)</small></label>
+      </div>
+    </div>
+  </section>
+
+  {{else if eq $p "azure"}}
+  <section class="form-section">
+    <h2>Azure Settings</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location"
+               value="{{strDefault .Config.Location "eastus"}}" placeholder="eastus">
+      </div>
+      <div class="form-group">
+        <label for="my_ssh_user">SSH User</label>
+        <input type="text" id="my_ssh_user" name="my_ssh_user"
+               value="{{.Config.MySSHUser}}" placeholder="azureuser">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="subnet_cidr">Subnet CIDR</label>
+        <input type="text" id="subnet_cidr" name="subnet_cidr"
+               value="{{strDefault .Config.SubnetCIDR "10.0.0.0/16"}}">
+      </div>
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="use_spot_instances"
+                      {{if .Config.UseSpotInstances}}checked{{end}}>
+          Use Spot Instances</label>
+      </div>
+    </div>
+  </section>
+  {{end}}
+
+  <!-- ──────────── Sharded Clusters ──────────── -->
+  <section class="form-section">
+    <div class="section-header">
+      <h2>Sharded Clusters</h2>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addCluster()">+ Add Cluster</button>
+    </div>
+    <div id="clusters-container">
+      {{range .SortedClusters}}
+      <div class="component-block">
+        <div class="component-block-header">
+          <span>Cluster</span>
+          <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Cluster Name</label>
+            <input type="text" name="cluster_name[]" value="{{.Name}}" placeholder="cl01" required>
+          </div>
+          <div class="form-group">
+            <label>Env Tag</label>
+            <input type="text" name="cluster_env_tag[]" value="{{strDefault .Config.EnvTag "test"}}" placeholder="test">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Config Servers</label>
+            <input type="number" name="cluster_configsvr_count[]" value="{{intDefault .Config.ConfigsvrCount 3}}" min="1" max="7">
+          </div>
+          <div class="form-group">
+            <label>Shards</label>
+            <input type="number" name="cluster_shard_count[]" value="{{intDefault .Config.ShardCount 2}}" min="1" max="10">
+          </div>
+          <div class="form-group">
+            <label>Replicas / Shard</label>
+            <input type="number" name="cluster_shardsvr_replicas[]" value="{{intDefault .Config.ShardsvrReplicas 2}}" min="1" max="7">
+          </div>
+          <div class="form-group">
+            <label>Arbiters / Shard</label>
+            <input type="number" name="cluster_arbiters_per_replset[]" value="{{intDefault .Config.ArbitersPerReplset 1}}" min="0" max="3">
+          </div>
+          <div class="form-group">
+            <label>Mongos Routers</label>
+            <input type="number" name="cluster_mongos_count[]" value="{{intDefault .Config.MongosCount 2}}" min="1" max="10">
+          </div>
+        </div>
+        {{if eq $p "docker"}}
+        <div class="form-row">
+          <div class="form-group">
+            <label>PSMDB Image</label>
+            <select name="cluster_psmdb_image[]">
+              {{$cur := .Config.PsmdbImage}}
+              {{range $.PSMDBImages}}
+              <option value="{{.}}" {{if tagSelected $cur "percona/percona-server-mongodb" .}}selected{{end}}>
+                percona/percona-server-mongodb:{{.}}
+              </option>
+              {{end}}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>PBM Image</label>
+            <select name="cluster_pbm_image[]">
+              {{$curPbm := .Config.PbmImage}}
+              {{range $.PBMImages}}
+              <option value="{{.}}" {{if tagSelected $curPbm "percona/percona-backup-mongodb" .}}selected{{end}}>
+                percona/percona-backup-mongodb:{{.}}
+              </option>
+              {{end}}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>PMM Client Image</label>
+            <select name="cluster_pmm_client_image[]">
+              {{$curPmmc := .Config.PmmClientImage}}
+              {{range $.PMMClientImages}}
+              <option value="{{.}}" {{if tagSelected $curPmmc "percona/pmm-client" .}}selected{{end}}>
+                percona/pmm-client:{{.}}
+              </option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_enable_pmm[]" value="1"
+                          {{if .Config.EnablePmm}}checked{{end}}>
+              Enable PMM monitoring</label>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_enable_pbm[]" value="1"
+                          {{if .Config.EnablePbm}}checked{{end}}>
+              Enable PBM backups</label>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_bind_to_localhost[]" value="1"
+                          {{if .Config.BindToLocalhost}}checked{{end}}>
+              Bind ports to localhost only</label>
+          </div>
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+  </section>
+
+  <!-- ──────────── Replica Sets ──────────── -->
+  <section class="form-section">
+    <div class="section-header">
+      <h2>Standalone Replica Sets</h2>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addReplset()">+ Add Replica Set</button>
+    </div>
+    <div id="replsets-container">
+      {{range .SortedReplsets}}
+      <div class="component-block">
+        <div class="component-block-header">
+          <span>Replica Set</span>
+          <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Replica Set Name</label>
+            <input type="text" name="replset_name[]" value="{{.Name}}" placeholder="rs01">
+          </div>
+          <div class="form-group">
+            <label>Env Tag</label>
+            <input type="text" name="replset_env_tag[]" value="{{strDefault .Config.EnvTag "test"}}">
+          </div>
+          <div class="form-group">
+            <label>Data Nodes</label>
+            <input type="number" name="replset_data_nodes[]" value="{{intDefault .Config.DataNodesPerReplset 2}}" min="1" max="7">
+          </div>
+          <div class="form-group">
+            <label>Arbiters</label>
+            <input type="number" name="replset_arbiters[]" value="{{intDefault .Config.ArbitersPerReplset 1}}" min="0" max="3">
+          </div>
+        </div>
+        {{if eq $p "docker"}}
+        <div class="form-row">
+          <div class="form-group">
+            <label>PSMDB Image</label>
+            <select name="replset_psmdb_image[]">
+              {{$cur := .Config.PsmdbImage}}
+              {{range $.PSMDBImages}}
+              <option value="{{.}}" {{if tagSelected $cur "percona/percona-server-mongodb" .}}selected{{end}}>
+                percona/percona-server-mongodb:{{.}}
+              </option>
+              {{end}}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>PBM Image</label>
+            <select name="replset_pbm_image[]">
+              {{$curPbm := .Config.PbmImage}}
+              {{range $.PBMImages}}
+              <option value="{{.}}" {{if tagSelected $curPbm "percona/percona-backup-mongodb" .}}selected{{end}}>
+                percona/percona-backup-mongodb:{{.}}
+              </option>
+              {{end}}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>PMM Client Image</label>
+            <select name="replset_pmm_client_image[]">
+              {{$curPmmc := .Config.PmmClientImage}}
+              {{range $.PMMClientImages}}
+              <option value="{{.}}" {{if tagSelected $curPmmc "percona/pmm-client" .}}selected{{end}}>
+                percona/pmm-client:{{.}}
+              </option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="replset_enable_pmm[]" value="1"
+                          {{if .Config.EnablePmm}}checked{{end}}>
+              Enable PMM monitoring</label>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="replset_enable_pbm[]" value="1"
+                          {{if .Config.EnablePbm}}checked{{end}}>
+              Enable PBM backups</label>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="replset_bind_to_localhost[]" value="1"
+                          {{if .Config.BindToLocalhost}}checked{{end}}>
+              Bind ports to localhost only</label>
+          </div>
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+    <p class="hint">Optional: standalone replica sets separate from the sharded clusters above.</p>
+  </section>
+
+  <!-- ──────────── Compute Resources (cloud only) ──────────── -->
+  {{if ne $p "docker"}}
+  <section class="form-section">
+    <h2>Compute Resources</h2>
+    <p class="hint" style="margin-bottom:1rem">
+      Instance types and disk sizes apply globally to all clusters and replica sets in this environment.
+      Leave blank to use Terraform defaults for the selected platform.
+    </p>
+
+    <h3>Shard Server (mongod data nodes)</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="shardsvr_type">Instance Type</label>
+        <input type="text" id="shardsvr_type" name="shardsvr_type"
+               value="{{.Config.ShardsvrType}}"
+               placeholder="{{if eq $p "aws"}}t3.medium{{else if eq $p "gcp"}}e2-medium{{else}}Standard_B2s{{end}}">
+      </div>
+      <div class="form-group">
+        <label for="shardsvr_volume_size">Data Disk Size (GB)</label>
+        <input type="number" id="shardsvr_volume_size" name="shardsvr_volume_size"
+               value="{{if .Config.ShardsvrVolumeSize}}{{.Config.ShardsvrVolumeSize}}{{end}}"
+               placeholder="50" min="10">
+      </div>
+    </div>
+
+    <h3>Config Server (CSRS)</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="configsvr_type">Instance Type</label>
+        <input type="text" id="configsvr_type" name="configsvr_type"
+               value="{{.Config.ConfigsvrType}}"
+               placeholder="{{if eq $p "aws"}}t3.medium{{else if eq $p "gcp"}}e2-medium{{else}}Standard_B2s{{end}}">
+      </div>
+      <div class="form-group">
+        <label for="configsvr_volume_size">Data Disk Size (GB)</label>
+        <input type="number" id="configsvr_volume_size" name="configsvr_volume_size"
+               value="{{if .Config.ConfigsvrVolumeSize}}{{.Config.ConfigsvrVolumeSize}}{{end}}"
+               placeholder="20" min="10">
+      </div>
+    </div>
+
+    <h3>Mongos Router</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="mongos_type">Instance Type</label>
+        <input type="text" id="mongos_type" name="mongos_type"
+               value="{{.Config.MongosType}}"
+               placeholder="{{if eq $p "aws"}}t3.medium{{else if eq $p "gcp"}}e2-medium{{else}}Standard_B2s{{end}}">
+      </div>
+    </div>
+
+    <h3>Arbiter</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="arbiter_type">Instance Type</label>
+        <input type="text" id="arbiter_type" name="arbiter_type"
+               value="{{.Config.ArbiterType}}"
+               placeholder="{{if eq $p "aws"}}t3.medium{{else if eq $p "gcp"}}e2-medium{{else}}Standard_B2s{{end}}">
+      </div>
+    </div>
+
+    <h3>Standalone Replica Set Data Node</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="replsetsvr_type">Instance Type</label>
+        <input type="text" id="replsetsvr_type" name="replsetsvr_type"
+               value="{{.Config.ReplsetSvrType}}"
+               placeholder="{{if eq $p "aws"}}t3.medium{{else if eq $p "gcp"}}e2-medium{{else}}Standard_B2s{{end}}">
+      </div>
+      <div class="form-group">
+        <label for="replsetsvr_volume_size">Data Disk Size (GB)</label>
+        <input type="number" id="replsetsvr_volume_size" name="replsetsvr_volume_size"
+               value="{{if .Config.ReplsetSvrVolumeSize}}{{.Config.ReplsetSvrVolumeSize}}{{end}}"
+               placeholder="100" min="10">
+      </div>
+    </div>
+
+    <h3>Data Disk Type</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="data_disk_type">Disk Type</label>
+        <input type="text" id="data_disk_type" name="data_disk_type"
+               value="{{.Config.DataDiskType}}"
+               placeholder="{{if eq $p "aws"}}gp2{{else if eq $p "gcp"}}pd-standard{{else}}Standard_LRS{{end}}">
+        <small>
+          {{if eq $p "aws"}}gp2, gp3, io1, io2, st1, sc1{{else if eq $p "gcp"}}pd-standard, pd-ssd, pd-balanced{{else}}Standard_LRS, Premium_LRS, StandardSSD_LRS{{end}}
+        </small>
+      </div>
+    </div>
+  </section>
+  {{end}}
+
+  <!-- ──────────── PMM Server ──────────── -->
+  <section class="form-section">
+    <h2>PMM Monitoring Server</h2>
+    {{if eq $p "docker"}}
+    <div id="pmm-servers-container">
+      {{range .SortedPmmServers}}
+      <div class="component-block">
+        <div class="component-block-header">
+          <span>PMM Server: {{.Name}}</span>
+          <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Server Name</label>
+            <input type="text" name="pmm_server_name[]" value="{{.Name}}" placeholder="pmm-server">
+          </div>
+          <div class="form-group">
+            <label>PMM Server Image</label>
+            <select name="pmm_server_image[]">
+              {{$cur := .Config.PmmServerImage}}
+              {{range $.PMMImages}}
+              <option value="{{.}}" {{if tagSelected $cur "percona/pmm-server" .}}selected{{end}}>
+                percona/pmm-server:{{.}}
+              </option>
+              {{end}}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>PMM Port</label>
+            <input type="number" name="pmm_server_port[]" value="{{intDefault .Config.PmmPort 8443}}" placeholder="8443">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Admin User</label>
+            <input type="text" name="pmm_server_user[]" value="{{strDefault .Config.PmmServerUser "admin"}}">
+          </div>
+          <div class="form-group">
+            <label>Admin Password</label>
+            <input type="password" name="pmm_server_pwd[]" value="{{strDefault .Config.PmmServerPwd "admin"}}" placeholder="admin">
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="pmm_server_bind_localhost[]" value="1"
+                          {{if .Config.BindToLocalhost}}checked{{end}}>
+              Bind to localhost only</label>
+          </div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addPmmServer()">+ Add PMM Server</button>
+    {{else}}
+    <div class="form-row">
+      <div class="form-group">
+        <label for="pmm_type">Instance Type</label>
+        <input type="text" id="pmm_type" name="pmm_type"
+               value="{{.Config.PmmType}}"
+               placeholder="{{if eq $p "aws"}}t3.large{{else if eq $p "gcp"}}e2-standard-2{{else}}Standard_D2s_v3{{end}}">
+      </div>
+      <div class="form-group">
+        <label for="pmm_volume_size">Volume Size (GB)</label>
+        <input type="number" id="pmm_volume_size" name="pmm_volume_size"
+               value="{{intDefault .Config.PmmVolumeSize 100}}" min="20">
+      </div>
+      <div class="form-group">
+        <label for="pmm_port">PMM Port</label>
+        <input type="number" id="pmm_port" name="pmm_port"
+               value="{{intDefault .Config.PmmPort 8443}}">
+        <small>8443 for PMM 3, 443 for PMM 2</small>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="pmm_disk_type">PMM Disk Type</label>
+        <input type="text" id="pmm_disk_type" name="pmm_disk_type"
+               value="{{.Config.PmmDiskType}}"
+               placeholder="{{if eq $p "aws"}}gp2{{else if eq $p "gcp"}}pd-ssd{{else}}Premium_LRS{{end}}">
+      </div>
+      <div class="form-group">
+        <label>PMM Server Image (Ansible)</label>
+        <select name="pmm_image">
+          {{$curPmm := .Config.PmmImage}}
+          {{range .PMMImages}}
+          <option value="docker.io/percona/pmm-server:{{.}}"
+                  {{if tagSelected $curPmm "docker.io/percona/pmm-server" .}}selected{{end}}>
+            docker.io/percona/pmm-server:{{.}}
+          </option>
+          {{end}}
+        </select>
+      </div>
+    </div>
+    {{end}}
+  </section>
+
+  <!-- ──────────── Minio Servers (Docker only) ──────────── -->
+  {{if eq $p "docker"}}
+  <section class="form-section">
+    <div class="section-header">
+      <h2>Minio Backup Storage</h2>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addMinioServer()">+ Add Minio Server</button>
+    </div>
+    <div id="minio-servers-container">
+      {{range .SortedMinio}}
+      <div class="component-block">
+        <div class="component-block-header">
+          <span>Minio Server: {{.Name}}</span>
+          <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Server Name</label>
+            <input type="text" name="minio_server_name[]" value="{{.Name}}" placeholder="minio">
+          </div>
+          <div class="form-group">
+            <label>Minio Image</label>
+            <input type="text" name="minio_image[]" value="{{strDefault .Config.MinioImage "minio/minio"}}" placeholder="minio/minio">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>API Port</label>
+            <input type="number" name="minio_port[]" value="{{intDefault .Config.MinioPort 9000}}">
+          </div>
+          <div class="form-group">
+            <label>Console Port</label>
+            <input type="number" name="minio_console_port[]" value="{{intDefault .Config.MinioConsolePort 9001}}">
+          </div>
+          <div class="form-group">
+            <label>Bucket Name</label>
+            <input type="text" name="minio_bucket_name[]" value="{{strDefault .Config.BucketName "mongo-backups"}}">
+          </div>
+          <div class="form-group">
+            <label>Retention (days)</label>
+            <input type="number" name="minio_backup_retention[]" value="{{intDefault .Config.BackupRetention 2}}" min="1">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Access Key</label>
+            <input type="text" name="minio_access_key[]" value="{{strDefault .Config.MinioAccessKey "minio"}}">
+          </div>
+          <div class="form-group">
+            <label>Secret Key</label>
+            <input type="password" name="minio_secret_key[]" value="{{strDefault .Config.MinioSecretKey "minioadmin"}}">
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="minio_bind_localhost[]" value="1"
+                          {{if .Config.BindToLocalhost}}checked{{end}}>
+              Bind to localhost only</label>
+          </div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </section>
+
+  <!-- ──────────── LDAP Servers (Docker only) ──────────── -->
+  <section class="form-section">
+    <div class="section-header">
+      <h2>LDAP Servers</h2>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addLdapServer()">+ Add LDAP Server</button>
+    </div>
+    <div id="ldap-servers-container">
+      {{range .SortedLdap}}
+      <div class="component-block">
+        <div class="component-block-header">
+          <span>LDAP Server: {{.Name}}</span>
+          <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Server Name</label>
+            <input type="text" name="ldap_server_name[]" value="{{.Name}}" placeholder="ldap">
+          </div>
+          <div class="form-group">
+            <label>LDAP Image</label>
+            <input type="text" name="ldap_image[]" value="{{strDefault .Config.LdapImage "osixia/openldap:1.5.0"}}" placeholder="osixia/openldap:1.5.0">
+          </div>
+          <div class="form-group">
+            <label>Port</label>
+            <input type="number" name="ldap_port[]" value="{{intDefault .Config.LdapPort 389}}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Domain</label>
+            <input type="text" name="ldap_domain[]" value="{{strDefault .Config.LdapDomain "example.org"}}">
+          </div>
+          <div class="form-group">
+            <label>Admin Password</label>
+            <input type="password" name="ldap_admin_password[]" value="{{strDefault .Config.LdapAdminPassword "admin"}}">
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="ldap_bind_localhost[]" value="1"
+                          {{if .Config.BindToLocalhost}}checked{{end}}>
+              Bind to localhost only</label>
+          </div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  <!-- ──────────── Backup (cloud only) ──────────── -->
+  {{if ne $p "docker"}}
+  <section class="form-section">
+    <h2>Backup (PBM)</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="default_bucket_name">Bucket / Container Name</label>
+        <input type="text" id="default_bucket_name" name="default_bucket_name"
+               value="{{strDefault .Config.DefaultBucketName "mongo-bkp-storage"}}">
+      </div>
+      <div class="form-group">
+        <label for="backup_retention">Retention (days)</label>
+        <input type="number" id="backup_retention" name="backup_retention"
+               value="{{intDefault .Config.BackupRetention 2}}" min="1">
+      </div>
+    </div>
+  </section>
+  {{end}}
+
+  <!-- ──────────── Submit ──────────── -->
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary btn-lg">Save &amp; Configure</button>
+    <a href="/" class="btn btn-outline btn-lg">Cancel</a>
+  </div>
+</form>
+
+<!-- ──────────── HTML templates for JS-cloned blocks ──────────── -->
+<template id="cluster-template">
+  <div class="component-block">
+    <div class="component-block-header">
+      <span>Cluster</span>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Cluster Name</label>
+        <input type="text" name="cluster_name[]" placeholder="cl02" required>
+      </div>
+      <div class="form-group">
+        <label>Env Tag</label>
+        <input type="text" name="cluster_env_tag[]" value="test">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Config Servers</label>
+        <input type="number" name="cluster_configsvr_count[]" value="3" min="1" max="7"></div>
+      <div class="form-group"><label>Shards</label>
+        <input type="number" name="cluster_shard_count[]" value="2" min="1" max="10"></div>
+      <div class="form-group"><label>Replicas / Shard</label>
+        <input type="number" name="cluster_shardsvr_replicas[]" value="2" min="1" max="7"></div>
+      <div class="form-group"><label>Arbiters / Shard</label>
+        <input type="number" name="cluster_arbiters_per_replset[]" value="1" min="0" max="3"></div>
+      <div class="form-group"><label>Mongos Routers</label>
+        <input type="number" name="cluster_mongos_count[]" value="2" min="1" max="10"></div>
+    </div>
+  </div>
+</template>
+
+<template id="replset-template">
+  <div class="component-block">
+    <div class="component-block-header">
+      <span>Replica Set</span>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Replica Set Name</label>
+        <input type="text" name="replset_name[]" placeholder="rs01"></div>
+      <div class="form-group"><label>Env Tag</label>
+        <input type="text" name="replset_env_tag[]" value="test"></div>
+      <div class="form-group"><label>Data Nodes</label>
+        <input type="number" name="replset_data_nodes[]" value="2" min="1" max="7"></div>
+      <div class="form-group"><label>Arbiters</label>
+        <input type="number" name="replset_arbiters[]" value="1" min="0" max="3"></div>
+    </div>
+  </div>
+</template>
+
+<script>
+const PLATFORM        = {{json .Platform}};
+const PSMDB_IMAGES    = {{json .PSMDBImages}};
+const PBM_IMAGES      = {{json .PBMImages}};
+const PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
+const PMM_SERVER_IMAGES = {{json .PMMImages}};
+
+function removeBlock(btn) {
+  btn.closest('.component-block').remove();
+}
+
+function addCluster() {
+  const clone = document.getElementById('cluster-template').content.cloneNode(true);
+  document.getElementById('clusters-container').appendChild(clone);
+}
+
+function addReplset() {
+  const clone = document.getElementById('replset-template').content.cloneNode(true);
+  document.getElementById('replsets-container').appendChild(clone);
+}
+
+function addPmmServer() {
+  const c = document.createElement('div');
+  c.className = 'component-block';
+  c.innerHTML = `
+    <div class="component-block-header">
+      <span>PMM Server</span>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Server Name</label>
+        <input type="text" name="pmm_server_name[]" placeholder="pmm-server-2"></div>
+      <div class="form-group"><label>PMM Server Image</label>
+        <select name="pmm_server_image[]">
+          ${PMM_SERVER_IMAGES.map(t => `<option value="${t}">percona/pmm-server:${t}</option>`).join('')}
+        </select></div>
+      <div class="form-group"><label>PMM Port</label>
+        <input type="number" name="pmm_server_port[]" value="8443"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Admin User</label>
+        <input type="text" name="pmm_server_user[]" value="admin"></div>
+      <div class="form-group"><label>Admin Password</label>
+        <input type="password" name="pmm_server_pwd[]" placeholder="admin"></div>
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="pmm_server_bind_localhost[]" value="1"> Bind to localhost only</label></div>
+    </div>`;
+  document.getElementById('pmm-servers-container').appendChild(c);
+}
+
+function addMinioServer() {
+  const c = document.createElement('div');
+  c.className = 'component-block';
+  c.innerHTML = `
+    <div class="component-block-header">
+      <span>Minio Server</span>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Server Name</label>
+        <input type="text" name="minio_server_name[]" placeholder="minio-2"></div>
+      <div class="form-group"><label>Minio Image</label>
+        <input type="text" name="minio_image[]" value="minio/minio"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>API Port</label>
+        <input type="number" name="minio_port[]" value="9000"></div>
+      <div class="form-group"><label>Console Port</label>
+        <input type="number" name="minio_console_port[]" value="9001"></div>
+      <div class="form-group"><label>Bucket Name</label>
+        <input type="text" name="minio_bucket_name[]" value="mongo-backups"></div>
+      <div class="form-group"><label>Retention (days)</label>
+        <input type="number" name="minio_backup_retention[]" value="2" min="1"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Access Key</label>
+        <input type="text" name="minio_access_key[]" value="minio"></div>
+      <div class="form-group"><label>Secret Key</label>
+        <input type="password" name="minio_secret_key[]" value="minioadmin"></div>
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="minio_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
+    </div>`;
+  document.getElementById('minio-servers-container').appendChild(c);
+}
+
+function addLdapServer() {
+  const c = document.createElement('div');
+  c.className = 'component-block';
+  c.innerHTML = `
+    <div class="component-block-header">
+      <span>LDAP Server</span>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Server Name</label>
+        <input type="text" name="ldap_server_name[]" placeholder="ldap"></div>
+      <div class="form-group"><label>LDAP Image</label>
+        <input type="text" name="ldap_image[]" value="osixia/openldap:1.5.0"></div>
+      <div class="form-group"><label>Port</label>
+        <input type="number" name="ldap_port[]" value="389"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Domain</label>
+        <input type="text" name="ldap_domain[]" value="example.org"></div>
+      <div class="form-group"><label>Admin Password</label>
+        <input type="password" name="ldap_admin_password[]" value="admin"></div>
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="ldap_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
+    </div>`;
+  document.getElementById('ldap-servers-container').appendChild(c);
+}
+
+// Integer fields – send as numbers in JSON (not strings) so Go unmarshal works cleanly.
+const numericFields = new Set([
+  'pmm_volume_size','pmm_port','subnet_count','backup_retention',
+  'shardsvr_volume_size','configsvr_volume_size','replsetsvr_volume_size',
+]);
+
+document.getElementById('config-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const fd = new FormData(form);
+
+  const config = {};
+
+  // Simple scalar fields
+  const simpleFields = [
+    'prefix','mongo_release','project_id','region','location',
+    'subnet_cidr','subnet_count','source_ranges',
+    'my_ssh_user','ssh_public_key_path','default_key_pair',
+    'enable_ssh_gateway','ssh_gateway_name','port_to_forward',
+    'pmm_type','pmm_volume_size','pmm_port','pmm_image','pmm_disk_type',
+    'default_bucket_name','backup_retention',
+    'data_disk_type','network_name',
+    // Per-component instance types and disk sizes
+    'shardsvr_type','shardsvr_volume_size',
+    'configsvr_type','configsvr_volume_size',
+    'mongos_type','arbiter_type',
+    'replsetsvr_type','replsetsvr_volume_size',
+  ];
+  for (const f of simpleFields) {
+    const raw = fd.get(f);
+    if (raw !== null && raw !== '') {
+      config[f] = numericFields.has(f) ? parseInt(raw, 10) : raw;
+    }
+  }
+  config.use_spot_instances = fd.has('use_spot_instances');
+
+  // Clusters
+  const clNames     = fd.getAll('cluster_name[]');
+  const clEnvTag    = fd.getAll('cluster_env_tag[]');
+  const clCfgsvr    = fd.getAll('cluster_configsvr_count[]');
+  const clShards    = fd.getAll('cluster_shard_count[]');
+  const clReplicas  = fd.getAll('cluster_shardsvr_replicas[]');
+  const clArbiters  = fd.getAll('cluster_arbiters_per_replset[]');
+  const clMongos    = fd.getAll('cluster_mongos_count[]');
+  const clPsmdb     = fd.getAll('cluster_psmdb_image[]');
+  const clPbm       = fd.getAll('cluster_pbm_image[]');
+  const clPmmClient = fd.getAll('cluster_pmm_client_image[]');
+  const clEnPmm     = fd.getAll('cluster_enable_pmm[]');
+  const clEnPbm     = fd.getAll('cluster_enable_pbm[]');
+  const clBind      = fd.getAll('cluster_bind_to_localhost[]');
+  config.clusters = {};
+  for (let i = 0; i < clNames.length; i++) {
+    const name = clNames[i].trim();
+    if (!name) continue;
+    const c = {
+      env_tag: clEnvTag[i] || 'test',
+      configsvr_count: parseInt(clCfgsvr[i]) || 3,
+      shard_count: parseInt(clShards[i]) || 2,
+      shardsvr_replicas: parseInt(clReplicas[i]) || 2,
+      arbiters_per_replset: parseInt(clArbiters[i]) || 1,
+      mongos_count: parseInt(clMongos[i]) || 2,
+    };
+    if (PLATFORM === 'docker') {
+      if (clPsmdb[i]) c.psmdb_image = `percona/percona-server-mongodb:${clPsmdb[i]}`;
+      if (clPbm[i])   c.pbm_image   = `percona/percona-backup-mongodb:${clPbm[i]}`;
+      if (clPmmClient[i]) c.pmm_client_image = `percona/pmm-client:${clPmmClient[i]}`;
+      c.enable_pmm = clEnPmm.some((v,idx) => idx === i && v === '1');
+      c.enable_pbm = clEnPbm.some((v,idx) => idx === i && v === '1');
+      c.bind_to_localhost = clBind.some((v,idx) => idx === i && v === '1');
+    }
+    config.clusters[name] = c;
+  }
+
+  // Replica Sets
+  const rsNames   = fd.getAll('replset_name[]');
+  const rsEnvTag  = fd.getAll('replset_env_tag[]');
+  const rsNodes   = fd.getAll('replset_data_nodes[]');
+  const rsArbiters= fd.getAll('replset_arbiters[]');
+  const rsPsmdb   = fd.getAll('replset_psmdb_image[]');
+  const rsPbm     = fd.getAll('replset_pbm_image[]');
+  const rsPmmClient = fd.getAll('replset_pmm_client_image[]');
+  const rsEnPmm   = fd.getAll('replset_enable_pmm[]');
+  const rsEnPbm   = fd.getAll('replset_enable_pbm[]');
+  const rsBind    = fd.getAll('replset_bind_to_localhost[]');
+  config.replsets = {};
+  for (let i = 0; i < rsNames.length; i++) {
+    const name = rsNames[i].trim();
+    if (!name) continue;
+    const r = {
+      env_tag: rsEnvTag[i] || 'test',
+      data_nodes_per_replset: parseInt(rsNodes[i]) || 2,
+      arbiters_per_replset: parseInt(rsArbiters[i]) || 1,
+    };
+    if (PLATFORM === 'docker') {
+      if (rsPsmdb[i]) r.psmdb_image = `percona/percona-server-mongodb:${rsPsmdb[i]}`;
+      if (rsPbm[i])   r.pbm_image   = `percona/percona-backup-mongodb:${rsPbm[i]}`;
+      if (rsPmmClient[i]) r.pmm_client_image = `percona/pmm-client:${rsPmmClient[i]}`;
+      r.enable_pmm = rsEnPmm.some((v,idx) => idx === i && v === '1');
+      r.enable_pbm = rsEnPbm.some((v,idx) => idx === i && v === '1');
+      r.bind_to_localhost = rsBind.some((v,idx) => idx === i && v === '1');
+    }
+    config.replsets[name] = r;
+  }
+
+  // PMM Servers (Docker)
+  if (PLATFORM === 'docker') {
+    const pNames  = fd.getAll('pmm_server_name[]');
+    const pImages = fd.getAll('pmm_server_image[]');
+    const pPorts  = fd.getAll('pmm_server_port[]');
+    const pUsers  = fd.getAll('pmm_server_user[]');
+    const pPwds   = fd.getAll('pmm_server_pwd[]');
+    const pBind   = fd.getAll('pmm_server_bind_localhost[]');
+    config.pmm_servers = {};
+    for (let i = 0; i < pNames.length; i++) {
+      const name = pNames[i].trim();
+      if (!name) continue;
+      config.pmm_servers[name] = {
+        env_tag: 'test',
+        pmm_server_image: `percona/pmm-server:${pImages[i] || 'latest'}`,
+        pmm_port: parseInt(pPorts[i]) || 8443,
+        pmm_server_user: pUsers[i] || 'admin',
+        pmm_server_pwd:  pPwds[i]  || 'admin',
+        bind_to_localhost: pBind.some((v,idx) => idx === i && v === '1'),
+      };
+    }
+
+    // Minio Servers
+    const mNames   = fd.getAll('minio_server_name[]');
+    const mImages  = fd.getAll('minio_image[]');
+    const mPorts   = fd.getAll('minio_port[]');
+    const mCPorts  = fd.getAll('minio_console_port[]');
+    const mBuckets = fd.getAll('minio_bucket_name[]');
+    const mRet     = fd.getAll('minio_backup_retention[]');
+    const mAccess  = fd.getAll('minio_access_key[]');
+    const mSecret  = fd.getAll('minio_secret_key[]');
+    const mBind    = fd.getAll('minio_bind_localhost[]');
+    config.minio_servers = {};
+    for (let i = 0; i < mNames.length; i++) {
+      const name = mNames[i].trim();
+      if (!name) continue;
+      config.minio_servers[name] = {
+        env_tag: 'test',
+        minio_image:        mImages[i]  || 'minio/minio',
+        minio_port:         parseInt(mPorts[i])  || 9000,
+        minio_console_port: parseInt(mCPorts[i]) || 9001,
+        bucket_name:        mBuckets[i] || 'mongo-backups',
+        backup_retention:   parseInt(mRet[i])    || 2,
+        minio_access_key:   mAccess[i]  || 'minio',
+        minio_secret_key:   mSecret[i]  || 'minioadmin',
+        bind_to_localhost:  mBind.some((v,idx) => idx === i && v === '1'),
+      };
+    }
+
+    // LDAP Servers
+    const lNames  = fd.getAll('ldap_server_name[]');
+    const lImages = fd.getAll('ldap_image[]');
+    const lPorts  = fd.getAll('ldap_port[]');
+    const lDomains= fd.getAll('ldap_domain[]');
+    const lPwds   = fd.getAll('ldap_admin_password[]');
+    const lBind   = fd.getAll('ldap_bind_localhost[]');
+    config.ldap_servers = {};
+    for (let i = 0; i < lNames.length; i++) {
+      const name = lNames[i].trim();
+      if (!name) continue;
+      config.ldap_servers[name] = {
+        env_tag: 'test',
+        ldap_image:         lImages[i]  || 'osixia/openldap:1.5.0',
+        ldap_port:          parseInt(lPorts[i]) || 389,
+        ldap_domain:        lDomains[i] || 'example.org',
+        ldap_admin_password:lPwds[i]    || 'admin',
+        bind_to_localhost:  lBind.some((v,idx) => idx === i && v === '1'),
+      };
+    }
+  }
+
+  const envId = fd.get('env_id') || document.querySelector('[data-env-id]').dataset.envId || '';
+  const payload = { env_id: envId || undefined, platform: PLATFORM, config };
+
+  const submitBtn = form.querySelector('[type=submit]');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Saving…';
+  try {
+    const resp = await fetch('/api/environment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      window.location.href = `/environment/${data.env_id}`;
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save & Configure';
+    }
+  } catch (err) {
+    alert('Network error: ' + err.message);
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Save & Configure';
+  }
+});
+</script>
+{{end}}

@@ -1,0 +1,27 @@
+{{define "layout"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{template "title" .}} – MongoDB Deploy</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar-brand" href="/">
+      <span class="logo-icon">🍃</span> MongoDB Deploy UI
+    </a>
+    <div class="nav-links">
+      <a href="/">Environments</a>
+      <a href="/new" class="btn btn-primary btn-sm">+ New</a>
+    </div>
+  </nav>
+
+  <main class="container">
+    {{template "content" .}}
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
+{{end}}

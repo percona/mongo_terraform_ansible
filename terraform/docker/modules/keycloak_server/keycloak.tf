@@ -178,7 +178,7 @@ resource "null_resource" "keycloak_client" {
         --realm master \
         --user ${var.keycloak_admin_user} \
         --password ${var.keycloak_admin_password}
-      docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh create clients \
+      CLIENT_ID=$(docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh create clients \
         -r ${var.oidc_realm} \
         -s clientId=${var.oidc_client_id} \
         -s enabled=true \
@@ -186,7 +186,19 @@ resource "null_resource" "keycloak_client" {
         -s publicClient=true \
         -s standardFlowEnabled=true \
         -s directAccessGrantsEnabled=true \
-        -s deviceAuthorizationGrantEnabled=true
+        -i)
+      if [ -z "$CLIENT_ID" ]; then
+        echo "ERROR: Failed to create Keycloak client '${var.oidc_client_id}' - no client ID returned. Check Keycloak logs for details."
+        exit 1
+      fi
+      docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh config credentials \
+        --server http://localhost:${var.keycloak_port} \
+        --realm master \
+        --user ${var.keycloak_admin_user} \
+        --password ${var.keycloak_admin_password}
+      docker exec ${var.keycloak_server} /opt/keycloak/bin/kcadm.sh update "clients/$CLIENT_ID" \
+        -r ${var.oidc_realm} \
+        -s 'attributes={"oauth2.device.authorization.grant.enabled":"true"}'
     EOT
   }
 }

@@ -331,7 +331,7 @@ clusters     = {}
 - To authenticate using OIDC, use the device authorization flow. Run mongosh **inside** one of the MongoDB containers — the `NODE_EXTRA_CA_CERTS` env var is already set so mongosh trusts the Keycloak CA:
 
   ```
-  docker exec -it rs01-svr0 mongosh "mongodb://rs01-svr0:27017/?authMechanism=MONGODB-OIDC" \
+  docker exec -it rs01-svr0 mongosh "mongodb://localhost:27017/?authMechanism=MONGODB-OIDC" \
     --authenticationDatabase '$external' \
     --oidcFlows device-auth
   ```
@@ -339,7 +339,7 @@ clusters     = {}
   For a sharded cluster, run it against one of the mongos routers:
 
   ```
-  docker exec -it cl01-mongos00 mongosh "mongodb://cl01-mongos00:27017/?authMechanism=MONGODB-OIDC" \
+  docker exec -it cl01-mongos00 mongosh "mongodb://localhost:27017/?authMechanism=MONGODB-OIDC" \
     --authenticationDatabase '$external' \
     --oidcFlows device-auth
   ```

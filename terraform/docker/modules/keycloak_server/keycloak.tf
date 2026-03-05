@@ -183,11 +183,9 @@ resource "null_resource" "keycloak_client" {
         -s clientId=${var.oidc_client_id} \
         -s enabled=true \
         -s protocol=openid-connect \
-        -s publicClient=false \
-        -s secret=${var.oidc_client_secret} \
+        -s publicClient=true \
         -s standardFlowEnabled=true \
         -s directAccessGrantsEnabled=true \
-        -s serviceAccountsEnabled=true \
         -s 'attributes.oauth2DeviceAuthorizationGrantEnabled=true'
     EOT
   }

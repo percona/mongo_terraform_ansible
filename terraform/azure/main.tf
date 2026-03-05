@@ -38,6 +38,12 @@ module "mongodb_clusters" {
   }
   use_spot_instances     = var.use_spot_instances
   data_disk_type         = var.data_disk_type
+  shardsvr_type          = var.shardsvr_type
+  shardsvr_volume_size   = var.shardsvr_volume_size
+  configsvr_type         = var.configsvr_type
+  configsvr_volume_size  = var.configsvr_volume_size
+  mongos_type            = var.mongos_type
+  arbiter_type           = var.arbiter_type
 
   depends_on = [
     azurerm_storage_account.mongo_backups,
@@ -67,6 +73,9 @@ module "mongodb_replsets" {
   }
   use_spot_instances       = var.use_spot_instances
   data_disk_type           = var.data_disk_type
+  replsetsvr_type          = var.replsetsvr_type
+  replsetsvr_volume_size   = var.replsetsvr_volume_size
+  arbiter_type             = var.arbiter_type
 
   depends_on = [
     azurerm_storage_account.mongo_backups,

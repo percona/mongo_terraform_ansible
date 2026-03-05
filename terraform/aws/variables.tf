@@ -167,6 +167,51 @@ variable "use_spot_instances" {
 
 variable "data_disk_type" {
   default = "gp2"
+  description = "EBS volume type for MongoDB data disks (gp2, gp3, io1, io2, st1, sc1)"
+}
+
+################
+# Instance types
+################
+
+variable "shardsvr_type" {
+  default     = "t3.medium"
+  description = "EC2 instance type for MongoDB shard servers"
+}
+
+variable "shardsvr_volume_size" {
+  default     = 50
+  description = "EBS volume size (GB) for MongoDB shard servers"
+}
+
+variable "configsvr_type" {
+  default     = "t3.medium"
+  description = "EC2 instance type for MongoDB config servers (CSRS)"
+}
+
+variable "configsvr_volume_size" {
+  default     = 20
+  description = "EBS volume size (GB) for MongoDB config servers"
+}
+
+variable "mongos_type" {
+  default     = "t3.medium"
+  description = "EC2 instance type for mongos router instances"
+}
+
+variable "arbiter_type" {
+  default     = "t3.medium"
+  description = "EC2 instance type for MongoDB arbiter nodes"
+}
+
+variable "replsetsvr_type" {
+  default     = "t3.medium"
+  description = "EC2 instance type for standalone replica set data-bearing nodes"
+}
+
+variable "replsetsvr_volume_size" {
+  default     = 100
+  description = "EBS volume size (GB) for standalone replica set data-bearing nodes"
 }
 
 #############

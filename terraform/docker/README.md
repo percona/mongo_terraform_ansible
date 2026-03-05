@@ -332,14 +332,16 @@ clusters     = {}
 
   ```
   docker exec -it rs01-svr0 mongosh "mongodb://rs01-svr0:27017/?authMechanism=MONGODB-OIDC" \
-    --authenticationDatabase '$external'
+    --authenticationDatabase '$external' \
+    --oidcFlows device-auth
   ```
 
   For a sharded cluster, run it against one of the mongos routers:
 
   ```
   docker exec -it cl01-mongos00 mongosh "mongodb://cl01-mongos00:27017/?authMechanism=MONGODB-OIDC" \
-    --authenticationDatabase '$external'
+    --authenticationDatabase '$external' \
+    --oidcFlows device-auth
   ```
 
   mongosh will print output similar to:

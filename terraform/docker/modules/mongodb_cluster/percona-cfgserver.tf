@@ -64,12 +64,12 @@ resource "docker_container" "cfg" {
     for_each = var.enable_oidc && var.pki_certs_volume_name != "" ? [1] : []
     content {
       type      = "volume"
-      target    = "/etc/mongo/oidc-certs"
+      target    = "/etc/oidc-certs"
       source    = var.pki_certs_volume_name
       read_only = true
     }
   }
-  env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/etc/mongo/oidc-certs/ca.crt"] : []
+  env = var.enable_oidc && var.pki_certs_volume_name != "" ? ["NODE_EXTRA_CA_CERTS=/etc/oidc-certs/ca.crt"] : []
   network_mode = "bridge"     
   networks_advanced {
     name = "${var.network_name}"

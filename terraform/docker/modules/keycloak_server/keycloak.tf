@@ -18,6 +18,8 @@ resource "tls_self_signed_cert" "keycloak" {
 
   validity_period_hours = 8760 # 1 year
 
+  is_ca_certificate = true
+
   dns_names    = [var.keycloak_server, "localhost"]
   ip_addresses = ["127.0.0.1"]
 
@@ -25,6 +27,8 @@ resource "tls_self_signed_cert" "keycloak" {
     "key_encipherment",
     "digital_signature",
     "server_auth",
+    "cert_signing",
+    "crl_signing",
   ]
 }
 

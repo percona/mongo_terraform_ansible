@@ -186,7 +186,7 @@ resource "null_resource" "keycloak_client" {
         -s publicClient=true \
         -s standardFlowEnabled=true \
         -s directAccessGrantsEnabled=true \
-        -s 'attributes.oauth2DeviceAuthorizationGrantEnabled=true'
+        -s deviceAuthorizationGrantEnabled=true
     EOT
   }
 }

@@ -15,6 +15,17 @@ import time
 import uuid
 from pathlib import Path
 
+# Matches the full ANSI/VT100 escape sequence: ESC followed by a control sequence
+_ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def strip_ansi(text: str) -> str:
+    """Remove ANSI escape codes and normalise line endings."""
+    text = _ANSI_ESCAPE.sub("", text)
+    # Terraform uses \r to overwrite progress lines; collapse to nothing.
+    text = text.replace("\r", "")
+    return text
+
 import requests
 from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 

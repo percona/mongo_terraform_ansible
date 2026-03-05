@@ -58,7 +58,7 @@ resource "local_file" "SSHConfigCluster" {
     port_to_forward        = var.port_to_forward    
     ssh_gateway_name       = var.ssh_gateway_name    
     hostname_pmm           = local.pmm_host
-    public_ip_pmm          = google_compute_instance.pmm.network_interface.0.access_config.0.nat_ip
+    public_ip_pmm          = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
     pmm_port               = var.pmm_port    
   })
 
@@ -106,7 +106,7 @@ resource "local_file" "SSHConfigRS" {
     enable_ssh_gateway     = var.enable_ssh_gateway
     port_to_forward        = var.port_to_forward
     hostname_pmm           = local.pmm_host
-    public_ip_pmm          = google_compute_instance.pmm.network_interface.0.access_config.0.nat_ip
+    public_ip_pmm          = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
     pmm_port               = var.pmm_port
   })
 

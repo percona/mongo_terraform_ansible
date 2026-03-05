@@ -121,6 +121,12 @@ variable "pmm_port" {
   default = 8443
 }
 
+variable "enable_pmm" {
+  type        = bool
+  default     = true
+  description = "Deploy a PMM monitoring server. Set to false to skip PMM entirely."
+}
+
 #############
 # Backup
 #############

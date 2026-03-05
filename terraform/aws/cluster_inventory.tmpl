@@ -24,9 +24,11 @@ ${ arb_group == tostring(shard_index) ? join("", [ hostname_arbiters[arb_index],
 ${hostname_mongos[index]} 
 %{ endfor ~}
 
+%{ if hostname_pmm != "" ~}
 [pmm]
 ${hostname_pmm} 
 
+%{ endif ~}
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
 bucket=${bucket}

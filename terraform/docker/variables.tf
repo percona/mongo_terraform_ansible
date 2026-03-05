@@ -262,6 +262,12 @@ variable "ycsb_image" {
   default = "percona/ycsb"
 }
 
+variable "prefix" {
+  type        = string
+  default     = ""
+  description = "Prefix applied to every Docker container and volume. If non-empty a hyphen is appended automatically (e.g. \"ig\" → \"ig-\")."
+}
+
 #############
 # Networking
 #############

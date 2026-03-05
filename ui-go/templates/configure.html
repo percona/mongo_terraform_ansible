@@ -494,6 +494,15 @@
     <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addPmmServer()">+ Add PMM Server</button>
     {{else}}
     <div class="form-row">
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" id="enable_pmm" name="enable_pmm"
+                      {{if boolDefault .Config.EnablePmm true}}checked{{end}}>
+          Deploy PMM monitoring server</label>
+        <small>Uncheck to skip the PMM server for this environment.</small>
+      </div>
+    </div>
+    <div id="pmm-cloud-settings" {{if not (boolDefault .Config.EnablePmm true)}}style="display:none"{{end}}>
+    <div class="form-row">
       <div class="form-group">
         <label for="pmm_type">Instance Type</label>
         <input type="text" id="pmm_type" name="pmm_type"
@@ -532,6 +541,7 @@
         </select>
       </div>
     </div>
+    </div><!-- #pmm-cloud-settings -->
     {{end}}
   </section>
 
@@ -733,6 +743,14 @@ function removeBlock(btn) {
   btn.closest('.component-block').remove();
 }
 
+// Toggle the PMM cloud-settings sub-panel when the enable_pmm checkbox changes.
+(function() {
+  const cb = document.getElementById('enable_pmm');
+  if (!cb) return;
+  const panel = document.getElementById('pmm-cloud-settings');
+  cb.addEventListener('change', () => { panel.style.display = cb.checked ? '' : 'none'; });
+})();
+
 function addCluster() {
   const clone = document.getElementById('cluster-template').content.cloneNode(true);
   document.getElementById('clusters-container').appendChild(clone);
@@ -869,6 +887,11 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     }
   }
   config.use_spot_instances = fd.has('use_spot_instances');
+  if (PLATFORM !== 'docker') {
+    // enable_pmm is a tri-state *bool on the server: only send false when the
+    // user explicitly unchecked it; when checked send true so it's stored.
+    config.enable_pmm = fd.has('enable_pmm');
+  }
 
   // Clusters
   const clNames     = fd.getAll('cluster_name[]');

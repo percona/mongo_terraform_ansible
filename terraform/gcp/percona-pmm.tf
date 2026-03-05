@@ -1,4 +1,5 @@
 resource "google_compute_disk" "pmm_disk" {
+  count = var.enable_pmm ? 1 : 0
   name  = "${local.pmm_host}-data"
   type  = var.pmm_disk_type
   size  = var.pmm_volume_size
@@ -6,17 +7,18 @@ resource "google_compute_disk" "pmm_disk" {
 }
 
 resource "google_compute_instance" "pmm" {
-  name = "${local.pmm_host}"
+  count        = var.enable_pmm ? 1 : 0
+  name         = "${local.pmm_host}"
   machine_type = var.pmm_type
-  zone  = data.google_compute_zones.available.names[0]
-  tags = ["${local.pmm_host}"]
+  zone         = data.google_compute_zones.available.names[0]
+  tags         = ["${local.pmm_host}"]
   boot_disk {
     initialize_params {
     image = lookup(var.image, var.region)
     }
   }   
   attached_disk {
-    source = google_compute_disk.pmm_disk.name
+    source = google_compute_disk.pmm_disk[0].name
   }     
   network_interface {
     network = google_compute_network.vpc-network.id
@@ -53,11 +55,12 @@ resource "google_compute_instance" "pmm" {
 }
 
 resource "google_compute_firewall" "percona-pmm-firewall" {
-  name = "${local.pmm_host}-firewall"
-  network = google_compute_network.vpc-network.name
-  direction = "INGRESS"
+  count         = var.enable_pmm ? 1 : 0
+  name          = "${local.pmm_host}-firewall"
+  network       = google_compute_network.vpc-network.name
+  direction     = "INGRESS"
   source_ranges = ["${var.subnet_cidr}"]
-  target_tags = ["${local.pmm_host}"]
+  target_tags   = ["${local.pmm_host}"]
   allow {
     protocol = "tcp"
     ports = [ var.pmm_port ]

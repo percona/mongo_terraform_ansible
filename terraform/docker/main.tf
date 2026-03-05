@@ -14,10 +14,18 @@ terraform {
 
 provider "docker" {}
 
+locals {
+  # When var.prefix is non-empty prepend it plus a hyphen to every resource
+  # name so that containers/volumes from different environments coexist on the
+  # same Docker host without collisions.  Matches the prefix the UI embeds in
+  # its docker --filter 'name=<prefix>-' stop/restart commands.
+  name_prefix = var.prefix != "" ? "${var.prefix}-" : ""
+}
+
 module "mongodb_clusters" {
   source                  = "./modules/mongodb_cluster"
   for_each                = var.clusters
-  cluster_name            = each.key
+  cluster_name            = "${local.name_prefix}${each.key}"
   domain_name             = each.value.domain_name
   env_tag                 = each.value.env_tag
   configsvr_count         = each.value.configsvr_count
@@ -64,7 +72,7 @@ module "mongodb_clusters" {
 module "mongodb_replsets" {
   source                  = "./modules/mongodb_replset"
   for_each                = var.replsets
-  rs_name                 = each.key
+  rs_name                 = "${local.name_prefix}${each.key}"
   domain_name             = each.value.domain_name
   env_tag                 = each.value.env_tag
   data_nodes_per_replset  = each.value.data_nodes_per_replset
@@ -111,7 +119,7 @@ module "mongodb_replsets" {
 module "pmm_server" {
   source                  = "./modules/pmm_server"
   for_each                = var.pmm_servers
-  pmm_host                = each.key
+  pmm_host                = "${local.name_prefix}${each.key}"
   domain_name             = each.value.domain_name
   env_tag                 = each.value.env_tag
   pmm_server_image        = each.value.pmm_server_image
@@ -129,7 +137,7 @@ module "pmm_server" {
 module "minio_server" {
   source                  = "./modules/minio_server"
   for_each                = var.minio_servers
-  minio_server            = each.key
+  minio_server            = "${local.name_prefix}${each.key}"
   domain_name             = each.value.domain_name  
   env_tag                 = each.value.env_tag
   minio_image             = each.value.minio_image
@@ -147,7 +155,7 @@ module "minio_server" {
 module "ldap_server" {
   source = "./modules/ldap_server"
   for_each                = var.ldap_servers
-  ldap_server             = each.key
+  ldap_server             = "${local.name_prefix}${each.key}"
   domain_name             = each.value.domain_name  
   env_tag                 = each.value.env_tag
   ldap_image              = each.value.ldap_image

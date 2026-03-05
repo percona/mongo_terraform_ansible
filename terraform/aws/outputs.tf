@@ -24,7 +24,7 @@ resource "local_file" "AnsibleInventoryCluster" {
     arbiters_per_replset     = range(each.value.arbiters_per_replset)
    
     my_ssh_user              = var.my_ssh_user
-    hostname_pmm             = aws_instance.pmm.tags["Name"]
+    hostname_pmm             = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
     bucket                   = aws_s3_bucket.mongo_backups.bucket
     region                   = aws_s3_bucket.mongo_backups.region
     endpointUrl              = local.storage_endpoint
@@ -58,8 +58,8 @@ resource "local_file" "SSHConfigCluster" {
     enable_ssh_gateway     = var.enable_ssh_gateway
     port_to_forward        = var.port_to_forward    
     ssh_gateway_name       = var.ssh_gateway_name       
-    hostname_pmm           = aws_instance.pmm.tags["Name"]
-    public_ip_pmm          = aws_instance.pmm.public_ip
+    hostname_pmm           = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
+    public_ip_pmm          = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
     pmm_port               = var.pmm_port
   })
 
@@ -83,7 +83,7 @@ resource "local_file" "AnsibleInventoryRS" {
     env_tag                 = each.value.env_tag
     
     region                   = aws_s3_bucket.mongo_backups.region
-    hostname_pmm             = aws_instance.pmm.tags["Name"]
+    hostname_pmm             = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
     bucket                   = aws_s3_bucket.mongo_backups.bucket
     endpointUrl              = local.storage_endpoint
 
@@ -108,8 +108,8 @@ resource "local_file" "SSHConfigRS" {
     enable_ssh_gateway         = var.enable_ssh_gateway
     port_to_forward            = var.port_to_forward    
     ssh_gateway_name           = var.ssh_gateway_name       
-    hostname_pmm               = aws_instance.pmm.tags["Name"]
-    public_ip_pmm              = aws_instance.pmm.public_ip
+    hostname_pmm               = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
+    public_ip_pmm              = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
     pmm_port                   = var.pmm_port    
   })
 

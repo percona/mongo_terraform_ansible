@@ -35,7 +35,7 @@ resource "docker_image" "ycsb" {
 
 # Create YCSB container
 resource "docker_container" "ycsb" {
-  name = "${var.ycsb_container_suffix}"
+  name = "${local.name_prefix}${var.ycsb_container_suffix}"
   image = docker_image.ycsb.image_id
   command = [ "sleep", "infinity"]
   network_mode = "bridge"

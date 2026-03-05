@@ -1,5 +1,6 @@
 # Public IP for PMM
 resource "azurerm_public_ip" "pmm" {
+  count               = var.enable_pmm ? 1 : 0
   name                = "${local.pmm_host}-public-ip"
   location            = var.location
   resource_group_name = local.resource_group_name
@@ -9,6 +10,7 @@ resource "azurerm_public_ip" "pmm" {
 
 # PMM NIC
 resource "azurerm_network_interface" "pmm_nic" {
+  count               = var.enable_pmm ? 1 : 0
   name                = "${local.pmm_host}-nic"
   location            = var.location
   resource_group_name = local.resource_group_name
@@ -17,13 +19,14 @@ resource "azurerm_network_interface" "pmm_nic" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.pmm.id
+    public_ip_address_id          = azurerm_public_ip.pmm[0].id
   }
   depends_on = [time_sleep.wait_after_rg]
 }
 
 # Network Security Group
 resource "azurerm_network_security_group" "pmm_nsg" {
+  count               = var.enable_pmm ? 1 : 0
   name                = "${local.pmm_host}-nsg"
   location            = var.location
   resource_group_name = local.resource_group_name
@@ -69,12 +72,14 @@ resource "azurerm_network_security_group" "pmm_nsg" {
 
 # Associate NSG with NIC
 resource "azurerm_network_interface_security_group_association" "pmm_nsg_assoc" {
-  network_interface_id      = azurerm_network_interface.pmm_nic.id
-  network_security_group_id = azurerm_network_security_group.pmm_nsg.id
+  count                     = var.enable_pmm ? 1 : 0
+  network_interface_id      = azurerm_network_interface.pmm_nic[0].id
+  network_security_group_id = azurerm_network_security_group.pmm_nsg[0].id
 }
 
 # Disk for PMM
 resource "azurerm_managed_disk" "pmm_data_disk" {
+  count                = var.enable_pmm ? 1 : 0
   name                 = "${local.pmm_host}-data"
   location             = var.location
   resource_group_name  = local.resource_group_name
@@ -87,13 +92,14 @@ resource "azurerm_managed_disk" "pmm_data_disk" {
 
 # VM
 resource "azurerm_linux_virtual_machine" "pmm" {
+  count               = var.enable_pmm ? 1 : 0
   name                = local.pmm_host
   location            = var.location
   resource_group_name = local.resource_group_name
   size                = var.pmm_type
   admin_username      = var.my_ssh_user
   network_interface_ids = [
-    azurerm_network_interface.pmm_nic.id,
+    azurerm_network_interface.pmm_nic[0].id,
   ]
 
   admin_ssh_key {
@@ -132,15 +138,16 @@ EOT
   }
 
   depends_on = [
-    azurerm_managed_disk.pmm_data_disk,
-    azurerm_network_interface_security_group_association.pmm_nsg_assoc
+    azurerm_managed_disk.pmm_data_disk[0],
+    azurerm_network_interface_security_group_association.pmm_nsg_assoc[0]
   ]
 }
 
 # Disk attachment
 resource "azurerm_virtual_machine_data_disk_attachment" "pmm_data_attach" {
-  managed_disk_id    = azurerm_managed_disk.pmm_data_disk.id
-  virtual_machine_id = azurerm_linux_virtual_machine.pmm.id
+  count              = var.enable_pmm ? 1 : 0
+  managed_disk_id    = azurerm_managed_disk.pmm_data_disk[0].id
+  virtual_machine_id = azurerm_linux_virtual_machine.pmm[0].id
   lun                = 0
   caching            = "ReadWrite"
 }

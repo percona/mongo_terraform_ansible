@@ -122,6 +122,7 @@ type Config struct {
 	UseSpotInstances bool  `json:"use_spot_instances,omitempty"`
 
 	// PMM (cloud)
+	EnablePmm    *bool  `json:"enable_pmm,omitempty"`
 	PmmType      string `json:"pmm_type,omitempty"`
 	PmmVolumeSize int   `json:"pmm_volume_size,omitempty"`
 	PmmPort      int    `json:"pmm_port,omitempty"`
@@ -342,6 +343,14 @@ var funcMap = template.FuncMap{
 			return def
 		}
 		return n
+	},
+	// Return *b if non-nil, otherwise def.  Used in templates to safely
+	// dereference optional bool pointers (e.g. EnablePmm *bool).
+	"boolDefault": func(b *bool, def bool) bool {
+		if b == nil {
+			return def
+		}
+		return *b
 	},
 	// True if the stored image value matches the given tag (with or without prefix).
 	"tagSelected": func(stored, prefix, tag string) bool {
@@ -658,6 +667,10 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		writeOptInt("pmm_volume_size", cfg.PmmVolumeSize)
 		writeOptInt("pmm_port", cfg.PmmPort)
 		writeOptStr("pmm_disk_type", cfg.PmmDiskType)
+		// Write enable_pmm only when explicitly set; terraform default is true.
+		if cfg.EnablePmm != nil {
+			writeVar("enable_pmm", *cfg.EnablePmm)
+		}
 
 		// Backup
 		writeOptStr("default_bucket_name", cfg.DefaultBucketName)
@@ -1229,9 +1242,16 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			shellQuote(varfile),
 		)
 		if platform != "docker" {
-			inventory := shellQuote(filepath.Join(ansibleDir, "inventory"))
 			playbook := shellQuote(filepath.Join(ansibleDir, "main.yml"))
-			shellCmd += fmt.Sprintf(" && ansible-playbook -i %s %s", inventory, playbook)
+			// Terraform writes inventory_<name> files into the platform directory.
+			// Verify at least one exists (proving terraform apply succeeded), then
+			// run ansible-playbook once per generated inventory file.
+			shellCmd += fmt.Sprintf(
+				` && { inv_files=$(ls inventory_* 2>/dev/null); `+
+					`[ -n "$inv_files" ] || { echo "ERROR: no inventory_* files found – terraform apply may not have completed successfully"; exit 1; }; `+
+					`for inv in $inv_files; do echo "==> ansible-playbook -i $inv"; ansible-playbook -i "$inv" %s || exit $?; done; }`,
+				playbook,
+			)
 		}
 		cmd = []string{"bash", "-c", shellCmd}
 
@@ -1252,9 +1272,13 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("docker ps -q --filter 'name=%s-' | xargs -r docker stop", prefix),
 			}
 		} else {
-			inventory := shellQuote(filepath.Join(ansibleDir, "inventory"))
 			playbook := shellQuote(filepath.Join(ansibleDir, "stop.yml"))
-			cmd = []string{"bash", "-c", fmt.Sprintf("ansible-playbook -i %s %s", inventory, playbook)}
+			cmd = []string{"bash", "-c", fmt.Sprintf(
+				`{ inv_files=$(ls inventory_* 2>/dev/null); `+
+					`[ -n "$inv_files" ] || { echo "ERROR: no inventory_* files found – has the environment been deployed?"; exit 1; }; `+
+					`for inv in $inv_files; do echo "==> ansible-playbook -i $inv"; ansible-playbook -i "$inv" %s || exit $?; done; }`,
+				playbook,
+			)}
 		}
 
 	case "restart":
@@ -1264,9 +1288,13 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("docker ps -aq --filter 'name=%s-' | xargs -r docker restart", prefix),
 			}
 		} else {
-			inventory := shellQuote(filepath.Join(ansibleDir, "inventory"))
 			playbook := shellQuote(filepath.Join(ansibleDir, "restart.yml"))
-			cmd = []string{"bash", "-c", fmt.Sprintf("ansible-playbook -i %s %s", inventory, playbook)}
+			cmd = []string{"bash", "-c", fmt.Sprintf(
+				`{ inv_files=$(ls inventory_* 2>/dev/null); `+
+					`[ -n "$inv_files" ] || { echo "ERROR: no inventory_* files found – has the environment been deployed?"; exit 1; }; `+
+					`for inv in $inv_files; do echo "==> ansible-playbook -i $inv"; ansible-playbook -i "$inv" %s || exit $?; done; }`,
+				playbook,
+			)}
 		}
 
 	default:

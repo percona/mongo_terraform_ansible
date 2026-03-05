@@ -101,7 +101,7 @@ resource "docker_container" "keycloak_server" {
     "KC_HTTPS_CERTIFICATE_FILE=/opt/keycloak/certs/tls.crt",
     "KC_HTTPS_CERTIFICATE_KEY_FILE=/opt/keycloak/certs/tls.key",
     "KC_HTTPS_PORT=${var.keycloak_https_port}",
-    "KC_HOSTNAME_URL=https://${var.keycloak_server}:${var.keycloak_https_port}"
+    "KC_HOSTNAME=https://${var.keycloak_server}:${var.keycloak_https_port}"
   ]
 
   command = ["start-dev"]

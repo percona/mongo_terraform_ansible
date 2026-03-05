@@ -432,3 +432,34 @@ tr:last-child td { border-bottom: none; }
 .modal h2 { margin-bottom: 0.8rem; }
 .modal p  { color: var(--color-muted); margin-bottom: 1.5rem; }
 .modal-actions { display: flex; gap: 0.8rem; }
+
+/* ─── Wide modal (tfvars preview) ───────────────────────────────── */
+.modal-wide {
+  max-width: 780px;
+  width: 95%;
+}
+.modal-header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+.modal-header h2 { margin: 0; }
+.tfvars-filename {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+.tfvars-pre {
+  background: #0a0c10;
+  color: #c5d0e4;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  overflow: auto;
+  max-height: 60vh;
+  white-space: pre;
+  margin-bottom: 1rem;
+}

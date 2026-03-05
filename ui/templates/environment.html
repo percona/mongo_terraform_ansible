@@ -33,6 +33,9 @@
   <button class="btn btn-danger" onclick="confirmDestroy()" id="btn-destroy">
     🗑 Destroy
   </button>
+  <button class="btn btn-outline" onclick="showTfvars()" id="btn-tfvars">
+    📄 View tfvars
+  </button>
 </div>
 
 <!-- Configuration summary -->
@@ -157,6 +160,20 @@
   </div>
 </div>
 
+<!-- tfvars preview modal -->
+<div class="modal-backdrop" id="tfvars-modal" style="display:none" onclick="closeTfvarsModal(event)">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>📄 tfvars preview</h2>
+      <span id="tfvars-filename" class="tfvars-filename"></span>
+    </div>
+    <pre class="tfvars-pre" id="tfvars-content">Loading…</pre>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeTfvarsModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const ENV_ID = {{ env_id | tojson }};
 let activeEventSource = null;
@@ -167,6 +184,28 @@ function confirmDestroy() {
 
 function closeDestroyModal() {
   document.getElementById('destroy-modal').style.display = 'none';
+}
+
+async function showTfvars() {
+  const modal = document.getElementById('tfvars-modal');
+  const pre   = document.getElementById('tfvars-content');
+  const fname = document.getElementById('tfvars-filename');
+  pre.textContent = 'Loading…';
+  modal.style.display = 'flex';
+  try {
+    const data = await apiFetch(`/api/environment/${ENV_ID}/tfvars`);
+    pre.textContent  = data.content || data.message || '(empty)';
+    fname.textContent = data.filename || '';
+  } catch (err) {
+    pre.textContent = 'Error: ' + err.message;
+  }
+}
+
+function closeTfvarsModal(evt) {
+  // Close when clicking the backdrop itself, not the inner modal box.
+  if (!evt || evt.target === document.getElementById('tfvars-modal')) {
+    document.getElementById('tfvars-modal').style.display = 'none';
+  }
 }
 
 function clearTerminal() {
@@ -197,7 +236,7 @@ function setJobBadge(status) {
 }
 
 function setButtonsDisabled(disabled) {
-  ['btn-deploy','btn-stop','btn-restart','btn-destroy'].forEach(id => {
+  ['btn-deploy','btn-stop','btn-restart','btn-destroy','btn-tfvars'].forEach(id => {
     document.getElementById(id).disabled = disabled;
   });
 }
@@ -247,8 +286,11 @@ async function runAction(action) {
       es.close();
       activeEventSource = null;
       setButtonsDisabled(false);
-      // Refresh status from server
-      fetchStatus();
+      if (action === 'destroy' && finalStatus === 'success') {
+        // The backend has already removed the env from inventory.
+        appendToTerminal('Environment destroyed. Redirecting to environments list…');
+        setTimeout(() => { window.location.href = '/'; }, 2000);
+      }
     });
 
     es.onerror = () => {
@@ -262,17 +304,6 @@ async function runAction(action) {
     appendToTerminal(`Network error: ${err.message}`);
     setButtonsDisabled(false);
   }
-}
-
-async function fetchStatus() {
-  try {
-    const resp = await fetch(`/api/environment/${ENV_ID}/action`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: '_status' }),
-    });
-  } catch {}
-  // Just reload the status label from page
 }
 
 // If there's a last job already running, reconnect to it

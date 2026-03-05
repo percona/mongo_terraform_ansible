@@ -6,6 +6,7 @@ across AWS, GCP, Azure, and Docker platforms.
 """
 
 import json
+import logging
 import os
 import re
 import shlex
@@ -13,7 +14,26 @@ import subprocess
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from pathlib import Path
+
+import requests
+from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Logging
+# ──────────────────────────────────────────────────────────────────────────────
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s – %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ANSI / terminal helpers
+# ──────────────────────────────────────────────────────────────────────────────
 
 # Matches the full ANSI/VT100 escape sequence: ESC followed by a control sequence
 _ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
@@ -25,9 +45,6 @@ def strip_ansi(text: str) -> str:
     # Terraform uses \r to overwrite progress lines; collapse to nothing.
     text = text.replace("\r", "")
     return text
-
-import requests
-from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 
 app = Flask(__name__)
 
@@ -94,67 +111,63 @@ def get_dockerhub_tags(namespace: str, repo: str, limit: int = 20) -> list[str]:
         resp = requests.get(url, timeout=8)
         resp.raise_for_status()
         tags = [t["name"] for t in resp.json().get("results", [])]
-    except Exception:
+        logger.info("Fetched %d tags for %s/%s", len(tags), namespace, repo)
+    except Exception as exc:
+        logger.warning("Could not fetch Docker Hub tags for %s/%s: %s", namespace, repo, exc)
         tags = []
     _cache_set(key, tags)
     return tags
 
 
 def get_psmdb_versions() -> list[str]:
-    """Return known Percona Server for MongoDB release identifiers."""
+    """Return Percona Server for MongoDB release identifiers."""
     key = "psmdb_versions"
     cached = _cache_get(key)
     if cached is not None:
         return cached
-    # Try fetching from Percona repository listing
-    known = [
-        "psmdb-80",
-        "psmdb-70",
-        "psmdb-60",
-        "psmdb-50",
-        "psmdb-44",
-        "psmdb-42",
-        "psmdb-40",
-        "psmdb-36",
-    ]
+    versions: list[str] = []
     try:
         resp = requests.get("https://repo.percona.com/percona/yum/release/", timeout=6)
         if resp.ok:
             found = re.findall(r"psmdb-\d+", resp.text)
             if found:
-                known = sorted(set(found), reverse=True)
-    except Exception:
-        pass
-    _cache_set(key, known)
-    return known
+                versions = sorted(set(found), reverse=True)
+        logger.info("Fetched %d PSMDB versions from Percona repo", len(versions))
+    except Exception as exc:
+        logger.warning("Could not fetch PSMDB versions: %s", exc)
+    _cache_set(key, versions)
+    return versions
 
 
 def get_pmm_server_images() -> list[str]:
     tags = get_dockerhub_tags("percona", "pmm-server", 30)
-    if not tags:
-        tags = ["latest", "3", "2.42.0", "2.41.0", "2.40.0"]
-    return tags
+    return tags or ["latest"]
 
 
 def get_psmdb_images() -> list[str]:
     tags = get_dockerhub_tags("percona", "percona-server-mongodb", 30)
-    if not tags:
-        tags = ["latest", "8.0", "7.0", "6.0"]
-    return tags
+    return tags or ["latest"]
 
 
 def get_pbm_images() -> list[str]:
     tags = get_dockerhub_tags("percona", "percona-backup-mongodb", 20)
-    if not tags:
-        tags = ["latest", "2.4.0", "2.3.0"]
-    return tags
+    return tags or ["latest"]
 
 
 def get_pmm_client_images() -> list[str]:
     tags = get_dockerhub_tags("percona", "pmm-client", 20)
-    if not tags:
-        tags = ["latest", "3.0.0", "2.42.0"]
-    return tags
+    return tags or ["latest"]
+
+
+def _prefetch_versions() -> None:
+    """Warm the version/image cache in a background thread at startup."""
+    logger.info("Prefetching container image tags and PSMDB versions…")
+    get_psmdb_versions()
+    get_pmm_server_images()
+    get_psmdb_images()
+    get_pbm_images()
+    get_pmm_client_images()
+    logger.info("Version prefetch complete.")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -242,6 +255,7 @@ def write_tfvars(env_id: str, platform: str, config: dict):
 
     with open(path, "w") as f:
         f.write("\n".join(lines) + "\n")
+    logger.info("Wrote tfvars: %s", path)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -256,15 +270,29 @@ def job_status_path(job_id: str) -> Path:
     return JOBS_DIR / f"{job_id}.status"
 
 
-def _run_job(job_id: str, cmd: list[str], cwd: str, env: dict | None = None, on_complete=None):
+def _run_job(job_id: str, cmd: list[str], cwd: str, env: dict | None = None,
+             on_complete: Callable[[str], None] | None = None):
     """Run a command in a thread, writing output to a log file."""
     log = job_log_path(job_id)
     status = job_status_path(job_id)
     status.write_text("running")
     full_env = {**os.environ, **(env or {})}
     final_status = "error"
+
+    # For ["bash", "-c", "..."] show the shell string; otherwise quote each token.
+    if cmd[:2] == ["bash", "-c"] and len(cmd) == 3:
+        cmd_display = cmd[2]
+    else:
+        cmd_display = shlex.join(cmd)
+
+    logger.info("job=%s cwd=%s  cmd: %s", job_id, cwd, cmd_display)
+
     try:
         with open(log, "w") as f:
+            # Write the command at the top of the log so it is visible in the terminal.
+            f.write(f"$ {cmd_display}\n")
+            f.write(f"# cwd: {cwd}\n\n")
+            f.flush()
             proc = subprocess.Popen(
                 cmd,
                 cwd=cwd,
@@ -277,10 +305,12 @@ def _run_job(job_id: str, cmd: list[str], cwd: str, env: dict | None = None, on_
         rc = proc.returncode
         final_status = "success" if rc == 0 else f"failed:{rc}"
         status.write_text(final_status)
+        logger.info("job=%s finished: %s (exit code %d)", job_id, final_status, rc)
     except Exception as exc:
         with open(log, "a") as f:
             f.write(f"\nError: {exc}\n")
         status.write_text("error")
+        logger.exception("job=%s raised an exception", job_id)
     if on_complete:
         try:
             on_complete(final_status)
@@ -288,7 +318,8 @@ def _run_job(job_id: str, cmd: list[str], cwd: str, env: dict | None = None, on_
             pass
 
 
-def start_job(cmd: list[str], cwd: str, env: dict | None = None, on_complete=None) -> str:
+def start_job(cmd: list[str], cwd: str, env: dict | None = None,
+              on_complete: Callable[[str], None] | None = None) -> str:
     job_id = str(uuid.uuid4())
     t = threading.Thread(target=_run_job, args=(job_id, cmd, cwd, env, on_complete), daemon=True)
     t.start()
@@ -500,8 +531,9 @@ def environment_action(env_id: str):
         ]
     elif action in ("stop", "restart"):
         if platform == "docker":
-            # Use docker stop / restart against containers whose names contain the
-            # env prefix.  Sanitise the prefix to prevent shell injection.
+            # Sanitise the prefix to prevent shell injection.  Hyphens are
+            # retained because they are valid in container names and are not
+            # interpreted as flags by `docker ps --filter name=…`.
             prefix = re.sub(r"[^a-zA-Z0-9_-]", "", env.get("config", {}).get("prefix", env_id))
             if not prefix:
                 prefix = env_id
@@ -527,6 +559,10 @@ def environment_action(env_id: str):
     state[env_id]["status"] = f"{action}_in_progress"
     state[env_id]["last_job_id"] = job_id
     save_state(state)
+
+    logger.info(
+        "action=%s env=%s platform=%s job=%s", action, env_id, platform, job_id
+    )
 
     return jsonify({"job_id": job_id, "status": f"{action}_in_progress"})
 
@@ -583,6 +619,30 @@ def job_log(job_id: str):
     status = status_path.read_text().strip() if status_path.exists() else "unknown"
     return jsonify({"log": log_path.read_text(), "status": status})
 
+
+@app.route("/api/environment/<env_id>/tfvars")
+def get_tfvars(env_id: str):
+    """Return the raw content of the generated tfvars file for preview."""
+    if not validate_env_id(env_id):
+        return jsonify({"error": "Invalid environment ID"}), 400
+    state = load_state()
+    env = state.get(env_id)
+    if not env:
+        return jsonify({"error": "Environment not found"}), 404
+    platform = env["platform"]
+    path = tfvars_path(env_id, platform)
+    if not path.exists():
+        return jsonify({"content": "", "message": "tfvars file not yet generated"})
+    return jsonify({"content": path.read_text(), "filename": path.name})
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Startup
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Prefetch image tags and version lists as soon as the module loads so that the
+# first page load is not blocked by network I/O and the lists are always fresh.
+threading.Thread(target=_prefetch_versions, daemon=True).start()
 
 if __name__ == "__main__":
     debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"

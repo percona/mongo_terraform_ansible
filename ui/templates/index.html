@@ -27,6 +27,7 @@
     <div class="env-card-actions">
       <a href="{{ url_for('environment', env_id=env_id) }}" class="btn btn-secondary btn-sm">Manage</a>
       <a href="{{ url_for('configure', platform=env.platform) }}?env_id={{ env_id }}" class="btn btn-outline btn-sm">Edit</a>
+      <button class="btn btn-outline btn-sm" onclick="deleteEnvironment('{{ env_id }}')">Remove</button>
     </div>
   </div>
   {% endfor %}

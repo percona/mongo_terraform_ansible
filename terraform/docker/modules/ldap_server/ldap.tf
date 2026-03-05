@@ -81,7 +81,7 @@ resource "docker_image" "ldap_admin" {
 
 # Admin interface
 resource "docker_container" "phpldapadmin" {
-  name  = "phpldapadmin"
+  name  = "${var.ldap_server}-${var.ldap_admin_server}"
   image = docker_image.ldap_admin.image_id
 
   env = [

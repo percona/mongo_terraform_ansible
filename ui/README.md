@@ -1,4 +1,8 @@
-# MongoDB Deploy UI
+# MongoDB Deploy UI (Python — Deprecated)
+
+> **Deprecated:** This Python/Flask implementation has been superseded by the Go rewrite in
+> [`../ui-go/`](../ui-go/README.md), which requires no Python runtime and adds per-component
+> instance and disk configuration.  New users should use `ui-go/` instead.
 
 A lightweight web-based frontend for **mongo_terraform_ansible** that lets you:
 

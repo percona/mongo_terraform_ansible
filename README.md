@@ -11,6 +11,19 @@ You can choose between:
 - Creating all resources in a public cloud platform, using a combination of Terraform and Ansible.
 - Run everything on a single server (even your own laptop) using Terraform alone (Ansible is not required in this case).
 
+## Web UI (Optional)
+
+A zero-dependency web frontend (written in Go) is available in [`ui-go/`](./ui-go/README.md).
+It lets you configure, deploy, stop, and destroy MongoDB environments through a browser instead of editing `.tfvars` files by hand.
+
+```bash
+cd ui-go
+go run .
+# then open http://127.0.0.1:5001
+```
+
+See [`ui-go/README.md`](./ui-go/README.md) for full details.
+
 ## Instructions
 
 1. Clone this repository on your machine and `cd` to it

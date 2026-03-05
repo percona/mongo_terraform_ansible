@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}New Environment – MongoDB Deploy{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Choose a Platform</h1>
+  <p class="subtitle">Select the platform where you want to deploy your MongoDB environment.</p>
+</div>
+
+<div class="platform-grid">
+  {% for p in platforms %}
+  <a href="{{ url_for('configure', platform=p) }}" class="platform-card platform-card-{{ p }}">
+    <div class="platform-icon">
+      {% if p == 'aws' %}☁️{% elif p == 'gcp' %}🌐{% elif p == 'azure' %}🔷{% else %}🐳{% endif %}
+    </div>
+    <div class="platform-name">{{ p.upper() }}</div>
+    <div class="platform-desc">
+      {% if p == 'aws' %}Amazon Web Services{% elif p == 'gcp' %}Google Cloud Platform{% elif p == 'azure' %}Microsoft Azure{% else %}Local Docker containers{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

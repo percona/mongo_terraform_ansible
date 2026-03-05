@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Environments – MongoDB Deploy{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Environments</h1>
+  <a href="{{ url_for('new_environment') }}" class="btn btn-primary">+ New Environment</a>
+</div>
+
+{% if environments %}
+<div class="env-grid">
+  {% for env_id, env in environments.items() %}
+  <div class="env-card" id="env-{{ env_id }}">
+    <div class="env-card-header">
+      <span class="platform-badge platform-{{ env.platform }}">{{ env.platform.upper() }}</span>
+      <span class="env-id">{{ env_id }}</span>
+    </div>
+    <div class="env-card-body">
+      <div class="status-row">
+        <span class="status-dot status-{{ env.status | replace('_in_progress','') | replace(':','') }}"></span>
+        <span class="status-label">{{ env.status | replace('_', ' ') | title }}</span>
+      </div>
+      <div class="env-meta">
+        <small>Platform: <strong>{{ env.platform }}</strong></small>
+        <small>Updated: {{ env.updated_at }}</small>
+      </div>
+    </div>
+    <div class="env-card-actions">
+      <a href="{{ url_for('environment', env_id=env_id) }}" class="btn btn-secondary btn-sm">Manage</a>
+      <a href="{{ url_for('configure', platform=env.platform) }}?env_id={{ env_id }}" class="btn btn-outline btn-sm">Edit</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">🍃</div>
+  <h2>No environments yet</h2>
+  <p>Get started by creating your first MongoDB environment.</p>
+  <a href="{{ url_for('new_environment') }}" class="btn btn-primary">Create Environment</a>
+</div>
+{% endif %}
+{% endblock %}

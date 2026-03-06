@@ -4,7 +4,7 @@
   hosts: cfg:shards:replsets:mongos
   become: yes
   environment:
-    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"    
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   vars_files:
     - "vars/{{ ansible_os_family }}.yml"
   tasks:
@@ -12,31 +12,27 @@
       block:
 
         - name: Install dependencies for percona-release
-          apt:
+          ansible.builtin.apt:
             name:
               - curl
               - gnupg2
               - lsb-release 
             state: present
             update_cache: yes
-                  
-        - name: Install Percona GPG key
-          apt_key:
-            url: "{{ percona_key_location }}"
-            state: present
 
         - name: Download percona-release package
-          get_url:
+          ansible.builtin.get_url:
             url: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
             dest: /tmp/percona-release_latest.deb
+            mode: "666"
 
         - name: Install percona-release package
-          apt:
+          ansible.builtin.apt:
             deb: /tmp/percona-release_latest.deb
             state: present
 
         - name: Update apt package cache
-          apt:
+          ansible.builtin.apt:
             update_cache: yes
 
       when: ansible_os_family == 'Debian'

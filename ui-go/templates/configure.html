@@ -681,57 +681,6 @@
   </div>
 </form>
 
-<!-- ──────────── HTML templates for JS-cloned blocks ──────────── -->
-<template id="cluster-template">
-  <div class="component-block">
-    <div class="component-block-header">
-      <span>Cluster</span>
-      <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Cluster Name</label>
-        <input type="text" name="cluster_name[]" placeholder="cl02" required>
-      </div>
-      <div class="form-group">
-        <label>Env Tag</label>
-        <input type="text" name="cluster_env_tag[]" value="test">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>Config Servers</label>
-        <input type="number" name="cluster_configsvr_count[]" value="3" min="1" max="7"></div>
-      <div class="form-group"><label>Shards</label>
-        <input type="number" name="cluster_shard_count[]" value="2" min="1" max="10"></div>
-      <div class="form-group"><label>Replicas / Shard</label>
-        <input type="number" name="cluster_shardsvr_replicas[]" value="2" min="1" max="7"></div>
-      <div class="form-group"><label>Arbiters / Shard</label>
-        <input type="number" name="cluster_arbiters_per_replset[]" value="1" min="0" max="3"></div>
-      <div class="form-group"><label>Mongos Routers</label>
-        <input type="number" name="cluster_mongos_count[]" value="2" min="1" max="10"></div>
-    </div>
-  </div>
-</template>
-
-<template id="replset-template">
-  <div class="component-block">
-    <div class="component-block-header">
-      <span>Replica Set</span>
-      <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>Replica Set Name</label>
-        <input type="text" name="replset_name[]" placeholder="rs01"></div>
-      <div class="form-group"><label>Env Tag</label>
-        <input type="text" name="replset_env_tag[]" value="test"></div>
-      <div class="form-group"><label>Data Nodes</label>
-        <input type="number" name="replset_data_nodes[]" value="2" min="1" max="7"></div>
-      <div class="form-group"><label>Arbiters</label>
-        <input type="number" name="replset_arbiters[]" value="1" min="0" max="3"></div>
-    </div>
-  </div>
-</template>
-
 <script>
 const PLATFORM        = {{json .Platform}};
 const PSMDB_IMAGES    = {{json .PSMDBImages}};
@@ -751,14 +700,106 @@ function removeBlock(btn) {
   cb.addEventListener('change', () => { panel.style.display = cb.checked ? '' : 'none'; });
 })();
 
+function nextClusterName() {
+  let max = 0;
+  document.querySelectorAll('#clusters-container input[name="cluster_name[]"]').forEach(el => {
+    const m = el.value.match(/^cl(\d+)$/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  });
+  return 'cl' + String(max + 1).padStart(2, '0');
+}
+
+function nextReplsetName() {
+  let max = 0;
+  document.querySelectorAll('#replsets-container input[name="replset_name[]"]').forEach(el => {
+    const m = el.value.match(/^rs(\d+)$/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  });
+  return 'rs' + String(max + 1).padStart(2, '0');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildDockerImageRows(type) {
+  if (type !== 'cluster' && type !== 'replset') return '';
+  const psmdbSel = PSMDB_IMAGES.map(t => `<option value="${escHtml(t)}">percona/percona-server-mongodb:${escHtml(t)}</option>`).join('');
+  const pbmSel   = PBM_IMAGES.map(t => `<option value="${escHtml(t)}">percona/percona-backup-mongodb:${escHtml(t)}</option>`).join('');
+  const pmmcSel  = PMM_CLIENT_IMAGES.map(t => `<option value="${escHtml(t)}">percona/pmm-client:${escHtml(t)}</option>`).join('');
+  return `
+    <div class="form-row">
+      <div class="form-group"><label>PSMDB Image</label>
+        <select name="${type}_psmdb_image[]">${psmdbSel}</select></div>
+      <div class="form-group"><label>PBM Image</label>
+        <select name="${type}_pbm_image[]">${pbmSel}</select></div>
+      <div class="form-group"><label>PMM Client Image</label>
+        <select name="${type}_pmm_client_image[]">${pmmcSel}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="${type}_enable_pmm[]" value="1"> Enable PMM monitoring</label></div>
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="${type}_enable_pbm[]" value="1"> Enable PBM backups</label></div>
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="${type}_bind_to_localhost[]" value="1"> Bind ports to localhost only</label></div>
+    </div>`;
+}
+
 function addCluster() {
-  const clone = document.getElementById('cluster-template').content.cloneNode(true);
-  document.getElementById('clusters-container').appendChild(clone);
+  const name = nextClusterName();
+  const c = document.createElement('div');
+  c.className = 'component-block';
+  const dockerRows = PLATFORM === 'docker' ? buildDockerImageRows('cluster') : '';
+  c.innerHTML = `
+    <div class="component-block-header">
+      <span>Cluster</span>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Cluster Name</label>
+        <input type="text" name="cluster_name[]" value="${name}" required></div>
+      <div class="form-group"><label>Env Tag</label>
+        <input type="text" name="cluster_env_tag[]" value="test"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Config Servers</label>
+        <input type="number" name="cluster_configsvr_count[]" value="3" min="1" max="7"></div>
+      <div class="form-group"><label>Shards</label>
+        <input type="number" name="cluster_shard_count[]" value="2" min="1" max="10"></div>
+      <div class="form-group"><label>Replicas / Shard</label>
+        <input type="number" name="cluster_shardsvr_replicas[]" value="2" min="1" max="7"></div>
+      <div class="form-group"><label>Arbiters / Shard</label>
+        <input type="number" name="cluster_arbiters_per_replset[]" value="1" min="0" max="3"></div>
+      <div class="form-group"><label>Mongos Routers</label>
+        <input type="number" name="cluster_mongos_count[]" value="2" min="1" max="10"></div>
+    </div>
+    ${dockerRows}`;
+  document.getElementById('clusters-container').appendChild(c);
 }
 
 function addReplset() {
-  const clone = document.getElementById('replset-template').content.cloneNode(true);
-  document.getElementById('replsets-container').appendChild(clone);
+  const name = nextReplsetName();
+  const c = document.createElement('div');
+  c.className = 'component-block';
+  const dockerRows = PLATFORM === 'docker' ? buildDockerImageRows('replset') : '';
+  c.innerHTML = `
+    <div class="component-block-header">
+      <span>Replica Set</span>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Replica Set Name</label>
+        <input type="text" name="replset_name[]" value="${name}"></div>
+      <div class="form-group"><label>Env Tag</label>
+        <input type="text" name="replset_env_tag[]" value="test"></div>
+      <div class="form-group"><label>Data Nodes</label>
+        <input type="number" name="replset_data_nodes[]" value="2" min="1" max="7"></div>
+      <div class="form-group"><label>Arbiters</label>
+        <input type="number" name="replset_arbiters[]" value="1" min="0" max="3"></div>
+    </div>
+    ${dockerRows}`;
+  document.getElementById('replsets-container').appendChild(c);
 }
 
 function addPmmServer() {

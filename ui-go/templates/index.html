@@ -8,7 +8,7 @@
 {{if .Environments}}
 <div class="env-grid">
   {{range .Environments}}
-  <div class="env-card" id="env-{{.ID}}">
+  <div class="env-card" id="env-{{.ID}}" onclick="window.location.href='/environment/{{.ID}}'" style="cursor:pointer">
     <div class="env-card-header">
       <span class="platform-badge platform-{{.Env.Platform}}">{{upper .Env.Platform}}</span>
       <span class="env-id">{{.ID}}</span>
@@ -23,7 +23,7 @@
         <small>Updated: {{.Env.UpdatedAt}}</small>
       </div>
     </div>
-    <div class="env-card-actions">
+    <div class="env-card-actions" onclick="event.stopPropagation()">
       <a href="/environment/{{.ID}}" class="btn btn-secondary btn-sm">Manage</a>
       <a href="/configure/{{.Env.Platform}}?env_id={{.ID}}" class="btn btn-outline btn-sm">Edit</a>
       <button class="btn btn-outline btn-sm" onclick="deleteEnvironment('{{.ID}}')">Remove</button>

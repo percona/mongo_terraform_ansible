@@ -295,6 +295,18 @@ a:hover { text-decoration: underline; }
   width: 100%;
   transition: border-color 0.15s;
 }
+/* Checkboxes and radios must NOT inherit the text-input styles above.
+   Reset them to their natural intrinsic size so they sit inline with
+   their label text instead of stretching full-width. */
+.form-group input[type="checkbox"],
+.form-group input[type="radio"] {
+  width: auto;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  transition: none;
+}
 .form-group input:focus,
 .form-group select:focus {
   outline: none;

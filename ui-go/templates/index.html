@@ -2,7 +2,6 @@
 {{define "content"}}
 <div class="page-header">
   <h1>Clusters</h1>
-  <a href="/new" class="btn btn-primary">+ New Cluster</a>
 </div>
 
 {{if .Environments}}
@@ -30,6 +29,9 @@
     </div>
   </div>
   {{end}}
+</div>
+<div class="empty-state" style="margin-top:2rem">
+  <a href="/new" class="btn btn-primary btn-lg">+ New Cluster</a>
 </div>
 {{else}}
 <div class="empty-state">

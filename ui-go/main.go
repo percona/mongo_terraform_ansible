@@ -360,6 +360,11 @@ var funcMap = template.FuncMap{
 		}
 		return *b
 	},
+	// Return true when b is explicitly set to false (i.e. non-nil and false).
+	// Used to auto-expand the PMM customize panel when PMM has been disabled.
+	"ptrBoolFalse": func(b *bool) bool {
+		return b != nil && !*b
+	},
 	// True if the stored image value matches the given tag (with or without prefix).
 	"tagSelected": func(stored, prefix, tag string) bool {
 		if stored == "" {
@@ -1283,6 +1288,55 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Build the sorted list of inventory filenames from the known cluster and
+	// replset names so Ansible is pointed at exact files rather than a glob.
+	var invNames []string
+	for name := range env.Config.Clusters {
+		invNames = append(invNames, name)
+	}
+	for name := range env.Config.Replsets {
+		invNames = append(invNames, name)
+	}
+	sort.Strings(invNames)
+
+	// cloudAnsibleCmd builds a shell snippet that runs ansible-playbook against
+	// each known inventory file.  For "deploy" it also waits for SSH
+	// connectivity on every host (up to 10 minutes) before invoking the
+	// playbook, so that cloud VMs have time to finish booting.
+	cloudAnsibleCmd := func(playbookPath string, waitForSSH bool) string {
+		var b strings.Builder
+		for _, name := range invNames {
+			inv := shellQuote("inventory_" + name)
+			b.WriteString(fmt.Sprintf(
+				`{ [ -f %[1]s ] || { printf "ERROR: inventory file %%s not found\n" %[1]s; exit 1; }; `,
+				inv,
+			))
+			if waitForSSH {
+				b.WriteString(fmt.Sprintf(
+					`printf "Waiting for SSH on %%s (up to 10 min)…\n" %[1]s; `+
+						`_ssh_ready=false; `+
+						`for _n in $(seq 1 20); do `+
+						`ansible -i %[1]s all -m ping --timeout=10 -o 2>&1 && { _ssh_ready=true; break; }; `+
+						`printf "  attempt %%s/20 – not ready yet, retrying in 30s…\n" "$_n"; `+
+						`[ "$_n" -lt 20 ] && sleep 30; done; `+
+						`$_ssh_ready || { printf "ERROR: timed out waiting for SSH (%%s)\n" %[1]s; exit 1; }; `,
+					inv,
+				))
+			}
+			b.WriteString(fmt.Sprintf(
+				`printf "==> ansible-playbook -i %%s\n" %[1]s; ansible-playbook -i %[1]s %[2]s || exit $?; }`,
+				inv, shellQuote(playbookPath),
+			))
+			b.WriteString(" && ")
+		}
+		// Strip trailing " && " and wrap in a no-op if invNames is empty.
+		s := strings.TrimSuffix(b.String(), " && ")
+		if s == "" {
+			return `printf "WARNING: no clusters or replica sets configured – nothing to run\n"`
+		}
+		return s
+	}
+
 	var cmd []string
 	switch action {
 	case "deploy":
@@ -1291,16 +1345,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			shellQuote(varfile),
 		)
 		if platform != "docker" {
-			playbook := shellQuote(filepath.Join(ansibleDir, "main.yml"))
-			// Terraform writes inventory_<name> files into the platform directory.
-			// Verify at least one exists (proving terraform apply succeeded), then
-			// run ansible-playbook once per generated inventory file.
-			shellCmd += fmt.Sprintf(
-				` && { inv_files=$(ls inventory_* 2>/dev/null); `+
-					`[ -n "$inv_files" ] || { echo "ERROR: no inventory_* files found – terraform apply may not have completed successfully"; exit 1; }; `+
-					`for inv in $inv_files; do echo "==> ansible-playbook -i $inv"; ansible-playbook -i "$inv" %s || exit $?; done; }`,
-				playbook,
-			)
+			// Cloud: wait for SSH readiness before running Ansible so that VMs
+			// have fully booted after Terraform creates them.
+			shellCmd += " && " + cloudAnsibleCmd(filepath.Join(ansibleDir, "main.yml"), true)
 		}
 		cmd = []string{"bash", "-c", shellCmd}
 
@@ -1321,13 +1368,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("docker ps -q --filter 'name=%s-' | xargs -r docker stop", prefix),
 			}
 		} else {
-			playbook := shellQuote(filepath.Join(ansibleDir, "stop.yml"))
-			cmd = []string{"bash", "-c", fmt.Sprintf(
-				`{ inv_files=$(ls inventory_* 2>/dev/null); `+
-					`[ -n "$inv_files" ] || { echo "ERROR: no inventory_* files found – has the environment been deployed?"; exit 1; }; `+
-					`for inv in $inv_files; do echo "==> ansible-playbook -i $inv"; ansible-playbook -i "$inv" %s || exit $?; done; }`,
-				playbook,
-			)}
+			cmd = []string{"bash", "-c",
+				cloudAnsibleCmd(filepath.Join(ansibleDir, "stop.yml"), false),
+			}
 		}
 
 	case "restart":
@@ -1337,13 +1380,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("docker ps -aq --filter 'name=%s-' | xargs -r docker restart", prefix),
 			}
 		} else {
-			playbook := shellQuote(filepath.Join(ansibleDir, "restart.yml"))
-			cmd = []string{"bash", "-c", fmt.Sprintf(
-				`{ inv_files=$(ls inventory_* 2>/dev/null); `+
-					`[ -n "$inv_files" ] || { echo "ERROR: no inventory_* files found – has the environment been deployed?"; exit 1; }; `+
-					`for inv in $inv_files; do echo "==> ansible-playbook -i $inv"; ansible-playbook -i "$inv" %s || exit $?; done; }`,
-				playbook,
-			)}
+			cmd = []string{"bash", "-c",
+				cloudAnsibleCmd(filepath.Join(ansibleDir, "restart.yml"), false),
+			}
 		}
 
 	default:

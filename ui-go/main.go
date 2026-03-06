@@ -1317,8 +1317,8 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 						`_ssh_ready=false; `+
 						`for _n in $(seq 1 20); do `+
 						`ansible -i %[1]s all -m ping --timeout=10 -o 2>&1 && { _ssh_ready=true; break; }; `+
-						`printf "  attempt %%s/20 – not ready yet, retrying in 30s…\n" "$_n"; `+
-						`[ "$_n" -lt 20 ] && sleep 30; done; `+
+						`printf "  attempt %%s/20 – not ready yet, retrying in 10s…\n" "$_n"; `+
+						`[ "$_n" -lt 20 ] && sleep 10; done; `+
 						`$_ssh_ready || { printf "ERROR: timed out waiting for SSH (%%s)\n" %[1]s; exit 1; }; `,
 					inv,
 				))
@@ -1337,6 +1337,62 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		return s
 	}
 
+	// sshConfigInjectShell builds a shell snippet that, for each cluster/replset name,
+	// reads the terraform-generated ssh_config_<name> file and appends it to
+	// ~/.ssh/config inside a clearly delimited block so it can be removed later.
+	// This must run BEFORE the ansible-ping wait so hostnames are resolvable.
+	sshConfigInjectShell := func() string {
+		if platform == "docker" || len(invNames) == 0 {
+			return ""
+		}
+		var b strings.Builder
+		b.WriteString(`{ _sshcfg="${HOME}/.ssh/config"; `)
+		b.WriteString(`mkdir -p "${HOME}/.ssh" && chmod 700 "${HOME}/.ssh"; `)
+		b.WriteString(`[ -f "${_sshcfg}" ] || touch "${_sshcfg}"; `)
+		b.WriteString(`chmod 600 "${_sshcfg}"; `)
+		for _, name := range invNames {
+			src := shellQuote("ssh_config_" + name)
+			begin := shellQuote("# BEGIN mongodeploy:" + envID + ":" + name)
+			end := shellQuote("# END mongodeploy:" + envID + ":" + name)
+			b.WriteString(fmt.Sprintf(
+				`if [ -f %[1]s ]; then `+
+					// Remove existing block idempotently (re-deploy case).
+					`awk -v b=%[2]s -v e=%[3]s '$0==b{skip=1;next} skip&&$0==e{skip=0;next} !skip' "${_sshcfg}" > "${_sshcfg}.mongodeploy_tmp" && mv "${_sshcfg}.mongodeploy_tmp" "${_sshcfg}"; `+
+					// Append fresh block.
+					`printf '\n%%s\n' %[2]s >> "${_sshcfg}"; `+
+					`cat %[1]s >> "${_sshcfg}"; `+
+					`printf '%%s\n' %[3]s >> "${_sshcfg}"; `+
+					`printf '==> Added SSH config block for %[4]s to %%s\n' "${_sshcfg}"; `+
+					`fi; `,
+				src, begin, end, name,
+			))
+		}
+		b.WriteString("}")
+		return " && " + b.String()
+	}
+
+	// sshConfigRemoveShell builds a shell snippet that removes the delimited
+	// ssh_config blocks that were written by sshConfigInjectShell.
+	sshConfigRemoveShell := func() string {
+		if platform == "docker" || len(invNames) == 0 {
+			return ""
+		}
+		var b strings.Builder
+		b.WriteString(`{ _sshcfg="${HOME}/.ssh/config"; `)
+		b.WriteString(`if [ -f "${_sshcfg}" ]; then `)
+		for _, name := range invNames {
+			begin := shellQuote("# BEGIN mongodeploy:" + envID + ":" + name)
+			end := shellQuote("# END mongodeploy:" + envID + ":" + name)
+			b.WriteString(fmt.Sprintf(
+				`awk -v b=%[1]s -v e=%[2]s '$0==b{skip=1;next} skip&&$0==e{skip=0;next} !skip' "${_sshcfg}" > "${_sshcfg}.mongodeploy_tmp" && mv "${_sshcfg}.mongodeploy_tmp" "${_sshcfg}"; `+
+					`printf '==> Removed SSH config block for %[3]s from %%s\n' "${_sshcfg}"; `,
+				begin, end, name,
+			))
+		}
+		b.WriteString("fi; }")
+		return " && " + b.String()
+	}
+
 	var cmd []string
 	switch action {
 	case "deploy":
@@ -1345,17 +1401,23 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			shellQuote(varfile),
 		)
 		if platform != "docker" {
-			// Cloud: wait for SSH readiness before running Ansible so that VMs
-			// have fully booted after Terraform creates them.
+			// Cloud: inject SSH config so Ansible can resolve hostnames, then
+			// wait for SSH readiness before running the playbook.
+			shellCmd += sshConfigInjectShell()
 			shellCmd += " && " + cloudAnsibleCmd(filepath.Join(ansibleDir, "main.yml"), true)
 		}
 		cmd = []string{"bash", "-c", shellCmd}
 
 	case "destroy":
-		cmd = []string{"bash", "-c", fmt.Sprintf(
+		shellCmd := fmt.Sprintf(
 			"terraform destroy -auto-approve -input=false -var-file=%s",
 			shellQuote(varfile),
-		)}
+		)
+		if platform != "docker" {
+			// Cloud: clean up ssh_config blocks from ~/.ssh/config after destroy.
+			shellCmd += sshConfigRemoveShell()
+		}
+		cmd = []string{"bash", "-c", shellCmd}
 
 	case "stop":
 		if platform == "docker" {

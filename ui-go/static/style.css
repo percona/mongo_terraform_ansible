@@ -251,6 +251,23 @@ a:hover { text-decoration: underline; }
 }
 .section-header h2 { margin-bottom: 0; }
 
+.subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.subsection-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .form-row {
   display: flex;
   gap: 1rem;

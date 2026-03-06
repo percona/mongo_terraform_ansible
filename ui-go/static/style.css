@@ -485,3 +485,70 @@ tr:last-child td { border-bottom: none; }
   white-space: pre;
   margin-bottom: 1rem;
 }
+
+
+/* ─── Environments list table (AWS console style) ────────────────── */
+.env-table-wrapper {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.env-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.env-table th {
+  background: var(--color-surface2);
+  padding: 0.65rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+.env-table td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+.env-table tr:last-child td { border-bottom: none; }
+.env-row:hover td { background: var(--color-surface2); }
+.env-id-cell .env-id {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+.env-actions-cell { white-space: nowrap; }
+.env-actions-cell .btn { margin-right: 0.3rem; }
+.status-label-sm { font-size: 0.8rem; }
+.text-muted { color: var(--color-muted); }
+.btn-danger-outline {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+.btn-danger-outline:hover {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+/* ─── SSH user rows ───────────────────────────────────────────────── */
+.ssh-user-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.ssh-user-row input {
+  flex: 1;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+/* ─── Full-width form group ───────────────────────────────────────── */
+.form-group-full { flex: 1 1 100%; min-width: 100%; }

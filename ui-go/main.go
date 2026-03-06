@@ -114,19 +114,24 @@ type Config struct {
 	PbmRelease   string `json:"pbm_release,omitempty"`
 
 	// Cloud credentials / settings
-	ProjectID       string `json:"project_id,omitempty"`
-	Region          string `json:"region,omitempty"`
-	Location        string `json:"location,omitempty"`
-	SubnetCIDR      string `json:"subnet_cidr,omitempty"`
-	SubnetCount     int    `json:"subnet_count,omitempty"`
-	SourceRanges    string `json:"source_ranges,omitempty"`
-	MySSHUser       string `json:"my_ssh_user,omitempty"`
+	ProjectID        string `json:"project_id,omitempty"`
+	Region           string `json:"region,omitempty"`
+	Location         string `json:"location,omitempty"`
+	SubnetCIDR       string `json:"subnet_cidr,omitempty"`
+	SubnetCount      int    `json:"subnet_count,omitempty"`
+	SourceRanges     string `json:"source_ranges,omitempty"`
+	MySSHUser        string `json:"my_ssh_user,omitempty"`
 	SSHPublicKeyPath string `json:"ssh_public_key_path,omitempty"`
-	DefaultKeyPair  string `json:"default_key_pair,omitempty"`
-	EnableSSHGateway bool  `json:"enable_ssh_gateway,omitempty"`
-	SSHGatewayName  string `json:"ssh_gateway_name,omitempty"`
-	PortToForward   string `json:"port_to_forward,omitempty"`
-	UseSpotInstances bool  `json:"use_spot_instances,omitempty"`
+	DefaultKeyPair   string `json:"default_key_pair,omitempty"`
+	EnableSSHGateway bool   `json:"enable_ssh_gateway,omitempty"`
+	SSHGatewayName   string `json:"ssh_gateway_name,omitempty"`
+	PortToForward    string `json:"port_to_forward,omitempty"`
+	UseSpotInstances bool   `json:"use_spot_instances,omitempty"`
+	DefaultVpcName   string `json:"default_vpc_name,omitempty"`
+
+	// SSH users map — key=username, value=path to public key file.
+	// GCP uses the variable name gce_ssh_users; AWS/Azure use ssh_users.
+	SSHUsers map[string]string `json:"ssh_users,omitempty"`
 
 	// PMM (cloud)
 	EnablePmm    *bool  `json:"enable_pmm,omitempty"`
@@ -523,19 +528,48 @@ func getDockerHubTags(namespace, repo string, limit int) []string {
 	return tags
 }
 
+// fetchPerconaRepoPage fetches the Percona repository listing page and returns
+// its body text. The result is cached to avoid redundant HTTP requests since
+// both getPSMDBVersions and getPBMReleases need it.
+func fetchPerconaRepoPage() string {
+	const key = "percona_repo_page"
+	if v, ok := cacheGet(key); ok {
+		return v.(string)
+	}
+	client := &http.Client{Timeout: 8 * time.Second}
+	resp, err := client.Get("https://repo.percona.com/")
+	if err != nil {
+		slog.Warn("percona repo page fetch failed", "err", err)
+		cacheSet(key, "")
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		slog.Warn("percona repo page non-200", "status", resp.StatusCode)
+		cacheSet(key, "")
+		return ""
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		slog.Warn("percona repo page read failed", "err", err)
+		cacheSet(key, "")
+		return ""
+	}
+	page := string(body)
+	cacheSet(key, page)
+	return page
+}
+
 func getPSMDBVersions() []string {
 	const key = "psmdb_versions"
 	if v, ok := cacheGet(key); ok {
 		return v.([]string)
 	}
-	client := &http.Client{Timeout: 6 * time.Second}
-	resp, err := client.Get("https://repo.percona.com/percona/yum/release/")
 	var versions []string
-	if err == nil && resp.StatusCode == 200 {
-		defer resp.Body.Close()
-		body, _ := io.ReadAll(resp.Body)
+	page := fetchPerconaRepoPage()
+	if page != "" {
 		re := regexp.MustCompile(`psmdb-\d+`)
-		found := re.FindAllString(string(body), -1)
+		found := re.FindAllString(page, -1)
 		seen := map[string]bool{}
 		for _, v := range found {
 			if !seen[v] {
@@ -547,7 +581,7 @@ func getPSMDBVersions() []string {
 		sort.Slice(versions, func(i, j int) bool { return versions[i] > versions[j] })
 		slog.Info("fetched PSMDB versions", "count", len(versions))
 	} else {
-		slog.Warn("psmdb versions fetch failed", "err", err)
+		slog.Warn("psmdb versions fetch failed – using defaults")
 	}
 	if len(versions) == 0 {
 		versions = defaultPSMDBVersions
@@ -561,14 +595,11 @@ func getPBMReleases() []string {
 	if v, ok := cacheGet(key); ok {
 		return v.([]string)
 	}
-	client := &http.Client{Timeout: 6 * time.Second}
-	resp, err := client.Get("https://repo.percona.com/percona/yum/release/")
 	var releases []string
-	if err == nil && resp.StatusCode == 200 {
-		defer resp.Body.Close()
-		body, _ := io.ReadAll(resp.Body)
+	page := fetchPerconaRepoPage()
+	if page != "" {
 		re := regexp.MustCompile(`pbm-\d+`)
-		found := re.FindAllString(string(body), -1)
+		found := re.FindAllString(page, -1)
 		seen := map[string]bool{}
 		for _, v := range found {
 			if !seen[v] {
@@ -579,7 +610,7 @@ func getPBMReleases() []string {
 		sort.Slice(releases, func(i, j int) bool { return releases[i] > releases[j] })
 		slog.Info("fetched PBM releases", "count", len(releases))
 	} else {
-		slog.Warn("pbm releases fetch failed", "err", err)
+		slog.Warn("pbm releases fetch failed – using defaults")
 	}
 	if len(releases) == 0 {
 		releases = defaultPBMReleases
@@ -703,6 +734,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		writeOptStr("my_ssh_user", cfg.MySSHUser)
 		writeOptStr("ssh_public_key_path", cfg.SSHPublicKeyPath)
 		writeOptStr("default_key_pair", cfg.DefaultKeyPair)
+		writeOptStr("default_vpc_name", cfg.DefaultVpcName)
 		if cfg.EnableSSHGateway {
 			writeOptBool("enable_ssh_gateway", cfg.EnableSSHGateway)
 		}
@@ -712,6 +744,26 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			writeOptBool("use_spot_instances", cfg.UseSpotInstances)
 		}
 		writeOptInt("subnet_count", cfg.SubnetCount)
+
+		// SSH users map (GCP uses gce_ssh_users, AWS/Azure use ssh_users)
+		if len(cfg.SSHUsers) > 0 {
+			// Sort keys for deterministic output
+			userKeys := make([]string, 0, len(cfg.SSHUsers))
+			for k := range cfg.SSHUsers {
+				userKeys = append(userKeys, k)
+			}
+			sort.Strings(userKeys)
+			varName := "ssh_users"
+			if platform == "gcp" {
+				varName = "gce_ssh_users"
+			}
+			write("")
+			write(varName + " = {")
+			for _, k := range userKeys {
+				write(fmt.Sprintf("  %s = %s", formatHCLVal(k), formatHCLVal(cfg.SSHUsers[k])))
+			}
+			write("}")
+		}
 
 		// PMM
 		writeOptStr("pmm_type", cfg.PmmType)
@@ -1086,13 +1138,8 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// For new environments (or environments with no clusters configured),
-	// seed with a single default cluster so the form is not empty.
-	if len(cfg.Clusters) == 0 {
-		cfg.Clusters = map[string]ClusterConfig{
-			"cl01": {EnvTag: "test", ConfigsvrCount: 3, ShardCount: 2, ShardsvrReplicas: 2, ArbitersPerReplset: 1, MongosCount: 2},
-		}
-	}
+	// For new environments, do NOT seed any default clusters or replica sets.
+	// The user will add them explicitly via the form.
 	if platform == "docker" {
 		if len(cfg.PmmServers) == 0 {
 			cfg.PmmServers = map[string]PmmServerConfig{
@@ -1151,6 +1198,153 @@ func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
 		"pbm_images":        getPBMImages(),
 		"pmm_client_images": getPMMClientImages(),
 	})
+}
+
+// GET /api/regions/{platform}
+// Returns available regions for the given cloud platform by querying the
+// respective CLI tool (aws / gcloud / az).  On error returns a static
+// fallback list so the UI is always usable.
+func apiRegionsHandler(w http.ResponseWriter, r *http.Request) {
+	platform := r.PathValue("platform")
+	writeJSON(w, 200, map[string]interface{}{
+		"regions": getCloudRegions(platform),
+	})
+}
+
+// getCloudRegions queries the cloud CLI for available regions, with a static
+// fallback for each platform when the CLI is not available or returns an error.
+func getCloudRegions(platform string) []string {
+	key := "regions:" + platform
+	if v, ok := cacheGet(key); ok {
+		return v.([]string)
+	}
+	var regions []string
+	switch platform {
+	case "aws":
+		regions = getAWSRegions()
+	case "gcp":
+		regions = getGCPRegions()
+	case "azure":
+		regions = getAzureRegions()
+	}
+	if len(regions) == 0 {
+		regions = defaultRegions(platform)
+	}
+	cacheSet(key, regions)
+	return regions
+}
+
+func getAWSRegions() []string {
+	out, err := execOutput("aws", "ec2", "describe-regions",
+		"--query", "Regions[].RegionName", "--output", "json")
+	if err != nil {
+		slog.Warn("aws describe-regions failed", "err", err)
+		return nil
+	}
+	var names []string
+	if err := json.Unmarshal([]byte(out), &names); err != nil {
+		slog.Warn("aws describe-regions parse failed", "err", err)
+		return nil
+	}
+	sort.Strings(names)
+	return names
+}
+
+func getGCPRegions() []string {
+	out, err := execOutput("gcloud", "compute", "regions", "list",
+		"--format=value(name)")
+	if err != nil {
+		slog.Warn("gcloud regions list failed", "err", err)
+		return nil
+	}
+	var names []string
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			names = append(names, line)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func getAzureRegions() []string {
+	out, err := execOutput("az", "account", "list-locations",
+		"--query", "[].name", "--output", "json")
+	if err != nil {
+		slog.Warn("az list-locations failed", "err", err)
+		return nil
+	}
+	var names []string
+	if err := json.Unmarshal([]byte(out), &names); err != nil {
+		slog.Warn("az list-locations parse failed", "err", err)
+		return nil
+	}
+	sort.Strings(names)
+	return names
+}
+
+// defaultRegions returns a static fallback list for each platform.
+func defaultRegions(platform string) []string {
+	switch platform {
+	case "aws":
+		return []string{
+			"ap-northeast-1", "ap-northeast-2", "ap-northeast-3",
+			"ap-south-1", "ap-southeast-1", "ap-southeast-2",
+			"ca-central-1", "eu-central-1", "eu-north-1",
+			"eu-west-1", "eu-west-2", "eu-west-3",
+			"sa-east-1",
+			"us-east-1", "us-east-2", "us-west-1", "us-west-2",
+		}
+	case "gcp":
+		return []string{
+			"asia-east1", "asia-east2", "asia-northeast1", "asia-northeast2",
+			"asia-northeast3", "asia-south1", "asia-southeast1", "asia-southeast2",
+			"australia-southeast1",
+			"europe-north1", "europe-west1", "europe-west2", "europe-west3",
+			"europe-west4", "europe-west6",
+			"northamerica-northeast1", "northamerica-northeast2",
+			"southamerica-east1",
+			"us-central1", "us-east1", "us-east4", "us-west1", "us-west2",
+			"us-west3", "us-west4",
+		}
+	case "azure":
+		return []string{
+			"australiaeast", "australiasoutheast",
+			"brazilsouth",
+			"canadacentral", "canadaeast",
+			"centralindia", "centralus",
+			"eastasia", "eastus", "eastus2",
+			"francecentral",
+			"germanywestcentral",
+			"japaneast", "japanwest",
+			"koreacentral",
+			"northeurope", "norwayeast",
+			"southafricanorth",
+			"southcentralus", "southeastasia", "southindia",
+			"swedencentral",
+			"switzerlandnorth",
+			"uaenorth",
+			"uksouth", "ukwest",
+			"westeurope", "westus", "westus2", "westus3",
+		}
+	}
+	return nil
+}
+
+// execOutput runs the given command and returns its combined stdout as a
+// trimmed string.  Stderr is discarded so callers only see clean output.
+// An error is returned when the process exits with a non-zero status or
+// cannot be started (e.g. the CLI tool is not installed).
+func execOutput(name string, args ...string) (string, error) {
+	cmd := execCommand(name, args...)
+	var out strings.Builder
+	cmd.Stdout = &out
+	cmd.Stderr = io.Discard
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return out.String(), nil
 }
 
 // POST /api/environment
@@ -1628,7 +1822,7 @@ func main() {
 
 	// Structured logging to stderr.
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
-	slog.Info("starting MongoDB Deploy UI (Go)", "baseDir", baseDir)
+	slog.Info("starting PSMDB Sandbox", "baseDir", baseDir)
 
 	// Warm the version/image caches in the background.
 	go prefetchVersions()
@@ -1644,6 +1838,7 @@ func main() {
 
 	// API
 	mux.HandleFunc("GET /api/versions", apiVersionsHandler)
+	mux.HandleFunc("GET /api/regions/{platform}", apiRegionsHandler)
 	mux.HandleFunc("POST /api/environment", saveEnvironmentHandler)
 	mux.HandleFunc("DELETE /api/environment/{env_id}", deleteEnvironmentHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/tfvars", getTfvarsHandler)

@@ -1,44 +1,58 @@
-{{define "title"}}Clusters{{end}}
+{{define "title"}}Environments{{end}}
 {{define "content"}}
 <div class="page-header">
-  <h1>Clusters</h1>
+  <h1>Environments</h1>
+  <a href="/new" class="btn btn-primary">+ New Environment</a>
 </div>
 
 {{if .Environments}}
-<div class="env-grid">
-  {{range .Environments}}
-  <div class="env-card" id="env-{{.ID}}" onclick="window.location.href='/environment/{{.ID}}'" style="cursor:pointer">
-    <div class="env-card-header">
-      <span class="platform-badge platform-{{.Env.Platform}}">{{upper .Env.Platform}}</span>
-      <span class="env-id">{{.ID}}</span>
-    </div>
-    <div class="env-card-body">
-      <div class="status-row">
-        <span class="status-dot status-{{statusClass .Env.Status}}"></span>
-        <span class="status-label">{{statusLabel .Env.Status}}</span>
-      </div>
-      <div class="env-meta">
-        <small>Platform: <strong>{{.Env.Platform}}</strong></small>
-        <small>Updated: {{.Env.UpdatedAt}}</small>
-      </div>
-    </div>
-    <div class="env-card-actions" onclick="event.stopPropagation()">
-      <a href="/environment/{{.ID}}" class="btn btn-secondary btn-sm">Manage</a>
-      <a href="/configure/{{.Env.Platform}}?env_id={{.ID}}" class="btn btn-outline btn-sm">Edit</a>
-      <button class="btn btn-outline btn-sm" onclick="deleteEnvironment('{{.ID}}')">Remove</button>
-    </div>
-  </div>
-  {{end}}
-</div>
-<div class="empty-state" style="margin-top:2rem">
-  <a href="/new" class="btn btn-primary btn-lg">+ New Cluster</a>
+<div class="env-table-wrapper">
+  <table class="env-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Platform</th>
+        <th>Status</th>
+        <th>Sharded Clusters</th>
+        <th>Replica Sets</th>
+        <th>Region / Location</th>
+        <th>Last Updated</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Environments}}
+      <tr class="env-row" onclick="window.location.href='/environment/{{.ID}}'" style="cursor:pointer">
+        <td class="env-id-cell">
+          <span class="env-id">{{.ID}}</span>
+        </td>
+        <td><span class="platform-badge platform-{{.Env.Platform}}">{{upper .Env.Platform}}</span></td>
+        <td>
+          <span class="status-dot status-{{statusClass .Env.Status}}"></span>
+          <span class="status-label-sm">{{statusLabel .Env.Status}}</span>
+        </td>
+        <td>{{len .Env.Config.Clusters}}</td>
+        <td>{{len .Env.Config.Replsets}}</td>
+        <td>
+          {{if .Env.Config.Region}}{{.Env.Config.Region}}{{else if .Env.Config.Location}}{{.Env.Config.Location}}{{else}}<span class="text-muted">—</span>{{end}}
+        </td>
+        <td><small>{{.Env.UpdatedAt}}</small></td>
+        <td class="env-actions-cell" onclick="event.stopPropagation()">
+          <a href="/environment/{{.ID}}" class="btn btn-secondary btn-sm">Manage</a>
+          <a href="/configure/{{.Env.Platform}}?env_id={{.ID}}" class="btn btn-outline btn-sm">Edit</a>
+          <button class="btn btn-outline btn-sm btn-danger-outline" onclick="deleteEnvironment('{{.ID}}')">Remove</button>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
 </div>
 {{else}}
 <div class="empty-state">
   <div class="empty-icon">🍃</div>
-  <h2>No clusters yet</h2>
-  <p>Get started by creating your first MongoDB cluster.</p>
-  <a href="/new" class="btn btn-primary">Create Cluster</a>
+  <h2>No environments yet</h2>
+  <p>Get started by creating your first PSMDB environment.</p>
+  <a href="/new" class="btn btn-primary">Create Environment</a>
 </div>
 {{end}}
 {{end}}

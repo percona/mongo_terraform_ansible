@@ -4,7 +4,7 @@
 <div class="page-header">
   <div>
     <a href="/new" class="back-link">← Platforms</a>
-    <h1>Configure <span class="platform-badge platform-{{$p}}">{{upper $p}}</span> Cluster</h1>
+    <h1>Configure <span class="platform-badge platform-{{$p}}">{{upper $p}}</span> Environment</h1>
   </div>
 </div>
 
@@ -15,7 +15,7 @@
     <h2>General</h2>
     <div class="form-row">
       <div class="form-group">
-        <label for="env_id_field">Cluster ID</label>
+        <label for="env_id_field">Environment ID</label>
         <input type="text" id="env_id_field" name="env_id" placeholder="e.g. dev01"
                value="{{.EnvID}}" maxlength="20" pattern="[a-zA-Z0-9_-]+"
                title="Alphanumeric, hyphens and underscores only">
@@ -67,8 +67,11 @@
       </div>
       <div class="form-group">
         <label for="region">Region</label>
-        <input type="text" id="region" name="region"
-               value="{{strDefault .Config.Region "northamerica-northeast1"}}">
+        <select id="region" name="region">
+          <option value="">— loading regions… —</option>
+          {{if .Config.Region}}<option value="{{.Config.Region}}" selected>{{.Config.Region}}</option>{{end}}
+        </select>
+        <small><a href="#" onclick="reloadRegions(event)">↻ Refresh from GCP</a></small>
       </div>
     </div>
     <div class="form-row">
@@ -76,11 +79,37 @@
         <label for="my_ssh_user">SSH User</label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
                value="{{.Config.MySSHUser}}" placeholder="my_username">
+        <small>Username used to SSH into instances and generate the ssh_config.</small>
       </div>
+      <div class="form-group">
+        <label for="default_vpc_name">VPC Name</label>
+        <input type="text" id="default_vpc_name" name="default_vpc_name"
+               value="{{strDefault .Config.DefaultVpcName "mongo"}}" placeholder="mongo">
+        <small>Base name for the VPC (full name = prefix-vpc_name).</small>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-group">
         <label for="subnet_cidr">Subnet CIDR</label>
         <input type="text" id="subnet_cidr" name="subnet_cidr"
                value="{{strDefault .Config.SubnetCIDR "10.128.0.0/20"}}">
+      </div>
+    </div>
+    <!-- SSH Users (gce_ssh_users) -->
+    <div class="form-row">
+      <div class="form-group form-group-full">
+        <label>SSH Users <small>(username → public key file)</small></label>
+        <div id="ssh-users-container">
+          {{range $user, $key := .Config.SSHUsers}}
+          <div class="ssh-user-row">
+            <input type="text" name="ssh_user_name[]" value="{{$user}}" placeholder="username">
+            <input type="text" name="ssh_user_key[]"  value="{{$key}}" placeholder="~/.ssh/id_rsa.pub">
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>
+          </div>
+          {{end}}
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addSshUser()">+ Add SSH User</button>
+        <small>Used to build the <code>gce_ssh_users</code> Terraform variable. Each entry adds a user's public key to all instances.</small>
       </div>
     </div>
   </section>
@@ -91,8 +120,11 @@
     <div class="form-row">
       <div class="form-group">
         <label for="region">Region</label>
-        <input type="text" id="region" name="region"
-               value="{{strDefault .Config.Region "us-west-2"}}">
+        <select id="region" name="region">
+          <option value="">— loading regions… —</option>
+          {{if .Config.Region}}<option value="{{.Config.Region}}" selected>{{.Config.Region}}</option>{{end}}
+        </select>
+        <small><a href="#" onclick="reloadRegions(event)">↻ Refresh from AWS</a></small>
       </div>
       <div class="form-group">
         <label for="my_ssh_user">SSH User</label>
@@ -115,6 +147,12 @@
     </div>
     <div class="form-row">
       <div class="form-group">
+        <label for="default_vpc_name">VPC Name</label>
+        <input type="text" id="default_vpc_name" name="default_vpc_name"
+               value="{{strDefault .Config.DefaultVpcName "mongo"}}" placeholder="mongo">
+        <small>Base name for the VPC (full name = prefix-vpc_name).</small>
+      </div>
+      <div class="form-group">
         <label for="subnet_cidr">Subnet CIDR</label>
         <input type="text" id="subnet_cidr" name="subnet_cidr"
                value="{{strDefault .Config.SubnetCIDR "10.128.0.0/20"}}">
@@ -132,6 +170,23 @@
           Use Spot Instances <small>(cheaper but may be terminated)</small></label>
       </div>
     </div>
+    <!-- SSH Users (ssh_users) -->
+    <div class="form-row">
+      <div class="form-group form-group-full">
+        <label>SSH Users <small>(username → public key file)</small></label>
+        <div id="ssh-users-container">
+          {{range $user, $key := .Config.SSHUsers}}
+          <div class="ssh-user-row">
+            <input type="text" name="ssh_user_name[]" value="{{$user}}" placeholder="username">
+            <input type="text" name="ssh_user_key[]"  value="{{$key}}" placeholder="~/.ssh/id_rsa.pub">
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>
+          </div>
+          {{end}}
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addSshUser()">+ Add SSH User</button>
+        <small>Used to build the <code>ssh_users</code> Terraform variable. Each entry adds a user's public key to all instances.</small>
+      </div>
+    </div>
   </section>
 
   {{else if eq $p "azure"}}
@@ -140,8 +195,11 @@
     <div class="form-row">
       <div class="form-group">
         <label for="location">Location</label>
-        <input type="text" id="location" name="location"
-               value="{{strDefault .Config.Location "eastus"}}" placeholder="eastus">
+        <select id="location" name="location">
+          <option value="">— loading regions… —</option>
+          {{if .Config.Location}}<option value="{{.Config.Location}}" selected>{{.Config.Location}}</option>{{end}}
+        </select>
+        <small><a href="#" onclick="reloadRegions(event)">↻ Refresh from Azure</a></small>
       </div>
       <div class="form-group">
         <label for="my_ssh_user">SSH User</label>
@@ -159,6 +217,23 @@
         <label><input type="checkbox" name="use_spot_instances"
                       {{if .Config.UseSpotInstances}}checked{{end}}>
           Use Spot Instances</label>
+      </div>
+    </div>
+    <!-- SSH Users (ssh_users) -->
+    <div class="form-row">
+      <div class="form-group form-group-full">
+        <label>SSH Users <small>(username → public key file)</small></label>
+        <div id="ssh-users-container">
+          {{range $user, $key := .Config.SSHUsers}}
+          <div class="ssh-user-row">
+            <input type="text" name="ssh_user_name[]" value="{{$user}}" placeholder="username">
+            <input type="text" name="ssh_user_key[]"  value="{{$key}}" placeholder="~/.ssh/id_rsa.pub">
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>
+          </div>
+          {{end}}
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addSshUser()">+ Add SSH User</button>
+        <small>Used to build the <code>ssh_users</code> Terraform variable. Each entry adds a user's public key to all instances.</small>
       </div>
     </div>
   </section>
@@ -523,15 +598,16 @@
               onclick="togglePmmSettings()"
               >{{if $pmmCustomized}}▲ Collapse{{else}}▼ Customize{{end}}</button>
     </div>
-    <div id="pmm-cloud-body" {{if not $pmmCustomized}}style="display:none"{{end}}>
-    <div class="form-row">
+    <!-- Deploy PMM checkbox always visible, outside the collapsible body -->
+    <div class="form-row" style="margin-bottom:0.5rem">
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" id="enable_pmm" name="enable_pmm"
                       {{if boolDefault .Config.EnablePmm true}}checked{{end}}>
           Deploy PMM monitoring server</label>
-        <small>Uncheck to skip the PMM server for this cluster.</small>
+        <small>Uncheck to skip the PMM server for this environment.</small>
       </div>
     </div>
+    <div id="pmm-cloud-body" {{if not $pmmCustomized}}style="display:none"{{end}}>
     <div id="pmm-cloud-settings" {{if not (boolDefault .Config.EnablePmm true)}}style="display:none"{{end}}>
     <div class="form-row">
       <div class="form-group">
@@ -1011,6 +1087,64 @@ const numericFields = new Set([
   'shardsvr_volume_size','configsvr_volume_size','replsetsvr_volume_size',
 ]);
 
+// ── SSH Users (add/remove rows) ──────────────────────────────────────────────
+function addSshUser() {
+  const row = document.createElement('div');
+  row.className = 'ssh-user-row';
+  row.innerHTML = `
+    <input type="text" name="ssh_user_name[]" placeholder="username">
+    <input type="text" name="ssh_user_key[]"  placeholder="~/.ssh/id_rsa.pub">
+    <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>`;
+  document.getElementById('ssh-users-container').appendChild(row);
+}
+
+function removeSshUser(btn) {
+  btn.closest('.ssh-user-row').remove();
+}
+
+// ── Cloud Regions ─────────────────────────────────────────────────────────────
+// Populates the region/location <select> from the API, preserving the current value.
+async function loadRegions() {
+  if (PLATFORM === 'docker') return;
+  const fieldId = PLATFORM === 'azure' ? 'location' : 'region';
+  const sel = document.getElementById(fieldId);
+  if (!sel) return;
+  const current = sel.value || sel.querySelector('option[selected]')?.value || '';
+  try {
+    const resp = await fetch(`/api/regions/${PLATFORM}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const regions = data.regions || [];
+    sel.innerHTML = '';
+    if (!current && !regions.length) {
+      sel.appendChild(new Option('— no regions found —', ''));
+      return;
+    }
+    regions.forEach(r => {
+      const opt = new Option(r, r);
+      if (r === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    // If current value not in list (stale save), keep it as first option.
+    if (current && !regions.includes(current)) {
+      const opt = new Option(current, current, true, true);
+      sel.insertBefore(opt, sel.firstChild);
+    }
+  } catch (e) { /* keep placeholder */ }
+}
+
+function reloadRegions(evt) {
+  evt.preventDefault();
+  // Bust cache by fetching fresh; clear select first.
+  const fieldId = PLATFORM === 'azure' ? 'location' : 'region';
+  const sel = document.getElementById(fieldId);
+  if (sel) { sel.innerHTML = '<option value="">— refreshing… —</option>'; }
+  loadRegions();
+}
+
+// Load regions on page start.
+loadRegions();
+
 document.getElementById('config-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target;
@@ -1022,7 +1156,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   const simpleFields = [
     'prefix','mongo_release','pbm_release','project_id','region','location',
     'subnet_cidr','subnet_count','source_ranges',
-    'my_ssh_user','ssh_public_key_path','default_key_pair',
+    'my_ssh_user','ssh_public_key_path','default_key_pair','default_vpc_name',
     'enable_ssh_gateway','ssh_gateway_name','port_to_forward',
     'pmm_type','pmm_volume_size','pmm_port','pmm_image','pmm_disk_type',
     'default_bucket_name','backup_retention',
@@ -1044,6 +1178,32 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     // enable_pmm is a tri-state *bool on the server: only send false when the
     // user explicitly unchecked it; when checked send true so it's stored.
     config.enable_pmm = fd.has('enable_pmm');
+  }
+
+  // SSH Users map (cloud only)
+  if (PLATFORM !== 'docker') {
+    const sshNames = fd.getAll('ssh_user_name[]');
+    const sshKeys  = fd.getAll('ssh_user_key[]');
+    const sshUsers = {};
+    const partialRows = [];
+    for (let i = 0; i < sshNames.length; i++) {
+      const name = sshNames[i].trim();
+      const key  = sshKeys[i].trim();
+      if (name && key) {
+        sshUsers[name] = key;
+      } else if (name || key) {
+        partialRows.push(i + 1);
+      }
+    }
+    if (partialRows.length > 0) {
+      alert(`SSH User row(s) ${partialRows.join(', ')} have only one field filled. Both username and public key file are required. Please complete or remove these rows.`);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save & Configure';
+      return;
+    }
+    if (Object.keys(sshUsers).length > 0) {
+      config.ssh_users = sshUsers;
+    }
   }
 
   // Clusters

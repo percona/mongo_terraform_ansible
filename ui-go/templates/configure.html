@@ -4,7 +4,7 @@
 <div class="page-header">
   <div>
     <a href="/new" class="back-link">← Platforms</a>
-    <h1>Configure <span class="platform-badge platform-{{$p}}">{{upper $p}}</span> Environment</h1>
+    <h1>Configure <span class="platform-badge platform-{{$p}}">{{upper $p}}</span> Cluster</h1>
   </div>
 </div>
 
@@ -15,7 +15,7 @@
     <h2>General</h2>
     <div class="form-row">
       <div class="form-group">
-        <label for="env_id_field">Environment ID</label>
+        <label for="env_id_field">Cluster ID</label>
         <input type="text" id="env_id_field" name="env_id" placeholder="e.g. dev01"
                value="{{.EnvID}}" maxlength="20" pattern="[a-zA-Z0-9_-]+"
                title="Alphanumeric, hyphens and underscores only">
@@ -354,7 +354,7 @@
   <section class="form-section">
     <h2>Compute Resources</h2>
     <p class="hint" style="margin-bottom:1rem">
-      Instance types and disk sizes apply globally to all clusters and replica sets in this environment.
+      Instance types and disk sizes apply globally to all sharded clusters and replica sets in this deployment.
       Leave blank to use Terraform defaults for the selected platform.
     </p>
 
@@ -498,7 +498,7 @@
         <label><input type="checkbox" id="enable_pmm" name="enable_pmm"
                       {{if boolDefault .Config.EnablePmm true}}checked{{end}}>
           Deploy PMM monitoring server</label>
-        <small>Uncheck to skip the PMM server for this environment.</small>
+        <small>Uncheck to skip the PMM server for this cluster.</small>
       </div>
     </div>
     <div id="pmm-cloud-settings" {{if not (boolDefault .Config.EnablePmm true)}}style="display:none"{{end}}>

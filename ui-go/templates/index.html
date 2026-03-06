@@ -1,8 +1,8 @@
-{{define "title"}}Environments{{end}}
+{{define "title"}}Clusters{{end}}
 {{define "content"}}
 <div class="page-header">
-  <h1>Environments</h1>
-  <a href="/new" class="btn btn-primary">+ New Environment</a>
+  <h1>Clusters</h1>
+  <a href="/new" class="btn btn-primary">+ New Cluster</a>
 </div>
 
 {{if .Environments}}
@@ -34,9 +34,9 @@
 {{else}}
 <div class="empty-state">
   <div class="empty-icon">🍃</div>
-  <h2>No environments yet</h2>
-  <p>Get started by creating your first MongoDB environment.</p>
-  <a href="/new" class="btn btn-primary">Create Environment</a>
+  <h2>No clusters yet</h2>
+  <p>Get started by creating your first MongoDB cluster.</p>
+  <a href="/new" class="btn btn-primary">Create Cluster</a>
 </div>
 {{end}}
 {{end}}

@@ -2,7 +2,7 @@
 {{define "content"}}
 <div class="page-header">
   <div>
-    <a href="/" class="back-link">← Environments</a>
+    <a href="/" class="back-link">← Clusters</a>
     <h1>
       <span class="platform-badge platform-{{.Env.Platform}}">{{upper .Env.Platform}}</span>
       {{.EnvID}}
@@ -231,7 +231,7 @@ async function runAction(action) {
       appendToTerminal(`\n✔ Job finished: ${s}`);
       es.close(); activeEventSource = null; setButtonsDisabled(false);
       if (action === 'destroy' && s === 'success') {
-        appendToTerminal('Environment destroyed. Redirecting…');
+        appendToTerminal('Cluster destroyed. Redirecting…');
         setTimeout(() => { window.location.href = '/'; }, 2000);
       }
     });

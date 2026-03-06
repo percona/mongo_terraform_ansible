@@ -41,6 +41,16 @@
         </select>
         <small>Percona repository identifier used by Ansible to install PSMDB.</small>
       </div>
+      <div class="form-group">
+        <label for="pbm_release">PBM Release (Ansible)</label>
+        <select id="pbm_release" name="pbm_release">
+          {{$curPbm := .Config.PbmRelease}}
+          {{range .PBMVersions}}
+          <option value="{{.}}" {{if eq $curPbm .}}selected{{end}}>{{.}}</option>
+          {{end}}
+        </select>
+        <small>Percona Backup for MongoDB repository identifier.</small>
+      </div>
     </div>
     {{end}}
   </section>
@@ -351,8 +361,16 @@
 
   <!-- ──────────── Compute Resources (cloud only) ──────────── -->
   {{if ne $p "docker"}}
+  {{$hasCompute := or .Config.ShardsvrType .Config.ConfigsvrType .Config.MongosType .Config.ArbiterType .Config.ReplsetSvrType .Config.DataDiskType}}
   <section class="form-section">
-    <h2>Compute Resources</h2>
+    <div class="section-header">
+      <h2>Compute Resources</h2>
+      <button type="button" class="btn btn-outline btn-sm"
+              id="compute-toggle"
+              onclick="toggleComputeResources()"
+              >{{if $hasCompute}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+    </div>
+    <div id="compute-resources-body" {{if not $hasCompute}}style="display:none"{{end}}>
     <p class="hint" style="margin-bottom:1rem">
       Instance types and disk sizes apply globally to all sharded clusters and replica sets in this deployment.
       Leave blank to use Terraform defaults for the selected platform.
@@ -438,6 +456,7 @@
         </small>
       </div>
     </div>
+    </div><!-- #compute-resources-body -->
   </section>
   {{end}}
 
@@ -687,6 +706,8 @@ const PSMDB_IMAGES    = {{json .PSMDBImages}};
 const PBM_IMAGES      = {{json .PBMImages}};
 const PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
 const PMM_SERVER_IMAGES = {{json .PMMImages}};
+const PSMDB_VERSIONS  = {{json .PSMDBVersions}};
+const PBM_VERSIONS    = {{json .PBMVersions}};
 
 function removeBlock(btn) {
   btn.closest('.component-block').remove();
@@ -699,6 +720,15 @@ function removeBlock(btn) {
   const panel = document.getElementById('pmm-cloud-settings');
   cb.addEventListener('change', () => { panel.style.display = cb.checked ? '' : 'none'; });
 })();
+
+function toggleComputeResources() {
+  const body = document.getElementById('compute-resources-body');
+  const btn  = document.getElementById('compute-toggle');
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  if (btn) btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
+}
 
 function nextClusterName() {
   let max = 0;
@@ -908,7 +938,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 
   // Simple scalar fields
   const simpleFields = [
-    'prefix','mongo_release','project_id','region','location',
+    'prefix','mongo_release','pbm_release','project_id','region','location',
     'subnet_cidr','subnet_count','source_ranges',
     'my_ssh_user','ssh_public_key_path','default_key_pair',
     'enable_ssh_gateway','ssh_gateway_name','port_to_forward',

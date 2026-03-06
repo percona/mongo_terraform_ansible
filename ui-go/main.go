@@ -34,6 +34,12 @@ var ansiRe = regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
 
 const cacheTTL = 5 * time.Minute
 
+// defaultPSMDBVersions is used as a fallback when the Percona repo is unreachable.
+var defaultPSMDBVersions = []string{"psmdb-80", "psmdb-70", "psmdb-60", "psmdb-50", "psmdb-44", "psmdb-42", "psmdb-40", "psmdb-36"}
+
+// defaultPBMReleases is used as a fallback when the Percona repo is unreachable.
+var defaultPBMReleases = []string{"pbm-30", "pbm-20", "pbm-12", "pbm-11", "pbm-10"}
+
 // ─── Type definitions ─────────────────────────────────────────────────────────
 
 // ClusterConfig maps to the Terraform "clusters" map object type.
@@ -103,8 +109,9 @@ type LdapServerConfig struct {
 // Config holds all user-configurable settings for an environment.
 type Config struct {
 	// General
-	Prefix      string `json:"prefix"`
+	Prefix       string `json:"prefix"`
 	MongoRelease string `json:"mongo_release,omitempty"`
+	PbmRelease   string `json:"pbm_release,omitempty"`
 
 	// Cloud credentials / settings
 	ProjectID       string `json:"project_id,omitempty"`
@@ -277,6 +284,7 @@ type ConfigureData struct {
 	EnvID           string
 	Config          Config // populated from existing or defaults
 	PSMDBVersions   []string
+	PBMVersions     []string
 	PMMImages       []string
 	PSMDBImages     []string
 	PBMImages       []string
@@ -536,8 +544,43 @@ func getPSMDBVersions() []string {
 	} else {
 		slog.Warn("psmdb versions fetch failed", "err", err)
 	}
+	if len(versions) == 0 {
+		versions = defaultPSMDBVersions
+	}
 	cacheSet(key, versions)
 	return versions
+}
+
+func getPBMReleases() []string {
+	const key = "pbm_releases"
+	if v, ok := cacheGet(key); ok {
+		return v.([]string)
+	}
+	client := &http.Client{Timeout: 6 * time.Second}
+	resp, err := client.Get("https://repo.percona.com/percona/yum/release/")
+	var releases []string
+	if err == nil && resp.StatusCode == 200 {
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		re := regexp.MustCompile(`pbm-\d+`)
+		found := re.FindAllString(string(body), -1)
+		seen := map[string]bool{}
+		for _, v := range found {
+			if !seen[v] {
+				seen[v] = true
+				releases = append(releases, v)
+			}
+		}
+		sort.Slice(releases, func(i, j int) bool { return releases[i] > releases[j] })
+		slog.Info("fetched PBM releases", "count", len(releases))
+	} else {
+		slog.Warn("pbm releases fetch failed", "err", err)
+	}
+	if len(releases) == 0 {
+		releases = defaultPBMReleases
+	}
+	cacheSet(key, releases)
+	return releases
 }
 
 func getPMMServerImages() []string {
@@ -576,6 +619,7 @@ func getPMMClientImages() []string {
 func prefetchVersions() {
 	slog.Info("prefetching container image tags and PSMDB versions…")
 	getPSMDBVersions()
+	getPBMReleases()
 	getPMMServerImages()
 	getPSMDBImages()
 	getPBMImages()
@@ -644,6 +688,8 @@ func writeTfvars(envID, platform string, cfg Config) error {
 
 	if platform != "docker" {
 		// Cloud-only simple vars
+		writeOptStr("mongo_release", cfg.MongoRelease)
+		writeOptStr("pbm_release", cfg.PbmRelease)
 		writeOptStr("project_id", cfg.ProjectID)
 		writeOptStr("region", cfg.Region)
 		writeOptStr("location", cfg.Location)
@@ -666,6 +712,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		writeOptStr("pmm_type", cfg.PmmType)
 		writeOptInt("pmm_volume_size", cfg.PmmVolumeSize)
 		writeOptInt("pmm_port", cfg.PmmPort)
+		writeOptStr("pmm_image", cfg.PmmImage)
 		writeOptStr("pmm_disk_type", cfg.PmmDiskType)
 		// Write enable_pmm only when explicitly set; terraform default is true.
 		if cfg.EnablePmm != nil {
@@ -1059,6 +1106,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		EnvID:            envID,
 		Config:           cfg,
 		PSMDBVersions:    getPSMDBVersions(),
+		PBMVersions:      getPBMReleases(),
 		PMMImages:        getPMMServerImages(),
 		PSMDBImages:      getPSMDBImages(),
 		PBMImages:        getPBMImages(),
@@ -1092,6 +1140,7 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]interface{}{
 		"psmdb_versions":    getPSMDBVersions(),
+		"pbm_releases":      getPBMReleases(),
 		"pmm_server_images": getPMMServerImages(),
 		"psmdb_images":      getPSMDBImages(),
 		"pbm_images":        getPBMImages(),

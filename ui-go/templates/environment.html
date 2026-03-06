@@ -20,11 +20,25 @@
 
 <!-- Action buttons -->
 <div class="action-buttons">
-  <button class="btn btn-primary" onclick="runAction('deploy')" id="btn-deploy">🚀 Deploy</button>
-  <button class="btn btn-warning" onclick="runAction('stop')"   id="btn-stop">⏹ Stop</button>
-  <button class="btn btn-success" onclick="runAction('restart')" id="btn-restart">🔄 Restart</button>
-  <button class="btn btn-danger"  onclick="confirmDestroy()"    id="btn-destroy">🗑 Destroy</button>
-  <button class="btn btn-outline" onclick="showTfvars()"        id="btn-tfvars">📄 View tfvars</button>
+  {{if ne .Env.Platform "docker"}}
+  <!-- Cloud platforms: separate provision (terraform) and configure (ansible) -->
+  <button class="btn btn-primary" onclick="runAction('deploy')"    id="btn-deploy">🚀 Deploy</button>
+  <button class="btn btn-secondary" onclick="runAction('provision')" id="btn-provision">🏗 Provision</button>
+  <button class="btn btn-secondary" onclick="runAction('configure')" id="btn-configure">⚙️ Configure</button>
+  <button class="btn btn-warning"  onclick="runAction('reset')"    id="btn-reset">♻️ Reset</button>
+  <button class="btn btn-warning"  onclick="runAction('stop')"     id="btn-stop">⏹ Stop</button>
+  <button class="btn btn-success"  onclick="runAction('restart')"  id="btn-restart">🔄 Restart</button>
+  <button class="btn btn-danger"   onclick="confirmDestroy()"      id="btn-destroy">🗑 Destroy</button>
+  <button class="btn btn-outline"  onclick="showTfvars()"          id="btn-tfvars">📄 tfvars</button>
+  <button class="btn btn-outline"  onclick="showInventory()"       id="btn-inventory">📋 Inventory</button>
+  {{else}}
+  <!-- Docker: no separate provision/configure/reset -->
+  <button class="btn btn-primary" onclick="runAction('deploy')"   id="btn-deploy">🚀 Deploy</button>
+  <button class="btn btn-warning" onclick="runAction('stop')"     id="btn-stop">⏹ Stop</button>
+  <button class="btn btn-success" onclick="runAction('restart')"  id="btn-restart">🔄 Restart</button>
+  <button class="btn btn-danger"  onclick="confirmDestroy()"      id="btn-destroy">🗑 Destroy</button>
+  <button class="btn btn-outline" onclick="showTfvars()"          id="btn-tfvars">📄 tfvars</button>
+  {{end}}
 </div>
 
 <!-- Configuration summary -->
@@ -145,8 +159,24 @@
   </div>
 </div>
 
+<!-- Inventory preview modal -->
+<div class="modal-backdrop" id="inventory-modal" style="display:none" onclick="closeInventoryModal(event)">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>📋 Ansible Inventory</h2>
+    </div>
+    <div id="inventory-content">
+      <p style="color:var(--color-muted)">Loading…</p>
+    </div>
+    <div class="modal-actions" style="margin-top:1rem">
+      <button class="btn btn-outline" onclick="closeInventoryModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const ENV_ID = {{json .EnvID}};
+const ENV_ID   = {{json .EnvID}};
+const PLATFORM = {{json .Env.Platform}};
 let activeEventSource = null;
 
 function confirmDestroy() { document.getElementById('destroy-modal').style.display = 'flex'; }
@@ -171,6 +201,40 @@ function closeTfvarsModal(evt) {
   if (!evt || evt.target === document.getElementById('tfvars-modal')) {
     document.getElementById('tfvars-modal').style.display = 'none';
   }
+}
+
+async function showInventory() {
+  const modal = document.getElementById('inventory-modal');
+  const container = document.getElementById('inventory-content');
+  container.innerHTML = '<p style="color:var(--color-muted)">Loading…</p>';
+  modal.style.display = 'flex';
+  try {
+    const data = await apiFetch(`/api/environment/${ENV_ID}/inventory`);
+    if (!data.files || data.files.length === 0) {
+      container.innerHTML = `<p style="color:var(--color-muted)">${data.message || 'No inventory files found.'}</p>`;
+      return;
+    }
+    // Render one pre block per inventory file with a filename header.
+    container.innerHTML = data.files.map(f => `
+      <div style="margin-bottom:1.2rem">
+        <div style="font-size:0.78rem;color:var(--color-muted);font-family:var(--mono);margin-bottom:0.3rem">${escHtml(f.name)}</div>
+        <pre class="tfvars-pre" style="margin:0">${escHtml(f.content)}</pre>
+      </div>`).join('');
+  } catch (err) {
+    container.innerHTML = '<p style="color:var(--color-danger)">Error: ' + escHtml(err.message) + '</p>';
+  }
+}
+
+function closeInventoryModal(evt) {
+  if (!evt || evt.target === document.getElementById('inventory-modal')) {
+    document.getElementById('inventory-modal').style.display = 'none';
+  }
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function clearTerminal() { document.getElementById('terminal').innerHTML = ''; }
@@ -198,10 +262,14 @@ function setJobBadge(status) {
   badge.className = `badge badge-${status.includes('success') ? 'success' : (status.includes('fail') || status.includes('error')) ? 'danger' : 'running'}`;
 }
 
+function allButtons() {
+  // Select all buttons in the action-buttons container so this stays correct
+  // even if button IDs are added or renamed in the template.
+  return Array.from(document.querySelectorAll('.action-buttons button'));
+}
+
 function setButtonsDisabled(disabled) {
-  ['btn-deploy','btn-stop','btn-restart','btn-destroy','btn-tfvars'].forEach(id => {
-    document.getElementById(id).disabled = disabled;
-  });
+  allButtons().forEach(btn => { btn.disabled = disabled; });
 }
 
 async function runAction(action) {
@@ -231,7 +299,7 @@ async function runAction(action) {
       appendToTerminal(`\n✔ Job finished: ${s}`);
       es.close(); activeEventSource = null; setButtonsDisabled(false);
       if (action === 'destroy' && s === 'success') {
-        appendToTerminal('Cluster destroyed. Redirecting…');
+        appendToTerminal('Environment destroyed. Redirecting…');
         setTimeout(() => { window.location.href = '/'; }, 2000);
       }
     });

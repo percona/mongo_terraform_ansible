@@ -76,10 +76,10 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label for="my_ssh_user">SSH User</label>
+        <label for="my_ssh_user">Default SSH User</label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
                value="{{.Config.MySSHUser}}" placeholder="my_username">
-        <small>Username used to SSH into instances and generate the ssh_config.</small>
+        <small>Primary username Ansible uses to connect to instances (also used to generate ssh_config).</small>
       </div>
       <div class="form-group">
         <label for="default_vpc_name">VPC Name</label>
@@ -95,10 +95,13 @@
                value="{{strDefault .Config.SubnetCIDR "10.128.0.0/20"}}">
       </div>
     </div>
-    <!-- SSH Users (gce_ssh_users) -->
+    <!-- gce_ssh_users: additional users whose public keys are provisioned on every instance -->
     <div class="form-row">
       <div class="form-group form-group-full">
-        <label>SSH Users <small>(username → public key file)</small></label>
+        <label>Additional SSH Users</label>
+        <small style="margin-bottom:0.4rem">
+          Builds the <code>gce_ssh_users</code> Terraform variable — adds public keys for each listed user to every GCP instance.
+        </small>
         <div id="ssh-users-container">
           {{range $user, $key := .Config.SSHUsers}}
           <div class="ssh-user-row">
@@ -109,7 +112,6 @@
           {{end}}
         </div>
         <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addSshUser()">+ Add SSH User</button>
-        <small>Used to build the <code>gce_ssh_users</code> Terraform variable. Each entry adds a user's public key to all instances.</small>
       </div>
     </div>
   </section>
@@ -127,10 +129,10 @@
         <small><a href="#" onclick="reloadRegions(event)">↻ Refresh from AWS</a></small>
       </div>
       <div class="form-group">
-        <label for="my_ssh_user">SSH User</label>
+        <label for="my_ssh_user">Default SSH User</label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
                value="{{strDefault .Config.MySSHUser "ec2-user"}}" placeholder="ec2-user">
-        <small>e.g. ec2-user (CentOS), ubuntu (Ubuntu)</small>
+        <small>Primary username Ansible uses to connect (e.g. ec2-user for CentOS, ubuntu for Ubuntu).</small>
       </div>
     </div>
     <div class="form-row">
@@ -167,13 +169,17 @@
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" name="use_spot_instances"
                       {{if .Config.UseSpotInstances}}checked{{end}}>
-          Use Spot Instances <small>(cheaper but may be terminated)</small></label>
+          Use Spot Instances</label>
+        <small>Cheaper but instances may be terminated by the cloud provider.</small>
       </div>
     </div>
-    <!-- SSH Users (ssh_users) -->
+    <!-- ssh_users: additional users whose public keys are provisioned on every instance -->
     <div class="form-row">
       <div class="form-group form-group-full">
-        <label>SSH Users <small>(username → public key file)</small></label>
+        <label>Additional SSH Users</label>
+        <small style="margin-bottom:0.4rem">
+          Builds the <code>ssh_users</code> Terraform variable — adds public keys for each listed user to every AWS instance.
+        </small>
         <div id="ssh-users-container">
           {{range $user, $key := .Config.SSHUsers}}
           <div class="ssh-user-row">
@@ -184,7 +190,6 @@
           {{end}}
         </div>
         <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addSshUser()">+ Add SSH User</button>
-        <small>Used to build the <code>ssh_users</code> Terraform variable. Each entry adds a user's public key to all instances.</small>
       </div>
     </div>
   </section>
@@ -202,9 +207,10 @@
         <small><a href="#" onclick="reloadRegions(event)">↻ Refresh from Azure</a></small>
       </div>
       <div class="form-group">
-        <label for="my_ssh_user">SSH User</label>
+        <label for="my_ssh_user">Default SSH User</label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
                value="{{.Config.MySSHUser}}" placeholder="azureuser">
+        <small>Primary username Ansible uses to connect to instances.</small>
       </div>
     </div>
     <div class="form-row">
@@ -219,10 +225,13 @@
           Use Spot Instances</label>
       </div>
     </div>
-    <!-- SSH Users (ssh_users) -->
+    <!-- ssh_users: additional users whose public keys are provisioned on every instance -->
     <div class="form-row">
       <div class="form-group form-group-full">
-        <label>SSH Users <small>(username → public key file)</small></label>
+        <label>Additional SSH Users</label>
+        <small style="margin-bottom:0.4rem">
+          Builds the <code>ssh_users</code> Terraform variable — adds public keys for each listed user to every Azure instance.
+        </small>
         <div id="ssh-users-container">
           {{range $user, $key := .Config.SSHUsers}}
           <div class="ssh-user-row">
@@ -233,7 +242,6 @@
           {{end}}
         </div>
         <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addSshUser()">+ Add SSH User</button>
-        <small>Used to build the <code>ssh_users</code> Terraform variable. Each entry adds a user's public key to all instances.</small>
       </div>
     </div>
   </section>

@@ -1649,9 +1649,10 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	var cmd []string
 	switch action {
 	case "deploy":
-		// Full deploy: provision infrastructure with Terraform, then configure
+		// "Deploy All": provision infrastructure with Terraform, then configure
 		// with Ansible.  For cloud platforms, inject SSH config before Ansible
 		// so that host names written by Terraform are resolvable.
+		// Exposed in the UI as the "Deploy All" button.
 		shellCmd := fmt.Sprintf(
 			"terraform init -input=false && terraform apply -auto-approve -input=false -var-file=%s",
 			shellQuote(varfile),
@@ -1663,9 +1664,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		cmd = []string{"bash", "-c", shellCmd}
 
 	case "provision":
-		// Cloud-only: run Terraform only (no Ansible).  Useful when you want to
-		// inspect or edit the inventory before running configuration, or when
-		// you only need to (re-)provision infrastructure.
+		// "Deploy" (UI label): Cloud-only; run Terraform only (no Ansible).
+		// Useful when you want to inspect or edit the inventory before running
+		// configuration, or when you only need to (re-)provision infrastructure.
 		if platform == "docker" {
 			jsonError(w, 400, "provision action is not applicable to Docker environments")
 			return
@@ -1678,8 +1679,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		cmd = []string{"bash", "-c", shellCmd}
 
 	case "configure":
-		// Cloud-only: run Ansible only (no Terraform).  Allows retrying the
-		// software installation step without re-provisioning infrastructure.
+		// "Provision" (UI label): Cloud-only; run Ansible only (no Terraform).
+		// Allows retrying the software installation step without re-provisioning
+		// infrastructure.
 		if platform == "docker" {
 			jsonError(w, 400, "configure action is not applicable to Docker environments")
 			return

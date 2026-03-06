@@ -21,10 +21,10 @@
 <!-- Action buttons -->
 <div class="action-buttons">
   {{if ne .Env.Platform "docker"}}
-  <!-- Cloud platforms: separate provision (terraform) and configure (ansible) -->
-  <button class="btn btn-primary" onclick="runAction('deploy')"    id="btn-deploy">🚀 Deploy</button>
-  <button class="btn btn-secondary" onclick="runAction('provision')" id="btn-provision">🏗 Provision</button>
-  <button class="btn btn-secondary" onclick="runAction('configure')" id="btn-configure">⚙️ Configure</button>
+  <!-- Cloud platforms: Deploy=Terraform only, Provision=Ansible only, Deploy All=both -->
+  <button class="btn btn-primary"   onclick="runAction('deploy')"    id="btn-deploy">🚀 Deploy All</button>
+  <button class="btn btn-secondary" onclick="runAction('provision')" id="btn-provision">🏗 Deploy</button>
+  <button class="btn btn-secondary" onclick="runAction('configure')" id="btn-configure">⚙️ Provision</button>
   <button class="btn btn-warning"  onclick="runAction('reset')"    id="btn-reset">♻️ Reset</button>
   <button class="btn btn-warning"  onclick="runAction('stop')"     id="btn-stop">⏹ Stop</button>
   <button class="btn btn-success"  onclick="runAction('restart')"  id="btn-restart">🔄 Restart</button>

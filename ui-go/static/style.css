@@ -113,6 +113,12 @@ a:hover { text-decoration: underline; }
   margin-bottom: 2rem;
   flex-wrap: wrap;
 }
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
 .page-header h1 {
   font-size: 1.6rem;
   font-weight: 600;

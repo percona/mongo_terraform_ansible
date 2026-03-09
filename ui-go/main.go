@@ -282,6 +282,7 @@ type EnvEntry struct {
 
 type IndexData struct {
 	Environments []EnvEntry
+	HasDeleted   bool
 }
 
 type NewEnvData struct {
@@ -1115,10 +1116,14 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(ids)
 	entries := make([]EnvEntry, 0, len(ids))
+	hasDeleted := false
 	for _, id := range ids {
 		entries = append(entries, EnvEntry{id, state[id]})
+		if state[id].Status == "deleted" {
+			hasDeleted = true
+		}
 	}
-	renderPage(w, "index", IndexData{Environments: entries})
+	renderPage(w, "index", IndexData{Environments: entries, HasDeleted: hasDeleted})
 }
 
 // GET /new
@@ -1430,6 +1435,25 @@ func deleteEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, 200, map[string]string{"status": "deleted"})
+}
+
+// DELETE /api/environments/deleted  — purges all environments whose status is "deleted".
+func purgeDeletedEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
+	state, err := loadState()
+	if err != nil {
+		jsonError(w, 500, "state error: "+err.Error())
+		return
+	}
+	count := 0
+	for id, env := range state {
+		if env.Status == "deleted" {
+			delete(state, id)
+			os.Remove(tfvarsPath(id, env.Platform))
+			count++
+		}
+	}
+	saveState(state)
+	writeJSON(w, 200, map[string]interface{}{"removed": count})
 }
 
 // GET /api/environment/{env_id}/tfvars
@@ -2015,6 +2039,7 @@ func main() {
 	mux.HandleFunc("GET /api/regions/{platform}", apiRegionsHandler)
 	mux.HandleFunc("POST /api/environment", saveEnvironmentHandler)
 	mux.HandleFunc("DELETE /api/environment/{env_id}", deleteEnvironmentHandler)
+	mux.HandleFunc("DELETE /api/environments/deleted", purgeDeletedEnvironmentsHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/tfvars", getTfvarsHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/inventory", getInventoryHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/status", envStatusHandler)

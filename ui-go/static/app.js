@@ -19,12 +19,24 @@ async function apiFetch(url, method = 'GET', body = null) {
  * Delete an environment from the index page.
  */
 async function deleteEnvironment(envId) {
-  if (!confirm(`Delete environment "${envId}"? This only removes the UI record, not cloud resources.`)) return;
+  if (!confirm(`Remove environment "${envId}" from the list? Cloud resources have already been destroyed.`)) return;
   try {
     await apiFetch(`/api/environment/${envId}`, 'DELETE');
-    const card = document.getElementById(`env-${envId}`);
-    if (card) card.remove();
+    location.reload();
   } catch (err) {
     alert('Error deleting: ' + err.message);
+  }
+}
+
+/**
+ * Purge all environments marked as "Deleted" from the index page.
+ */
+async function cleanupDeleted() {
+  if (!confirm('Remove all destroyed environments from the list? Their cloud resources have already been destroyed.')) return;
+  try {
+    await apiFetch('/api/environments/deleted', 'DELETE');
+    location.reload();
+  } catch (err) {
+    alert('Error during cleanup: ' + err.message);
   }
 }

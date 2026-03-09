@@ -2,7 +2,13 @@
 {{define "content"}}
 <div class="page-header">
   <h1>Environments</h1>
-  <a href="/new" class="btn btn-primary">+ New Environment</a>
+  <div class="page-header-actions">
+    {{if .HasDeleted}}
+    <button class="btn btn-outline btn-danger-outline" onclick="cleanupDeleted()"
+            title="Remove all destroyed environments from the list">🧹 Cleanup Deleted</button>
+    {{end}}
+    <a href="/new" class="btn btn-primary">+ New Environment</a>
+  </div>
 </div>
 
 {{if .Environments}}

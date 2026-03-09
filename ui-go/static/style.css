@@ -217,10 +217,24 @@ a:hover { text-decoration: underline; }
 .status-failed      { background: var(--color-danger); }
 .status-error       { background: var(--color-danger); }
 .status-unknown     { background: var(--color-muted); }
+.status-deleted     { background: var(--color-muted); }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-running,
+  .progress-dot { animation: none; }
+}
+
+/* ─── Deleted env row (greyed out) ──────────────────────────────── */
+.env-row-deleted td {
+  opacity: 0.55;
+}
+.env-row-deleted:hover td {
+  background: inherit;
 }
 
 /* ─── Empty state ────────────────────────────────────────────────── */
@@ -354,6 +368,7 @@ a:hover { text-decoration: underline; }
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   color: var(--color-text);
+  font-family: var(--font);
   font-size: 0.875rem;
   font-weight: 600;
   padding: 0.25rem 0.4rem;
@@ -361,7 +376,7 @@ a:hover { text-decoration: underline; }
 }
 .block-name-input:hover,
 .block-name-input:focus {
-  background: var(--color-bg);
+  background: var(--color-surface2);
   border-color: var(--color-border);
   outline: none;
 }
@@ -483,6 +498,24 @@ tr:last-child td { border-bottom: none; }
   scroll-behavior: smooth;
 }
 .terminal-line { white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+
+/* Blinking in-progress indicator shown when output panel is collapsed */
+.progress-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+.progress-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  animation: pulse 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
 
 /* ─── Badges ──────────────────────────────────────────────────────── */
 .badge {

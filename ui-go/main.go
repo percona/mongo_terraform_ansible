@@ -1406,7 +1406,9 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]string{"env_id": payload.EnvID, "status": "configured"})
 }
 
-// DELETE /api/environment/{env_id}
+// DELETE /api/environment/{env_id}  — hard-removes an env from state (purge).
+// The destroy action marks it as "deleted" but keeps it visible in the UI;
+// this endpoint physically removes the record.
 func deleteEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	envID := r.PathValue("env_id")
 	if !envIDRe.MatchString(envID) {
@@ -1787,7 +1789,8 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Callback: update environment status when a job finishes.
-	// For destroy, also clean up the inventory entry and tfvars file.
+	// For destroy, mark the environment as "deleted" (kept visible in the UI
+	// until the user explicitly purges it).
 	onComplete := func(status string) {
 		st, _ := loadState()
 		e, exists := st[envID]
@@ -1796,10 +1799,14 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if action == "destroy" {
 			if status == "success" {
-				delete(st, envID)
-				saveState(st)
+				e.Status = "deleted"
 				os.Remove(varfile)
+			} else {
+				e.Status = "destroy_failed"
 			}
+			e.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+			st[envID] = e
+			saveState(st)
 			return
 		}
 		// Map job status to a human-readable environment status.

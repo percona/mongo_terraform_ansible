@@ -45,6 +45,10 @@
   <button class="btn btn-outline" onclick="showTfvars()"          id="btn-tfvars"
           title="View the generated Terraform variables file for this environment">📄 tfvars</button>
   {{end}}
+  {{if .Env.LastJobID}}
+  <button class="btn btn-outline" onclick="showLastLogs()"
+          title="View the output log from the last action run">📋 View Logs</button>
+  {{end}}
 </div>
 
 {{if ne .Env.Platform "docker"}}
@@ -142,16 +146,36 @@
   {{end}}
 </div>
 
-<!-- Terminal output -->
+<!-- Terminal output (collapsed by default; expanded when user clicks "Show Output") -->
 <div class="terminal-section" id="terminal-section" style="display:none">
   <div class="terminal-header">
     <h2>Output</h2>
     <div class="terminal-controls">
       <span id="job-status-badge" class="badge"></span>
+      <button class="btn btn-outline btn-sm" id="btn-toggle-output" onclick="toggleOutput()">▼ Show Output</button>
       <button class="btn btn-outline btn-sm" onclick="clearTerminal()">Clear</button>
     </div>
   </div>
-  <div class="terminal" id="terminal"></div>
+  <!-- blinking in-progress indicator (shown when output is hidden and a job is running) -->
+  <div id="progress-indicator" class="progress-indicator" style="display:none">
+    <span class="progress-dot"></span>
+    <span id="progress-label">Running…</span>
+  </div>
+  <div class="terminal" id="terminal" style="display:none"></div>
+</div>
+
+<!-- Last-job logs modal -->
+<div class="modal-backdrop" id="logs-modal" style="display:none" onclick="closeLogsModal(event)">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>📋 Last Job Output</h2>
+      <span id="logs-job-status" class="badge"></span>
+    </div>
+    <pre class="tfvars-pre" id="logs-content">Loading…</pre>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeLogsModal()">Close</button>
+    </div>
+  </div>
 </div>
 
 <!-- Destroy confirmation modal -->
@@ -253,6 +277,35 @@ function closeInventoryModal(evt) {
   }
 }
 
+async function showLastLogs() {
+  const modal   = document.getElementById('logs-modal');
+  const pre     = document.getElementById('logs-content');
+  const badge   = document.getElementById('logs-job-status');
+  pre.textContent = 'Loading…';
+  badge.textContent = '';
+  badge.className = 'badge';
+  modal.style.display = 'flex';
+  try {
+    const jobId = {{if .Env.LastJobID}}{{json .Env.LastJobID}}{{else}}null{{end}};
+    if (!jobId) { pre.textContent = 'No previous job found.'; return; }
+    const data = await apiFetch(`/api/job/${jobId}/log`);
+    pre.textContent = data.log || '(empty)';
+    if (data.status) {
+      badge.textContent = data.status;
+      badge.className = 'badge ' + getStatusBadgeClass(data.status);
+    }
+  } catch (err) {
+    pre.textContent = 'Error: ' + err.message;
+  }
+}
+
+function closeLogsModal(evt) {
+  const modal = document.getElementById('logs-modal');
+  if (!evt || evt.target === modal) {
+    modal.style.display = 'none';
+  }
+}
+
 function escHtml(s) {
   return String(s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -270,6 +323,51 @@ function appendToTerminal(text) {
   term.scrollTop = term.scrollHeight;
 }
 
+// Toggle whether the raw terminal output is visible.
+// The terminal-section container is always shown while a job is running;
+// only the inner .terminal div is toggled.
+let outputVisible = false;
+function toggleOutput() {
+  outputVisible = !outputVisible;
+  const term = document.getElementById('terminal');
+  const ind  = document.getElementById('progress-indicator');
+  const btn  = document.getElementById('btn-toggle-output');
+  if (outputVisible) {
+    term.style.display = '';
+    ind.style.display  = 'none';
+    if (btn) btn.textContent = '▲ Hide Output';
+  } else {
+    term.style.display = 'none';
+    // Only show the blinking indicator while a job is running.
+    if (activeEventSource) ind.style.display = 'flex';
+    if (btn) btn.textContent = '▼ Show Output';
+  }
+}
+
+function setProgressLabel(action) {
+  const lbl = document.getElementById('progress-label');
+  if (lbl) lbl.textContent = action ? `Running: ${action}…` : 'Running…';
+}
+
+function showTerminalSection(action) {
+  const sec = document.getElementById('terminal-section');
+  sec.style.display = 'block';
+  // Always start with output hidden; show blinking indicator.
+  outputVisible = false;
+  const term = document.getElementById('terminal');
+  const ind  = document.getElementById('progress-indicator');
+  const btn  = document.getElementById('btn-toggle-output');
+  term.style.display = 'none';
+  ind.style.display  = 'flex';
+  setProgressLabel(action);
+  if (btn) btn.textContent = '▼ Show Output';
+}
+
+function hideProgressIndicator() {
+  const ind = document.getElementById('progress-indicator');
+  if (ind) ind.style.display = 'none';
+}
+
 function setStatus(status) {
   const dot   = document.getElementById('status-dot');
   const label = document.getElementById('status-label');
@@ -278,10 +376,16 @@ function setStatus(status) {
   label.textContent = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function getStatusBadgeClass(status) {
+  if (status === 'success' || status.includes('success')) return 'badge-success';
+  if (status.startsWith('fail') || status === 'error' || status.includes('failed')) return 'badge-danger';
+  return 'badge-running';
+}
+
 function setJobBadge(status) {
   const badge = document.getElementById('job-status-badge');
   badge.textContent = status;
-  badge.className = `badge badge-${status.includes('success') ? 'success' : (status.includes('fail') || status.includes('error')) ? 'danger' : 'running'}`;
+  badge.className = 'badge ' + getStatusBadgeClass(status);
 }
 
 function allButtons() {
@@ -319,7 +423,7 @@ async function refreshEnvStatus() {
 
 async function runAction(action) {
   if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
-  document.getElementById('terminal-section').style.display = 'block';
+  showTerminalSection(action);
   clearTerminal();
   setButtonsDisabled(true);
   appendToTerminal(`▶ Running action: ${action}…`);
@@ -332,7 +436,7 @@ async function runAction(action) {
       body: JSON.stringify({ action }),
     });
     const data = await resp.json();
-    if (!resp.ok) { appendToTerminal(`Error: ${data.error || 'Unknown error'}`); setButtonsDisabled(false); return; }
+    if (!resp.ok) { appendToTerminal(`Error: ${data.error || 'Unknown error'}`); setButtonsDisabled(false); hideProgressIndicator(); return; }
     setStatus(data.status);
 
     const es = new EventSource(`/api/job/${data.job_id}/stream`);
@@ -343,8 +447,9 @@ async function runAction(action) {
       setJobBadge(s);
       appendToTerminal(`\n✔ Job finished: ${s}`);
       es.close(); activeEventSource = null; setButtonsDisabled(false);
+      hideProgressIndicator();
       if (action === 'destroy' && s === 'success') {
-        appendToTerminal('Environment destroyed. Redirecting…');
+        appendToTerminal('Environment destroyed. Redirecting to home…');
         setTimeout(() => { window.location.href = '/'; }, 2000);
       } else {
         // Refresh the status bar from the server so it reflects the
@@ -355,11 +460,13 @@ async function runAction(action) {
     es.onerror = () => {
       appendToTerminal('\n⚠ Stream connection lost.');
       es.close(); activeEventSource = null; setButtonsDisabled(false);
+      hideProgressIndicator();
       refreshEnvStatus();
     };
   } catch (err) {
     appendToTerminal(`Network error: ${err.message}`);
     setButtonsDisabled(false);
+    hideProgressIndicator();
   }
 }
 
@@ -369,7 +476,7 @@ async function runAction(action) {
   const jobId = {{json .Env.LastJobID}};
   const s = await (await fetch(`/api/job/${jobId}/status`)).json();
   if (s.status === 'running') {
-    document.getElementById('terminal-section').style.display = 'block';
+    showTerminalSection('');
     setButtonsDisabled(true);
     appendToTerminal('▶ Reconnecting to running job…');
     const es = new EventSource(`/api/job/${jobId}/stream`);
@@ -379,9 +486,10 @@ async function runAction(action) {
       const st = JSON.parse(ev.data);
       setJobBadge(st); appendToTerminal(`\n✔ Job finished: ${st}`);
       es.close(); activeEventSource = null; setButtonsDisabled(false);
+      hideProgressIndicator();
       refreshEnvStatus();
     });
-    es.onerror = () => { es.close(); activeEventSource = null; setButtonsDisabled(false); refreshEnvStatus(); };
+    es.onerror = () => { es.close(); activeEventSource = null; setButtonsDisabled(false); hideProgressIndicator(); refreshEnvStatus(); };
   } else {
     // Job already completed before page load – refresh status bar to reflect final state.
     refreshEnvStatus();

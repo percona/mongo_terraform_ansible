@@ -22,7 +22,9 @@
     </thead>
     <tbody>
       {{range .Environments}}
-      <tr class="env-row" onclick="window.location.href='/environment/{{.ID}}'" style="cursor:pointer">
+      <tr class="env-row{{if eq .Env.Status "deleted"}} env-row-deleted{{end}}"
+          onclick="{{if ne .Env.Status "deleted"}}window.location.href='/environment/{{.ID}}'{{end}}"
+          style="{{if ne .Env.Status "deleted"}}cursor:pointer{{end}}">
         <td class="env-id-cell">
           <span class="env-id">{{.ID}}</span>
         </td>
@@ -38,8 +40,10 @@
         </td>
         <td><small>{{.Env.UpdatedAt}}</small></td>
         <td class="env-actions-cell" onclick="event.stopPropagation()">
+          {{if ne .Env.Status "deleted"}}
           <a href="/environment/{{.ID}}" class="btn btn-secondary btn-sm">Manage</a>
           <a href="/configure/{{.Env.Platform}}?env_id={{.ID}}" class="btn btn-outline btn-sm">Edit</a>
+          {{end}}
           <button class="btn btn-outline btn-sm btn-danger-outline" onclick="deleteEnvironment('{{.ID}}')">Remove</button>
         </td>
       </tr>

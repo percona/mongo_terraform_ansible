@@ -790,6 +790,46 @@
   </section>
   {{end}}
 
+  <!-- ──────────── Ansible Variable Overrides (cloud only) ──────────── -->
+  {{if ne $p "docker"}}
+  <section class="form-section">
+    <h2>Ansible Variable Overrides</h2>
+    <p style="color:var(--color-muted);margin-bottom:1rem">
+      Values entered here are passed to every <code>ansible-playbook</code> invocation via
+      <code>--extra-vars</code>, overriding defaults in <code>group_vars/all.yml</code>.
+      Typical use: passwords, key material, and cloud storage credentials.
+    </p>
+    <div id="ansible-vars-container">
+      {{range $k, $v := .Config.AnsibleVars}}
+      <div class="ansible-var-row">
+        <input type="text"     name="ansible_var_key[]"   value="{{$k}}" placeholder="variable_name">
+        <input type="password" name="ansible_var_val[]"   value="{{$v}}" placeholder="value"
+               autocomplete="new-password">
+        <button type="button" class="btn btn-danger btn-sm" onclick="removeAnsibleVar(this)"
+                title="Remove this variable override">✕</button>
+      </div>
+      {{end}}
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem"
+            onclick="addAnsibleVar()">+ Add Variable</button>
+    <details style="margin-top:0.8rem">
+      <summary style="color:var(--color-muted);cursor:pointer;font-size:0.85rem">
+        Common variables to override
+      </summary>
+      <ul style="margin:0.5rem 0 0 1rem;font-size:0.83rem;color:var(--color-muted)">
+        <li><code>mongo_admin_password</code> – MongoDB root password</li>
+        <li><code>keyfile_content</code> – replica-set keyfile (output of <code>openssl rand -base64 741</code>)</li>
+        <li><code>pmm_server_pwd</code> – PMM admin password</li>
+        <li><code>mongodb_pmm_user_pwd</code> – PMM monitoring user password</li>
+        <li><code>pbmpwd</code> – PBM service account password</li>
+        <li><code>access_key_id</code> – S3/object-storage access key for backups</li>
+        <li><code>secret_access_key</code> – S3/object-storage secret key for backups</li>
+        <li><code>encryption_key_content</code> – data-at-rest encryption key</li>
+      </ul>
+    </details>
+  </section>
+  {{end}}
+
   <!-- ──────────── Submit ──────────── -->
   <div class="form-actions">
     <button type="submit" class="btn btn-primary btn-lg">Save &amp; Configure</button>
@@ -1110,14 +1150,32 @@ function removeSshUser(btn) {
   btn.closest('.ssh-user-row').remove();
 }
 
+function addAnsibleVar() {
+  const row = document.createElement('div');
+  row.className = 'ansible-var-row';
+  row.innerHTML = `
+    <input type="text"     name="ansible_var_key[]" placeholder="variable_name">
+    <input type="password" name="ansible_var_val[]" placeholder="value" autocomplete="new-password">
+    <button type="button" class="btn btn-danger btn-sm" onclick="removeAnsibleVar(this)"
+            title="Remove this variable override">✕</button>`;
+  document.getElementById('ansible-vars-container').appendChild(row);
+}
+
+function removeAnsibleVar(btn) {
+  btn.closest('.ansible-var-row').remove();
+}
+
 // ── Cloud Regions ─────────────────────────────────────────────────────────────
+// Default region per platform when no value has been saved yet.
+const DEFAULT_REGION = { gcp: 'us-central1', aws: 'us-east-1', azure: 'eastus' };
+
 // Populates the region/location <select> from the API, preserving the current value.
 async function loadRegions() {
   if (PLATFORM === 'docker') return;
   const fieldId = PLATFORM === 'azure' ? 'location' : 'region';
   const sel = document.getElementById(fieldId);
   if (!sel) return;
-  const current = sel.value || sel.querySelector('option[selected]')?.value || '';
+  const current = sel.value || sel.querySelector('option[selected]')?.value || DEFAULT_REGION[PLATFORM] || '';
   try {
     const resp = await fetch(`/api/regions/${PLATFORM}`);
     if (!resp.ok) return;
@@ -1211,6 +1269,18 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     }
     if (Object.keys(sshUsers).length > 0) {
       config.ssh_users = sshUsers;
+    }
+
+    // Ansible variable overrides (cloud only)
+    const avKeys = fd.getAll('ansible_var_key[]');
+    const avVals = fd.getAll('ansible_var_val[]');
+    const ansibleVars = {};
+    for (let i = 0; i < avKeys.length; i++) {
+      const k = avKeys[i].trim();
+      if (k) ansibleVars[k] = avVals[i] || '';
+    }
+    if (Object.keys(ansibleVars).length > 0) {
+      config.ansible_vars = ansibleVars;
     }
   }
 

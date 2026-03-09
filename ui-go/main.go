@@ -169,6 +169,10 @@ type Config struct {
 	PmmServers   map[string]PmmServerConfig   `json:"pmm_servers,omitempty"`
 	MinioServers map[string]MinioServerConfig `json:"minio_servers,omitempty"`
 	LdapServers  map[string]LdapServerConfig  `json:"ldap_servers,omitempty"`
+
+	// Ansible variable overrides passed via --extra-vars at playbook runtime.
+	// Keys and values correspond directly to Ansible variable names.
+	AnsibleVars map[string]string `json:"ansible_vars,omitempty"`
 }
 
 // Environment is one record in the state file.
@@ -1557,6 +1561,31 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	// connectivity on every host (up to 10 minutes) before invoking the
 	// playbook, so that cloud VMs have time to finish booting.
 	cloudAnsibleCmd := func(playbookPath string, waitForSSH bool) string {
+		// Build --extra-vars argument from user-configured ansible variable overrides.
+		// json.Marshal ensures all special characters are properly escaped.
+		extraVarsArg := ""
+		if len(env.Config.AnsibleVars) > 0 {
+			// Build an ordered map using sorted keys for deterministic output.
+			type kv struct{ K, V string }
+			kvs := make([]kv, 0, len(env.Config.AnsibleVars))
+			keys := make([]string, 0, len(env.Config.AnsibleVars))
+			for k := range env.Config.AnsibleVars {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				kvs = append(kvs, kv{k, env.Config.AnsibleVars[k]})
+			}
+			// Encode each key-value pair individually and assemble the JSON object.
+			parts := make([]string, 0, len(kvs))
+			for _, p := range kvs {
+				kb, _ := json.Marshal(p.K)
+				vb, _ := json.Marshal(p.V)
+				parts = append(parts, string(kb)+":"+string(vb))
+			}
+			extraVarsArg = " --extra-vars " + shellQuote("{"+strings.Join(parts, ",")+"}")
+		}
+
 		var b strings.Builder
 		for _, name := range invNames {
 			inv := shellQuote("inventory_" + name)
@@ -1577,8 +1606,8 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				))
 			}
 			b.WriteString(fmt.Sprintf(
-				`printf "==> ansible-playbook -i %%s\n" %[1]s; ansible-playbook -i %[1]s %[2]s || exit $?; }`,
-				inv, shellQuote(playbookPath),
+				`printf "==> ansible-playbook -i %%s\n" %[1]s; ansible-playbook -i %[1]s %[2]s%[3]s || exit $?; }`,
+				inv, shellQuote(playbookPath), extraVarsArg,
 			))
 			b.WriteString(" && ")
 		}
@@ -1649,10 +1678,10 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	var cmd []string
 	switch action {
 	case "deploy":
-		// "Deploy All": provision infrastructure with Terraform, then configure
+		// "Deploy": provision infrastructure with Terraform, then configure
 		// with Ansible.  For cloud platforms, inject SSH config before Ansible
 		// so that host names written by Terraform are resolvable.
-		// Exposed in the UI as the "Deploy All" button.
+		// Exposed in the UI as the "Deploy" button.
 		shellCmd := fmt.Sprintf(
 			"terraform init -input=false && terraform apply -auto-approve -input=false -var-file=%s",
 			shellQuote(varfile),
@@ -1664,7 +1693,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		cmd = []string{"bash", "-c", shellCmd}
 
 	case "provision":
-		// "Deploy" (UI label): Cloud-only; run Terraform only (no Ansible).
+		// "Provision" (UI label): Cloud-only; run Terraform only (no Ansible).
 		// Useful when you want to inspect or edit the inventory before running
 		// configuration, or when you only need to (re-)provision infrastructure.
 		if platform == "docker" {
@@ -1679,7 +1708,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		cmd = []string{"bash", "-c", shellCmd}
 
 	case "configure":
-		// "Provision" (UI label): Cloud-only; run Ansible only (no Terraform).
+		// "Install" (UI label): Cloud-only; run Ansible only (no Terraform).
 		// Allows retrying the software installation step without re-provisioning
 		// infrastructure.
 		if platform == "docker" {
@@ -1744,17 +1773,32 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Callback: remove environment from inventory after successful destroy.
-	var onComplete func(string)
-	if action == "destroy" {
-		onComplete = func(status string) {
+	// Callback: update environment status when a job finishes.
+	// For destroy, also clean up the inventory entry and tfvars file.
+	onComplete := func(status string) {
+		st, _ := loadState()
+		e, exists := st[envID]
+		if !exists {
+			return
+		}
+		if action == "destroy" {
 			if status == "success" {
-				st, _ := loadState()
 				delete(st, envID)
 				saveState(st)
 				os.Remove(varfile)
 			}
+			return
 		}
+		// Map job status to a human-readable environment status.
+		if status == "success" {
+			e.Status = action + "_success"
+		} else {
+			e.Status = action + "_failed"
+		}
+		now := time.Now().UTC().Format(time.RFC3339)
+		e.UpdatedAt = now
+		st[envID] = e
+		saveState(st)
 	}
 
 	jobID := startJob(cmd, tfDir, nil, onComplete)
@@ -1766,6 +1810,18 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("action dispatched", "action", action, "env", envID, "platform", platform, "job", jobID)
 	writeJSON(w, 200, map[string]string{"job_id": jobID, "status": env.Status})
+}
+
+// GET /api/environment/{env_id}/status — returns the current status of an environment.
+func envStatusHandler(w http.ResponseWriter, r *http.Request) {
+	envID := r.PathValue("env_id")
+	state, _ := loadState()
+	env, ok := state[envID]
+	if !ok {
+		jsonError(w, 404, "environment not found")
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": env.Status, "updated_at": env.UpdatedAt})
 }
 
 // GET /api/job/{job_id}/status
@@ -1941,6 +1997,7 @@ func main() {
 	mux.HandleFunc("DELETE /api/environment/{env_id}", deleteEnvironmentHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/tfvars", getTfvarsHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/inventory", getInventoryHandler)
+	mux.HandleFunc("GET /api/environment/{env_id}/status", envStatusHandler)
 	mux.HandleFunc("POST /api/environment/{env_id}/action", environmentActionHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/status", jobStatusHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/stream", jobStreamHandler)

@@ -1,8 +1,6 @@
 # MongoDB Deploy UI (Go)
 
 A portable, zero-dependency web frontend for **mongo_terraform_ansible** written in Go.
-It is a complete rewrite of `../ui/` (Python/Flask) with the same feature set and no
-Python runtime requirement.
 
 ---
 
@@ -44,20 +42,6 @@ Then open **http://127.0.0.1:5001** in your browser.
 | `PORT`       | `5001`             | TCP port to listen on                        |
 | `UI_HOST`    | `127.0.0.1`        | Bind address (use `0.0.0.0` for all interfaces) |
 | `UI_BASE_DIR`| current directory  | Override the base directory (must contain `templates/` and `static/`) |
-
----
-
-## What's new vs the Python version
-
-| Feature | Python `ui/` | Go `ui-go/` |
-|---------|-------------|------------|
-| **Per-component instance types & disk sizes** | PMM only | All components (shard server, config server, mongos, arbiter, replica-set node) |
-| **PMM disk type** | Not configurable in UI | Configurable |
-| **Minio server configuration** | No UI form | Full form (image, ports, credentials, bucket, retention) |
-| **LDAP server configuration** | No UI form | Full form (image, port, domain, admin password) |
-| **Docker replica set images** | Name/counts only | Also psmdb/pbm/pmm-client images + flags |
-| **Runtime** | Python 3.10 + pip | Single compiled binary, no runtime dependencies |
-| **Port** | 5000 | 5001 |
 
 ---
 

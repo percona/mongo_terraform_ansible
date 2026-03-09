@@ -65,4 +65,4 @@ operationProfiling:
    rateLimit: 100
 
 replication:
-  replSetName: {{ hostvars[inventory_hostname].group_names | difference(['replsets', 'shards']) | first }}
+  replSetName: {% if cluster is defined %}{{ cluster }}-{% endif %}{{ hostvars[inventory_hostname].group_names | difference(['replsets', 'shards']) | first }}

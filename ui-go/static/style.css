@@ -336,6 +336,42 @@ a:hover { text-decoration: underline; }
   font-weight: 600;
   color: var(--color-muted);
 }
+/* When the customize-body is hidden, remove the bottom margin so the header
+   sits flush with the block border (no extra whitespace). */
+.component-block-header:last-child,
+.component-block-header + .customize-body[style*="display:none"],
+.component-block-header + .customize-body[style="display: none;"] {
+  margin-bottom: 0;
+}
+.customize-body { padding-top: 0.5rem; }
+
+/* Inline name input shown in block headers */
+.block-name-input {
+  flex: 1;
+  min-width: 100px;
+  max-width: 220px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.25rem 0.4rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+.block-name-input:hover,
+.block-name-input:focus {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  outline: none;
+}
+
+/* Right-side action buttons group inside a block header */
+.block-header-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
 
 .form-actions {
   display: flex;
@@ -362,7 +398,19 @@ a:hover { text-decoration: underline; }
   display: flex;
   gap: 0.8rem;
   flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+/* Advanced actions panel shown below the primary action buttons */
+.advanced-actions {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
   margin-bottom: 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
 }
 
 .config-summary {

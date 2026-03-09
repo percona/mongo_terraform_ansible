@@ -1561,20 +1561,33 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	// connectivity on every host (up to 10 minutes) before invoking the
 	// playbook, so that cloud VMs have time to finish booting.
 	cloudAnsibleCmd := func(playbookPath string, waitForSSH bool) string {
-		// Build --extra-vars argument from user-configured ansible variable overrides.
+		// Build effective extra-vars: config-level releases first (so the user's
+		// explicit Ansible overrides can still take precedence over them).
 		// json.Marshal ensures all special characters are properly escaped.
+		effectiveVars := make(map[string]string)
+		if env.Config.MongoRelease != "" {
+			effectiveVars["mongo_release"] = env.Config.MongoRelease
+		}
+		if env.Config.PbmRelease != "" {
+			effectiveVars["pbm_release"] = env.Config.PbmRelease
+		}
+		// User-specified ansible_vars override any config-level defaults.
+		for k, v := range env.Config.AnsibleVars {
+			effectiveVars[k] = v
+		}
+
 		extraVarsArg := ""
-		if len(env.Config.AnsibleVars) > 0 {
+		if len(effectiveVars) > 0 {
 			// Build an ordered map using sorted keys for deterministic output.
 			type kv struct{ K, V string }
-			kvs := make([]kv, 0, len(env.Config.AnsibleVars))
-			keys := make([]string, 0, len(env.Config.AnsibleVars))
-			for k := range env.Config.AnsibleVars {
+			kvs := make([]kv, 0, len(effectiveVars))
+			keys := make([]string, 0, len(effectiveVars))
+			for k := range effectiveVars {
 				keys = append(keys, k)
 			}
 			sort.Strings(keys)
 			for _, k := range keys {
-				kvs = append(kvs, kv{k, env.Config.AnsibleVars[k]})
+				kvs = append(kvs, kv{k, effectiveVars[k]})
 			}
 			// Encode each key-value pair individually and assemble the JSON object.
 			parts := make([]string, 0, len(kvs))

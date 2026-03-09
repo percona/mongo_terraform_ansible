@@ -14,7 +14,7 @@ resource "aws_instance" "shard" {
   ami                 = lookup(var.image, var.region)
   instance_type       = var.shardsvr_type
   subnet_id           = data.aws_subnet.details[ count.index % var.shardsvr_replicas % var.subnet_count ].id
-  key_name            = data.aws_key_pair.my_key_pair.key_name
+  key_name            = var.my_key_pair
   tags = {
     Name = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
     ansible-group = floor(count.index / var.shardsvr_replicas )

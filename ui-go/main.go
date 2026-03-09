@@ -729,8 +729,8 @@ func writeTfvars(envID, platform string, cfg Config) error {
 
 	if platform != "docker" {
 		// Cloud-only simple vars
-		writeOptStr("mongo_release", cfg.MongoRelease)
-		writeOptStr("pbm_release", cfg.PbmRelease)
+		// Note: mongo_release, pbm_release, pmm_image are Ansible-only variables;
+		// they are passed via --extra-vars at Ansible runtime, not via tfvars.
 		writeOptStr("project_id", cfg.ProjectID)
 		writeOptStr("region", cfg.Region)
 		writeOptStr("location", cfg.Location)
@@ -750,8 +750,8 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		}
 		writeOptInt("subnet_count", cfg.SubnetCount)
 
-		// SSH users map (GCP uses gce_ssh_users, AWS/Azure use ssh_users)
-		if len(cfg.SSHUsers) > 0 {
+		// SSH users map (GCP uses gce_ssh_users, AWS uses key pairs; Azure uses ssh_users)
+		if len(cfg.SSHUsers) > 0 && platform != "aws" {
 			// Sort keys for deterministic output
 			userKeys := make([]string, 0, len(cfg.SSHUsers))
 			for k := range cfg.SSHUsers {
@@ -774,7 +774,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		writeOptStr("pmm_type", cfg.PmmType)
 		writeOptInt("pmm_volume_size", cfg.PmmVolumeSize)
 		writeOptInt("pmm_port", cfg.PmmPort)
-		writeOptStr("pmm_image", cfg.PmmImage)
+		// pmm_image is an Ansible variable; do not write it to tfvars.
 		writeOptStr("pmm_disk_type", cfg.PmmDiskType)
 		// Write enable_pmm only when explicitly set; terraform default is true.
 		if cfg.EnablePmm != nil {

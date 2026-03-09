@@ -3,7 +3,7 @@ resource "aws_instance" "mongos" {
   ami                 = lookup(var.image, var.region)
   instance_type       = var.mongos_type
   subnet_id           = data.aws_subnet.details[count.index % var.subnet_count].id
-  key_name            = data.aws_key_pair.my_key_pair.key_name
+  key_name            = var.my_key_pair
   tags = {
     Name = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
     ansible-group  = "mongos"

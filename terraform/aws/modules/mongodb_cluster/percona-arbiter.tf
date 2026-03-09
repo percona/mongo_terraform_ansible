@@ -10,7 +10,7 @@ resource "aws_instance" "arbiter" {
   subnet_id         = data.aws_subnet.details[var.shardsvr_replicas + (count.index % var.arbiters_per_replset) % var.subnet_count ].id
   ami               = lookup(var.image, var.region)
   associate_public_ip_address = true
-  key_name          = data.aws_key_pair.my_key_pair.key_name
+  key_name          = var.my_key_pair
   vpc_security_group_ids = [aws_security_group.mongodb-arbiter-sg.id]
   user_data = <<-EOT
     #!/bin/bash

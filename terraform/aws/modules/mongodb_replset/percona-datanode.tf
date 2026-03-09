@@ -13,7 +13,7 @@ resource "aws_instance" "replset" {
   ami                 = lookup(var.image, var.region)
   instance_type       = var.replsetsvr_type
   subnet_id           = data.aws_subnet.details[count.index % var.subnet_count].id
-  key_name            = data.aws_key_pair.my_key_pair.key_name
+  key_name            = var.my_key_pair
     tags = {
     Name = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
     ansible-group  = var.replset_tag

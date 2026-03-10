@@ -719,3 +719,123 @@ tr:last-child td { border-bottom: none; }
 
 /* ─── Full-width form group ───────────────────────────────────────── */
 .form-group-full { flex: 1 1 100%; min-width: 100%; }
+
+/* ─── Hosts & Connections section ────────────────────────────────── */
+.hosts-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.4rem;
+  margin-bottom: 1.2rem;
+}
+
+.hosts-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+.hosts-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.hosts-group {
+  margin-bottom: 1.2rem;
+}
+.hosts-group:last-child { margin-bottom: 0; }
+.hosts-group-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.hosts-table { width: 100%; }
+.hosts-table td { vertical-align: middle; }
+
+.host-name { font-family: var(--mono); font-size: 0.82rem; }
+.host-ip   { font-size: 0.82rem; }
+.host-ip code {
+  background: var(--color-surface2);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+}
+
+/* Role badges */
+.role-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--color-surface2);
+  color: var(--color-muted);
+}
+.role-mongod    { background: rgba(79,142,247,0.18); color: var(--color-info); }
+.role-mongos    { background: rgba(52,211,153,0.18); color: var(--color-success); }
+.role-arbiter   { background: rgba(251,191,36,0.18); color: var(--color-warning); }
+.role-configsvr { background: rgba(167,139,250,0.18); color: #a78bfa; }
+.role-pmm       { background: rgba(251,191,36,0.18); color: var(--color-warning); }
+.role-minio     { background: rgba(52,211,153,0.18); color: var(--color-success); }
+
+/* Copy command rows */
+.copy-cmd-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 520px;
+}
+.copy-cmd-text {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  background: var(--color-bg);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  display: block;
+}
+
+/* xs copy button */
+.btn-xs {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.copy-btn-success { color: var(--color-success) !important; border-color: var(--color-success) !important; }
+
+/* Connection string rows */
+.conn-string-row {
+  margin-bottom: 0.7rem;
+}
+.conn-string-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin-bottom: 0.25rem;
+}
+
+/* Service URL list */
+.service-url-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.service-url-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.service-url-label {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  flex: 1;
+}

@@ -1932,6 +1932,375 @@ func getInventoryHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]interface{}{"files": files})
 }
 
+// ─── Host info ────────────────────────────────────────────────────────────────
+
+// HostInfo describes a single running host or container.
+type HostInfo struct {
+	Name        string `json:"name"`
+	IP          string `json:"ip"`
+	ConnectCmd  string `json:"connect_cmd"`
+	Role        string `json:"role"`   // "mongod", "mongos", "pmm", "minio", "ldap", etc.
+	Group       string `json:"group"`  // cluster/replset name, or service name
+}
+
+// ServiceURL describes an HTTP service (PMM, Minio console) with an openable URL.
+type ServiceURL struct {
+	Name  string `json:"name"`
+	Label string `json:"label"`
+	URL   string `json:"url"`
+}
+
+// MongoConnInfo describes a MongoDB connection string for a cluster or replica set.
+type MongoConnInfo struct {
+	Name       string `json:"name"`
+	Type       string `json:"type"` // "cluster" or "replset"
+	ConnString string `json:"conn_string"`
+}
+
+// GET /api/environment/{env_id}/hosts
+// Returns host/container info, connection strings, and service URLs for the
+// environment.  For Docker platforms the data is queried live from docker
+// inspect.  For cloud platforms the Ansible inventory files are parsed.
+func getHostsHandler(w http.ResponseWriter, r *http.Request) {
+	envID := r.PathValue("env_id")
+	if !envIDRe.MatchString(envID) {
+		jsonError(w, 400, "invalid environment ID")
+		return
+	}
+	state, _ := loadState()
+	env, ok := state[envID]
+	if !ok {
+		jsonError(w, 404, "environment not found")
+		return
+	}
+
+	var hosts []HostInfo
+	var serviceURLs []ServiceURL
+	var mongoConns []MongoConnInfo
+	var msg string
+
+	if env.Platform == "docker" {
+		hosts, serviceURLs, mongoConns, msg = collectDockerHosts(envID, env)
+	} else {
+		hosts, mongoConns, msg = collectCloudHosts(envID, env)
+	}
+
+	writeJSON(w, 200, map[string]interface{}{
+		"hosts":        hosts,
+		"service_urls": serviceURLs,
+		"mongo_conns":  mongoConns,
+		"message":      msg,
+	})
+}
+
+// collectDockerHosts uses `docker inspect` to gather container info for a
+// Docker-based environment.
+func collectDockerHosts(envID string, env *Environment) ([]HostInfo, []ServiceURL, []MongoConnInfo, string) {
+	prefix := strDefault(env.Config.Prefix, envID)
+	// List all containers whose name starts with the prefix.
+	out, err := execOutput("docker", "ps", "-a",
+		"--filter", "name="+prefix+"-",
+		"--format", "{{.Names}}")
+	if err != nil || strings.TrimSpace(out) == "" {
+		return nil, nil, nil, "No containers found. Run Deploy first."
+	}
+
+	type dockerInspectNet struct {
+		IPAddress string `json:"IPAddress"`
+	}
+	type dockerInspectNetworks struct {
+		Networks map[string]dockerInspectNet `json:"Networks"`
+	}
+	type dockerInspectResult struct {
+		Name            string `json:"Name"`
+		NetworkSettings dockerInspectNetworks `json:"NetworkSettings"`
+	}
+
+	var hosts []HostInfo
+
+	names := strings.Split(strings.TrimSpace(out), "\n")
+	for _, rawName := range names {
+		name := strings.TrimPrefix(strings.TrimSpace(rawName), "/")
+		if name == "" {
+			continue
+		}
+		// Get IP via docker inspect.
+		ipOut, err := execOutput("docker", "inspect",
+			"--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", name)
+		ip := strings.TrimSpace(ipOut)
+		if err != nil || ip == "" {
+			ip = "—"
+		}
+		connectCmd := fmt.Sprintf("docker exec -it %s bash", name)
+		role := guessDockerRole(name, prefix)
+		group := guessDockerGroup(name, prefix)
+		hosts = append(hosts, HostInfo{
+			Name:       name,
+			IP:         ip,
+			ConnectCmd: connectCmd,
+			Role:       role,
+			Group:      group,
+		})
+	}
+
+	// Build service URLs for PMM and Minio.
+	var serviceURLs []ServiceURL
+	host := "localhost"
+	for svcName, svc := range env.Config.PmmServers {
+		containerName := prefix + "-" + svcName
+		port := svc.PmmPort
+		if port == 0 {
+			port = 8443
+		}
+		user := strDefault(svc.PmmServerUser, "admin")
+		serviceURLs = append(serviceURLs, ServiceURL{
+			Name:  containerName,
+			Label: "PMM: " + svcName,
+			URL:   fmt.Sprintf("https://%s:%d", host, port),
+		})
+		_ = user // user info shown in config summary
+	}
+	for svcName, svc := range env.Config.MinioServers {
+		containerName := prefix + "-" + svcName
+		consolePort := svc.MinioConsolePort
+		if consolePort == 0 {
+			consolePort = 9001
+		}
+		serviceURLs = append(serviceURLs, ServiceURL{
+			Name:  containerName,
+			Label: "MinIO Console: " + svcName,
+			URL:   fmt.Sprintf("http://%s:%d", host, consolePort),
+		})
+	}
+
+	// Build MongoDB connection strings.
+	mongoConns := buildDockerMongoConns(envID, env)
+
+	msg := ""
+	if len(hosts) == 0 {
+		msg = "No containers found. Run Deploy first."
+	}
+	return hosts, serviceURLs, mongoConns, msg
+}
+
+// guessDockerRole infers a container's role from its name.
+func guessDockerRole(name, prefix string) string {
+	base := strings.TrimPrefix(name, prefix+"-")
+	switch {
+	case strings.Contains(base, "svr"):
+		return "mongod"
+	case strings.Contains(base, "mongos"):
+		return "mongos"
+	case strings.Contains(base, "arb"):
+		return "arbiter"
+	case strings.Contains(base, "cfg"):
+		return "configsvr"
+	case strings.HasPrefix(base, "pmm"):
+		return "pmm"
+	case strings.HasPrefix(base, "minio"):
+		return "minio"
+	case strings.HasPrefix(base, "ldap"):
+		return "ldap"
+	default:
+		return "service"
+	}
+}
+
+// guessDockerGroup extracts the logical group (cluster/replset name) from a
+// container name.
+func guessDockerGroup(name, prefix string) string {
+	base := strings.TrimPrefix(name, prefix+"-")
+	// Container names follow the pattern:  {group}-{role}{index}
+	// e.g.  myrs-svr0, mycluster-mongos00, pmm-server
+	// We split on the last dash-preceded lowercase alpha segment.
+	parts := strings.Split(base, "-")
+	if len(parts) >= 2 {
+		// Last part is the role+index; everything before is the group.
+		return strings.Join(parts[:len(parts)-1], "-")
+	}
+	return base
+}
+
+// buildDockerMongoConns creates MongoDB connection strings for Docker envs.
+func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
+	prefix := strDefault(env.Config.Prefix, envID)
+	host := "localhost"
+	var conns []MongoConnInfo
+
+	// Replica sets: mongod nodes expose ports 27017, 27018, …
+	for name := range env.Config.Replsets {
+		containerPrefix := prefix + "-" + name
+		// Build rs members list: host:27017,host:27018,...
+		count := env.Config.Replsets[name].DataNodesPerReplset
+		if count == 0 {
+			count = 2
+		}
+		var members []string
+		for i := 0; i < count; i++ {
+			members = append(members, fmt.Sprintf("%s:%d", host, 27017+i))
+		}
+		connStr := fmt.Sprintf("mongodb://%s/?replicaSet=%s", strings.Join(members, ","), containerPrefix)
+		conns = append(conns, MongoConnInfo{
+			Name:       name,
+			Type:       "replset",
+			ConnString: connStr,
+		})
+	}
+
+	// Sharded clusters: connect via mongos on port 27017
+	for name := range env.Config.Clusters {
+		containerPrefix := prefix + "-" + name
+		mongosCount := env.Config.Clusters[name].MongosCount
+		if mongosCount == 0 {
+			mongosCount = 2
+		}
+		var mongosHosts []string
+		for i := 0; i < mongosCount; i++ {
+			mongosHosts = append(mongosHosts, fmt.Sprintf("%s:%d", host, 27017+i))
+		}
+		connStr := fmt.Sprintf("mongodb://%s/", strings.Join(mongosHosts, ","))
+		_ = containerPrefix
+		conns = append(conns, MongoConnInfo{
+			Name:       name,
+			Type:       "cluster",
+			ConnString: connStr,
+		})
+	}
+	return conns
+}
+
+// collectCloudHosts parses Ansible inventory files to produce host info for
+// cloud environments.
+func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnInfo, string) {
+	tfDir := filepath.Join(terraformDir, env.Platform)
+	sshUser := strDefault(env.Config.MySSHUser, "ec2-user")
+
+	var names []string
+	for name := range env.Config.Clusters {
+		names = append(names, name)
+	}
+	for name := range env.Config.Replsets {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	var hosts []HostInfo
+	for _, name := range names {
+		p := filepath.Join(tfDir, "inventory_"+name)
+		content, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		groupHosts := parseInventoryHosts(string(content), name, sshUser)
+		hosts = append(hosts, groupHosts...)
+	}
+
+	var mongoConns []MongoConnInfo
+	// For cloud we can't easily determine IPs without running, so we use the
+	// first host from each inventory group as the connection target.
+	for _, name := range names {
+		if _, ok := env.Config.Clusters[name]; ok {
+			// Sharded cluster: connect via mongos role
+			mongosIPs := hostsWithRole(hosts, name, "mongos")
+			if len(mongosIPs) > 0 {
+				var members []string
+				for _, h := range mongosIPs {
+					members = append(members, h.IP+":27017")
+				}
+				mongoConns = append(mongoConns, MongoConnInfo{
+					Name:       name,
+					Type:       "cluster",
+					ConnString: "mongodb://" + strings.Join(members, ",") + "/",
+				})
+			}
+		} else if _, ok := env.Config.Replsets[name]; ok {
+			rsHosts := hostsWithRole(hosts, name, "mongod")
+			if len(rsHosts) > 0 {
+				var members []string
+				for _, h := range rsHosts {
+					members = append(members, h.IP+":27017")
+				}
+				mongoConns = append(mongoConns, MongoConnInfo{
+					Name:       name,
+					Type:       "replset",
+					ConnString: fmt.Sprintf("mongodb://%s/?replicaSet=%s", strings.Join(members, ","), name),
+				})
+			}
+		}
+	}
+
+	msg := ""
+	if len(hosts) == 0 {
+		msg = "No hosts found. Run Provision or Deploy first."
+	}
+	return hosts, mongoConns, msg
+}
+
+// parseInventoryHosts parses a simple Ansible INI-style inventory file and
+// returns a HostInfo list.
+func parseInventoryHosts(content, group, sshUser string) []HostInfo {
+	var hosts []HostInfo
+	var currentSection string
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			currentSection = strings.TrimSuffix(strings.TrimPrefix(line, "["), "]")
+			continue
+		}
+		if strings.HasPrefix(line, "[") {
+			continue
+		}
+		// Host line: hostname  ansible_host=IP  ansible_user=... etc.
+		parts := strings.Fields(line)
+		if len(parts) == 0 {
+			continue
+		}
+		hostName := parts[0]
+		ip := ""
+		for _, kv := range parts[1:] {
+			if strings.HasPrefix(kv, "ansible_host=") {
+				ip = strings.TrimPrefix(kv, "ansible_host=")
+			}
+		}
+		if ip == "" {
+			ip = hostName
+		}
+		role := "mongod"
+		sec := strings.ToLower(currentSection)
+		switch {
+		case strings.Contains(sec, "mongos"):
+			role = "mongos"
+		case strings.Contains(sec, "cfg") || strings.Contains(sec, "configsvr"):
+			role = "configsvr"
+		case strings.Contains(sec, "arb"):
+			role = "arbiter"
+		}
+		sshCmd := fmt.Sprintf("ssh %s@%s", sshUser, ip)
+		hosts = append(hosts, HostInfo{
+			Name:       hostName,
+			IP:         ip,
+			ConnectCmd: sshCmd,
+			Role:       role,
+			Group:      group,
+		})
+	}
+	return hosts
+}
+
+// hostsWithRole filters a host list by group and role.
+func hostsWithRole(hosts []HostInfo, group, role string) []HostInfo {
+	var out []HostInfo
+	for _, h := range hosts {
+		if h.Group == group && h.Role == role {
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
 // POST /api/environment/{env_id}/action
 func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	envID := r.PathValue("env_id")
@@ -2449,6 +2818,7 @@ func main() {
 	mux.HandleFunc("DELETE /api/environments/deleted", purgeDeletedEnvironmentsHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/tfvars", getTfvarsHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/inventory", getInventoryHandler)
+	mux.HandleFunc("GET /api/environment/{env_id}/hosts", getHostsHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/status", envStatusHandler)
 	mux.HandleFunc("POST /api/environment/{env_id}/action", environmentActionHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/status", jobStatusHandler)

@@ -17,19 +17,29 @@ async function apiFetch(url, method = 'GET', body = null) {
 
 /**
  * Delete an environment from the index page.
- * @param {string} envId  - The environment ID.
- * @param {string} status - Current environment status (used to determine if resources are still up).
+ * @param {string} envId    - The environment ID.
+ * @param {string} status   - Current environment status.
+ * @param {string} platform - Platform ("docker", "aws", "gcp", "azure").
  */
-async function deleteEnvironment(envId, status) {
-  // Statuses that imply cloud resources are already gone.
+async function deleteEnvironment(envId, status, platform) {
+  // Statuses that imply resources are already gone.
   const alreadyDestroyed = new Set(['deleted', 'destroy_success']);
   const isDestroyed = alreadyDestroyed.has(status);
+  const isDocker = platform === 'docker';
 
   let msg;
   if (isDestroyed) {
-    msg = `Remove environment "${envId}" from the list? Cloud resources have already been destroyed.`;
+    if (isDocker) {
+      msg = `Remove environment "${envId}" from the list? Docker containers have already been destroyed.`;
+    } else {
+      msg = `Remove environment "${envId}" from the list? Cloud resources have already been destroyed.`;
+    }
   } else {
-    msg = `⚠️ WARNING: Cloud resources for environment "${envId}" may still be running (status: ${status}).\n\nThis will only remove the environment from this UI — it will NOT destroy the cloud resources.\n\nAre you sure you want to proceed?`;
+    if (isDocker) {
+      msg = `⚠️ WARNING: Docker containers for environment "${envId}" may still be running (status: ${status}).\n\nThis will only remove the environment from this UI — it will NOT stop or remove the containers.\n\nAre you sure you want to proceed?`;
+    } else {
+      msg = `⚠️ WARNING: Cloud resources for environment "${envId}" may still be running (status: ${status}).\n\nThis will only remove the environment from this UI — it will NOT destroy the cloud resources.\n\nAre you sure you want to proceed?`;
+    }
   }
   if (!confirm(msg)) return;
   try {

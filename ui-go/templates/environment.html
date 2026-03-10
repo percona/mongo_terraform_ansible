@@ -146,6 +146,17 @@
   {{end}}
 </div>
 
+<!-- Hosts & Connections (loaded dynamically) -->
+<div class="hosts-section" id="hosts-section" style="display:none">
+  <div class="hosts-header">
+    <h2>🖥 Hosts &amp; Connections</h2>
+    <button class="btn btn-outline btn-sm" onclick="refreshHosts()" id="btn-refresh-hosts" title="Refresh host list">↻ Refresh</button>
+  </div>
+  <div id="hosts-content">
+    <p style="color:var(--color-muted)">Loading…</p>
+  </div>
+</div>
+
 <!-- Terminal output (collapsed by default; expanded when user clicks "Show Output") -->
 <div class="terminal-section" id="terminal-section" style="display:none">
   <div class="terminal-header">
@@ -456,6 +467,7 @@ async function runAction(action) {
         // Refresh the status bar from the server so it reflects the
         // final persisted state (e.g. reset_success, stop_failed, …).
         refreshEnvStatus();
+        loadHosts();
       }
     });
     es.onerror = () => {
@@ -489,13 +501,142 @@ async function runAction(action) {
       es.close(); activeEventSource = null; setButtonsDisabled(false);
       hideProgressIndicator();
       refreshEnvStatus();
+      loadHosts();
     });
     es.onerror = () => { es.close(); activeEventSource = null; setButtonsDisabled(false); hideProgressIndicator(); refreshEnvStatus(); };
   } else {
     // Job already completed before page load – refresh status bar to reflect final state.
     refreshEnvStatus();
+    loadHosts();
   }
+  {{else}}
+  // No job history yet but environment may already have hosts.
+  loadHosts();
   {{end}}
 })();
+
+// ─── Hosts & Connections ──────────────────────────────────────────────────────
+
+async function loadHosts() {
+  try {
+    const data = await apiFetch(`/api/environment/${ENV_ID}/hosts`);
+    renderHosts(data);
+  } catch (e) {
+    const section = document.getElementById('hosts-section');
+    const content = document.getElementById('hosts-content');
+    content.innerHTML = `<p style="color:var(--color-danger)">Could not load host information: ${escHtml(e.message)}</p>`;
+    section.style.display = '';
+  }
+}
+
+async function refreshHosts() {
+  const content = document.getElementById('hosts-content');
+  content.innerHTML = '<p style="color:var(--color-muted)">Loading…</p>';
+  await loadHosts();
+}
+
+function renderHosts(data) {
+  const section = document.getElementById('hosts-section');
+  const content = document.getElementById('hosts-content');
+  const hosts = data.hosts || [];
+  const serviceURLs = data.service_urls || [];
+  const mongoConns = data.mongo_conns || [];
+
+  if (!hosts.length && !serviceURLs.length && !mongoConns.length) {
+    const msg = data.message || 'No host information available yet. Run Deploy first.';
+    content.innerHTML = `<p style="color:var(--color-muted)">${escHtml(msg)}</p>`;
+    section.style.display = '';
+    return;
+  }
+
+  let html = '';
+
+  // ── Hosts table ──
+  if (hosts.length > 0) {
+    // Group hosts by their "group" field.
+    const groups = {};
+    hosts.forEach(h => {
+      if (!groups[h.group]) groups[h.group] = [];
+      groups[h.group].push(h);
+    });
+    Object.keys(groups).sort().forEach(grp => {
+      html += `<div class="hosts-group">
+        <h3 class="hosts-group-title">${escHtml(grp)}</h3>
+        <div class="table-wrapper">
+          <table class="hosts-table">
+            <thead><tr><th>Name</th><th>IP / Address</th><th>Role</th><th>Connect</th></tr></thead>
+            <tbody>`;
+      groups[grp].forEach(h => {
+        html += `<tr>
+          <td class="host-name">${escHtml(h.name)}</td>
+          <td class="host-ip"><code>${escHtml(h.ip)}</code></td>
+          <td><span class="role-badge role-${escHtml(h.role)}">${escHtml(h.role)}</span></td>
+          <td>
+            <div class="copy-cmd-row">
+              <code class="copy-cmd-text">${escHtml(h.connect_cmd)}</code>
+              <button class="btn btn-outline btn-xs copy-btn" onclick="copyText(${JSON.stringify(h.connect_cmd)}, this)" title="Copy to clipboard">📋</button>
+            </div>
+          </td>
+        </tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    });
+  }
+
+  // ── MongoDB connection strings ──
+  if (mongoConns.length > 0) {
+    html += `<div class="hosts-group"><h3 class="hosts-group-title">🍃 MongoDB Connection Strings</h3>`;
+    mongoConns.forEach(c => {
+      const typeLabel = c.type === 'cluster' ? '🔀 Sharded Cluster' : '🔁 Replica Set';
+      html += `<div class="conn-string-row">
+        <span class="conn-string-label">${typeLabel}: <strong>${escHtml(c.name)}</strong></span>
+        <div class="copy-cmd-row">
+          <code class="copy-cmd-text">${escHtml(c.conn_string)}</code>
+          <button class="btn btn-outline btn-xs copy-btn" onclick="copyText(${JSON.stringify(c.conn_string)}, this)" title="Copy connection string">📋</button>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ── Service URLs (PMM, Minio) ──
+  if (serviceURLs.length > 0) {
+    html += `<div class="hosts-group"><h3 class="hosts-group-title">🔗 Service URLs</h3><div class="service-url-list">`;
+    serviceURLs.forEach(s => {
+      html += `<div class="service-url-item">
+        <span class="service-url-label">${escHtml(s.label)}</span>
+        <a class="btn btn-outline btn-sm" href="${escHtml(s.url)}" target="_blank" rel="noopener noreferrer">🔗 Open</a>
+        <button class="btn btn-outline btn-xs copy-btn" onclick="copyText(${JSON.stringify(s.url)}, this)" title="Copy URL">📋</button>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  content.innerHTML = html;
+  section.style.display = '';
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✔';
+    btn.classList.add('copy-btn-success');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copy-btn-success'); }, 1500);
+  }).catch(() => {
+    // Fallback for non-https contexts.
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const orig = btn.textContent;
+    btn.textContent = '✔';
+    btn.classList.add('copy-btn-success');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copy-btn-success'); }, 1500);
+  });
+}
 </script>
 {{end}}

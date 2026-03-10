@@ -49,6 +49,10 @@
   <button class="btn btn-outline" onclick="showLastLogs()"
           title="View the output log from the last action run">📋 View Logs</button>
   {{end}}
+  {{range .ServiceURLs}}
+  <a class="btn btn-outline" href="{{.URL}}" target="_blank" rel="noopener noreferrer"
+     title="Open {{.Label}} in a new tab">🔗 {{.Label}}</a>
+  {{end}}
 </div>
 
 {{if ne .Env.Platform "docker"}}
@@ -539,10 +543,9 @@ function renderHosts(data) {
   const section = document.getElementById('hosts-section');
   const content = document.getElementById('hosts-content');
   const hosts = data.hosts || [];
-  const serviceURLs = data.service_urls || [];
   const mongoConns = data.mongo_conns || [];
 
-  if (!hosts.length && !serviceURLs.length && !mongoConns.length) {
+  if (!hosts.length && !mongoConns.length) {
     const msg = data.message || 'No host information available yet. Run Deploy first.';
     content.innerHTML = `<p style="color:var(--color-muted)">${escHtml(msg)}</p>`;
     section.style.display = '';
@@ -559,7 +562,23 @@ function renderHosts(data) {
       if (!groups[h.group]) groups[h.group] = [];
       groups[h.group].push(h);
     });
+
+    // Determine which groups belong to MongoDB clusters/replsets (they come
+    // first); remaining service groups (pmm, minio, ldap, etc.) follow.
+    const mongoRoles = new Set(['mongod', 'mongos', 'configsvr', 'arbiter']);
+    const mongoGroups = [];
+    const serviceGroups = [];
     Object.keys(groups).sort().forEach(grp => {
+      const hasMongoHost = groups[grp].some(h => mongoRoles.has(h.role));
+      if (hasMongoHost) {
+        mongoGroups.push(grp);
+      } else {
+        serviceGroups.push(grp);
+      }
+    });
+    const orderedGroups = [...mongoGroups, ...serviceGroups];
+
+    orderedGroups.forEach(grp => {
       html += `<div class="hosts-group">
         <h3 class="hosts-group-title">${escHtml(grp)}</h3>
         <div class="table-wrapper">
@@ -588,28 +607,25 @@ function renderHosts(data) {
     html += `<div class="hosts-group"><h3 class="hosts-group-title">🍃 MongoDB Connection Strings</h3>`;
     mongoConns.forEach(c => {
       const typeLabel = c.type === 'cluster' ? '🔀 Sharded Cluster' : '🔁 Replica Set';
+      // Build an obfuscated version for display: replace the real password with
+      // bullet characters so it is not visible on screen.  The real (full) URI
+      // is what gets copied to the clipboard.
+      // Use a literal string replaceAll (after escaping regex metacharacters)
+      // so every occurrence is replaced even if the password contains special
+      // characters.
+      function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+      const displayConn = (c.conn_user && c.conn_pass)
+        ? c.conn_string.replace(new RegExp(escapeRegex(encodeURIComponent(c.conn_pass)), 'g'), '••••••')
+        : c.conn_string;
       html += `<div class="conn-string-row">
         <span class="conn-string-label">${typeLabel}: <strong>${escHtml(c.name)}</strong></span>
         <div class="copy-cmd-row">
-          <code class="copy-cmd-text">${escHtml(c.conn_string)}</code>
-          <button class="btn btn-outline btn-xs copy-btn" onclick="copyText(${JSON.stringify(c.conn_string)}, this)" title="Copy connection string">📋</button>
+          <code class="copy-cmd-text">${escHtml(displayConn)}</code>
+          <button class="btn btn-outline btn-xs copy-btn" onclick="copyText(${JSON.stringify(c.conn_string)}, this)" title="Copy connection string (with real password)">📋</button>
         </div>
       </div>`;
     });
     html += `</div>`;
-  }
-
-  // ── Service URLs (PMM, Minio) ──
-  if (serviceURLs.length > 0) {
-    html += `<div class="hosts-group"><h3 class="hosts-group-title">🔗 Service URLs</h3><div class="service-url-list">`;
-    serviceURLs.forEach(s => {
-      html += `<div class="service-url-item">
-        <span class="service-url-label">${escHtml(s.label)}</span>
-        <a class="btn btn-outline btn-sm" href="${escHtml(s.url)}" target="_blank" rel="noopener noreferrer">🔗 Open</a>
-        <button class="btn btn-outline btn-xs copy-btn" onclick="copyText(${JSON.stringify(s.url)}, this)" title="Copy URL">📋</button>
-      </div>`;
-    });
-    html += `</div></div>`;
   }
 
   content.innerHTML = html;

@@ -556,15 +556,18 @@ function renderHosts(data) {
 
   // ── Hosts table ──
   if (hosts.length > 0) {
-    // Group hosts by their "group" field.
+    // Group hosts by their "group" field.  All PMM-role hosts (pmm-server,
+    // grafana-renderer, watchtower, per-node pmm-client sidecars) are
+    // collapsed into a single "PMM" group regardless of what the backend set.
     const groups = {};
     hosts.forEach(h => {
-      if (!groups[h.group]) groups[h.group] = [];
-      groups[h.group].push(h);
+      const groupKey = h.role === 'pmm' ? 'PMM' : h.group;
+      if (!groups[groupKey]) groups[groupKey] = [];
+      groups[groupKey].push(h);
     });
 
     // Determine which groups belong to MongoDB clusters/replsets (they come
-    // first); remaining service groups (pmm, minio, ldap, etc.) follow.
+    // first); remaining service groups (PMM, minio, ldap, etc.) follow.
     const mongoRoles = new Set(['mongod', 'mongos', 'configsvr', 'arbiter']);
     const mongoGroups = [];
     const serviceGroups = [];

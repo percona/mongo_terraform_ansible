@@ -2152,6 +2152,11 @@ func collectDockerHosts(envID string, env *Environment) ([]HostInfo, []ServiceUR
 func guessDockerRole(name, prefix string) string {
 	base := strings.TrimPrefix(name, prefix+"-")
 	switch {
+	// PMM client sidecar containers end with "-pmm-client" or "-pmm" and must
+	// be checked BEFORE any role keyword (e.g. "svr") that may appear earlier
+	// in the container name (e.g. myrs-svr0-pmm-client).
+	case strings.HasSuffix(base, "-pmm-client") || strings.HasSuffix(base, "-pmm"):
+		return "pmm"
 	case strings.Contains(base, "svr"):
 		return "mongod"
 	case strings.Contains(base, "mongos"):
@@ -2172,8 +2177,14 @@ func guessDockerRole(name, prefix string) string {
 }
 
 // guessDockerGroup extracts the logical group (cluster/replset name) from a
-// container name.
+// container name.  All PMM-related containers (server, renderer, watchtower,
+// and per-node PMM clients) are collapsed into a single "PMM" group so they
+// all appear together in the Hosts & Connections panel.
 func guessDockerGroup(name, prefix string) string {
+	// All PMM-role containers share one group regardless of their full name.
+	if guessDockerRole(name, prefix) == "pmm" {
+		return "PMM"
+	}
 	base := strings.TrimPrefix(name, prefix+"-")
 	// Container names follow the pattern:  {group}-{role}{index}
 	// e.g.  myrs-svr0, mycluster-mongos00, pmm-server

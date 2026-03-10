@@ -2052,13 +2052,11 @@ func collectDockerHosts(envID string, env *Environment) ([]HostInfo, []ServiceUR
 		if port == 0 {
 			port = 8443
 		}
-		user := strDefault(svc.PmmServerUser, "admin")
 		serviceURLs = append(serviceURLs, ServiceURL{
 			Name:  containerName,
 			Label: "PMM: " + svcName,
 			URL:   fmt.Sprintf("https://%s:%d", host, port),
 		})
-		_ = user // user info shown in config summary
 	}
 	for svcName, svc := range env.Config.MinioServers {
 		containerName := prefix + "-" + svcName
@@ -2149,7 +2147,6 @@ func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
 
 	// Sharded clusters: connect via mongos on port 27017
 	for name := range env.Config.Clusters {
-		containerPrefix := prefix + "-" + name
 		mongosCount := env.Config.Clusters[name].MongosCount
 		if mongosCount == 0 {
 			mongosCount = 2
@@ -2159,7 +2156,6 @@ func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
 			mongosHosts = append(mongosHosts, fmt.Sprintf("%s:%d", host, 27017+i))
 		}
 		connStr := fmt.Sprintf("mongodb://%s/", strings.Join(mongosHosts, ","))
-		_ = containerPrefix
 		conns = append(conns, MongoConnInfo{
 			Name:       name,
 			Type:       "cluster",
@@ -2607,6 +2603,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				e.Status = "stopped"
 			case "reset":
 				e.Status = "provisioned"
+			case "deploy", "configure":
+				// Both deploy and configure represent a fully running environment.
+				e.Status = "running"
 			default:
 				e.Status = action + "_success"
 			}

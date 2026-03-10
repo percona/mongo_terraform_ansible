@@ -1,7 +1,10 @@
 // app.js – shared utilities for MongoDB Deploy UI
 
 /**
- * Generic helper to POST JSON and return parsed response.
+ * Generic helper to fetch a URL and return parsed JSON response.
+ * Handles non-JSON responses gracefully so callers always get a meaningful
+ * error message (important for Safari which throws "The string did not match
+ * the expected pattern." when JSON.parse fails on non-JSON bodies).
  */
 async function apiFetch(url, method = 'GET', body = null) {
   const opts = {
@@ -10,7 +13,13 @@ async function apiFetch(url, method = 'GET', body = null) {
   };
   if (body !== null) opts.body = JSON.stringify(body);
   const resp = await fetch(url, opts);
-  const data = await resp.json();
+  let data;
+  try {
+    data = await resp.json();
+  } catch (_) {
+    // Response body is not JSON (e.g. plain-text 404 from a proxy).
+    throw new Error(`HTTP ${resp.status}: ${resp.statusText || 'unexpected response'}`);
+  }
   if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
   return data;
 }

@@ -21,84 +21,92 @@ and replica set, and **Open** buttons for the PMM and MinIO Console web UIs.
 
 ---
 
-## Environment state transitions
+## State transition diagrams
+
+### Docker
 
 ```mermaid
 stateDiagram-v2
-    [*]                    --> configured              : Create environment
+    [*]              --> Configured        : Create / Save
 
-    configured             --> deploy_in_progress      : Deploy
-    configured             --> provision_in_progress   : Provision (cloud)
+    Configured       --> DeployInProgress  : Deploy
+    Stopped          --> DeployInProgress  : Deploy
+    Running          --> DeployInProgress  : Re-deploy
 
-    deploy_in_progress     --> running                 : success
-    deploy_in_progress     --> deploy_failed           : failure
+    DeployInProgress --> Running           : ✓ success
+    DeployInProgress --> Configured        : ✗ failed (retry)
 
-    provision_in_progress  --> provision_success       : Terraform OK
-    provision_in_progress  --> provision_failed        : failure
+    Running          --> StopInProgress    : Stop
+    Stopped          --> RestartInProgress : Restart
+    Running          --> RestartInProgress : Restart
 
-    provision_success      --> configure_in_progress   : Install (Ansible)
+    StopInProgress   --> Stopped           : ✓ success
+    RestartInProgress --> Running          : ✓ success
 
-    configure_in_progress  --> running                 : success (no configure_success state)
-    configure_in_progress  --> configure_failed        : failure
-
-    running                --> stop_in_progress        : Stop
-    running                --> restart_in_progress     : Restart
-    running                --> deploy_in_progress      : Deploy (re-deploy)
-    running                --> configure_in_progress   : Install (cloud)
-    running                --> reset_in_progress       : Reset (cloud)
-    running                --> destroy_in_progress     : Destroy
-
-    stopped                --> restart_in_progress     : Restart
-    stopped                --> deploy_in_progress      : Deploy
-    stopped                --> destroy_in_progress     : Destroy
-
-    provisioned            --> configure_in_progress   : Install
-    provisioned            --> deploy_in_progress      : Deploy
-
-    stop_in_progress       --> stopped                 : success
-    stop_in_progress       --> stop_failed             : failure
-
-    restart_in_progress    --> running                 : success
-    restart_in_progress    --> restart_failed          : failure
-
-    reset_in_progress      --> provisioned             : success
-    reset_in_progress      --> reset_failed            : failure
-
-    destroy_in_progress    --> deleted                 : success
-    destroy_in_progress    --> destroy_failed          : failure
+    Running          --> DestroyInProgress : Destroy
+    Stopped          --> DestroyInProgress : Destroy
+    DestroyInProgress --> Deleted          : ✓ success
 ```
 
-> **Note on configure:** When Ansible finishes successfully, the environment
-> transitions directly to **Running** — there is no intermediate
-> `configure_success` state.
+### Cloud (AWS / GCP / Azure)
+
+```mermaid
+stateDiagram-v2
+    [*]                  --> Configured            : Create / Save
+
+    Configured           --> DeployInProgress      : Deploy
+    Configured           --> ProvisionInProgress   : Provision only
+
+    DeployInProgress     --> Running               : ✓ success
+    DeployInProgress     --> Configured            : ✗ failed (retry)
+
+    ProvisionInProgress  --> ProvisionSuccess      : Terraform OK
+    ProvisionSuccess     --> ConfigureInProgress   : Install (auto-starts)
+
+    ConfigureInProgress  --> Running               : ✓ success (no intermediate state)
+    ConfigureInProgress  --> Provisioned           : ✗ failed (re-run Install)
+
+    Provisioned          --> ConfigureInProgress   : Install
+    Provisioned          --> DeployInProgress      : Re-deploy
+
+    Running              --> ConfigureInProgress   : Install (re-configure)
+    Running              --> ResetInProgress       : Reset
+    Running              --> StopInProgress        : Stop
+    Running              --> RestartInProgress     : Restart
+    Running              --> DestroyInProgress     : Destroy
+
+    ResetInProgress      --> Provisioned           : ✓ success
+    StopInProgress       --> Stopped               : ✓ success
+    RestartInProgress    --> Running               : ✓ success
+    Stopped              --> RestartInProgress     : Restart
+    Stopped              --> DestroyInProgress     : Destroy
+
+    DestroyInProgress    --> Deleted               : ✓ success
+```
+
+> **Note:** Every `*InProgress` state may transition back to the **previous
+> stable state** on failure (shown as "retry" for brevity).  There is **no**
+> `ConfigureSuccess` state — a successful Ansible run goes directly to
+> **Running**.
 
 ---
 
 ## Environment states
 
-| Status                       | Meaning                                                                                                                     |
-|------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| **Configured**               | The environment has been saved but Terraform has not run yet. No cloud or Docker resources exist.                           |
-| **Deploy In Progress**       | Terraform (and, for cloud platforms, Ansible) are running in the background.                                                |
-| **Deploy Failed**            | The combined deploy action (Terraform + Ansible) encountered an error.                                                      |
-| **Running**                  | All resources are up and healthy. This is the state after a successful `Deploy`, `Install` (configure), or `Restart`.      |
-| **Stopped**                  | Resources were gracefully stopped (Docker containers stopped / Ansible stop playbook ran).                                  |
-| **Provisioned**              | Terraform provisioning completed (infra exists) but Ansible has not run yet (cloud only). Set after a successful `Reset`.  |
-| **Provision In Progress**    | Terraform is running (cloud-only provision step).                                                                           |
-| **Provision Success**        | Terraform completed successfully. Transient state shown before the Ansible `Install` step begins.                           |
-| **Provision Failed**         | Terraform encountered an error.                                                                                             |
-| **Configure In Progress**    | Ansible configuration playbooks are running.                                                                                |
-| **Configure Failed**         | Ansible encountered an error. There is no `Configure Success` state — success transitions directly to **Running**.          |
-| **Stop In Progress**         | Stop playbooks / `docker stop` are running.                                                                                 |
-| **Stop Failed**              | The stop action encountered an error.                                                                                       |
-| **Restart In Progress**      | Restart playbooks / `docker restart` are running.                                                                           |
-| **Restart Failed**           | The restart action encountered an error.                                                                                    |
-| **Reset In Progress**        | The `reset.yml` Ansible playbook is running (cloud only).                                                                   |
-| **Reset Failed**             | The reset action encountered an error.                                                                                      |
-| **Destroy In Progress**      | `terraform destroy` is running.                                                                                             |
-| **Destroy Success**          | Terraform destroyed all resources. The environment record is kept for reference and can be removed from the list.           |
-| **Destroy Failed**           | `terraform destroy` encountered an error. Resources may still exist.                                                        |
-| **Deleted**                  | The environment record has been removed from the UI list (only appears transiently during cleanup).                         |
+| Status                    | Platform        | Meaning                                                                                                           |
+|---------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------|
+| **Configured**            | all             | Saved but no infrastructure exists yet.                                                                           |
+| **Deploy In Progress**    | all             | Terraform (+ Ansible for cloud) running in the background.                                                        |
+| **Running**               | all             | All resources up and healthy. Reached after `Deploy`, `Install`, or `Restart`.                                    |
+| **Stopped**               | all             | Resources gracefully stopped (`docker stop` / Ansible stop playbook).                                             |
+| **Provision In Progress** | cloud only      | Terraform provisioning infra (no Ansible yet).                                                                    |
+| **Provision Success**     | cloud only      | Terraform done; Ansible `Install` step starting automatically.                                                    |
+| **Provisioned**           | cloud only      | Infra exists but Ansible has not run yet. Set after `Reset` or configure failure — run `Install` to continue.     |
+| **Configure In Progress** | cloud only      | Ansible playbooks running. On success → **Running** (there is no `Configure Success` state).                      |
+| **Destroy In Progress**   | all             | `terraform destroy` running.                                                                                      |
+| **Destroy Success**       | all             | All resources destroyed. Record kept until manually purged.                                                       |
+| **Deleted**               | all             | Record removed from the UI list.                                                                                  |
+| **\*\_Failed**            | all             | Any action may fail; the status becomes `<action>_failed`. Re-run the action to retry.                            |
 
 ---
 

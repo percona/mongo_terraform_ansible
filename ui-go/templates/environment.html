@@ -167,6 +167,7 @@
     <h2>Output</h2>
     <div class="terminal-controls">
       <span id="job-status-badge" class="badge"></span>
+      <button class="btn btn-warning btn-sm" id="btn-cancel-job" onclick="cancelJob()" style="display:none" title="Cancel the running job">✖ Cancel</button>
       <button class="btn btn-outline btn-sm" id="btn-toggle-output" onclick="toggleOutput()">▼ Show Output</button>
       <button class="btn btn-outline btn-sm" onclick="clearTerminal()">Clear</button>
     </div>
@@ -239,6 +240,7 @@
 const ENV_ID   = {{json .EnvID}};
 const PLATFORM = {{json .Env.Platform}};
 let activeEventSource = null;
+let currentJobId = null;
 
 function confirmDestroy() { document.getElementById('destroy-modal').style.display = 'flex'; }
 function closeDestroyModal() { document.getElementById('destroy-modal').style.display = 'none'; }
@@ -419,6 +421,8 @@ function setButtonsDisabled(disabled) {
     editLink.style.pointerEvents = disabled ? 'none' : '';
     editLink.style.opacity = disabled ? '0.45' : '';
   }
+  const cancelBtn = document.getElementById('btn-cancel-job');
+  if (cancelBtn) cancelBtn.style.display = disabled ? '' : 'none';
 }
 
 function toggleAdvanced() {
@@ -457,6 +461,7 @@ async function runAction(action) {
 
     const es = new EventSource(`/api/job/${data.job_id}/stream`);
     activeEventSource = es;
+    currentJobId = data.job_id;
     es.addEventListener('message', ev => appendToTerminal(JSON.parse(ev.data)));
     es.addEventListener('done', ev => {
       const s = JSON.parse(ev.data);
@@ -487,6 +492,19 @@ async function runAction(action) {
   }
 }
 
+async function cancelJob() {
+  if (!currentJobId) return;
+  const btn = document.getElementById('btn-cancel-job');
+  if (btn) { btn.textContent = 'Cancelling…'; btn.disabled = true; }
+  try {
+    await fetch(`/api/job/${currentJobId}/cancel`, { method: 'POST' });
+    appendToTerminal('\n⏹ Cancel request sent. Waiting for job to stop…');
+  } catch (err) {
+    appendToTerminal(`\n⚠ Cancel request failed: ${err.message}`);
+    if (btn) { btn.textContent = '✖ Cancel'; btn.disabled = false; }
+  }
+}
+
 // Reconnect to a still-running job on page load.
 (async () => {
   {{if .Env.LastJobID}}
@@ -498,6 +516,7 @@ async function runAction(action) {
     appendToTerminal('▶ Reconnecting to running job…');
     const es = new EventSource(`/api/job/${jobId}/stream`);
     activeEventSource = es;
+    currentJobId = jobId;
     es.addEventListener('message', ev => appendToTerminal(JSON.parse(ev.data)));
     es.addEventListener('done', ev => {
       const st = JSON.parse(ev.data);

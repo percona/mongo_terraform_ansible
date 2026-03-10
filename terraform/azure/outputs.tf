@@ -29,7 +29,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       env_tag                  = each.value.env_tag
 
       location                 = each.value.location
-      hostname_pmm             = local.pmm_host
+      hostname_pmm             = var.enable_pmm ? local.pmm_host : ""
       bucket                   = azurerm_storage_container.mongo_backups_container.name
       endpointUrl              = local.storage_endpoint
       key                      = azurerm_storage_account.mongo_backups.primary_access_key
@@ -59,7 +59,7 @@ resource "local_file" "SSHConfigCluster" {
     enable_ssh_gateway     = var.enable_ssh_gateway
     port_to_forward        = var.port_to_forward
     ssh_gateway_name       = var.ssh_gateway_name
-    hostname_pmm           = local.pmm_host
+    hostname_pmm           = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm          = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
     pmm_port               = var.pmm_port
   })
@@ -84,7 +84,7 @@ resource "local_file" "AnsibleInventoryRS" {
       rs_name                  = each.value.rs_name
       env_tag                  = each.value.env_tag
       location                 = each.value.location
-      hostname_pmm             = local.pmm_host
+      hostname_pmm             = var.enable_pmm ? local.pmm_host : ""
       bucket                   = azurerm_storage_container.mongo_backups_container.name
       endpointUrl              = local.storage_endpoint
       key                      = azurerm_storage_account.mongo_backups.primary_access_key
@@ -109,7 +109,7 @@ resource "local_file" "SSHConfigRS" {
     ssh_gateway_name       = var.ssh_gateway_name
     enable_ssh_gateway     = var.enable_ssh_gateway
     port_to_forward        = var.port_to_forward
-    hostname_pmm           = local.pmm_host
+    hostname_pmm           = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm          = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
     pmm_port               = var.pmm_port
   })

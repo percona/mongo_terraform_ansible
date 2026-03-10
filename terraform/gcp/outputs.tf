@@ -28,7 +28,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       cluster                  = each.value.cluster
       env_tag                  = each.value.env_tag
 
-      hostname_pmm             = local.pmm_host
+      hostname_pmm             = var.enable_pmm ? local.pmm_host : ""
       bucket                   = google_storage_bucket.mongo-backups.name
       access_key               = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key        = google_storage_hmac_key.mongo-backup-service-account.secret 
@@ -57,7 +57,7 @@ resource "local_file" "SSHConfigCluster" {
     enable_ssh_gateway     = var.enable_ssh_gateway
     port_to_forward        = var.port_to_forward    
     ssh_gateway_name       = var.ssh_gateway_name    
-    hostname_pmm           = local.pmm_host
+    hostname_pmm           = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm          = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
     pmm_port               = var.pmm_port    
   })
@@ -81,7 +81,7 @@ resource "local_file" "AnsibleInventoryRS" {
       my_ssh_user              = var.my_ssh_user
       rs_name                  = each.value.rs_name
       env_tag                  = each.value.env_tag
-      hostname_pmm             = local.pmm_host
+      hostname_pmm             = var.enable_pmm ? local.pmm_host : ""
       bucket                   = google_storage_bucket.mongo-backups.name
       access_key               = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key        = google_storage_hmac_key.mongo-backup-service-account.secret
@@ -105,7 +105,7 @@ resource "local_file" "SSHConfigRS" {
     ssh_gateway_name       = var.ssh_gateway_name    
     enable_ssh_gateway     = var.enable_ssh_gateway
     port_to_forward        = var.port_to_forward
-    hostname_pmm           = local.pmm_host
+    hostname_pmm           = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm          = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
     pmm_port               = var.pmm_port
   })

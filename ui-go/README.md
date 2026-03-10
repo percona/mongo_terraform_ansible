@@ -181,17 +181,26 @@ Then open **http://127.0.0.1:5001** in your browser.
 
 ```
 ui-go/
-├── main.go            Complete Go application (server, types, handlers, jobs, tfvars)
-├── exec_helper.go     os/exec wrapper
-├── go.mod             Go module (standard library only)
+├── main.go         Constants, globals, template helpers, HTTP routes, main()
+├── types.go        All Go struct/type definitions and sorted-list helpers
+├── state.go        Environment state persistence (load/save environments.json)
+├── cache.go        In-memory TTL cache (Docker Hub tags, etc.)
+├── versions.go     Docker Hub image tag fetching; Percona repo version discovery
+├── tfvars.go       Terraform .tfvars file generation
+├── jobs.go         Background job runner (start, stream, cancel, PID tracking)
+├── regions.go      Cloud region and machine-image discovery (AWS / GCP / Azure)
+├── hosts.go        Host & connection-string discovery (Docker + cloud inventory)
+├── handlers.go     All HTTP handlers (environment CRUD, actions, API endpoints)
+├── exec_helper.go  os/exec wrapper
+├── go.mod          Go module (standard library only)
 ├── environments.json  Runtime state (auto-created)
 ├── jobs/              Background job logs (auto-created)
 ├── templates/
-│   ├── layout.html         Base HTML layout
-│   ├── index.html          Environment list
-│   ├── new_environment.html Platform picker
-│   ├── configure.html      Configuration wizard
-│   └── environment.html    Environment detail & actions
+│   ├── layout.html
+│   ├── index.html
+│   ├── new_environment.html
+│   ├── configure.html
+│   └── environment.html
 └── static/
     ├── style.css
     └── app.js

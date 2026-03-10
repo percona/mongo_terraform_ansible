@@ -13,6 +13,7 @@
         name: mongod
         state: present
         gid: 1011
+      when: storage_provider == "filesystem"
 
     - name: Ensure the NFS mapped user mongod exists
       ansible.builtin.user:
@@ -20,6 +21,7 @@
         uid: 1010
         group: 1011
         system: false
+      when: storage_provider == "filesystem"
 
     - name: Install NFS server packages (Debian/Ubuntu)
       ansible.builtin.apt:
@@ -27,14 +29,14 @@
           - nfs-kernel-server
         state: present
         update_cache: yes
-      when: ansible_facts['os_family'] == 'Debian'
+      when: storage_provider == "filesystem" and ansible_facts['os_family'] == 'Debian'
 
     - name: Install NFS server packages (RedHat/CentOS)
       ansible.builtin.yum:
         name:
           - nfs-utils
         state: present
-      when: ansible_facts['os_family'] == 'RedHat'
+      when: storage_provider == "filesystem" and ansible_facts['os_family'] == 'RedHat'
 
     - name: Ensure export directory exists
       ansible.builtin.file:
@@ -43,6 +45,7 @@
         owner: '{{ pbm_os_user }}'
         group: mongod
         mode: '0755'
+      when: storage_provider == "filesystem"
 
     - name: Configure /etc/exports
       ansible.builtin.lineinfile:
@@ -50,12 +53,14 @@
         line: "{{ pbm_path }} {{ clients }}({{ export_opts }})"
         create: yes
       notify: Reload NFS exports
+      when: storage_provider == "filesystem"
 
     - name: Ensure NFS service is started and enabled
       ansible.builtin.service:
         name: "{{ 'nfs-kernel-server' if ansible_facts['os_family'] == 'Debian' else 'nfs-server' }}"
         state: started
         enabled: yes
+      when: storage_provider == "filesystem"
 
   handlers:
     - name: Reload NFS exports

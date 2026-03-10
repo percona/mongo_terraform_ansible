@@ -371,7 +371,8 @@ function hideProgressIndicator() {
 function setStatus(status) {
   const dot   = document.getElementById('status-dot');
   const label = document.getElementById('status-label');
-  const clean = status.replace(/_in_progress$/, '').replace(/:.+$/, '');
+  // Pass status as CSS class suffix (colon-suffix stripped; underscores kept for _in_progress)
+  const clean = status.replace(/:.+$/, '');
   dot.className   = `status-dot status-${clean}`;
   label.textContent = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }

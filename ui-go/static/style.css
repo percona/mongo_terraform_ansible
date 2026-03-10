@@ -213,17 +213,37 @@ a:hover { text-decoration: underline; }
   border-radius: 50%;
   flex-shrink: 0;
 }
-.status-configured  { background: var(--color-info); }
-.status-deploy      { background: var(--color-success); }
-.status-stop        { background: var(--color-warning); }
-.status-restart     { background: var(--color-warning); }
-.status-destroy     { background: var(--color-danger); }
-.status-running     { background: var(--color-warning); animation: pulse 1.2s ease-in-out infinite; }
-.status-success     { background: var(--color-success); }
-.status-failed      { background: var(--color-danger); }
-.status-error       { background: var(--color-danger); }
-.status-unknown     { background: var(--color-muted); }
-.status-deleted     { background: var(--color-muted); }
+.status-configured        { background: var(--color-info); }
+.status-provisioned       { background: var(--color-info); }
+.status-running           { background: var(--color-success); }
+.status-stopped           { background: var(--color-warning); }
+.status-deleted           { background: var(--color-muted); }
+/* Action success states */
+.status-deploy_success,
+.status-provision_success,
+.status-configure_success,
+.status-success           { background: var(--color-success); }
+/* Action failure states */
+.status-deploy_failed,
+.status-stop_failed,
+.status-restart_failed,
+.status-reset_failed,
+.status-provision_failed,
+.status-configure_failed,
+.status-destroy_failed,
+.status-failed,
+.status-error             { background: var(--color-danger); }
+/* Unknown / fallback */
+.status-unknown           { background: var(--color-muted); }
+
+/* In-progress states – pulse animation */
+.status-deploy_in_progress,
+.status-stop_in_progress,
+.status-restart_in_progress,
+.status-reset_in_progress,
+.status-provision_in_progress,
+.status-configure_in_progress,
+.status-destroy_in_progress { background: var(--color-warning); animation: pulse 1.2s ease-in-out infinite; }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -231,7 +251,13 @@ a:hover { text-decoration: underline; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .status-running,
+  .status-deploy_in_progress,
+  .status-stop_in_progress,
+  .status-restart_in_progress,
+  .status-reset_in_progress,
+  .status-provision_in_progress,
+  .status-configure_in_progress,
+  .status-destroy_in_progress,
   .progress-dot { animation: none; }
 }
 
@@ -370,8 +396,8 @@ a:hover { text-decoration: underline; }
   flex: 1;
   min-width: 100px;
   max-width: 220px;
-  background: transparent;
-  border: 1px solid transparent;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   color: var(--color-text);
   font-family: var(--font);
@@ -383,7 +409,7 @@ a:hover { text-decoration: underline; }
 .block-name-input:hover,
 .block-name-input:focus {
   background: var(--color-surface2);
-  border-color: var(--color-border);
+  border-color: var(--color-accent);
   outline: none;
 }
 

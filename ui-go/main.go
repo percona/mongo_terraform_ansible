@@ -406,9 +406,10 @@ var funcMap = template.FuncMap{
 		}
 		return string(out)
 	},
-	// Strip "in_progress" suffix and colon-suffix for CSS class names.
+	// Returns the CSS class suffix for a status string.
+	// Passes the status through mostly as-is; strips only colon-suffixes.
+	// CSS classes for in-progress states are defined explicitly (.status-deploy_in_progress, etc.)
 	"statusClass": func(s string) string {
-		s = strings.TrimSuffix(s, "_in_progress")
 		if idx := strings.Index(s, ":"); idx >= 0 {
 			s = s[:idx]
 		}
@@ -1273,10 +1274,83 @@ func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
 // fallback list so the UI is always usable.
 func apiRegionsHandler(w http.ResponseWriter, r *http.Request) {
 	platform := r.PathValue("platform")
+	regions := getCloudRegions(platform)
 	writeJSON(w, 200, map[string]interface{}{
-		"regions": getCloudRegions(platform),
+		"regions":         regions,
+		"grouped_regions": groupRegionsByGeo(platform, regions),
 	})
 }
+
+// groupRegionsByGeo groups a flat region list into geographic buckets so the
+// UI can render them as <optgroup> elements, similar to the OS grouping used
+// for machine images.  Each platform uses its own naming convention.
+func groupRegionsByGeo(platform string, regions []string) map[string][]string {
+	groups := map[string][]string{}
+	for _, r := range regions {
+		g := regionGeoGroup(platform, r)
+		groups[g] = append(groups[g], r)
+	}
+	return groups
+}
+
+// regionGeoGroup returns a human-readable geographic group name for a region.
+func regionGeoGroup(platform, region string) string {
+	switch platform {
+	case "aws":
+		switch {
+		case strings.HasPrefix(region, "us-"):
+			return "US"
+		case strings.HasPrefix(region, "ca-"):
+			return "Canada"
+		case strings.HasPrefix(region, "eu-") || strings.HasPrefix(region, "europe-"):
+			return "Europe"
+		case strings.HasPrefix(region, "ap-") || strings.HasPrefix(region, "asia-") || strings.HasPrefix(region, "australia-"):
+			return "Asia Pacific"
+		case strings.HasPrefix(region, "sa-") || strings.HasPrefix(region, "southamerica-"):
+			return "South America"
+		case strings.HasPrefix(region, "me-") || strings.HasPrefix(region, "af-"):
+			return "Middle East & Africa"
+		case strings.HasPrefix(region, "il-"):
+			return "Middle East & Africa"
+		}
+	case "gcp":
+		switch {
+		case strings.HasPrefix(region, "us-") || strings.HasPrefix(region, "northamerica-"):
+			return "North America"
+		case strings.HasPrefix(region, "southamerica-"):
+			return "South America"
+		case strings.HasPrefix(region, "europe-"):
+			return "Europe"
+		case strings.HasPrefix(region, "asia-") || strings.HasPrefix(region, "australia-"):
+			return "Asia Pacific"
+		case strings.HasPrefix(region, "me-") || strings.HasPrefix(region, "africa-"):
+			return "Middle East & Africa"
+		}
+	case "azure":
+		// Check australia first with a specific prefix to avoid substring matches
+		// (e.g. 'australiaeast' must not match the 'us' check below).
+		if strings.HasPrefix(region, "australia") {
+			return "Asia Pacific"
+		}
+		switch {
+		case strings.Contains(region, "us") || strings.Contains(region, "canada"):
+			return "North America"
+		case strings.Contains(region, "brazil"):
+			return "South America"
+		case strings.Contains(region, "europe") || strings.Contains(region, "uk") || strings.Contains(region, "france") ||
+			strings.Contains(region, "germany") || strings.Contains(region, "norway") || strings.Contains(region, "switzerland") || strings.Contains(region, "sweden"):
+			return "Europe"
+		case strings.Contains(region, "asia") || strings.Contains(region, "japan") || strings.Contains(region, "korea") ||
+			strings.Contains(region, "india") || strings.Contains(region, "china"):
+			return "Asia Pacific"
+		case strings.Contains(region, "africa") || strings.Contains(region, "uae"):
+			return "Middle East & Africa"
+		}
+	}
+	return "Other"
+}
+
+
 
 // ─── SSH key upload ───────────────────────────────────────────────────────────
 
@@ -2156,7 +2230,17 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Map job status to a human-readable environment status.
 		if status == "success" {
-			e.Status = action + "_success"
+			// Map certain actions to semantic statuses instead of "action_success".
+			switch action {
+			case "restart":
+				e.Status = "running"
+			case "stop":
+				e.Status = "stopped"
+			case "reset":
+				e.Status = "provisioned"
+			default:
+				e.Status = action + "_success"
+			}
 		} else {
 			e.Status = action + "_failed"
 		}

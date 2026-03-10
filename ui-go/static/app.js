@@ -17,9 +17,21 @@ async function apiFetch(url, method = 'GET', body = null) {
 
 /**
  * Delete an environment from the index page.
+ * @param {string} envId  - The environment ID.
+ * @param {string} status - Current environment status (used to determine if resources are still up).
  */
-async function deleteEnvironment(envId) {
-  if (!confirm(`Remove environment "${envId}" from the list? Cloud resources have already been destroyed.`)) return;
+async function deleteEnvironment(envId, status) {
+  // Statuses that imply cloud resources are already gone.
+  const alreadyDestroyed = new Set(['deleted', 'destroy_success']);
+  const isDestroyed = alreadyDestroyed.has(status);
+
+  let msg;
+  if (isDestroyed) {
+    msg = `Remove environment "${envId}" from the list? Cloud resources have already been destroyed.`;
+  } else {
+    msg = `⚠️ WARNING: Cloud resources for environment "${envId}" may still be running (status: ${status}).\n\nThis will only remove the environment from this UI — it will NOT destroy the cloud resources.\n\nAre you sure you want to proceed?`;
+  }
+  if (!confirm(msg)) return;
   try {
     await apiFetch(`/api/environment/${envId}`, 'DELETE');
     location.reload();

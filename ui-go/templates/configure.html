@@ -1265,20 +1265,42 @@ async function loadRegions() {
     if (!resp.ok) return;
     const data = await resp.json();
     const regions = data.regions || [];
+    const grouped = data.grouped_regions || null;
     sel.innerHTML = '';
     if (!current && !regions.length) {
       sel.appendChild(new Option('— no regions found —', ''));
       return;
     }
-    regions.forEach(r => {
-      const opt = new Option(r, r);
-      if (r === current) opt.selected = true;
-      sel.appendChild(opt);
-    });
-    // If current value not in list (stale save), keep it as first option.
-    if (current && !regions.includes(current)) {
-      const opt = new Option(current, current, true, true);
-      sel.insertBefore(opt, sel.firstChild);
+    if (grouped && Object.keys(grouped).length > 0) {
+      // Render as grouped optgroups, sorted by geo name.
+      const geoNames = Object.keys(grouped).sort();
+      let matched = false;
+      geoNames.forEach(geo => {
+        const grp = document.createElement('optgroup');
+        grp.label = geo;
+        (grouped[geo] || []).sort().forEach(r => {
+          const opt = new Option(r, r);
+          if (r === current) { opt.selected = true; matched = true; }
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      });
+      // If current value not in any group (stale save), add as first option.
+      if (current && !matched) {
+        const opt = new Option(current, current, true, true);
+        sel.insertBefore(opt, sel.firstChild);
+      }
+    } else {
+      // Fallback: flat list.
+      regions.forEach(r => {
+        const opt = new Option(r, r);
+        if (r === current) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      if (current && !regions.includes(current)) {
+        const opt = new Option(current, current, true, true);
+        sel.insertBefore(opt, sel.firstChild);
+      }
     }
   } catch (e) { /* keep placeholder */ }
   // Reload images whenever the region list finishes populating.

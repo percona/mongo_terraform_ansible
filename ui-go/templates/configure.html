@@ -67,7 +67,7 @@
       </div>
       <div class="form-group">
         <label for="region">Region</label>
-        <select id="region" name="region">
+        <select id="region" name="region" onchange="onRegionChange()">
           <option value="">— loading regions… —</option>
           {{if .Config.Region}}<option value="{{.Config.Region}}" selected>{{.Config.Region}}</option>{{end}}
         </select>
@@ -90,9 +90,35 @@
     </div>
     <div class="form-row">
       <div class="form-group">
+        <label>SSH Public Key for Default User</label>
+        <div class="file-picker-row">
+          <span id="ssh-key-filename" class="file-picker-name">{{if .Config.SSHPublicKeyPath}}{{.Config.SSHPublicKeyPath}}{{else}}No file selected{{end}}</span>
+          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('ssh_key_file_input').click()">Browse…</button>
+        </div>
+        <input type="file" id="ssh_key_file_input" accept=".pub,text/plain" style="display:none"
+               onchange="uploadSSHKey(this)">
+        <input type="hidden" id="ssh_public_key_path" name="ssh_public_key_path"
+               value="{{.Config.SSHPublicKeyPath}}">
+        <small>Public key added to every GCP instance for the default SSH user (<code>gce_ssh_users</code>).</small>
+      </div>
+      <div class="form-group">
         <label for="subnet_cidr">Subnet CIDR</label>
         <input type="text" id="subnet_cidr" name="subnet_cidr"
                value="{{strDefault .Config.SubnetCIDR "10.128.0.0/20"}}">
+      </div>
+    </div>
+    <!-- Machine Image -->
+    <div class="form-row">
+      <div class="form-group form-group-full">
+        <label for="machine_image">Machine Image</label>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <select id="machine_image" name="machine_image" style="flex:1">
+            <option value="">— select a region first —</option>
+            {{if .Config.MachineImage}}<option value="{{.Config.MachineImage}}" selected>{{.Config.MachineImage}}</option>{{end}}
+          </select>
+          <a href="#" onclick="reloadImages(event)" style="white-space:nowrap">↻ Refresh</a>
+        </div>
+        <small>GCP image used for all instances. Images are fetched from GCP and grouped by OS.</small>
       </div>
     </div>
     <!-- gce_ssh_users: additional users whose public keys are provisioned on every instance -->
@@ -106,7 +132,11 @@
           {{range $user, $key := .Config.SSHUsers}}
           <div class="ssh-user-row">
             <input type="text" name="ssh_user_name[]" value="{{$user}}" placeholder="username">
-            <input type="text" name="ssh_user_key[]"  value="{{$key}}" placeholder="~/.ssh/id_rsa.pub">
+            <div class="file-picker-row">
+              <span class="file-picker-name">{{$key}}</span>
+              <button type="button" class="btn btn-outline btn-sm" onclick="pickSshUserKey(this)">Browse…</button>
+            </div>
+            <input type="hidden" name="ssh_user_key[]" value="{{$key}}">
             <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>
           </div>
           {{end}}
@@ -122,7 +152,7 @@
     <div class="form-row">
       <div class="form-group">
         <label for="region">Region</label>
-        <select id="region" name="region">
+        <select id="region" name="region" onchange="onRegionChange()">
           <option value="">— loading regions… —</option>
           {{if .Config.Region}}<option value="{{.Config.Region}}" selected>{{.Config.Region}}</option>{{end}}
         </select>
@@ -137,9 +167,16 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label for="ssh_public_key_path">SSH Public Key File</label>
-        <input type="text" id="ssh_public_key_path" name="ssh_public_key_path"
-               value="{{strDefault .Config.SSHPublicKeyPath "ivan.pub"}}">
+        <label>SSH Public Key File</label>
+        <div class="file-picker-row">
+          <span id="ssh-key-filename" class="file-picker-name">{{if .Config.SSHPublicKeyPath}}{{.Config.SSHPublicKeyPath}}{{else}}No file selected{{end}}</span>
+          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('ssh_key_file_input').click()">Browse…</button>
+        </div>
+        <input type="file" id="ssh_key_file_input" accept=".pub,text/plain" style="display:none"
+               onchange="uploadSSHKey(this)">
+        <input type="hidden" id="ssh_public_key_path" name="ssh_public_key_path"
+               value="{{.Config.SSHPublicKeyPath}}">
+        <small>Public key uploaded to AWS as an EC2 Key Pair and used by Terraform/Ansible to connect.</small>
       </div>
       <div class="form-group">
         <label for="default_key_pair">Key Pair Name</label>
@@ -163,6 +200,20 @@
         <label for="subnet_count">Subnet Count</label>
         <input type="number" id="subnet_count" name="subnet_count" min="1" max="6"
                value="{{intDefault .Config.SubnetCount 3}}">
+      </div>
+    </div>
+    <!-- Machine Image -->
+    <div class="form-row">
+      <div class="form-group form-group-full">
+        <label for="machine_image">Machine Image (AMI)</label>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <select id="machine_image" name="machine_image" style="flex:1">
+            <option value="">— select a region first —</option>
+            {{if .Config.MachineImage}}<option value="{{.Config.MachineImage}}" selected>{{.Config.MachineImage}}</option>{{end}}
+          </select>
+          <a href="#" onclick="reloadImages(event)" style="white-space:nowrap">↻ Refresh</a>
+        </div>
+        <small>AMI used for all instances. Images are fetched from AWS for the selected region and grouped by OS.</small>
       </div>
     </div>
     <div class="form-row">
@@ -1160,10 +1211,22 @@ const numericFields = new Set([
 function addSshUser() {
   const row = document.createElement('div');
   row.className = 'ssh-user-row';
-  row.innerHTML = `
-    <input type="text" name="ssh_user_name[]" placeholder="username">
-    <input type="text" name="ssh_user_key[]"  placeholder="~/.ssh/id_rsa.pub">
-    <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>`;
+  if (PLATFORM === 'gcp') {
+    // GCP: use file picker for key path since gce_ssh_users needs a server-side path.
+    row.innerHTML = `
+      <input type="text" name="ssh_user_name[]" placeholder="username">
+      <div class="file-picker-row">
+        <span class="file-picker-name">No file selected</span>
+        <button type="button" class="btn btn-outline btn-sm" onclick="pickSshUserKey(this)">Browse…</button>
+      </div>
+      <input type="hidden" name="ssh_user_key[]" value="">
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>`;
+  } else {
+    row.innerHTML = `
+      <input type="text" name="ssh_user_name[]" placeholder="username">
+      <input type="text" name="ssh_user_key[]"  placeholder="~/.ssh/id_rsa.pub">
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>`;
+  }
   document.getElementById('ssh-users-container').appendChild(row);
 }
 
@@ -1218,6 +1281,8 @@ async function loadRegions() {
       sel.insertBefore(opt, sel.firstChild);
     }
   } catch (e) { /* keep placeholder */ }
+  // Reload images whenever the region list finishes populating.
+  loadImages();
 }
 
 function reloadRegions(evt) {
@@ -1229,8 +1294,122 @@ function reloadRegions(evt) {
   loadRegions();
 }
 
+// Called when the user manually changes the region/location selector.
+function onRegionChange() {
+  loadImages();
+}
+
 // Load regions on page start.
 loadRegions();
+
+// ── Cloud Machine Images ──────────────────────────────────────────────────────
+
+// Populates the machine_image <select> with images grouped by OS.
+async function loadImages() {
+  if (PLATFORM === 'docker' || PLATFORM === 'azure') return;
+  const imgSel = document.getElementById('machine_image');
+  if (!imgSel) return;
+  const regionSel = document.getElementById('region');
+  const region = regionSel ? regionSel.value : '';
+  if (!region) return;
+
+  const currentVal = imgSel.value || imgSel.querySelector('option[selected]')?.value || '';
+  imgSel.innerHTML = '<option value="">— loading images… —</option>';
+  try {
+    const resp = await fetch(`/api/images/${PLATFORM}?region=${encodeURIComponent(region)}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const groups = data.images || {};
+    imgSel.innerHTML = '<option value="">— select an image —</option>';
+    const osNames = Object.keys(groups).sort();
+    if (osNames.length === 0) {
+      imgSel.innerHTML = '<option value="">— no images found —</option>';
+      if (currentVal) {
+        const opt = new Option(currentVal, currentVal, false, true);
+        imgSel.insertBefore(opt, imgSel.firstChild);
+      }
+      return;
+    }
+    let matched = false;
+    osNames.forEach(os => {
+      const grp = document.createElement('optgroup');
+      grp.label = os;
+      (groups[os] || []).forEach(img => {
+        const label = img.name || img.id;
+        const opt = new Option(label + ' (' + img.id + ')', img.id);
+        if (img.id === currentVal) { opt.selected = true; matched = true; }
+        grp.appendChild(opt);
+      });
+      imgSel.appendChild(grp);
+    });
+    // Keep stale saved value visible even if not in the freshly-fetched list.
+    if (currentVal && !matched) {
+      const opt = new Option(currentVal, currentVal, true, true);
+      imgSel.insertBefore(opt, imgSel.firstChild);
+    }
+  } catch (e) {
+    imgSel.innerHTML = '<option value="">— image fetch failed —</option>';
+    if (currentVal) {
+      const opt = new Option(currentVal, currentVal, true, true);
+      imgSel.insertBefore(opt, imgSel.firstChild);
+    }
+  }
+}
+
+function reloadImages(evt) {
+  evt.preventDefault();
+  const imgSel = document.getElementById('machine_image');
+  if (imgSel) imgSel.innerHTML = '<option value="">— refreshing… —</option>';
+  loadImages();
+}
+
+// ── SSH Key File Upload ───────────────────────────────────────────────────────
+
+// Uploads the selected SSH public key file to the server and updates the hidden
+// path input and the display span.
+async function uploadSSHKey(input) {
+  if (!input.files || input.files.length === 0) return;
+  const file = input.files[0];
+  const fd = new FormData();
+  fd.append('ssh_key_file', file);
+  try {
+    const resp = await fetch(`/api/upload-ssh-key/${PLATFORM}`, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) { alert('SSH key upload failed: ' + (data.error || resp.status)); return; }
+    document.getElementById('ssh_public_key_path').value = data.path;
+    document.getElementById('ssh-key-filename').textContent = data.path;
+  } catch (err) {
+    alert('SSH key upload error: ' + err.message);
+  }
+}
+
+// Triggers an SSH public key file picker for an "Additional SSH User" row and
+// uploads the selected file, storing the returned server path in the hidden input.
+async function pickSshUserKey(btn) {
+  const row = btn.closest('.ssh-user-row');
+  const hiddenInput = row.querySelector('input[name="ssh_user_key[]"]');
+  const nameSpan = row.querySelector('.file-picker-name');
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.pub,text/plain';
+  fileInput.onchange = async () => {
+    if (!fileInput.files || fileInput.files.length === 0) return;
+    const fd = new FormData();
+    fd.append('ssh_key_file', fileInput.files[0]);
+    try {
+      const resp = await fetch(`/api/upload-ssh-key/${PLATFORM}`, { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (!resp.ok) { alert('Upload failed: ' + (data.error || resp.status)); return; }
+      hiddenInput.value = data.path;
+      if (nameSpan) nameSpan.textContent = data.path;
+    } catch (err) {
+      alert('Upload error: ' + err.message);
+    }
+  };
+  fileInput.click();
+}
+
+
 
 document.getElementById('config-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -1248,6 +1427,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     'pmm_type','pmm_volume_size','pmm_port','pmm_image','pmm_disk_type',
     'default_bucket_name','backup_retention',
     'data_disk_type','network_name',
+    'machine_image',
     // Per-component instance types and disk sizes
     'shardsvr_type','shardsvr_volume_size',
     'configsvr_type','configsvr_volume_size',

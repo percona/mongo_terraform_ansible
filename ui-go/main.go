@@ -31,6 +31,7 @@ var platforms = []string{"aws", "gcp", "azure", "docker"}
 
 var envIDRe = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,40}$`)
 var ansiRe = regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
+var safeFilenameRe = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
 
 const cacheTTL = 5 * time.Minute
 
@@ -144,6 +145,11 @@ type Config struct {
 	// Backup
 	DefaultBucketName string `json:"default_bucket_name,omitempty"`
 	BackupRetention   int    `json:"backup_retention,omitempty"`
+
+	// Machine image / AMI selected for cloud instances (AWS: AMI ID, GCP: image path).
+	// Stored as a single ID; the Terraform `image` map is generated from this
+	// value together with Region / Location at tfvars-write time.
+	MachineImage string `json:"machine_image,omitempty"`
 
 	// Per-component instance types and disk sizes (cloud platforms only).
 	// These correspond to top-level Terraform variables that apply to all
@@ -750,20 +756,34 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		}
 		writeOptInt("subnet_count", cfg.SubnetCount)
 
-		// SSH users map (GCP uses gce_ssh_users, AWS uses key pairs; Azure uses ssh_users)
-		if len(cfg.SSHUsers) > 0 && platform != "aws" {
+		// SSH users map:
+		// - GCP: gce_ssh_users is written later (merged with primary user key if set)
+		// - AWS: uses EC2 key pairs, ssh_users is not a Terraform variable
+		// - Azure: ssh_users Terraform variable
+		if len(cfg.SSHUsers) > 0 && platform == "azure" {
 			// Sort keys for deterministic output
 			userKeys := make([]string, 0, len(cfg.SSHUsers))
 			for k := range cfg.SSHUsers {
 				userKeys = append(userKeys, k)
 			}
 			sort.Strings(userKeys)
-			varName := "ssh_users"
-			if platform == "gcp" {
-				varName = "gce_ssh_users"
-			}
 			write("")
-			write(varName + " = {")
+			write("ssh_users = {")
+			for _, k := range userKeys {
+				write(fmt.Sprintf("  %s = %s", formatHCLVal(k), formatHCLVal(cfg.SSHUsers[k])))
+			}
+			write("}")
+		}
+		// GCP gce_ssh_users: only write if no primary SSH key (otherwise the merged
+		// block written later covers all users including additional ones).
+		if len(cfg.SSHUsers) > 0 && platform == "gcp" && cfg.SSHPublicKeyPath == "" {
+			userKeys := make([]string, 0, len(cfg.SSHUsers))
+			for k := range cfg.SSHUsers {
+				userKeys = append(userKeys, k)
+			}
+			sort.Strings(userKeys)
+			write("")
+			write("gce_ssh_users = {")
 			for _, k := range userKeys {
 				write(fmt.Sprintf("  %s = %s", formatHCLVal(k), formatHCLVal(cfg.SSHUsers[k])))
 			}
@@ -800,6 +820,44 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		writeOptStr("arbiter_type", cfg.ArbiterType)
 		writeOptStr("replsetsvr_type", cfg.ReplsetSvrType)
 		writeOptInt("replsetsvr_volume_size", cfg.ReplsetSvrVolumeSize)
+
+		// Machine image: write as a map from region to image ID so it overrides
+		// the hardcoded default in variables.tf.  For Azure the image is an object
+		// (publisher/offer/sku) so we leave it to its Terraform default.
+		regionKey := cfg.Region
+		if platform == "azure" {
+			regionKey = cfg.Location
+		}
+		if cfg.MachineImage != "" && regionKey != "" && platform != "azure" {
+			write("")
+			write("image = {")
+			write(fmt.Sprintf("  %s = %s", formatHCLVal(regionKey), formatHCLVal(cfg.MachineImage)))
+			write("}")
+		}
+
+		// For GCP: if a primary SSH key path is configured, inject the default
+		// SSH user into gce_ssh_users so that both Terraform provisioning and
+		// Ansible can reach instances with that user.
+		if platform == "gcp" && cfg.SSHPublicKeyPath != "" && cfg.MySSHUser != "" {
+			// Merge primary user into the users map (primary user takes precedence
+			// over any duplicate entry in the additional-users section).
+			merged := map[string]string{}
+			for k, v := range cfg.SSHUsers {
+				merged[k] = v
+			}
+			merged[cfg.MySSHUser] = cfg.SSHPublicKeyPath
+			mergedKeys := make([]string, 0, len(merged))
+			for k := range merged {
+				mergedKeys = append(mergedKeys, k)
+			}
+			sort.Strings(mergedKeys)
+			write("")
+			write("gce_ssh_users = {")
+			for _, k := range mergedKeys {
+				write(fmt.Sprintf("  %s = %s", formatHCLVal(k), formatHCLVal(merged[k])))
+			}
+			write("}")
+		}
 	} else {
 		// Docker-only
 		writeOptStr("network_name", cfg.NetworkName)
@@ -1219,6 +1277,269 @@ func apiRegionsHandler(w http.ResponseWriter, r *http.Request) {
 		"regions": getCloudRegions(platform),
 	})
 }
+
+// ─── SSH key upload ───────────────────────────────────────────────────────────
+
+// POST /api/upload-ssh-key/{platform}
+// Accepts a multipart file upload (field name "ssh_key_file") and saves it
+// into terraform/{platform}/ so Terraform's file() function can find it.
+// Returns {"path": "<filename>"} — just the filename, relative to the
+// Terraform working directory.
+func apiUploadSSHKeyHandler(w http.ResponseWriter, r *http.Request) {
+	platform := r.PathValue("platform")
+	if !validPlatform(platform) || platform == "docker" {
+		jsonError(w, 400, "invalid platform")
+		return
+	}
+	if err := r.ParseMultipartForm(1 << 20); err != nil { // 1 MB max
+		jsonError(w, 400, "failed to parse upload: "+err.Error())
+		return
+	}
+	file, header, err := r.FormFile("ssh_key_file")
+	if err != nil {
+		jsonError(w, 400, "ssh_key_file field missing: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	// Sanitise the filename – allow only safe characters to prevent path traversal.
+	name := safeFilenameRe.ReplaceAllString(filepath.Base(header.Filename), "_")
+	if name == "" {
+		name = "id_rsa.pub"
+	}
+
+	destDir := filepath.Clean(filepath.Join(terraformDir, platform))
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		jsonError(w, 500, "cannot create upload dir: "+err.Error())
+		return
+	}
+	destPath := filepath.Clean(filepath.Join(destDir, name))
+	// Restrict to destDir to prevent path-traversal (sanitised name contains no '/')
+	// but verify with Clean-normalised paths as an extra safety measure.
+	if filepath.Dir(destPath) != destDir {
+		jsonError(w, 400, "invalid filename")
+		return
+	}
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		jsonError(w, 500, "read failed: "+err.Error())
+		return
+	}
+	if err := os.WriteFile(destPath, data, 0600); err != nil {
+		jsonError(w, 500, "write failed: "+err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]string{"path": name})
+}
+
+// ─── Cloud machine images ─────────────────────────────────────────────────────
+
+// CloudImage represents a single machine image available for a region.
+type CloudImage struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// GET /api/images/{platform}?region={region}
+// Returns Linux images available in the given region, grouped by OS family.
+// The response shape is {"images": {"OS Family": [{"id":..,"name":..}, ...], ...}}
+func apiImagesHandler(w http.ResponseWriter, r *http.Request) {
+	platform := r.PathValue("platform")
+	region := r.URL.Query().Get("region")
+	if region == "" {
+		region = r.URL.Query().Get("location") // Azure uses 'location'
+	}
+	images, err := getCloudImages(platform, region)
+	if err != nil {
+		// Return empty groups instead of an error so the UI stays functional.
+		slog.Warn("cloud images fetch failed", "platform", platform, "region", region, "err", err)
+		images = map[string][]CloudImage{}
+	}
+	writeJSON(w, 200, map[string]interface{}{"images": images})
+}
+
+// getCloudImages queries the relevant CLI for Linux images in the given region.
+func getCloudImages(platform, region string) (map[string][]CloudImage, error) {
+	cacheKey := fmt.Sprintf("images:%s:%s", platform, region)
+	if v, ok := cacheGet(cacheKey); ok {
+		return v.(map[string][]CloudImage), nil
+	}
+	var result map[string][]CloudImage
+	var err error
+	switch platform {
+	case "aws":
+		result, err = getAWSImages(region)
+	case "gcp":
+		result, err = getGCPImages(region)
+	case "azure":
+		result, err = getAzureImages(region)
+	default:
+		return map[string][]CloudImage{}, nil
+	}
+	if err != nil {
+		return map[string][]CloudImage{}, err
+	}
+	cacheSet(cacheKey, result)
+	return result, nil
+}
+
+// awsImageOwner maps an OS group label to the AWS AMI owner account ID and
+// name filter used to retrieve the most-recent images of that type.
+var awsImageOwners = []struct {
+	Group       string
+	OwnerID     string
+	NamePattern string
+}{
+	{"Amazon Linux 2023", "137112412989", "al2023-ami-2023*x86_64"},
+	{"Amazon Linux 2", "137112412989", "amzn2-ami-hvm-*-x86_64-gp2"},
+	{"Ubuntu 24.04 LTS", "099720109477", "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"},
+	{"Ubuntu 22.04 LTS", "099720109477", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	{"CentOS Stream 9", "125523088429", "CentOS Stream 9*x86_64*"},
+	{"Rocky Linux 9", "792107900819", "Rocky-9-EC2*x86_64*"},
+	{"Debian 12", "136693071363", "debian-12-amd64-*"},
+}
+
+func getAWSImages(region string) (map[string][]CloudImage, error) {
+	result := map[string][]CloudImage{}
+	for _, o := range awsImageOwners {
+		args := []string{
+			"ec2", "describe-images",
+			"--region", region,
+			"--owners", o.OwnerID,
+			"--filters",
+			fmt.Sprintf("Name=name,Values=%s", o.NamePattern),
+			"Name=state,Values=available",
+			"Name=architecture,Values=x86_64",
+			// Only public images, no paid marketplace entries
+			"Name=is-public,Values=true",
+			"--query",
+			"reverse(sort_by(Images,&CreationDate))[:5].{id:ImageId,name:Name,desc:Description}",
+			"--output", "json",
+		}
+		out, err := execOutput("aws", args...)
+		if err != nil {
+			slog.Warn("aws describe-images failed", "group", o.Group, "region", region, "err", err)
+			continue
+		}
+		var imgs []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+			Desc string `json:"desc"`
+		}
+		if err := json.Unmarshal([]byte(out), &imgs); err != nil {
+			continue
+		}
+		group := make([]CloudImage, 0, len(imgs))
+		for _, img := range imgs {
+			group = append(group, CloudImage{ID: img.ID, Name: img.Name, Description: img.Desc})
+		}
+		if len(group) > 0 {
+			result[o.Group] = group
+		}
+	}
+	return result, nil
+}
+
+// gcpImageProjects maps OS family to a GCP image project name.
+var gcpImageProjects = []struct {
+	Group   string
+	Project string
+	Family  string
+}{
+	{"CentOS Stream 9", "centos-cloud", "centos-stream-9"},
+	{"Debian 12", "debian-cloud", "debian-12"},
+	{"Ubuntu 24.04 LTS", "ubuntu-os-cloud", "ubuntu-2404-lts-amd64"},
+	{"Ubuntu 22.04 LTS", "ubuntu-os-cloud", "ubuntu-2204-lts"},
+	{"Rocky Linux 9", "rocky-linux-cloud", "rocky-linux-9"},
+	{"RHEL 9", "rhel-cloud", "rhel-9"},
+}
+
+func getGCPImages(region string) (map[string][]CloudImage, error) {
+	result := map[string][]CloudImage{}
+	for _, p := range gcpImageProjects {
+		args := []string{
+			"compute", "images", "list",
+			"--project", p.Project,
+			"--filter", fmt.Sprintf("family=%s status=READY", p.Family),
+			"--sort-by", "~creationTimestamp",
+			"--limit", "5",
+			"--format", "json(selfLink,name,description)",
+		}
+		out, err := execOutput("gcloud", args...)
+		if err != nil {
+			slog.Warn("gcloud images list failed", "group", p.Group, "err", err)
+			continue
+		}
+		var imgs []struct {
+			SelfLink    string `json:"selfLink"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		}
+		if err := json.Unmarshal([]byte(out), &imgs); err != nil {
+			continue
+		}
+		group := make([]CloudImage, 0, len(imgs))
+		for _, img := range imgs {
+			group = append(group, CloudImage{ID: img.SelfLink, Name: img.Name, Description: img.Description})
+		}
+		if len(group) > 0 {
+			result[p.Group] = group
+		}
+	}
+	return result, nil
+}
+
+// azureImagePublishers lists popular Linux image publishers for Azure.
+var azureImagePublishers = []struct {
+	Group     string
+	Publisher string
+	Offer     string
+}{
+	{"Ubuntu 24.04 LTS", "Canonical", "ubuntu-24_04-lts"},
+	{"Ubuntu 22.04 LTS", "Canonical", "0001-com-ubuntu-server-jammy"},
+	{"Debian 12", "Debian", "debian-12"},
+	{"AlmaLinux 9", "almalinux", "almalinux-x86_64"},
+	{"Rocky Linux 9", "resf", "rockylinux-x86_64"},
+}
+
+func getAzureImages(location string) (map[string][]CloudImage, error) {
+	result := map[string][]CloudImage{}
+	for _, pub := range azureImagePublishers {
+		args := []string{
+			"vm", "image", "list",
+			"--location", location,
+			"--publisher", pub.Publisher,
+			"--offer", pub.Offer,
+			"--all",
+			"--query", "reverse(sort_by([?osType=='Linux'],&version))[:5].{id:urn,name:skus,desc:offer}",
+			"--output", "json",
+		}
+		out, err := execOutput("az", args...)
+		if err != nil {
+			slog.Warn("az vm image list failed", "group", pub.Group, "location", location, "err", err)
+			continue
+		}
+		var imgs []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+			Desc string `json:"desc"`
+		}
+		if err := json.Unmarshal([]byte(out), &imgs); err != nil {
+			continue
+		}
+		group := make([]CloudImage, 0, len(imgs))
+		for _, img := range imgs {
+			group = append(group, CloudImage{ID: img.ID, Name: img.Name, Description: img.Desc})
+		}
+		if len(group) > 0 {
+			result[pub.Group] = group
+		}
+	}
+	return result, nil
+}
+
 
 // getCloudRegions queries the cloud CLI for available regions, with a static
 // fallback for each platform when the CLI is not available or returns an error.
@@ -2037,6 +2358,8 @@ func main() {
 	// API
 	mux.HandleFunc("GET /api/versions", apiVersionsHandler)
 	mux.HandleFunc("GET /api/regions/{platform}", apiRegionsHandler)
+	mux.HandleFunc("GET /api/images/{platform}", apiImagesHandler)
+	mux.HandleFunc("POST /api/upload-ssh-key/{platform}", apiUploadSSHKeyHandler)
 	mux.HandleFunc("POST /api/environment", saveEnvironmentHandler)
 	mux.HandleFunc("DELETE /api/environment/{env_id}", deleteEnvironmentHandler)
 	mux.HandleFunc("DELETE /api/environments/deleted", purgeDeletedEnvironmentsHandler)

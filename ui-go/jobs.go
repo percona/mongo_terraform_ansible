@@ -98,10 +98,10 @@ func runJob(jobID string, cmd []string, cwd string, extraEnv map[string]string, 
 
 // runProcess executes the given command and pipes stdout+stderr to logFile.
 // Returns "success", "failed:N", or "error".
-func runProcess(jobID string, name string, args []string, env []string, cwd string, logFile *os.File) string {
+func runProcess(jobID string, name string, args []string, envVars []string, cwd string, logFile *os.File) string {
 	proc := execCommand(name, args...)
 	proc.Dir = cwd
-	proc.Env = env
+	proc.Env = envVars
 	proc.Stdout = logFile
 	proc.Stderr = logFile
 	if err := proc.Start(); err != nil {

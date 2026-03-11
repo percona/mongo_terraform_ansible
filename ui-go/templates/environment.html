@@ -91,9 +91,6 @@
     {{if .SortedReplsets}}
     <div class="summary-item"><label>Replica Sets</label><value>{{len .SortedReplsets}}</value></div>
     {{end}}
-    {{if .Env.Config.PmmPort}}
-    <div class="summary-item"><label>PMM Port</label><value>{{.Env.Config.PmmPort}}</value></div>
-    {{end}}
     {{if .Env.Config.ShardsvrType}}
     <div class="summary-item"><label>Shard Svr Type</label><value>{{.Env.Config.ShardsvrType}}</value></div>
     {{end}}
@@ -363,7 +360,12 @@ function toggleOutput() {
 
 function setProgressLabel(action) {
   const lbl = document.getElementById('progress-label');
-  if (lbl) lbl.textContent = action ? `Running: ${action}…` : 'Running…';
+  if (!lbl) return;
+  const labels = {
+    deploy: 'Deploying', provision: 'Provisioning', configure: 'Installing',
+    restart: 'Restarting', stop: 'Stopping', reset: 'Resetting', destroy: 'Destroying',
+  };
+  lbl.textContent = action ? `${labels[action] || ('Running: ' + action)}…` : 'Running…';
 }
 
 function showTerminalSection(action) {
@@ -390,8 +392,13 @@ function setStatus(status) {
   const label = document.getElementById('status-label');
   // Pass status as CSS class suffix (colon-suffix stripped; underscores kept for _in_progress)
   const clean = status.replace(/:.+$/, '');
-  dot.className   = `status-dot status-${clean}`;
-  label.textContent = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  dot.className = `status-dot status-${clean}`;
+  // Map action-based statuses to user-friendly labels matching the button text.
+  const overrides = {
+    'configure_in_progress': 'Installing…',
+    'configure_failed': 'Install Failed',
+  };
+  label.textContent = overrides[status] || status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function getStatusBadgeClass(status) {

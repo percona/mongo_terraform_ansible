@@ -83,8 +83,26 @@ return tag == "latest"
 }
 return stored == prefix+":"+tag || stored == tag
 },
-// title-cases a status string.
+// Extract the version tag from a Docker image string (the part after the last
+// colon).  Returns "—" for an empty input.
+"imageTag": func(image string) string {
+if image == "" {
+return "—"
+}
+if idx := strings.LastIndex(image, ":"); idx >= 0 && idx < len(image)-1 {
+return image[idx+1:]
+}
+return image
+},
+// title-cases a status string, with human-friendly overrides for action
+// statuses that differ from the button label (e.g. "configure" → "Install").
 "statusLabel": func(s string) string {
+switch s {
+case "configure_in_progress":
+return "Installing…"
+case "configure_failed":
+return "Install Failed"
+}
 words := strings.ReplaceAll(s, "_", " ")
 var out []rune
 capNext := true

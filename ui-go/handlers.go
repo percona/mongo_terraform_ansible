@@ -389,6 +389,7 @@ func getHostsHandler(w http.ResponseWriter, r *http.Request) {
 		hosts, serviceURLs, mongoConns, msg = collectDockerHosts(envID, env)
 	} else {
 		hosts, mongoConns, msg = collectCloudHosts(envID, env)
+		serviceURLs = configServiceURLs(envID, env)
 	}
 
 	writeJSON(w, 200, map[string]interface{}{
@@ -786,5 +787,5 @@ func jobLogHandler(w http.ResponseWriter, r *http.Request) {
 	if status == "" {
 		status = "unknown"
 	}
-	writeJSON(w, 200, map[string]string{"log": string(content), "status": status})
+	writeJSON(w, 200, map[string]string{"log": stripAnsi(string(content)), "status": status})
 }

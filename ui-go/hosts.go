@@ -398,8 +398,10 @@ func cloudPMMIP(envID string, env *Environment) string {
 			continue
 		}
 		hosts := parseInventoryHosts(string(content), "pmm", sshUser)
-		if len(hosts) > 0 && hosts[0].IP != "" {
-			return hosts[0].IP
+		for _, h := range hosts {
+			if h.Role == "pmm" && h.IP != "" {
+				return h.IP
+			}
 		}
 	}
 	return ""

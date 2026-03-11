@@ -49,10 +49,10 @@
   <button class="btn btn-outline" onclick="showLastLogs()"
           title="View the output log from the last action run">📋 View Logs</button>
   {{end}}
-  {{range .ServiceURLs}}
+  <span id="service-url-buttons">{{range .ServiceURLs}}
   <a class="btn btn-outline" href="{{.URL}}" target="_blank" rel="noopener noreferrer"
-     title="Open {{.Label}} in a new tab">🔗 {{.Label}}</a>
-  {{end}}
+     title="{{.URL}}">🔗 {{.Label}}</a>
+  {{end}}</span>
 </div>
 
 {{if ne .Env.Platform "docker"}}
@@ -558,11 +558,24 @@ async function refreshHosts() {
   await loadHosts();
 }
 
+function updateServiceURLButtons(serviceUrls) {
+  // Dynamically replaces the service URL link buttons (PMM, MinIO console, etc.)
+  // in the action bar with fresh data from the hosts API response.  This keeps
+  // the buttons up-to-date after a deploy without requiring a full page reload.
+  const container = document.getElementById('service-url-buttons');
+  if (!container || !serviceUrls || serviceUrls.length === 0) return;
+  container.innerHTML = serviceUrls.map(svc =>
+    `<a class="btn btn-outline" href="${escHtml(svc.url)}" target="_blank" rel="noopener noreferrer" title="${escHtml(svc.url)}">🔗 ${escHtml(svc.label)}</a>`
+  ).join('\n');
+}
+
 function renderHosts(data) {
   const section = document.getElementById('hosts-section');
   const content = document.getElementById('hosts-content');
   const hosts = data.hosts || [];
   const mongoConns = data.mongo_conns || [];
+
+  updateServiceURLButtons(data.service_urls || []);
 
   if (!hosts.length && !mongoConns.length) {
     const msg = data.message || 'No host information available yet. Run Deploy first.';

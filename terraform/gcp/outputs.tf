@@ -29,6 +29,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       env_tag                  = each.value.env_tag
 
       hostname_pmm             = var.enable_pmm ? local.pmm_host : ""
+      ip_pmm                   = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
       bucket                   = google_storage_bucket.mongo-backups.name
       access_key               = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key        = google_storage_hmac_key.mongo-backup-service-account.secret 
@@ -82,6 +83,7 @@ resource "local_file" "AnsibleInventoryRS" {
       rs_name                  = each.value.rs_name
       env_tag                  = each.value.env_tag
       hostname_pmm             = var.enable_pmm ? local.pmm_host : ""
+      ip_pmm                   = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
       bucket                   = google_storage_bucket.mongo-backups.name
       access_key               = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key        = google_storage_hmac_key.mongo-backup-service-account.secret

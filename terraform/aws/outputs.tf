@@ -25,6 +25,7 @@ resource "local_file" "AnsibleInventoryCluster" {
    
     my_ssh_user              = var.my_ssh_user
     hostname_pmm             = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
+    ip_pmm                   = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
     bucket                   = aws_s3_bucket.mongo_backups.bucket
     region                   = aws_s3_bucket.mongo_backups.region
     endpointUrl              = local.storage_endpoint
@@ -84,6 +85,7 @@ resource "local_file" "AnsibleInventoryRS" {
     
     region                   = aws_s3_bucket.mongo_backups.region
     hostname_pmm             = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
+    ip_pmm                   = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
     bucket                   = aws_s3_bucket.mongo_backups.bucket
     endpointUrl              = local.storage_endpoint
 

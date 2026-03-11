@@ -26,7 +26,7 @@ ${hostname_mongos[index]} ansible_host=${ip_mongos[index]}
 
 %{ if hostname_pmm != "" ~}
 [pmm]
-${hostname_pmm} 
+${hostname_pmm} ansible_host=${ip_pmm}
 
 %{ endif ~}
 [all:vars]

@@ -30,6 +30,7 @@ resource "local_file" "AnsibleInventoryCluster" {
 
       location                 = each.value.location
       hostname_pmm             = var.enable_pmm ? local.pmm_host : ""
+      ip_pmm                   = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
       bucket                   = azurerm_storage_container.mongo_backups_container.name
       endpointUrl              = local.storage_endpoint
       key                      = azurerm_storage_account.mongo_backups.primary_access_key
@@ -85,6 +86,7 @@ resource "local_file" "AnsibleInventoryRS" {
       env_tag                  = each.value.env_tag
       location                 = each.value.location
       hostname_pmm             = var.enable_pmm ? local.pmm_host : ""
+      ip_pmm                   = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
       bucket                   = azurerm_storage_container.mongo_backups_container.name
       endpointUrl              = local.storage_endpoint
       key                      = azurerm_storage_account.mongo_backups.primary_access_key

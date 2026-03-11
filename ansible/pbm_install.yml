@@ -47,7 +47,7 @@
     - name: Install PBM package files from repository
       block:
         - name: Enable PBM repository
-          shell: "/usr/bin/percona-release enable pbm release"
+          shell: "/usr/bin/percona-release enable {{ pbm_release | default('pbm') }} release"
 
         - name: Install pbm packages from repository
           package:

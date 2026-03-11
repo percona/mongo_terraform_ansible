@@ -11,7 +11,7 @@ ${hostname_arbiters[arb_index]} ansible_host=${ip_arbiters[arb_index]} arbiter=T
 
 %{ if hostname_pmm != "" ~}
 [pmm]
-${hostname_pmm} 
+${hostname_pmm} ansible_host=${ip_pmm}
 
 %{ endif ~}
 [all:vars]

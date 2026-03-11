@@ -73,6 +73,25 @@
 </div>
 {{end}}
 
+<!-- Terminal output (shown when a job is running or user has triggered an action) -->
+<div class="terminal-section" id="terminal-section" style="display:none">
+  <div class="terminal-header">
+    <h2>Output</h2>
+    <div class="terminal-controls">
+      <span id="job-status-badge" class="badge"></span>
+      <button class="btn btn-warning btn-sm" id="btn-cancel-job" onclick="cancelJob()" style="display:none" title="Cancel the running job">✖ Cancel</button>
+      <button class="btn btn-outline btn-sm" id="btn-toggle-output" onclick="toggleOutput()">▼ Show Output</button>
+      <button class="btn btn-outline btn-sm" onclick="clearTerminal()">Clear</button>
+    </div>
+  </div>
+  <!-- blinking in-progress indicator (shown when output is hidden and a job is running) -->
+  <div id="progress-indicator" class="progress-indicator" style="display:none">
+    <span class="progress-dot"></span>
+    <span id="progress-label">Running…</span>
+  </div>
+  <div class="terminal" id="terminal" style="display:none"></div>
+</div>
+
 <!-- Configuration summary -->
 <div class="config-summary">
   <h2>Configuration Summary</h2>
@@ -158,25 +177,6 @@
   <div id="hosts-content">
     <p style="color:var(--color-muted)">Loading…</p>
   </div>
-</div>
-
-<!-- Terminal output (collapsed by default; expanded when user clicks "Show Output") -->
-<div class="terminal-section" id="terminal-section" style="display:none">
-  <div class="terminal-header">
-    <h2>Output</h2>
-    <div class="terminal-controls">
-      <span id="job-status-badge" class="badge"></span>
-      <button class="btn btn-warning btn-sm" id="btn-cancel-job" onclick="cancelJob()" style="display:none" title="Cancel the running job">✖ Cancel</button>
-      <button class="btn btn-outline btn-sm" id="btn-toggle-output" onclick="toggleOutput()">▼ Show Output</button>
-      <button class="btn btn-outline btn-sm" onclick="clearTerminal()">Clear</button>
-    </div>
-  </div>
-  <!-- blinking in-progress indicator (shown when output is hidden and a job is running) -->
-  <div id="progress-indicator" class="progress-indicator" style="display:none">
-    <span class="progress-dot"></span>
-    <span id="progress-label">Running…</span>
-  </div>
-  <div class="terminal" id="terminal" style="display:none"></div>
 </div>
 
 <!-- Last-job logs modal -->
@@ -507,7 +507,11 @@ function allButtons() {
 }
 
 function setButtonsDisabled(disabled) {
-  allButtons().forEach(btn => { btn.disabled = disabled; });
+  // Exclude tfvars/inventory buttons so the user can still view them while a job runs.
+  const viewOnlyIds = new Set(['btn-tfvars', 'btn-inventory']);
+  allButtons().forEach(btn => {
+    if (!viewOnlyIds.has(btn.id)) btn.disabled = disabled;
+  });
   // Grey-out the Edit Configuration link while an action is running.
   const editLink = document.getElementById('edit-config-link');
   if (editLink) {

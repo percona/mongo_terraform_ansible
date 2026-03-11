@@ -650,6 +650,7 @@ tr:last-child td { border-bottom: none; }
 }
 .env-actions-cell { white-space: nowrap; }
 .env-actions-cell .btn { margin-right: 0.3rem; }
+.env-nowrap { white-space: nowrap; }
 .status-label-sm { font-size: 0.8rem; }
 .text-muted { color: var(--color-muted); }
 .btn-danger-outline {

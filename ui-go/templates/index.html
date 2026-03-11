@@ -16,7 +16,7 @@
   <table class="env-table">
     <thead>
       <tr>
-        <th>ID</th>
+        <th>Name</th>
         <th>Platform</th>
         <th>Status</th>
         <th>Sharded Clusters</th>
@@ -43,9 +43,9 @@
         </td>
         <td>{{len .Env.Config.Clusters}}</td>
         <td>{{len .Env.Config.Replsets}}</td>
-        <td><small>{{strDefault .Env.Config.MongoRelease "psmdb-80"}}</small></td>
-        <td><small>{{strDefault .Env.Config.PbmRelease "—"}}</small></td>
-        <td><small>{{imageTag .Env.Config.PmmImage}}</small></td>
+        <td class="env-nowrap"><small>{{strDefault .Env.Config.MongoRelease "psmdb-80"}}</small></td>
+        <td class="env-nowrap"><small>{{strDefault .Env.Config.PbmRelease "—"}}</small></td>
+        <td class="env-nowrap"><small>{{imageTag .Env.Config.PmmImage}}</small></td>
         <td>
           {{if .Env.Config.Region}}{{.Env.Config.Region}}{{else if .Env.Config.Location}}{{.Env.Config.Location}}{{else}}<span class="text-muted">—</span>{{end}}
         </td>

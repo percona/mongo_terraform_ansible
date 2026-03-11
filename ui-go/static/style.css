@@ -432,14 +432,25 @@ a:hover { text-decoration: underline; }
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.status-bar-row {
   padding: 0.8rem 1.2rem;
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  margin-bottom: 1.5rem;
 }
 .status-label { font-weight: 500; }
 .status-meta { margin-left: auto; color: var(--color-muted); font-size: 0.8rem; }
+.status-job-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 1rem;
+}
+.status-progress-label { font-size: 0.8rem; color: var(--color-muted); }
+.status-bar .terminal { border-top: 1px solid var(--color-border); }
 
 .action-buttons {
   display: flex;
@@ -503,22 +514,6 @@ td {
 tr:last-child td { border-bottom: none; }
 
 /* ─── Terminal ───────────────────────────────────────────────────── */
-.terminal-section {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-.terminal-header {
-  padding: 0.7rem 1rem;
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--color-surface2);
-}
-.terminal-header h2 { font-size: 0.9rem; margin: 0; }
-.terminal-controls { display: flex; align-items: center; gap: 0.6rem; }
 .terminal {
   background: #0a0c10;
   padding: 1rem;
@@ -531,15 +526,6 @@ tr:last-child td { border-bottom: none; }
 }
 .terminal-line { white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
 
-/* Blinking in-progress indicator shown when output panel is collapsed */
-.progress-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-  color: var(--color-muted);
-}
 .progress-dot {
   width: 10px;
   height: 10px;

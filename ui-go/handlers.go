@@ -637,12 +637,24 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	startedAt := time.Now().UTC().Format(time.RFC3339)
+
 	onComplete := func(status string) {
 		st, _ := loadState()
 		e, exists := st[envID]
 		if !exists {
 			return
 		}
+		// Record the event in the environment's history.
+		outcomeStatus := "success"
+		if status != "success" {
+			outcomeStatus = "failed"
+		}
+		e.History = append(e.History, HistoryEvent{
+			Action:    action,
+			StartedAt: startedAt,
+			Status:    outcomeStatus,
+		})
 		if action == "destroy" {
 			if status == "success" {
 				e.Status = "deleted"
@@ -686,6 +698,22 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("action dispatched", "action", action, "env", envID, "platform", platform, "job", jobID)
 	writeJSON(w, 200, map[string]string{"job_id": jobID, "status": env.Status})
+}
+
+// GET /api/environment/{env_id}/history
+func envHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	envID := r.PathValue("env_id")
+	state, _ := loadState()
+	env, ok := state[envID]
+	if !ok {
+		jsonError(w, 404, "environment not found")
+		return
+	}
+	history := env.History
+	if history == nil {
+		history = []HistoryEvent{}
+	}
+	writeJSON(w, 200, history)
 }
 
 // GET /api/environment/{env_id}/status

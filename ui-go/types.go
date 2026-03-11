@@ -134,14 +134,22 @@ type Config struct {
 	AnsibleVars map[string]string `json:"ansible_vars,omitempty"`
 }
 
+// HistoryEvent records a single user-initiated action and its outcome.
+type HistoryEvent struct {
+	Action    string `json:"action"`
+	StartedAt string `json:"started_at"`
+	Status    string `json:"status"` // "success", "failed", "cancelled"
+}
+
 // Environment is one record in the state file.
 type Environment struct {
-	Platform  string    `json:"platform"`
-	Config    Config    `json:"config"`
-	Status    string    `json:"status"`
-	CreatedAt string    `json:"created_at"`
-	UpdatedAt string    `json:"updated_at"`
-	LastJobID string    `json:"last_job_id,omitempty"`
+	Platform  string         `json:"platform"`
+	Config    Config         `json:"config"`
+	Status    string         `json:"status"`
+	CreatedAt string         `json:"created_at"`
+	UpdatedAt string         `json:"updated_at"`
+	LastJobID string         `json:"last_job_id,omitempty"`
+	History   []HistoryEvent `json:"history,omitempty"`
 }
 
 // ─── Named pair helpers (sorted map iteration for templates) ──────────────────

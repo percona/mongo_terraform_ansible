@@ -619,7 +619,7 @@ tr:last-child td { border-bottom: none; }
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  overflow: hidden;
+  overflow-x: auto;
 }
 .env-table {
   width: 100%;
@@ -839,3 +839,37 @@ tr:last-child td { border-bottom: none; }
   color: var(--color-text);
   flex: 1;
 }
+
+/* ─── Site footer ─────────────────────────────────────────────────── */
+.site-footer {
+  text-align: center;
+  padding: 1.5rem 0;
+  margin-top: 2rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+.site-footer a { color: var(--color-muted); text-decoration: underline; }
+.site-footer a:hover { color: var(--color-text); }
+
+/* ─── History modal table ─────────────────────────────────────────── */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.history-table th {
+  background: var(--color-surface2);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+.history-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+.history-table tr:last-child td { border-bottom: none; }

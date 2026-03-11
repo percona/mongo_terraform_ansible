@@ -271,6 +271,7 @@ mux.HandleFunc("DELETE /api/environments/deleted", purgeDeletedEnvironmentsHandl
 mux.HandleFunc("GET /api/environment/{env_id}/tfvars", getTfvarsHandler)
 mux.HandleFunc("GET /api/environment/{env_id}/inventory", getInventoryHandler)
 mux.HandleFunc("GET /api/environment/{env_id}/hosts", getHostsHandler)
+mux.HandleFunc("GET /api/environment/{env_id}/history", envHistoryHandler)
 mux.HandleFunc("GET /api/environment/{env_id}/status", envStatusHandler)
 mux.HandleFunc("POST /api/environment/{env_id}/action", environmentActionHandler)
 mux.HandleFunc("GET /api/job/{job_id}/status", jobStatusHandler)

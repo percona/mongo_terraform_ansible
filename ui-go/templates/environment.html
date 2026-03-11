@@ -49,6 +49,8 @@
   <button class="btn btn-outline" onclick="showLastLogs()"
           title="View the output log from the last action run">📋 View Logs</button>
   {{end}}
+  <button class="btn btn-outline" onclick="showHistory()"
+          title="View the history of actions performed on this environment">📜 History</button>
   <span id="service-url-buttons">{{range .ServiceURLs}}
   <a class="btn btn-outline" href="{{.URL}}" target="_blank" rel="noopener noreferrer"
      title="{{.URL}}">🔗 {{.Label}}</a>
@@ -204,6 +206,33 @@
   </div>
 </div>
 
+<!-- Re-run confirmation modal (deploy/provision/install on running env) -->
+<div class="modal-backdrop" id="rerun-modal" style="display:none">
+  <div class="modal">
+    <h2>⚠️ Confirm Action</h2>
+    <p id="rerun-modal-text"></p>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="rerun-confirm-btn">Proceed</button>
+      <button class="btn btn-outline" onclick="closeRerunModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- History modal -->
+<div class="modal-backdrop" id="history-modal" style="display:none" onclick="closeHistoryModal(event)">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>📜 Action History</h2>
+    </div>
+    <div id="history-content">
+      <p style="color:var(--color-muted)">Loading…</p>
+    </div>
+    <div class="modal-actions" style="margin-top:1rem">
+      <button class="btn btn-outline" onclick="closeHistoryModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- tfvars preview modal -->
 <div class="modal-backdrop" id="tfvars-modal" style="display:none" onclick="closeTfvarsModal(event)">
   <div class="modal modal-wide">
@@ -241,6 +270,62 @@ let currentJobId = null;
 
 function confirmDestroy() { document.getElementById('destroy-modal').style.display = 'flex'; }
 function closeDestroyModal() { document.getElementById('destroy-modal').style.display = 'none'; }
+
+// Re-run confirmation modal (deploy/provision/install on running env).
+let pendingAction = null;
+function openRerunModal(action, labelText) {
+  pendingAction = action;
+  document.getElementById('rerun-modal-text').textContent = labelText;
+  document.getElementById('rerun-confirm-btn').onclick = () => {
+    closeRerunModal();
+    executeAction(pendingAction);
+    pendingAction = null;
+  };
+  document.getElementById('rerun-modal').style.display = 'flex';
+}
+function closeRerunModal() {
+  document.getElementById('rerun-modal').style.display = 'none';
+  pendingAction = null;
+}
+
+async function showHistory() {
+  const modal = document.getElementById('history-modal');
+  const container = document.getElementById('history-content');
+  container.innerHTML = '<p style="color:var(--color-muted)">Loading…</p>';
+  modal.style.display = 'flex';
+  try {
+    const data = await apiFetch(`/api/environment/${ENV_ID}/history`);
+    if (!data || data.length === 0) {
+      container.innerHTML = '<p style="color:var(--color-muted)">No actions have been performed yet.</p>';
+      return;
+    }
+    const actionLabels = {
+      deploy: 'Deploy', provision: 'Provision', configure: 'Install',
+      destroy: 'Destroy', restart: 'Restart', stop: 'Stop', reset: 'Reset',
+    };
+    // Show newest first.
+    const rows = [...data].reverse().map(e => {
+      const label = actionLabels[e.action] || e.action;
+      const badge = e.status === 'success' ? 'badge-success' : 'badge-danger';
+      return `<tr>
+        <td>${escHtml(e.started_at)}</td>
+        <td>${escHtml(label)}</td>
+        <td><span class="badge ${badge}">${escHtml(e.status)}</span></td>
+      </tr>`;
+    }).join('');
+    container.innerHTML = `<table class="history-table">
+      <thead><tr><th>Started At</th><th>Action</th><th>Result</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  } catch (err) {
+    container.innerHTML = `<p style="color:var(--color-muted)">Error: ${escHtml(err.message)}</p>`;
+  }
+}
+function closeHistoryModal(evt) {
+  if (!evt || evt.target === document.getElementById('history-modal')) {
+    document.getElementById('history-modal').style.display = 'none';
+  }
+}
 
 async function showTfvars() {
   const modal = document.getElementById('tfvars-modal');
@@ -388,6 +473,7 @@ function hideProgressIndicator() {
 }
 
 function setStatus(status) {
+  currentStatus = status;
   const dot   = document.getElementById('status-dot');
   const label = document.getElementById('status-label');
   // Pass status as CSS class suffix (colon-suffix stripped; underscores kept for _in_progress)
@@ -448,7 +534,25 @@ async function refreshEnvStatus() {
   } catch (_) { /* ignore – status bar keeps the last known value */ }
 }
 
+// Current status tracked client-side so we can gate confirmations.
+let currentStatus = {{json .Env.Status}};
+
+// Actions that require confirmation when environment is already running.
+const CONFIRM_ACTIONS = new Set(['deploy', 'provision', 'configure']);
+
 async function runAction(action) {
+  // For potentially destructive re-run actions on a running environment, ask
+  // for confirmation before proceeding.
+  if (CONFIRM_ACTIONS.has(action) && currentStatus === 'running') {
+    const actionLabels = { deploy: 'Deploy', provision: 'Provision', configure: 'Install' };
+    const label = actionLabels[action] || action;
+    openRerunModal(action, `The environment is currently running. Are you sure you want to run "${label}" again? This may overwrite existing data.`);
+    return;
+  }
+  executeAction(action);
+}
+
+async function executeAction(action) {
   if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
   showTerminalSection(action);
   clearTerminal();

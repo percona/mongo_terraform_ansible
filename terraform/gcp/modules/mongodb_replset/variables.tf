@@ -93,11 +93,9 @@ variable "arbiter_port" {
 #############
 
 variable "image" {
-  description = "Available images by region"
-  default = {
-    northamerica-northeast1 = "projects/centos-cloud/global/images/centos-stream-9-v20231115"
-    #northamerica-northeast1 = "ubuntu-2404-noble-amd64-v20250527"
-  }
+  description = "GCP machine image for all instances"
+  type        = string
+  default     = "projects/centos-cloud/global/images/centos-stream-9-v20231115"
 }
 
 # Save money by running spot instances but they may be terminated by google at any time

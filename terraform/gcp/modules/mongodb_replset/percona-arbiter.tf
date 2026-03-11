@@ -10,7 +10,7 @@ resource "google_compute_instance" "arbiter" {
   }  
   boot_disk {
     initialize_params {
-    image = lookup(var.image, var.region)
+    image = var.image
     }
   }   
   network_interface {

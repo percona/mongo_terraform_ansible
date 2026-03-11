@@ -18,7 +18,7 @@ resource "google_compute_instance" "cfg" {
   }  
   boot_disk {
     initialize_params {
-    image = lookup(var.image, var.region)
+    image = var.image
     }
   }
   attached_disk {

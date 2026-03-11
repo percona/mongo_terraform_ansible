@@ -14,7 +14,7 @@ resource "google_compute_instance" "pmm" {
   tags         = ["${local.pmm_host}"]
   boot_disk {
     initialize_params {
-    image = lookup(var.image, var.region)
+    image = var.image
     }
   }   
   attached_disk {

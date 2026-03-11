@@ -75,7 +75,9 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		writeOptStr("subnet_cidr", cfg.SubnetCIDR)
 		writeOptStr("source_ranges", cfg.SourceRanges)
 		writeOptStr("my_ssh_user", cfg.MySSHUser)
-		writeOptStr("ssh_public_key_path", cfg.SSHPublicKeyPath)
+		if platform == "aws" {
+			writeOptStr("ssh_public_key_path", cfg.SSHPublicKeyPath)
+		}
 		writeOptStr("default_key_pair", cfg.DefaultKeyPair)
 		writeOptStr("default_vpc_name", cfg.DefaultVpcName)
 		if cfg.EnableSSHGateway {
@@ -148,11 +150,16 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		if platform == "azure" {
 			regionKey = cfg.Location
 		}
-		if cfg.MachineImage != "" && regionKey != "" && platform != "azure" {
-			write("")
-			write("image = {")
-			write(fmt.Sprintf("  %s = %s", formatHCLVal(regionKey), formatHCLVal(cfg.MachineImage)))
-			write("}")
+		if cfg.MachineImage != "" {
+			if platform == "gcp" {
+				write("")
+				writeVar("image", cfg.MachineImage)
+			} else if platform != "azure" && regionKey != "" {
+				write("")
+				write("image = {")
+				write(fmt.Sprintf("  %s = %s", formatHCLVal(regionKey), formatHCLVal(cfg.MachineImage)))
+				write("}")
+			}
 		}
 
 		if platform == "gcp" && cfg.SSHPublicKeyPath != "" && cfg.MySSHUser != "" {

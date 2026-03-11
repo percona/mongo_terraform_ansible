@@ -1,19 +1,30 @@
 ---
-- name: Gather facts from the config servers
-  hosts: cfg
-  gather_facts: yes
-  tags: mongos
-  tasks:
-    - name: Dummy task to force fact gathering
-      debug:
-        msg: "Facts collected for cfg servers"
+#- name: Gather facts from the config servers
+#  hosts: cfg
+#  gather_facts: yes
+#  tags: mongos
+#  tasks:
+#    - name: Dummy task to force fact gathering
+#      debug:
+#        msg: "Facts collected for cfg servers"
 
 - name: Install mongos routers
   hosts: mongos
   become: yes
   tags: mongos
+
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
+
+  vars:
+    mongo_tls_flags: >-
+      {% if use_tls %}
+      --tls
+      --tlsCertificateKeyFile {{ certificateKeyFile }}
+      --tlsCAFile {{ CAFile }}
+      --tlsAllowInvalidCertificates
+      {% endif %}
+
   tasks:    
     - name: Install packages from local filesystem
       block:
@@ -82,11 +93,15 @@
         owner: mongod
         group: mongod
 
-    - name: Set up an alias to login easily to mongos
-      become: yes
+    - name: Configure mongo shell alias
       lineinfile:
-        dest: /etc/profile
-        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ ansible_fqdn }}'
+        path: /etc/profile
+        line: >
+          alias mongo='mongosh admin {{ mongo_tls_flags }}
+          -u {{ mongo_admin_user }}
+          -p {{ mongo_admin_password }}
+          --port {{ mongo_port }}
+          --host {{ ansible_fqdn }}'
         state: present
 
     - name: Set up shared mongo keyfile 

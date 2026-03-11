@@ -3,29 +3,47 @@
   hosts: cfg:shards:replsets
   tags: os_conf
   become : yes
+  strategy: free
+
+  vars:
+
+    mongo_sysctl:
+      vm.swappiness: 1
+      vm.dirty_ratio: 15
+      vm.dirty_background_ratio: 5
+      net.core.somaxconn: 65535
+      vm.max_map_count: 102400
+
+    mongo_major: "{{ mongo_release | regex_search('[0-9]+$') | int }}"
+
+    pam_limits:
+      - domain: "*"
+        type: soft
+        item: nofile
+        value: 64000
+      - domain: "*"
+        type: hard
+        item: nofile
+        value: 64000
+
   tasks:
+
     - name: Tune sysctl values
       ansible.posix.sysctl:
         name: "{{ item.key }}"
         value: "{{ item.value }}"
         state: present
-        reload: true
-      with_items:
-        - { key: vm.swappiness, value: "1" }
-        - { key: vm.dirty_ratio, value: "15" }
-        - { key: vm.dirty_background_ratio, value: "5" }
-        - { key: net.core.somaxconn, value: "65535" }
-        - { key: vm.max_map_count, value: "102400" }
+        reload: false
+      loop: "{{ mongo_sysctl | dict2items }}"
+      notify: reload sysctl
 
-    - name: Modify PAM limits
+    - name: Configure PAM limits
       community.general.pam_limits:
         domain: "{{ item.domain }}"
         limit_type: "{{ item.type }}"
-        limit_item: "{{ item.it }}"
+        limit_item: "{{ item.item }}"
         value: "{{ item.value }}"
-      with_items:
-        - { domain: '*', type: soft, it: nofile, value: 64000 }
-        - { domain: '*', type: hard, it: nofile, value: 64000 }
+      loop: "{{ pam_limits }}"
 
     - name: Add PAM limits to login
       community.general.pamd:
@@ -38,19 +56,30 @@
         new_control: required
         name: login
 
-    - name: Prepare the disable THP systemd service (Mongo < 8)
+    - name: Deploy disable THP systemd service (Mongo < 8)
       template:
         src: disable-thp.service.j2
         dest: "{{ thp_location }}"
         owner: root
         group: root
-        mode: 0644
-      when: mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) < 80
+        mode: "0644"
+      when:
+        - mongo_release is defined
+        - mongo_major | int < 80
+      notify:
+        - reload systemd
+        - start disable thp
 
-    - name: Run the disable THP service (Mongo < 8)
+  handlers:
+
+    - name: reload sysctl
+      command: sysctl --system
+
+    - name: reload systemd
+      command: systemctl daemon-reload
+
+    - name: start disable thp
       systemd:
         name: disable-thp
         enabled: true
         state: started
-        daemon_reload: yes
-      when: mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) < 80

@@ -22,13 +22,9 @@
               - "*.deb"
           register: copied_packages  
 
-        - name: Get the paths of copied files
-          set_fact:
-            pbm_package_list: "{{ copied_packages.files | map(attribute='path') | list }}"      
-
         - name: Install copied RPM packages (RedHat)
           yum:
-            name: "{{ pbm_package_list }}"
+            name: "{{ copied_packages.files | map(attribute='path') | list }}"
             state: present
             disablerepo: "*"
           when:
@@ -169,7 +165,7 @@
       cron:
         name: pbm purge
         minute: '{{ pbm_purge_minute }}'
-        hour: '{{ pbm_purge_minute }}'
+        hour: '{{ pbm_purge_hour }}'
         user: '{{ pbm_os_user }}'
         job: /usr/bin/pbm cleanup --force --older-than $(date -u -d '-{{ pbm_retention_days }} days' +'\%Y-\%m-\%d') --mongodb-uri '{{ mongodb_uri }}'
         cron_file: pbm_purge_old

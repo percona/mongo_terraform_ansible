@@ -14,6 +14,8 @@
 ## General configuration
 #########################
 
+ansible_python_interpreter: /usr/bin/python3
+
 # MongoDB version as per "percona-release". Availability of MongoDB version depend on the OS version.
 # e.g. -> Available repositories for centos7: psmdb-36 psmdb-40 psmdb-42 psmdb-44 psmdb-50 psmdb-60
 #mongo_release: psmdb-70

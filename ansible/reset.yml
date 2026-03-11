@@ -15,6 +15,7 @@
 
     - name: Remove certificate related files    
       shell: rm -f /etc/ssl/*.pem    
+      when: use_tls | bool
 
 - hosts: mongos
   gather_facts: false
@@ -44,6 +45,7 @@
 
     - name: Remove vault certificate and token stuff
       shell: rm -rf /etc/mongodb
+      when: vault_encryption | bool
 
 - hosts: pmm
   gather_facts: false
@@ -63,12 +65,15 @@
 
     - name: Remove certificate related files    
       shell: rm -f /etc/ssl/*.{crt,csr,pem,key,cnf,srl}
+      when: use_tls | bool
 
     - name: Stop vault server
       systemd:
         name: vault
         state: stopped
       ignore_errors: yes
+      when: vault_encryption | bool
 
     - name: Remove vault related files    
       shell: rm -rf /opt/vault/data
+      when: vault_encryption | bool

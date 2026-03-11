@@ -28,6 +28,7 @@ data "docker_registry_image" "watchtower" {
 
 resource "docker_image" "watchtower" {
   name         = var.watchtower_image
+  platform = "linux/amd64"
   pull_triggers = [data.docker_registry_image.watchtower.sha256_digest]
   keep_locally = true
 }
@@ -62,6 +63,7 @@ data "docker_registry_image" "pmm" {
 
 resource "docker_image" "pmm" {
   name         = var.pmm_server_image
+  platform = "linux/amd64"
   pull_triggers = [data.docker_registry_image.pmm.sha256_digest]
   keep_locally = true
 }

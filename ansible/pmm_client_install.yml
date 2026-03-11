@@ -61,9 +61,8 @@
 
         - name: Install pmm-client package from repository
           package:
-            name: "{{ item }}"
+            name: "{{ pmm_client_package }}"
             state: present
-          with_items: "{{ pmm_client_package }}"
 
       when: not copy_files | bool
 

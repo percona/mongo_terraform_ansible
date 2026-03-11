@@ -47,13 +47,12 @@
     - name: Install PBM package files from repository
       block:
         - name: Enable PBM repository
-          shell: "/usr/bin/percona-release enable {{ pbm_release | default('pbm') }} release"
+          shell: "/usr/bin/percona-release enable pbm release"
 
         - name: Install pbm packages from repository
           package:
-            name: "{{ item }}"
+            name: "{{ pbm_package }}"
             state: present
-          with_items: "{{ pbm_package }}"
 
       when: not copy_files | bool
 

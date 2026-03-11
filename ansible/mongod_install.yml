@@ -49,10 +49,9 @@
           shell: "/usr/bin/percona-release enable {{ mongo_release }}"
 
         - name: Install mongod packages from repository
-          package:
-            name: "{{ item }}"
+          package: 
+            name: "{{ mongod_packages }}"
             state: present
-          loop: "{{ mongod_packages }}"
 
       when: not copy_files | bool
 
@@ -68,6 +67,16 @@
 - name: Prepare the configuration
   hosts: cfg:shards:replsets
   tags: bootstrap_rs
+  
+  vars:
+    mongo_tls_flags: >-
+      {% if use_tls %}
+      --tls
+      --tlsCertificateKeyFile {{ certificateKeyFile }}
+      --tlsCAFile {{ CAFile }}
+      --tlsAllowInvalidCertificates
+      {% endif %}
+
   tasks:
     - name: Set up shared mongo keyfile 
       become: yes
@@ -165,29 +174,36 @@
         name: mongod
         state: restarted
 
-    - name: Wait until mongod responds to ping
-      shell: |
-        mongosh {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} --port {{ mongo_port }} --host 127.0.0.1 --quiet --eval 'db.runCommand({ ping: 1 })' >/dev/null 2>&1
-      register: mongo_ping
-      retries: 20
-      delay: 1
-      until: mongo_ping.rc == 0
-      changed_when: false
+    - name: Wait for MongoDB port
+      wait_for:
+        host: 127.0.0.1
+        port: "{{ mongo_port }}"
+        delay: 2
+        timeout: 60      
 
     - name: Prepare the init command for replica set
       template:
         src: "{{ rs_init_template }}"
         dest: /tmp/init-rs.js
         mode: 0644
-      when: mongodb_primary is defined and mongodb_primary
+      when: mongodb_primary | default(false)
 
-    - name: Run the init command for replica set
-      shell: mongosh {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} --port {{ mongo_port }} --host 127.0.0.1 < /tmp/init-rs.js
-      when: mongodb_primary is defined and mongodb_primary
+    - name: Initialize replica set
+      command: >
+        mongosh {{ mongo_tls_flags }}
+        --port {{ mongo_port }}
+        --host 127.0.0.1
+        /tmp/init-rs.js
+      when: mongodb_primary | default(false)
 
-    - name: Wait for PRIMARY in replica sets
-      shell: |
-        mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} --port {{ mongo_port }} --host 127.0.0.1 --quiet --eval 'rs.status().members.filter(m => m.stateStr == "PRIMARY").length' | grep -q '1'
+    - name: Wait for PRIMARY
+      shell: >
+        mongosh admin {{ mongo_tls_flags }}
+        --port {{ mongo_port }}
+        --host 127.0.0.1
+        --quiet
+        --eval 'rs.status().members.filter(m => m.stateStr=="PRIMARY").length'
+        | grep -q 1
       register: primary_check
       retries: 10
       delay: 2
@@ -196,34 +212,59 @@
 
 - name: Create the local users & logrotate
   hosts: cfg:shards:replsets
+  become: yes
   tags: os_conf
+
+  vars:
+    mongo_tls_flags: >-
+      {% if use_tls %}
+      --tls
+      --tlsCertificateKeyFile {{ certificateKeyFile }}
+      --tlsCAFile {{ CAFile }}
+      --tlsAllowInvalidCertificates
+      {% endif %}
+
   tasks:
     - name: Copy logrotate conf
-      become: yes
       template:
         src: templates/logrotate-mongod.conf.j2
         dest: /etc/logrotate.d/mongod
         mode: 0644
 
-    - name: Create the MongoDB root user
-      shell: |
-        mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} --port {{ mongo_port }} --host 127.0.0.1 --eval 'db.createUser({user: "{{ mongo_admin_user }}", pwd: "{{ mongo_admin_password }}", roles: ["root"]})'
-      when: mongodb_primary is defined and mongodb_primary
+    - name: Create MongoDB root user
+      shell: >
+        mongosh admin {{ mongo_tls_flags }}
+        --port {{ mongo_port }}
+        --host 127.0.0.1
+        --eval 'db.createUser({user:"{{ mongo_admin_user }}",pwd:"{{ mongo_admin_password }}",roles:["root"]})'
+      no_log: true
+      when: mongodb_primary | default(false)
 
     - name: Prepare the commands to create the PBM and PMM users and roles
       template:
         src: templates/createUsers.js.j2
         dest: /tmp/createUsers.js
         mode: 0644
-      when: mongodb_primary is defined and mongodb_primary
+      when: mongodb_primary | default(false)
 
-    - name: Create the PBM and PMM users and roles
-      shell: mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ ansible_fqdn }} < /tmp/createUsers.js
-      when: mongodb_primary is defined and mongodb_primary
+    - name: Create PBM and PMM users
+      shell: >
+        mongosh admin {{ mongo_tls_flags }}
+        -u {{ mongo_admin_user }}
+        -p {{ mongo_admin_password }}
+        --port {{ mongo_port }}
+        --host {{ ansible_fqdn }}
+        < /tmp/createUsers.js
+      no_log: true
+      when: mongodb_primary | default(false)
 
-    - name: Set up an alias to login easily
-      become: yes
+    - name: Configure mongo shell alias
       lineinfile:
-        dest: /etc/profile
-        line: alias mongo='mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongo_port }} --host {{ ansible_fqdn }}'
+        path: /etc/profile
+        line: >
+          alias mongo='mongosh admin {{ mongo_tls_flags }}
+          -u {{ mongo_admin_user }}
+          -p {{ mongo_admin_password }}
+          --port {{ mongo_port }}
+          --host {{ ansible_fqdn }}'
         state: present

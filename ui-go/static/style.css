@@ -459,6 +459,14 @@ a:hover { text-decoration: underline; }
   margin-bottom: 0.5rem;
 }
 
+/* Service URL buttons (PMM, MinIO console, etc.) row shown below action buttons */
+.service-url-row {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
 /* Advanced actions panel shown below the primary action buttons */
 .advanced-actions {
   display: flex;

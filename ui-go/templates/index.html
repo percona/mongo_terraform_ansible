@@ -43,9 +43,9 @@
         </td>
         <td>{{len .Env.Config.Clusters}}</td>
         <td>{{len .Env.Config.Replsets}}</td>
-        <td class="env-nowrap"><small>{{strDefault .Env.Config.MongoRelease "psmdb-80"}}</small></td>
-        <td class="env-nowrap"><small>{{strDefault .Env.Config.PbmRelease "—"}}</small></td>
-        <td class="env-nowrap"><small>{{imageTag .Env.Config.PmmImage}}</small></td>
+        <td class="env-nowrap"><small>{{if eq .Env.Platform "docker"}}{{imageTag (dockerPsmdbImage .Env.Config)}}{{else}}{{strDefault .Env.Config.MongoRelease "psmdb-80"}}{{end}}</small></td>
+        <td class="env-nowrap"><small>{{if eq .Env.Platform "docker"}}{{imageTag (dockerPbmImage .Env.Config)}}{{else}}{{strDefault .Env.Config.PbmRelease "—"}}{{end}}</small></td>
+        <td class="env-nowrap"><small>{{if eq .Env.Platform "docker"}}{{imageTag (dockerPmmImage .Env.Config)}}{{else}}{{imageTag .Env.Config.PmmImage}}{{end}}</small></td>
         <td>
           {{if .Env.Config.Region}}{{.Env.Config.Region}}{{else if .Env.Config.Location}}{{.Env.Config.Location}}{{else}}<span class="text-muted">—</span>{{end}}
         </td>

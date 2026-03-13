@@ -38,6 +38,7 @@ func startJob(cmd []string, cwd string, extraEnv map[string]string, onComplete f
 }
 
 func runJob(jobID string, cmd []string, cwd string, extraEnv map[string]string, onComplete func(string)) {
+	startTime := time.Now()
 	statusPath := jobStatusPath(jobID)
 	logPath := jobLogPath(jobID)
 
@@ -84,6 +85,14 @@ func runJob(jobID string, cmd []string, cwd string, extraEnv map[string]string, 
 	}
 
 	finalStatus := runProcess(jobID, execCmd.name, execCmd.args, execCmd.env, cwd, logFile)
+
+	// Append elapsed time to the log so it is visible in the terminal output.
+	elapsed := time.Since(startTime)
+	totalSecs := int(elapsed.Seconds())
+	mins := totalSecs / 60
+	secs := totalSecs % 60
+	fmt.Fprintf(logFile, "\n# Elapsed: %dm %ds\n", mins, secs)
+	logFile.Sync()
 	logFile.Close()
 
 	if err := os.WriteFile(statusPath, []byte(finalStatus), 0644); err != nil {

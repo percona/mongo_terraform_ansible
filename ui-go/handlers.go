@@ -555,12 +555,18 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		return " && " + b.String()
 	}
 
+	// Per-environment Terraform state file: stored alongside the tfvars file in
+	// the platform directory so different environments do not share state and
+	// can be operated concurrently.
+	envStateFile := envID + ".tfstate" // relative to tfDir (the CWD for terraform)
+
 	var cmd []string
 	switch action {
 	case "deploy":
 		shellCmd := fmt.Sprintf(
-			"terraform init -input=false && terraform apply -auto-approve -input=false -var-file=%s",
+			"terraform init -input=false && terraform apply -auto-approve -input=false -var-file=%s -state=%s",
 			shellQuote(varfile),
+			shellQuote(envStateFile),
 		)
 		if platform != "docker" {
 			shellCmd += sshConfigInjectShell()
@@ -574,8 +580,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		shellCmd := fmt.Sprintf(
-			"terraform init -input=false && terraform apply -auto-approve -input=false -var-file=%s",
+			"terraform init -input=false && terraform apply -auto-approve -input=false -var-file=%s -state=%s",
 			shellQuote(varfile),
+			shellQuote(envStateFile),
 		)
 		shellCmd += sshConfigInjectShell()
 		cmd = []string{"bash", "-c", shellCmd}
@@ -600,8 +607,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	case "destroy":
 		shellCmd := fmt.Sprintf(
-			"terraform destroy -auto-approve -input=false -var-file=%s",
+			"terraform destroy -auto-approve -input=false -var-file=%s -state=%s",
 			shellQuote(varfile),
+			shellQuote(envStateFile),
 		)
 		if platform != "docker" {
 			shellCmd += sshConfigRemoveShell()
@@ -637,9 +645,11 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startedAt := time.Now().UTC().Format(time.RFC3339)
+	startedAtTime := time.Now()
+	startedAt := startedAtTime.UTC().Format(time.RFC3339)
 
 	onComplete := func(status string) {
+		durationSecs := int64(time.Since(startedAtTime).Seconds())
 		st, _ := loadState()
 		e, exists := st[envID]
 		if !exists {
@@ -651,9 +661,10 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			outcomeStatus = "failed"
 		}
 		e.History = append(e.History, HistoryEvent{
-			Action:    action,
-			StartedAt: startedAt,
-			Status:    outcomeStatus,
+			Action:       action,
+			StartedAt:    startedAt,
+			Status:       outcomeStatus,
+			DurationSecs: durationSecs,
 		})
 		if action == "destroy" {
 			if status == "success" {

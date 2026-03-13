@@ -136,9 +136,10 @@ type Config struct {
 
 // HistoryEvent records a single user-initiated action and its outcome.
 type HistoryEvent struct {
-	Action    string `json:"action"`
-	StartedAt string `json:"started_at"`
-	Status    string `json:"status"` // "success", "failed", "cancelled"
+	Action       string `json:"action"`
+	StartedAt    string `json:"started_at"`
+	Status       string `json:"status"` // "success", "failed", "cancelled"
+	DurationSecs int64  `json:"duration_secs,omitempty"`
 }
 
 // Environment is one record in the state file.

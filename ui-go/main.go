@@ -94,6 +94,46 @@ return image[idx+1:]
 }
 return image
 },
+// dockerPsmdbImage returns the first PSMDB container image configured for a
+// Docker environment (checked across all replsets, then clusters).
+"dockerPsmdbImage": func(cfg Config) string {
+for _, rc := range cfg.Replsets {
+if rc.PsmdbImage != "" {
+return rc.PsmdbImage
+}
+}
+for _, cc := range cfg.Clusters {
+if cc.PsmdbImage != "" {
+return cc.PsmdbImage
+}
+}
+return ""
+},
+// dockerPbmImage returns the first PBM container image configured for a
+// Docker environment (checked across all replsets, then clusters).
+"dockerPbmImage": func(cfg Config) string {
+for _, rc := range cfg.Replsets {
+if rc.PbmImage != "" {
+return rc.PbmImage
+}
+}
+for _, cc := range cfg.Clusters {
+if cc.PbmImage != "" {
+return cc.PbmImage
+}
+}
+return ""
+},
+// dockerPmmImage returns the first PMM server container image configured for
+// a Docker environment.
+"dockerPmmImage": func(cfg Config) string {
+for _, ns := range cfg.PmmServers {
+if ns.PmmServerImage != "" {
+return ns.PmmServerImage
+}
+}
+return ""
+},
 // title-cases a status string, with human-friendly overrides for action
 // statuses that differ from the button label (e.g. "configure" → "Install").
 "statusLabel": func(s string) string {

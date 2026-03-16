@@ -43,6 +43,7 @@ See [`ui-go/README.md`](./ui-go/README.md) for full details.
     - [AWS](./terraform/aws/README.md)
     - [GCP](./terraform/gcp/README.md)
     - [Azure](./terraform/azure/README.md)
+    - [CHAOS](./terraform/chaos/README.md)
     - [Local Docker containers](./terraform/docker/README.md)
     - [Local Libvirt/KVM virtual machines](./terraform/libvirt/README.md)
 

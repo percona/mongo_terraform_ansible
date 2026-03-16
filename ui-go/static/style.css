@@ -204,6 +204,7 @@ a:hover { text-decoration: underline; }
 .platform-aws   { background: #ff9900; color: #000; }
 .platform-gcp   { background: #4285f4; color: #fff; }
 .platform-azure { background: #0078d4; color: #fff; }
+.platform-chaos { background: #e53935; color: #fff; }
 .platform-docker { background: #2496ed; color: #fff; }
 
 /* ─── Status dots ────────────────────────────────────────────────── */

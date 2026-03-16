@@ -51,13 +51,6 @@ variable "replsets" {
   }
 }
 
-variable "chaos_ssh_users" {
-  description = "Map of SSH user names to their public key file paths. Keys are added to authorized_keys on all instances."
-  default = {
-    ivan_groenewold = "ivan.pub"
-#    ,user2 = "user2.pub"
-  }
-}
 
 variable "my_ssh_user" {
   default     = "ivan_groenewold"

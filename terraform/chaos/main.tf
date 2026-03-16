@@ -27,9 +27,8 @@ module "mongodb_clusters" {
   arbiters_per_replset = each.value.arbiters_per_replset
   mongos_count         = each.value.mongos_count
 
-  chaos_ssh_users = var.chaos_ssh_users
-  my_ssh_user     = var.my_ssh_user
-  os_image        = var.os_image
+  my_ssh_user       = var.my_ssh_user
+  os_image          = var.os_image
   delete_after_days = var.delete_after_days
 
   shardsvr_cpu_cores    = var.shardsvr_cpu_cores
@@ -43,7 +42,6 @@ module "mongodb_clusters" {
   arbiter_cpu_cores     = var.arbiter_cpu_cores
   arbiter_memory_gb     = var.arbiter_memory_gb
 
-  subnet_cidr   = var.subnet_cidr
   source_ranges = var.source_ranges
 
   depends_on = [chaos_instance.minio]
@@ -53,13 +51,12 @@ module "mongodb_replsets" {
   source   = "./modules/mongodb_replset"
   for_each = var.replsets
 
-  rs_name              = each.key
-  prefix               = var.prefix
-  env_tag              = each.value.env_tag
+  rs_name                = each.key
+  prefix                 = var.prefix
+  env_tag                = each.value.env_tag
   data_nodes_per_replset = each.value.data_nodes_per_replset
   arbiters_per_replset   = each.value.arbiters_per_replset
 
-  chaos_ssh_users   = var.chaos_ssh_users
   my_ssh_user       = var.my_ssh_user
   os_image          = var.os_image
   delete_after_days = var.delete_after_days
@@ -70,7 +67,6 @@ module "mongodb_replsets" {
   arbiter_cpu_cores      = var.arbiter_cpu_cores
   arbiter_memory_gb      = var.arbiter_memory_gb
 
-  subnet_cidr   = var.subnet_cidr
   source_ranges = var.source_ranges
 
   depends_on = [chaos_instance.minio]

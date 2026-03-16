@@ -1,0 +1,113 @@
+---
+- name: Install and configure Minio server
+  hosts: minio
+  become: yes
+  tags: install,backup,minio
+  vars:
+    minio_user: minio-user
+    minio_group: minio-user
+    minio_data_dir: /data/minio
+    minio_config_dir: /etc/minio
+    minio_binary: /usr/local/bin/minio
+    minio_mc_binary: /usr/local/bin/mc
+    minio_service_port: "{{ minio_port | default(9000) }}"
+    minio_console_service_port: "{{ minio_console_port | default(9001) }}"
+    minio_access_key: "{{ access_key_id | default('minioadmin') }}"
+    minio_secret_key: "{{ secret_access_key | default('minioadmin') }}"
+    minio_bucket: "{{ bucket | default('mongo-backups') }}"
+
+  tasks:
+    - name: Create minio group
+      group:
+        name: "{{ minio_group }}"
+        system: yes
+
+    - name: Create minio user
+      user:
+        name: "{{ minio_user }}"
+        group: "{{ minio_group }}"
+        system: yes
+        shell: /sbin/nologin
+        create_home: no
+
+    - name: Create Minio data directory
+      file:
+        path: "{{ minio_data_dir }}"
+        state: directory
+        owner: "{{ minio_user }}"
+        group: "{{ minio_group }}"
+        mode: '0750'
+
+    - name: Create Minio config directory
+      file:
+        path: "{{ minio_config_dir }}"
+        state: directory
+        owner: "{{ minio_user }}"
+        group: "{{ minio_group }}"
+        mode: '0750'
+
+    - name: Download Minio binary
+      get_url:
+        url: https://dl.min.io/server/minio/release/linux-amd64/minio
+        dest: "{{ minio_binary }}"
+        mode: '0755'
+
+    - name: Download Minio client (mc) binary
+      get_url:
+        url: https://dl.min.io/client/mc/release/linux-amd64/mc
+        dest: "{{ minio_mc_binary }}"
+        mode: '0755'
+
+    - name: Create Minio environment file
+      template:
+        src: templates/minio.env.j2
+        dest: "{{ minio_config_dir }}/minio.env"
+        owner: "{{ minio_user }}"
+        group: "{{ minio_group }}"
+        mode: '0640'
+      notify: restart minio
+
+    - name: Install Minio systemd service
+      template:
+        src: templates/minio.service.j2
+        dest: /etc/systemd/system/minio.service
+        mode: '0644'
+      notify:
+        - reload systemd
+        - restart minio
+
+    - name: Enable and start Minio service
+      systemd:
+        name: minio
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Wait for Minio to be ready
+      wait_for:
+        port: "{{ minio_service_port }}"
+        host: "{{ ansible_default_ipv4.address }}"
+        delay: 5
+        timeout: 60
+
+    - name: Configure mc alias for local Minio
+      command: >
+        {{ minio_mc_binary }} alias set local
+        http://{{ ansible_default_ipv4.address }}:{{ minio_service_port }}
+        {{ minio_access_key }} {{ minio_secret_key }}
+      changed_when: false
+
+    - name: Create backup bucket
+      command: >
+        {{ minio_mc_binary }} mb --ignore-existing local/{{ minio_bucket }}
+      changed_when: false
+
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: restart minio
+      systemd:
+        name: minio
+        state: restarted

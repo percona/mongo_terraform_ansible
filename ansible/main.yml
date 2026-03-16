@@ -3,6 +3,8 @@
 
 - import_playbook: percona_release.yml
 
+- import_playbook: minio_install.yml
+
 - import_playbook: mongod_install.yml
 
 - import_playbook: mongos_install.yml

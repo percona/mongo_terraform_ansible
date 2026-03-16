@@ -9,11 +9,11 @@
   {{range .Platforms}}
   <a href="/configure/{{.}}" class="platform-card platform-card-{{.}}">
     <div class="platform-icon">
-      {{if eq . "aws"}}☁️{{else if eq . "gcp"}}🌐{{else if eq . "azure"}}🔷{{else}}🐳{{end}}
+      {{if eq . "aws"}}☁️{{else if eq . "gcp"}}🌐{{else if eq . "azure"}}🔷{{else if eq . "chaos"}}⚡{{else}}🐳{{end}}
     </div>
     <div class="platform-name">{{upper .}}</div>
     <div class="platform-desc">
-      {{if eq . "aws"}}Amazon Web Services{{else if eq . "gcp"}}Google Cloud Platform{{else if eq . "azure"}}Microsoft Azure{{else}}Local Docker containers{{end}}
+      {{if eq . "aws"}}Amazon Web Services{{else if eq . "gcp"}}Google Cloud Platform{{else if eq . "azure"}}Microsoft Azure{{else if eq . "chaos"}}Chaos Virtual Machines{{else}}Local Docker containers{{end}}
     </div>
   </a>
   {{end}}

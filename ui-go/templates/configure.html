@@ -296,6 +296,38 @@
       </div>
     </div>
   </section>
+  {{else if eq $p "chaos"}}
+  <section class="form-section">
+    <h2>CHAOS Settings</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="my_ssh_user">SSH User</label>
+        <input type="text" id="my_ssh_user" name="my_ssh_user"
+               value="{{.Config.MySSHUser}}" placeholder="centos">
+        <small>Username Ansible uses to connect to all CHAOS instances.</small>
+      </div>
+      <div class="form-group">
+        <label for="source_ranges">Source Ranges (SSH / Service Access)</label>
+        <input type="text" id="source_ranges" name="source_ranges"
+               value="{{strDefault .Config.SourceRanges "0.0.0.0/0"}}" placeholder="0.0.0.0/0">
+        <small>CIDR range(s) allowed to access instances (SSH and service ports).</small>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="os_image">OS Image</label>
+        <input type="text" id="os_image" name="os_image"
+               value="{{strDefault .Config.OsImage "CentOS 9"}}" placeholder="CentOS 9">
+        <small>Operating system image for all CHAOS instances.</small>
+      </div>
+      <div class="form-group">
+        <label for="delete_after_days">Delete After (days)</label>
+        <input type="number" id="delete_after_days" name="delete_after_days"
+               value="{{intDefault .Config.DeleteAfterDays 7}}" min="1" max="90">
+        <small>CHAOS will automatically delete instances after this many days.</small>
+      </div>
+    </div>
+  </section>
   {{end}}
 
   <!-- ──────────── Sharded Clusters ──────────── -->
@@ -395,6 +427,82 @@
                 Bind ports to localhost only</label>
             </div>
           </div>
+          {{else if eq $p "chaos"}}
+          <!-- CHAOS: Compute Resources customize toggle (inside cluster block) -->
+          <div class="subsection-header">
+            <span class="subsection-title">Compute Resources</span>
+            <button type="button" class="btn btn-outline btn-sm compute-toggle-btn"
+                    onclick="toggleComputeBlock(this)">{{if or $.Config.ShardsvrCpuCores $.Config.ShardsvrVolumeSize $.Config.ConfigsvrCpuCores $.Config.MongosCpuCores $.Config.ArbiterCpuCores}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+          </div>
+          <div class="compute-block-body" {{if not (or $.Config.ShardsvrCpuCores $.Config.ShardsvrVolumeSize $.Config.ConfigsvrCpuCores $.Config.MongosCpuCores $.Config.ArbiterCpuCores)}}style="display:none"{{end}}>
+            <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all clusters</strong> in this deployment. Leave blank to use Terraform defaults.</p>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Shard Svr CPU Cores</label>
+                <input type="number" name="shardsvr_cpu_cores"
+                       value="{{if $.Config.ShardsvrCpuCores}}{{$.Config.ShardsvrCpuCores}}{{end}}"
+                       placeholder="2" min="1">
+              </div>
+              <div class="form-group">
+                <label>Shard Svr Memory (GB)</label>
+                <input type="number" name="shardsvr_memory_gb"
+                       value="{{if $.Config.ShardsvrMemoryGb}}{{$.Config.ShardsvrMemoryGb}}{{end}}"
+                       placeholder="4" min="1">
+              </div>
+              <div class="form-group">
+                <label>Shard Svr Disk (GB)</label>
+                <input type="number" name="shardsvr_volume_size"
+                       value="{{if $.Config.ShardsvrVolumeSize}}{{$.Config.ShardsvrVolumeSize}}{{end}}"
+                       placeholder="50" min="10">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Config Svr CPU Cores</label>
+                <input type="number" name="configsvr_cpu_cores"
+                       value="{{if $.Config.ConfigsvrCpuCores}}{{$.Config.ConfigsvrCpuCores}}{{end}}"
+                       placeholder="2" min="1">
+              </div>
+              <div class="form-group">
+                <label>Config Svr Memory (GB)</label>
+                <input type="number" name="configsvr_memory_gb"
+                       value="{{if $.Config.ConfigsvrMemoryGb}}{{$.Config.ConfigsvrMemoryGb}}{{end}}"
+                       placeholder="4" min="1">
+              </div>
+              <div class="form-group">
+                <label>Config Svr Disk (GB)</label>
+                <input type="number" name="configsvr_volume_size"
+                       value="{{if $.Config.ConfigsvrVolumeSize}}{{$.Config.ConfigsvrVolumeSize}}{{end}}"
+                       placeholder="20" min="10">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Mongos CPU Cores</label>
+                <input type="number" name="mongos_cpu_cores"
+                       value="{{if $.Config.MongosCpuCores}}{{$.Config.MongosCpuCores}}{{end}}"
+                       placeholder="2" min="1">
+              </div>
+              <div class="form-group">
+                <label>Mongos Memory (GB)</label>
+                <input type="number" name="mongos_memory_gb"
+                       value="{{if $.Config.MongosMemoryGb}}{{$.Config.MongosMemoryGb}}{{end}}"
+                       placeholder="4" min="1">
+              </div>
+              <div class="form-group">
+                <label>Arbiter CPU Cores</label>
+                <input type="number" name="arbiter_cpu_cores"
+                       value="{{if $.Config.ArbiterCpuCores}}{{$.Config.ArbiterCpuCores}}{{end}}"
+                       placeholder="2" min="1">
+              </div>
+              <div class="form-group">
+                <label>Arbiter Memory (GB)</label>
+                <input type="number" name="arbiter_memory_gb"
+                       value="{{if $.Config.ArbiterMemoryGb}}{{$.Config.ArbiterMemoryGb}}{{end}}"
+                       placeholder="2" min="1">
+              </div>
+            </div>
+          </div><!-- .compute-block-body -->
           {{else}}
           <!-- Cloud: Compute Resources customize toggle (inside cluster block) -->
           <div class="subsection-header">
@@ -548,6 +656,50 @@
                 Bind ports to localhost only</label>
             </div>
           </div>
+          {{else if eq $p "chaos"}}
+          <!-- CHAOS: Compute Resources customize toggle (inside replset block) -->
+          <div class="subsection-header">
+            <span class="subsection-title">Compute Resources</span>
+            <button type="button" class="btn btn-outline btn-sm compute-toggle-btn"
+                    onclick="toggleComputeBlock(this)">{{if or $.Config.ReplsetSvrCpuCores $.Config.ReplsetSvrVolumeSize $.Config.ArbiterCpuCores}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+          </div>
+          <div class="compute-block-body" {{if not (or $.Config.ReplsetSvrCpuCores $.Config.ReplsetSvrVolumeSize $.Config.ArbiterCpuCores)}}style="display:none"{{end}}>
+            <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all replica sets</strong> in this deployment. Leave blank to use Terraform defaults.</p>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Data Node CPU Cores</label>
+                <input type="number" name="replsetsvr_cpu_cores"
+                       value="{{if $.Config.ReplsetSvrCpuCores}}{{$.Config.ReplsetSvrCpuCores}}{{end}}"
+                       placeholder="2" min="1">
+              </div>
+              <div class="form-group">
+                <label>Data Node Memory (GB)</label>
+                <input type="number" name="replsetsvr_memory_gb"
+                       value="{{if $.Config.ReplsetSvrMemoryGb}}{{$.Config.ReplsetSvrMemoryGb}}{{end}}"
+                       placeholder="4" min="1">
+              </div>
+              <div class="form-group">
+                <label>Data Node Disk (GB)</label>
+                <input type="number" name="replsetsvr_volume_size"
+                       value="{{if $.Config.ReplsetSvrVolumeSize}}{{$.Config.ReplsetSvrVolumeSize}}{{end}}"
+                       placeholder="100" min="10">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Arbiter CPU Cores</label>
+                <input type="number" name="arbiter_cpu_cores"
+                       value="{{if $.Config.ArbiterCpuCores}}{{$.Config.ArbiterCpuCores}}{{end}}"
+                       placeholder="2" min="1">
+              </div>
+              <div class="form-group">
+                <label>Arbiter Memory (GB)</label>
+                <input type="number" name="arbiter_memory_gb"
+                       value="{{if $.Config.ArbiterMemoryGb}}{{$.Config.ArbiterMemoryGb}}{{end}}"
+                       placeholder="2" min="1">
+              </div>
+            </div>
+          </div><!-- .compute-block-body -->
           {{else}}
           <!-- Cloud: Compute Resources customize toggle (inside replset block) -->
           <div class="subsection-header">
@@ -650,7 +802,7 @@
     </div>
     <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addPmmServer()">+ Add PMM Server</button>
     {{else}}
-    {{$pmmCustomized := or (ptrBoolFalse .Config.EnablePmm) .Config.PmmType .Config.PmmImage .Config.PmmDiskType}}
+    {{$pmmCustomized := or (ptrBoolFalse .Config.EnablePmm) .Config.PmmType .Config.PmmImage .Config.PmmDiskType .Config.PmmCpuCores .Config.PmmMemoryGb}}
     <div class="section-header">
       <h2>PMM Monitoring Server</h2>
       <button type="button" class="btn btn-outline btn-sm"
@@ -669,6 +821,33 @@
     </div>
     <div id="pmm-cloud-body" {{if not $pmmCustomized}}style="display:none"{{end}}>
     <div id="pmm-cloud-settings" {{if not (boolDefault .Config.EnablePmm true)}}style="display:none"{{end}}>
+    {{if eq $p "chaos"}}
+    <div class="form-row">
+      <div class="form-group">
+        <label for="pmm_cpu_cores">PMM CPU Cores</label>
+        <input type="number" id="pmm_cpu_cores" name="pmm_cpu_cores"
+               value="{{if .Config.PmmCpuCores}}{{.Config.PmmCpuCores}}{{end}}"
+               placeholder="2" min="1">
+      </div>
+      <div class="form-group">
+        <label for="pmm_memory_gb">PMM Memory (GB)</label>
+        <input type="number" id="pmm_memory_gb" name="pmm_memory_gb"
+               value="{{if .Config.PmmMemoryGb}}{{.Config.PmmMemoryGb}}{{end}}"
+               placeholder="4" min="1">
+      </div>
+      <div class="form-group">
+        <label for="pmm_volume_size">Volume Size (GB)</label>
+        <input type="number" id="pmm_volume_size" name="pmm_volume_size"
+               value="{{intDefault .Config.PmmVolumeSize 100}}" min="20">
+      </div>
+      <div class="form-group">
+        <label for="pmm_port">PMM Port</label>
+        <input type="number" id="pmm_port" name="pmm_port"
+               value="{{intDefault .Config.PmmPort 8443}}">
+        <small>8443 for PMM 3, 443 for PMM 2</small>
+      </div>
+    </div>
+    {{else}}
     <div class="form-row">
       <div class="form-group">
         <label for="pmm_type">Instance Type</label>
@@ -708,10 +887,73 @@
         </select>
       </div>
     </div>
+    {{end}}
     </div><!-- #pmm-cloud-settings -->
     </div><!-- #pmm-cloud-body -->
     {{end}}
   </section>
+
+  <!-- ──────────── Minio VM (CHAOS only) ──────────── -->
+  {{if eq $p "chaos"}}
+  <section class="form-section">
+    <h2>Minio Backup Storage VM</h2>
+    <p class="hint">CHAOS does not provide managed object storage. A dedicated VM running <a href="https://min.io" target="_blank">Minio</a> is provisioned and configured via Ansible.</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="minio_root_user">Minio Root User</label>
+        <input type="text" id="minio_root_user" name="minio_root_user"
+               value="{{strDefault .Config.MinioRootUser "minioadmin"}}">
+      </div>
+      <div class="form-group">
+        <label for="minio_root_password">Minio Root Password</label>
+        <input type="password" id="minio_root_password" name="minio_root_password"
+               value="{{strDefault .Config.MinioRootPassword "minioadmin"}}" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="default_bucket_name">Bucket Name</label>
+        <input type="text" id="default_bucket_name" name="default_bucket_name"
+               value="{{strDefault .Config.DefaultBucketName "mongo-backups"}}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="minio_port">API Port</label>
+        <input type="number" id="minio_port" name="minio_port"
+               value="{{intDefault .Config.MinioPort 9000}}">
+      </div>
+      <div class="form-group">
+        <label for="minio_console_port">Console Port</label>
+        <input type="number" id="minio_console_port" name="minio_console_port"
+               value="{{intDefault .Config.MinioConsolePort 9001}}">
+      </div>
+      <div class="form-group">
+        <label for="backup_retention">Retention (days)</label>
+        <input type="number" id="backup_retention" name="backup_retention"
+               value="{{intDefault .Config.BackupRetention 2}}" min="1">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="minio_cpu_cores">Minio VM CPU Cores</label>
+        <input type="number" id="minio_cpu_cores" name="minio_cpu_cores"
+               value="{{if .Config.MinioCpuCores}}{{.Config.MinioCpuCores}}{{end}}"
+               placeholder="2" min="1">
+      </div>
+      <div class="form-group">
+        <label for="minio_memory_gb">Minio VM Memory (GB)</label>
+        <input type="number" id="minio_memory_gb" name="minio_memory_gb"
+               value="{{if .Config.MinioMemoryGb}}{{.Config.MinioMemoryGb}}{{end}}"
+               placeholder="4" min="1">
+      </div>
+      <div class="form-group">
+        <label for="minio_volume_size">Minio VM Disk (GB)</label>
+        <input type="number" id="minio_volume_size" name="minio_volume_size"
+               value="{{if .Config.MinioVolumeSize}}{{.Config.MinioVolumeSize}}{{end}}"
+               placeholder="100" min="20">
+      </div>
+    </div>
+  </section>
+  {{end}}
 
   <!-- ──────────── Minio Servers (Docker only) ──────────── -->
   {{if eq $p "docker"}}
@@ -823,8 +1065,8 @@
   </section>
   {{end}}
 
-  <!-- ──────────── Backup (cloud only) ──────────── -->
-  {{if ne $p "docker"}}
+  <!-- ──────────── Backup (cloud only, not CHAOS) ──────────── -->
+  {{if and (ne $p "docker") (ne $p "chaos")}}
   <section class="form-section">
     <h2>Backup (PBM)</h2>
     <div class="form-row">
@@ -985,6 +1227,63 @@ function buildDockerImageRows(type) {
 function buildCloudComputeRows(type) {
   // `type` is 'cluster' or 'replset'; returns HTML for the compute customize section.
   if (PLATFORM === 'docker') return '';
+  if (PLATFORM === 'chaos') {
+    let rows = '';
+    if (type === 'cluster') {
+      rows = `
+        <div class="form-row">
+          <div class="form-group"><label>Shard Svr CPU Cores</label>
+            <input type="number" name="shardsvr_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Shard Svr Memory (GB)</label>
+            <input type="number" name="shardsvr_memory_gb" placeholder="4" min="1"></div>
+          <div class="form-group"><label>Shard Svr Disk (GB)</label>
+            <input type="number" name="shardsvr_volume_size" placeholder="50" min="10"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Config Svr CPU Cores</label>
+            <input type="number" name="configsvr_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Config Svr Memory (GB)</label>
+            <input type="number" name="configsvr_memory_gb" placeholder="4" min="1"></div>
+          <div class="form-group"><label>Config Svr Disk (GB)</label>
+            <input type="number" name="configsvr_volume_size" placeholder="20" min="10"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Mongos CPU Cores</label>
+            <input type="number" name="mongos_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Mongos Memory (GB)</label>
+            <input type="number" name="mongos_memory_gb" placeholder="4" min="1"></div>
+          <div class="form-group"><label>Arbiter CPU Cores</label>
+            <input type="number" name="arbiter_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Arbiter Memory (GB)</label>
+            <input type="number" name="arbiter_memory_gb" placeholder="2" min="1"></div>
+        </div>`;
+    } else {
+      rows = `
+        <div class="form-row">
+          <div class="form-group"><label>Data Node CPU Cores</label>
+            <input type="number" name="replsetsvr_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Data Node Memory (GB)</label>
+            <input type="number" name="replsetsvr_memory_gb" placeholder="4" min="1"></div>
+          <div class="form-group"><label>Data Node Disk (GB)</label>
+            <input type="number" name="replsetsvr_volume_size" placeholder="100" min="10"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Arbiter CPU Cores</label>
+            <input type="number" name="arbiter_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Arbiter Memory (GB)</label>
+            <input type="number" name="arbiter_memory_gb" placeholder="2" min="1"></div>
+        </div>`;
+    }
+    return `
+      <div class="subsection-header">
+        <span class="subsection-title">Compute Resources</span>
+        <button type="button" class="btn btn-outline btn-sm compute-toggle-btn" onclick="toggleComputeBlock(this)">▼ Customize</button>
+      </div>
+      <div class="compute-block-body" style="display:none">
+        <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all clusters/replica sets</strong> in this deployment. Leave blank for Terraform defaults.</p>
+        ${rows}
+      </div>`;
+  }
   const ph = PLATFORM === 'aws' ? 't3.medium' : PLATFORM === 'gcp' ? 'e2-medium' : 'Standard_B2s';
   const diskPh = PLATFORM === 'aws' ? 'gp2' : PLATFORM === 'gcp' ? 'pd-standard' : 'Standard_LRS';
   const diskHint = PLATFORM === 'aws' ? 'gp2, gp3, io1, io2' : PLATFORM === 'gcp' ? 'pd-standard, pd-ssd, pd-balanced' : 'Standard_LRS, Premium_LRS, StandardSSD_LRS';
@@ -1205,6 +1504,16 @@ function addLdapServer() {
 const numericFields = new Set([
   'pmm_volume_size','pmm_port','subnet_count','backup_retention',
   'shardsvr_volume_size','configsvr_volume_size','replsetsvr_volume_size',
+  // CHAOS-specific numeric fields
+  'delete_after_days',
+  'shardsvr_cpu_cores','shardsvr_memory_gb',
+  'configsvr_cpu_cores','configsvr_memory_gb',
+  'mongos_cpu_cores','mongos_memory_gb',
+  'arbiter_cpu_cores','arbiter_memory_gb',
+  'replsetsvr_cpu_cores','replsetsvr_memory_gb',
+  'minio_cpu_cores','minio_memory_gb','minio_volume_size',
+  'minio_port','minio_console_port',
+  'pmm_cpu_cores','pmm_memory_gb',
 ]);
 
 // ── SSH Users (add/remove rows) ──────────────────────────────────────────────
@@ -1455,6 +1764,17 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     'configsvr_type','configsvr_volume_size',
     'mongos_type','arbiter_type',
     'replsetsvr_type','replsetsvr_volume_size',
+    // CHAOS-specific fields
+    'delete_after_days','os_image',
+    'shardsvr_cpu_cores','shardsvr_memory_gb',
+    'configsvr_cpu_cores','configsvr_memory_gb',
+    'mongos_cpu_cores','mongos_memory_gb',
+    'arbiter_cpu_cores','arbiter_memory_gb',
+    'replsetsvr_cpu_cores','replsetsvr_memory_gb',
+    'minio_cpu_cores','minio_memory_gb','minio_volume_size',
+    'minio_port','minio_console_port',
+    'minio_root_user','minio_root_password',
+    'pmm_cpu_cores','pmm_memory_gb',
   ];
   for (const f of simpleFields) {
     const raw = fd.get(f);

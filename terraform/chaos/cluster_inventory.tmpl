@@ -29,6 +29,9 @@ ${hostname_mongos[index]} ansible_host=${ip_mongos[index]}
 ${hostname_pmm} ansible_host=${ip_pmm}
 
 %{ endif ~}
+[minio]
+${minio_hostname} ansible_host=${minio_ip}
+
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
 bucket=${bucket}
@@ -38,4 +41,4 @@ cluster=${cluster}
 env_tag=${env_tag}
 access_key_id=${access_key}
 secret_access_key=${secret_access_key}
-storage_provider=s3
+storage_provider=minio

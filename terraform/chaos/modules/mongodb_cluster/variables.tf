@@ -18,11 +18,6 @@ variable "env_tag" {
   description = "Name of Environment"
 }
 
-variable "chaos_ssh_users" {
-  description = "Map of SSH user names to their public key file paths. Keys are added to authorized_keys on all instances."
-  default = {
-    ivan_groenewold = "ivan.pub"
-  }
 }
 
 variable "my_ssh_user" {
@@ -200,10 +195,6 @@ variable "delete_after_days" {
 # Networking
 #############
 
-variable "subnet_cidr" {
-  type    = string
-  default = "10.128.0.0/20"
-}
 
 variable "source_ranges" {
   type    = string

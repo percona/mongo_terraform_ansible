@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -124,6 +125,7 @@ func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
 	prefix := strDefault(env.Config.Prefix, envID)
 	host := "localhost"
 	user, pass := mongoAdminCredentials(env)
+	encodedPass := url.QueryEscape(pass)
 	var conns []MongoConnInfo
 
 	for name := range env.Config.Replsets {
@@ -137,7 +139,7 @@ func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
 			members = append(members, fmt.Sprintf("%s:%d", host, 27017+i))
 		}
 		connStr := fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=%s&authSource=admin",
-			user, pass, strings.Join(members, ","), containerPrefix)
+			url.QueryEscape(user), encodedPass, strings.Join(members, ","), containerPrefix)
 		conns = append(conns, MongoConnInfo{
 			Name:       name,
 			Type:       "replset",
@@ -157,7 +159,7 @@ func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
 			mongosHosts = append(mongosHosts, fmt.Sprintf("%s:%d", host, 27017+i))
 		}
 		connStr := fmt.Sprintf("mongodb://%s:%s@%s/?authSource=admin",
-			user, pass, strings.Join(mongosHosts, ","))
+			url.QueryEscape(user), encodedPass, strings.Join(mongosHosts, ","))
 		conns = append(conns, MongoConnInfo{
 			Name:       name,
 			Type:       "cluster",
@@ -211,6 +213,7 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 
 	var mongoConns []MongoConnInfo
 	user, pass := mongoAdminCredentials(env)
+	encodedPass := url.QueryEscape(pass)
 	for _, name := range names {
 		if _, ok := env.Config.Clusters[name]; ok {
 			mongosHosts := hostsWithRole(hosts, name, "mongos")
@@ -220,7 +223,7 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 					members = append(members, h.IP+":27017")
 				}
 				connStr := fmt.Sprintf("mongodb://%s:%s@%s/?authSource=admin",
-					user, pass, strings.Join(members, ","))
+					url.QueryEscape(user), encodedPass, strings.Join(members, ","))
 				mongoConns = append(mongoConns, MongoConnInfo{
 					Name:       name,
 					Type:       "cluster",
@@ -237,7 +240,7 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 					members = append(members, h.IP+":27017")
 				}
 				connStr := fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=%s&authSource=admin",
-					user, pass, strings.Join(members, ","), name)
+					url.QueryEscape(user), encodedPass, strings.Join(members, ","), name)
 				mongoConns = append(mongoConns, MongoConnInfo{
 					Name:       name,
 					Type:       "replset",
@@ -358,6 +361,80 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 				Name:  prefix + "-" + svcName,
 				Label: "MinIO Console: " + svcName,
 				URL:   fmt.Sprintf("http://%s:%d", host, consolePort),
+			})
+		}
+	} else if env.Platform == "chaos" {
+		// CHAOS: Minio console access URL is derived from inventory files.
+		// We look for the minio host in the inventory files.
+		tfDir := filepath.Join(terraformDir, "chaos")
+		var names []string
+		for name := range env.Config.Clusters {
+			names = append(names, name)
+		}
+		for name := range env.Config.Replsets {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		minioHost := ""
+		minioIP := ""
+		for _, name := range names {
+			p := filepath.Join(tfDir, "inventory_"+name)
+			content, err := os.ReadFile(p)
+			if err != nil {
+				continue
+			}
+			// Find the minio group and its host
+			inMinio := false
+			for _, line := range strings.Split(string(content), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "[minio]" {
+					inMinio = true
+					continue
+				}
+				if strings.HasPrefix(line, "[") {
+					inMinio = false
+					continue
+				}
+				if inMinio && line != "" {
+					parts := strings.Fields(line)
+					minioHost = parts[0]
+					for _, kv := range parts[1:] {
+						if strings.HasPrefix(kv, "ansible_host=") {
+							minioIP = strings.TrimPrefix(kv, "ansible_host=")
+						}
+					}
+					break
+				}
+			}
+			if minioHost != "" {
+				break
+			}
+		}
+		if minioHost != "" || minioIP != "" {
+			host := minioIP
+			if host == "" {
+				host = minioHost
+			}
+			consolePort := env.Config.MinioConsolePort
+			if consolePort == 0 {
+				consolePort = 9001
+			}
+			urls = append(urls, ServiceURL{
+				Name:  "minio",
+				Label: "MinIO Console",
+				URL:   fmt.Sprintf("http://%s:%d", host, consolePort),
+			})
+		}
+		// PMM URL for CHAOS (via SSH port forward like other cloud platforms)
+		if v := env.Config.EnablePmm; v != nil && *v {
+			portStr := env.Config.PortToForward
+			if portStr == "" {
+				portStr = "23443"
+			}
+			urls = append(urls, ServiceURL{
+				Name:  "pmm",
+				Label: "PMM",
+				URL:   fmt.Sprintf("https://127.0.0.1:%s", portStr),
 			})
 		}
 	} else {

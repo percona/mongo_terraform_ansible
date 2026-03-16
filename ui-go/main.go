@@ -18,7 +18,7 @@ import (
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-var platforms = []string{"aws", "gcp", "azure", "docker"}
+var platforms = []string{"aws", "gcp", "azure", "chaos", "docker"}
 
 var ansiRe = regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
 var safeFilenameRe = regexp.MustCompile(`[^a-zA-Z0-9._-]`)

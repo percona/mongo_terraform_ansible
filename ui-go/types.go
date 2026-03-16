@@ -107,6 +107,29 @@ type Config struct {
 	// Machine image / AMI selected for cloud instances.
 	MachineImage string `json:"machine_image,omitempty"`
 
+	// CHAOS-specific settings
+	DeleteAfterDays  int    `json:"delete_after_days,omitempty"`
+	OsImage          string `json:"os_image,omitempty"`
+	ShardsvrCpuCores int    `json:"shardsvr_cpu_cores,omitempty"`
+	ShardsvrMemoryGb int    `json:"shardsvr_memory_gb,omitempty"`
+	ConfigsvrCpuCores int   `json:"configsvr_cpu_cores,omitempty"`
+	ConfigsvrMemoryGb int   `json:"configsvr_memory_gb,omitempty"`
+	MongosCpuCores   int    `json:"mongos_cpu_cores,omitempty"`
+	MongosMemoryGb   int    `json:"mongos_memory_gb,omitempty"`
+	ArbiterCpuCores  int    `json:"arbiter_cpu_cores,omitempty"`
+	ArbiterMemoryGb  int    `json:"arbiter_memory_gb,omitempty"`
+	ReplsetSvrCpuCores int  `json:"replsetsvr_cpu_cores,omitempty"`
+	ReplsetSvrMemoryGb int  `json:"replsetsvr_memory_gb,omitempty"`
+	MinioCpuCores    int    `json:"minio_cpu_cores,omitempty"`
+	MinioMemoryGb    int    `json:"minio_memory_gb,omitempty"`
+	MinioVolumeSize  int    `json:"minio_volume_size,omitempty"`
+	MinioPort        int    `json:"minio_port,omitempty"`
+	MinioConsolePort int    `json:"minio_console_port,omitempty"`
+	MinioRootUser    string `json:"minio_root_user,omitempty"`
+	MinioRootPassword string `json:"minio_root_password,omitempty"`
+	PmmCpuCores      int    `json:"pmm_cpu_cores,omitempty"`
+	PmmMemoryGb      int    `json:"pmm_memory_gb,omitempty"`
+
 	// Per-component instance types and disk sizes (cloud platforms only).
 	ShardsvrType        string `json:"shardsvr_type,omitempty"`
 	ShardsvrVolumeSize  int    `json:"shardsvr_volume_size,omitempty"`

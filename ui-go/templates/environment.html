@@ -415,6 +415,13 @@ function escHtml(s) {
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// escAttr escapes a value for safe use inside an HTML attribute (double-quoted).
+function escAttr(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function formatDuration(secs) {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
@@ -801,7 +808,7 @@ function renderHosts(data) {
           <td>
             <div class="copy-cmd-row">
               <code class="copy-cmd-text">${escHtml(h.connect_cmd)}</code>
-              <button class="btn btn-outline btn-xs copy-btn" onclick="copyText(${JSON.stringify(h.connect_cmd)}, this)" title="Copy to clipboard">📋</button>
+              <button class="btn btn-outline btn-xs copy-btn" data-copy="${escAttr(h.connect_cmd)}" onclick="copyText(this.dataset.copy, this)" title="Copy to clipboard">📋</button>
             </div>
           </td>
         </tr>`;
@@ -823,13 +830,13 @@ function renderHosts(data) {
       // characters.
       function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
       const displayConn = (c.conn_user && c.conn_pass)
-        ? c.conn_string.replace(new RegExp(escapeRegex(encodeURIComponent(c.conn_pass)), 'g'), '••••••')
+        ? c.conn_string.replace(new RegExp(escapeRegex(c.conn_pass), 'g'), '••••••')
         : c.conn_string;
       html += `<div class="conn-string-row">
         <span class="conn-string-label">${typeLabel}: <strong>${escHtml(c.name)}</strong></span>
         <div class="copy-cmd-row">
           <code class="copy-cmd-text">${escHtml(displayConn)}</code>
-          <button class="btn btn-outline btn-xs copy-btn" onclick="copyText(${JSON.stringify(c.conn_string)}, this)" title="Copy connection string (with real password)">📋</button>
+          <button class="btn btn-outline btn-xs copy-btn" data-copy="${escAttr(c.conn_string)}" onclick="copyText(this.dataset.copy, this)" title="Copy connection string (with real password)">📋</button>
         </div>
       </div>`;
     });

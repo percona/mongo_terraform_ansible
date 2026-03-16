@@ -892,21 +892,33 @@
     {{if eq $p "chaos"}}
     <div class="form-row">
       <div class="form-group">
-        <label for="pmm_cpu_cores">PMM CPU Cores</label>
-        <input type="number" id="pmm_cpu_cores" name="pmm_cpu_cores"
-               value="{{if .Config.PmmCpuCores}}{{.Config.PmmCpuCores}}{{end}}"
-               placeholder="2" min="1">
+        <label for="pmm_cpu_cores">PMM vCPU</label>
+        <select id="pmm_cpu_cores" name="pmm_cpu_cores">
+          {{$v := .Config.PmmCpuCores}}
+          <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
+          <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
+          <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
+        </select>
       </div>
       <div class="form-group">
         <label for="pmm_memory_gb">PMM Memory (GB)</label>
-        <input type="number" id="pmm_memory_gb" name="pmm_memory_gb"
-               value="{{if .Config.PmmMemoryGb}}{{.Config.PmmMemoryGb}}{{end}}"
-               placeholder="4" min="1">
+        <select id="pmm_memory_gb" name="pmm_memory_gb">
+          {{$v := .Config.PmmMemoryGb}}
+          <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
+          <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
+          <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
+        </select>
       </div>
       <div class="form-group">
-        <label for="pmm_volume_size">Volume Size (GB)</label>
-        <input type="number" id="pmm_volume_size" name="pmm_volume_size"
-               value="{{intDefault .Config.PmmVolumeSize 100}}" min="20">
+        <label for="pmm_volume_size">Disk (GB)</label>
+        <select id="pmm_volume_size" name="pmm_volume_size">
+          {{$v := .Config.PmmVolumeSize}}
+          <option value="20" {{if eq $v 20}}selected{{end}}>20 GB</option>
+          <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
+          <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
+          <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
+          <option value="100" {{if or (eq $v 0) (eq $v 100)}}selected{{end}}>100 GB</option>
+        </select>
       </div>
       <div class="form-group">
         <label for="pmm_port">PMM Port</label>

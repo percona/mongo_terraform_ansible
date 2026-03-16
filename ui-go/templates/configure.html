@@ -300,10 +300,19 @@
   <section class="form-section">
     <h2>CHAOS Settings</h2>
     <div class="form-row">
+      <div class="form-group form-group-full">
+        <label for="chaos_api_token">CHAOS API Token</label>
+        <input type="password" id="chaos_api_token" name="chaos_api_token"
+               value="{{.Config.ChaosApiToken}}" autocomplete="new-password"
+               placeholder="Your CHAOS API token (required)">
+        <small>Required to authenticate with the CHAOS provider and create VM resources.</small>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-group">
         <label for="my_ssh_user">SSH User</label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
-               value="{{.Config.MySSHUser}}" placeholder="centos">
+               value="{{.Config.MySSHUser}}" placeholder="ubuntu">
         <small>Username Ansible uses to connect to all CHAOS instances.</small>
       </div>
       <div class="form-group">
@@ -316,15 +325,23 @@
     <div class="form-row">
       <div class="form-group">
         <label for="os_image">OS Image</label>
-        <input type="text" id="os_image" name="os_image"
-               value="{{strDefault .Config.OsImage "CentOS 9"}}" placeholder="CentOS 9">
-        <small>Operating system image for all CHAOS instances.</small>
+        <select id="os_image" name="os_image">
+          {{$curOs := strDefault .Config.OsImage "Ubuntu 24.04"}}
+          <option value="Ubuntu 24.04" {{if eq $curOs "Ubuntu 24.04"}}selected{{end}}>Ubuntu 24.04</option>
+          <option value="Ubuntu 22.04" {{if eq $curOs "Ubuntu 22.04"}}selected{{end}}>Ubuntu 22.04</option>
+          <option value="Rocky Linux 9" {{if eq $curOs "Rocky Linux 9"}}selected{{end}}>Rocky Linux 9</option>
+          <option value="Rocky Linux 8" {{if eq $curOs "Rocky Linux 8"}}selected{{end}}>Rocky Linux 8</option>
+          <option value="Oracle Linux 9" {{if eq $curOs "Oracle Linux 9"}}selected{{end}}>Oracle Linux 9</option>
+          <option value="Oracle Linux 8" {{if eq $curOs "Oracle Linux 8"}}selected{{end}}>Oracle Linux 8</option>
+          <option value="Debian 12" {{if eq $curOs "Debian 12"}}selected{{end}}>Debian 12</option>
+        </select>
+        <small>Operating system for all CHAOS instances. Default: Ubuntu 24.04.</small>
       </div>
       <div class="form-group">
         <label for="delete_after_days">Delete After (days)</label>
         <input type="number" id="delete_after_days" name="delete_after_days"
-               value="{{intDefault .Config.DeleteAfterDays 7}}" min="1" max="90">
-        <small>CHAOS will automatically delete instances after this many days.</small>
+               value="{{intDefault .Config.DeleteAfterDays 14}}" min="0" max="30">
+        <small>CHAOS will automatically delete instances after this many days (0–30, default 14).</small>
       </div>
     </div>
   </section>
@@ -435,71 +452,105 @@
                     onclick="toggleComputeBlock(this)">{{if or $.Config.ShardsvrCpuCores $.Config.ShardsvrVolumeSize $.Config.ConfigsvrCpuCores $.Config.MongosCpuCores $.Config.ArbiterCpuCores}}▲ Collapse{{else}}▼ Customize{{end}}</button>
           </div>
           <div class="compute-block-body" {{if not (or $.Config.ShardsvrCpuCores $.Config.ShardsvrVolumeSize $.Config.ConfigsvrCpuCores $.Config.MongosCpuCores $.Config.ArbiterCpuCores)}}style="display:none"{{end}}>
-            <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all clusters</strong> in this deployment. Leave blank to use Terraform defaults.</p>
+            <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all clusters</strong> in this deployment.</p>
             <div class="form-row">
               <div class="form-group">
-                <label>Shard Svr CPU Cores</label>
-                <input type="number" name="shardsvr_cpu_cores"
-                       value="{{if $.Config.ShardsvrCpuCores}}{{$.Config.ShardsvrCpuCores}}{{end}}"
-                       placeholder="2" min="1">
+                <label>Shard Svr vCPU</label>
+                <select name="shardsvr_cpu_cores">
+                  {{$v := $.Config.ShardsvrCpuCores}}
+                  <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
+                  <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>Shard Svr Memory (GB)</label>
-                <input type="number" name="shardsvr_memory_gb"
-                       value="{{if $.Config.ShardsvrMemoryGb}}{{$.Config.ShardsvrMemoryGb}}{{end}}"
-                       placeholder="4" min="1">
+                <select name="shardsvr_memory_gb">
+                  {{$v := $.Config.ShardsvrMemoryGb}}
+                  <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
+                  <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>Shard Svr Disk (GB)</label>
-                <input type="number" name="shardsvr_volume_size"
-                       value="{{if $.Config.ShardsvrVolumeSize}}{{$.Config.ShardsvrVolumeSize}}{{end}}"
-                       placeholder="50" min="10">
+                <select name="shardsvr_volume_size">
+                  {{$v := $.Config.ShardsvrVolumeSize}}
+                  <option value="20" {{if eq $v 20}}selected{{end}}>20 GB</option>
+                  <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
+                  <option value="60" {{if or (eq $v 0) (eq $v 60)}}selected{{end}}>60 GB</option>
+                  <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
+                  <option value="100" {{if eq $v 100}}selected{{end}}>100 GB</option>
+                </select>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Config Svr CPU Cores</label>
-                <input type="number" name="configsvr_cpu_cores"
-                       value="{{if $.Config.ConfigsvrCpuCores}}{{$.Config.ConfigsvrCpuCores}}{{end}}"
-                       placeholder="2" min="1">
+                <label>Config Svr vCPU</label>
+                <select name="configsvr_cpu_cores">
+                  {{$v := $.Config.ConfigsvrCpuCores}}
+                  <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
+                  <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>Config Svr Memory (GB)</label>
-                <input type="number" name="configsvr_memory_gb"
-                       value="{{if $.Config.ConfigsvrMemoryGb}}{{$.Config.ConfigsvrMemoryGb}}{{end}}"
-                       placeholder="4" min="1">
+                <select name="configsvr_memory_gb">
+                  {{$v := $.Config.ConfigsvrMemoryGb}}
+                  <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
+                  <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>Config Svr Disk (GB)</label>
-                <input type="number" name="configsvr_volume_size"
-                       value="{{if $.Config.ConfigsvrVolumeSize}}{{$.Config.ConfigsvrVolumeSize}}{{end}}"
-                       placeholder="20" min="10">
+                <select name="configsvr_volume_size">
+                  {{$v := $.Config.ConfigsvrVolumeSize}}
+                  <option value="20" {{if or (eq $v 0) (eq $v 20)}}selected{{end}}>20 GB</option>
+                  <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
+                  <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
+                  <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
+                  <option value="100" {{if eq $v 100}}selected{{end}}>100 GB</option>
+                </select>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Mongos CPU Cores</label>
-                <input type="number" name="mongos_cpu_cores"
-                       value="{{if $.Config.MongosCpuCores}}{{$.Config.MongosCpuCores}}{{end}}"
-                       placeholder="2" min="1">
+                <label>Mongos vCPU</label>
+                <select name="mongos_cpu_cores">
+                  {{$v := $.Config.MongosCpuCores}}
+                  <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
+                  <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>Mongos Memory (GB)</label>
-                <input type="number" name="mongos_memory_gb"
-                       value="{{if $.Config.MongosMemoryGb}}{{$.Config.MongosMemoryGb}}{{end}}"
-                       placeholder="4" min="1">
+                <select name="mongos_memory_gb">
+                  {{$v := $.Config.MongosMemoryGb}}
+                  <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
+                  <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
+                </select>
               </div>
               <div class="form-group">
-                <label>Arbiter CPU Cores</label>
-                <input type="number" name="arbiter_cpu_cores"
-                       value="{{if $.Config.ArbiterCpuCores}}{{$.Config.ArbiterCpuCores}}{{end}}"
-                       placeholder="2" min="1">
+                <label>Arbiter vCPU</label>
+                <select name="arbiter_cpu_cores">
+                  {{$v := $.Config.ArbiterCpuCores}}
+                  <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
+                  <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>Arbiter Memory (GB)</label>
-                <input type="number" name="arbiter_memory_gb"
-                       value="{{if $.Config.ArbiterMemoryGb}}{{$.Config.ArbiterMemoryGb}}{{end}}"
-                       placeholder="2" min="1">
+                <select name="arbiter_memory_gb">
+                  {{$v := $.Config.ArbiterMemoryGb}}
+                  <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
+                  <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
+                </select>
               </div>
             </div>
           </div><!-- .compute-block-body -->
@@ -664,39 +715,56 @@
                     onclick="toggleComputeBlock(this)">{{if or $.Config.ReplsetSvrCpuCores $.Config.ReplsetSvrVolumeSize $.Config.ArbiterCpuCores}}▲ Collapse{{else}}▼ Customize{{end}}</button>
           </div>
           <div class="compute-block-body" {{if not (or $.Config.ReplsetSvrCpuCores $.Config.ReplsetSvrVolumeSize $.Config.ArbiterCpuCores)}}style="display:none"{{end}}>
-            <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all replica sets</strong> in this deployment. Leave blank to use Terraform defaults.</p>
+            <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all replica sets</strong> in this deployment.</p>
             <div class="form-row">
               <div class="form-group">
-                <label>Data Node CPU Cores</label>
-                <input type="number" name="replsetsvr_cpu_cores"
-                       value="{{if $.Config.ReplsetSvrCpuCores}}{{$.Config.ReplsetSvrCpuCores}}{{end}}"
-                       placeholder="2" min="1">
+                <label>Data Node vCPU</label>
+                <select name="replsetsvr_cpu_cores">
+                  {{$v := $.Config.ReplsetSvrCpuCores}}
+                  <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
+                  <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>Data Node Memory (GB)</label>
-                <input type="number" name="replsetsvr_memory_gb"
-                       value="{{if $.Config.ReplsetSvrMemoryGb}}{{$.Config.ReplsetSvrMemoryGb}}{{end}}"
-                       placeholder="4" min="1">
+                <select name="replsetsvr_memory_gb">
+                  {{$v := $.Config.ReplsetSvrMemoryGb}}
+                  <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
+                  <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>Data Node Disk (GB)</label>
-                <input type="number" name="replsetsvr_volume_size"
-                       value="{{if $.Config.ReplsetSvrVolumeSize}}{{$.Config.ReplsetSvrVolumeSize}}{{end}}"
-                       placeholder="100" min="10">
+                <select name="replsetsvr_volume_size">
+                  {{$v := $.Config.ReplsetSvrVolumeSize}}
+                  <option value="20" {{if eq $v 20}}selected{{end}}>20 GB</option>
+                  <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
+                  <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
+                  <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
+                  <option value="100" {{if or (eq $v 0) (eq $v 100)}}selected{{end}}>100 GB</option>
+                </select>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Arbiter CPU Cores</label>
-                <input type="number" name="arbiter_cpu_cores"
-                       value="{{if $.Config.ArbiterCpuCores}}{{$.Config.ArbiterCpuCores}}{{end}}"
-                       placeholder="2" min="1">
+                <label>Arbiter vCPU</label>
+                <select name="arbiter_cpu_cores">
+                  {{$v := $.Config.ArbiterCpuCores}}
+                  <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
+                  <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>Arbiter Memory (GB)</label>
-                <input type="number" name="arbiter_memory_gb"
-                       value="{{if $.Config.ArbiterMemoryGb}}{{$.Config.ArbiterMemoryGb}}{{end}}"
-                       placeholder="2" min="1">
+                <select name="arbiter_memory_gb">
+                  {{$v := $.Config.ArbiterMemoryGb}}
+                  <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
+                  <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
+                  <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
+                </select>
               </div>
             </div>
           </div><!-- .compute-block-body -->

@@ -2,9 +2,9 @@ resource "chaos_instance" "arbiter" {
   count             = var.arbiters_per_replset
   name              = "${var.rs_name}-${var.arbiter_tag}${count.index}"
   os                = var.os_image
-  cpu_cores         = var.arbiter_cpu_cores
+  vcpu              = var.arbiter_cpu_cores
   memory            = var.arbiter_memory_gb
-  disk              = 10
+  disk              = 20
   ssh_user          = var.my_ssh_user
   description       = "${var.rs_name} – MongoDB arbiter ${count.index}"
   delete_after_days = var.delete_after_days

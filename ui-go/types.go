@@ -108,6 +108,7 @@ type Config struct {
 	MachineImage string `json:"machine_image,omitempty"`
 
 	// CHAOS-specific settings
+	ChaosApiToken    string `json:"chaos_api_token,omitempty"`
 	DeleteAfterDays  int    `json:"delete_after_days,omitempty"`
 	OsImage          string `json:"os_image,omitempty"`
 	ShardsvrCpuCores int    `json:"shardsvr_cpu_cores,omitempty"`

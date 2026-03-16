@@ -12,7 +12,9 @@ terraform {
   }
 }
 
-provider "chaos" {}
+provider "chaos" {
+  api_token = var.chaos_api_token
+}
 
 module "mongodb_clusters" {
   source   = "./modules/mongodb_cluster"

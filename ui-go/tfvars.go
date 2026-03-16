@@ -121,6 +121,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 
 		if platform == "chaos" {
 			// CHAOS-specific vars
+			writeOptStr("chaos_api_token", cfg.ChaosApiToken)
 			writeOptInt("delete_after_days", cfg.DeleteAfterDays)
 			writeOptStr("os_image", cfg.OsImage)
 			// PMM

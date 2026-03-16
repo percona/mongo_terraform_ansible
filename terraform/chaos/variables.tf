@@ -191,12 +191,12 @@ variable "backup_retention" {
 variable "os_image" {
   description = "Operating system for all instances"
   type        = string
-  default     = "CentOS 9"
+  default     = "Ubuntu 24.04"
 }
 
 variable "delete_after_days" {
   type        = number
-  default     = 7
+  default     = 14
   description = "Number of days before instances are automatically deleted"
 }
 
@@ -215,7 +215,7 @@ variable "shardsvr_memory_gb" {
 }
 
 variable "shardsvr_volume_size" {
-  default     = 50
+  default     = 60
   description = "Root disk size in GB for MongoDB shard server instances"
 }
 
@@ -282,4 +282,14 @@ variable "subnet_cidr" {
 variable "source_ranges" {
   type    = string
   default = "0.0.0.0/0"
+}
+
+#############
+# CHAOS Provider
+#############
+
+variable "chaos_api_token" {
+  type        = string
+  sensitive   = true
+  description = "API token for authenticating with the CHAOS provider. Required to create resources."
 }

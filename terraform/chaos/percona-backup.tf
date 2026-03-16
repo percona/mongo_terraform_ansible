@@ -1,7 +1,7 @@
 resource "chaos_instance" "minio" {
   name              = local.minio_host
   os                = var.os_image
-  cpu_cores         = var.minio_cpu_cores
+  vcpu              = var.minio_cpu_cores
   memory            = var.minio_memory_gb
   disk              = var.minio_volume_size
   ssh_user          = var.my_ssh_user

@@ -18,8 +18,6 @@ variable "env_tag" {
   description = "Name of Environment"
 }
 
-}
-
 variable "my_ssh_user" {
   default     = "ivan_groenewold"
   description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"
@@ -106,12 +104,12 @@ variable "arbiter_port" {
 variable "os_image" {
   description = "Operating system image for all instances"
   type        = string
-  default     = "CentOS 9"
+  default     = "Ubuntu 24.04"
 }
 
 variable "delete_after_days" {
   type        = number
-  default     = 7
+  default     = 14
   description = "Number of days before instances are automatically deleted"
 }
 

@@ -2,7 +2,7 @@ resource "chaos_instance" "replset" {
   count             = var.data_nodes_per_replset
   name              = "${var.rs_name}-${var.replset_tag}${count.index}"
   os                = var.os_image
-  cpu_cores         = var.replsetsvr_cpu_cores
+  vcpu              = var.replsetsvr_cpu_cores
   memory            = var.replsetsvr_memory_gb
   disk              = var.replsetsvr_volume_size
   ssh_user          = var.my_ssh_user

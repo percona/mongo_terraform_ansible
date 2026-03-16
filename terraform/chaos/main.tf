@@ -46,7 +46,6 @@ module "mongodb_clusters" {
 
   source_ranges = var.source_ranges
 
-  depends_on = [chaos_instance.minio]
 }
 
 module "mongodb_replsets" {
@@ -71,5 +70,4 @@ module "mongodb_replsets" {
 
   source_ranges = var.source_ranges
 
-  depends_on = [chaos_instance.minio]
 }

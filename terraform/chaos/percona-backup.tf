@@ -1,4 +1,5 @@
 resource "chaos_instance" "minio" {
+  count             = var.enable_minio ? 1 : 0
   name              = local.minio_host
   os                = var.os_image
   vcpu              = var.minio_cpu_cores
@@ -16,7 +17,7 @@ resource "chaos_instance" "minio" {
       - mkdir -p /data/minio
   CLOUDINIT
 
-  firewall_rules = [
+  firewall_rules = var.source_ranges != "" ? [
     {
       source   = var.source_ranges
       port     = "22"
@@ -35,7 +36,7 @@ resource "chaos_instance" "minio" {
       protocol = "tcp"
       comment  = "Allow Minio console access"
     },
-  ]
+  ] : []
 }
 
 output "minio_access_key" {
@@ -50,6 +51,6 @@ output "minio_secret_key" {
 }
 
 output "minio_endpoint" {
-  value       = "http://${chaos_instance.minio.ip_address}:${var.minio_port}"
+  value       = var.enable_minio ? "http://${chaos_instance.minio[0].ip_address}:${var.minio_port}" : ""
   description = "Minio S3-compatible endpoint URL for backup configuration"
 }

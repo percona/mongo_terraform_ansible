@@ -302,10 +302,17 @@
     <div class="form-row">
       <div class="form-group form-group-full">
         <label for="chaos_api_token">CHAOS API Token</label>
-        <input type="password" id="chaos_api_token" name="chaos_api_token"
-               value="{{.Config.ChaosApiToken}}" autocomplete="new-password"
-               placeholder="Your CHAOS API token (required)">
-        <small>Required to authenticate with the CHAOS provider and create VM resources.</small>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <input type="password" id="chaos_api_token" name="chaos_api_token"
+                 value="{{.Config.ChaosApiToken}}" autocomplete="new-password"
+                 placeholder="Paste token or use Browse to load from file" style="flex:1">
+          <label class="btn btn-outline btn-sm" style="cursor:pointer;white-space:nowrap;margin:0">
+            Browse&hellip;
+            <input type="file" id="chaos_token_file" style="display:none"
+                   onchange="loadChaosTokenFromFile(this)">
+          </label>
+        </div>
+        <small>CHAOS API token required to create resources. Paste it directly or select a token file from disk.</small>
       </div>
     </div>
     <div class="form-row">
@@ -318,8 +325,8 @@
       <div class="form-group">
         <label for="source_ranges">Source Ranges (SSH / Service Access)</label>
         <input type="text" id="source_ranges" name="source_ranges"
-               value="{{strDefault .Config.SourceRanges "0.0.0.0/0"}}" placeholder="0.0.0.0/0">
-        <small>CIDR range(s) allowed to access instances (SSH and service ports).</small>
+               value="{{.Config.SourceRanges}}" placeholder="e.g. 0.0.0.0/0 (leave empty for no firewall rules)">
+        <small>CIDR range(s) for firewall rules. Leave empty to create instances with no firewall restrictions.</small>
       </div>
     </div>
     <div class="form-row">
@@ -976,60 +983,88 @@
   <!-- ──────────── Minio VM (CHAOS only) ──────────── -->
   {{if eq $p "chaos"}}
   <section class="form-section">
-    <h2>Minio Backup Storage VM</h2>
-    <p class="hint">CHAOS does not provide managed object storage. A dedicated VM running <a href="https://min.io" target="_blank">Minio</a> is provisioned and configured via Ansible.</p>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="minio_root_user">Minio Root User</label>
-        <input type="text" id="minio_root_user" name="minio_root_user"
-               value="{{strDefault .Config.MinioRootUser "minioadmin"}}">
-      </div>
-      <div class="form-group">
-        <label for="minio_root_password">Minio Root Password</label>
-        <input type="password" id="minio_root_password" name="minio_root_password"
-               value="{{strDefault .Config.MinioRootPassword "minioadmin"}}" autocomplete="new-password">
-      </div>
-      <div class="form-group">
-        <label for="default_bucket_name">Bucket Name</label>
-        <input type="text" id="default_bucket_name" name="default_bucket_name"
-               value="{{strDefault .Config.DefaultBucketName "mongo-backups"}}">
-      </div>
+    <div class="section-header">
+      <h2>Minio Backup Storage VM</h2>
+      <label class="toggle-label">
+        <input type="checkbox" id="enable_minio" name="enable_minio" value="true"
+               {{if boolDefault .Config.EnableMinio false}}checked{{end}}
+               onchange="toggleMinioBody(this)">
+        Enable Minio
+      </label>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="minio_port">API Port</label>
-        <input type="number" id="minio_port" name="minio_port"
-               value="{{intDefault .Config.MinioPort 9000}}">
+    <p class="hint">Optional: deploy a dedicated VM running <a href="https://min.io" target="_blank">Minio</a> for S3-compatible backup storage, provisioned via Ansible.</p>
+    <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio false)}}style="display:none"{{end}}>
+      <div class="subsection-header">
+        <span class="subsection-title">Minio Settings</span>
+        <button type="button" class="btn btn-outline btn-sm compute-toggle-btn"
+                onclick="toggleComputeBlock(this)">&#9660; Customize</button>
       </div>
-      <div class="form-group">
-        <label for="minio_console_port">Console Port</label>
-        <input type="number" id="minio_console_port" name="minio_console_port"
-               value="{{intDefault .Config.MinioConsolePort 9001}}">
-      </div>
-      <div class="form-group">
-        <label for="backup_retention">Retention (days)</label>
-        <input type="number" id="backup_retention" name="backup_retention"
-               value="{{intDefault .Config.BackupRetention 2}}" min="1">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="minio_cpu_cores">Minio VM CPU Cores</label>
-        <input type="number" id="minio_cpu_cores" name="minio_cpu_cores"
-               value="{{if .Config.MinioCpuCores}}{{.Config.MinioCpuCores}}{{end}}"
-               placeholder="2" min="1">
-      </div>
-      <div class="form-group">
-        <label for="minio_memory_gb">Minio VM Memory (GB)</label>
-        <input type="number" id="minio_memory_gb" name="minio_memory_gb"
-               value="{{if .Config.MinioMemoryGb}}{{.Config.MinioMemoryGb}}{{end}}"
-               placeholder="4" min="1">
-      </div>
-      <div class="form-group">
-        <label for="minio_volume_size">Minio VM Disk (GB)</label>
-        <input type="number" id="minio_volume_size" name="minio_volume_size"
-               value="{{if .Config.MinioVolumeSize}}{{.Config.MinioVolumeSize}}{{end}}"
-               placeholder="100" min="20">
+      <div class="compute-block-body" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="minio_root_user">Minio Root User</label>
+            <input type="text" id="minio_root_user" name="minio_root_user"
+                   value="{{strDefault .Config.MinioRootUser "minioadmin"}}">
+          </div>
+          <div class="form-group">
+            <label for="minio_root_password">Minio Root Password</label>
+            <input type="password" id="minio_root_password" name="minio_root_password"
+                   value="{{strDefault .Config.MinioRootPassword "minioadmin"}}" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label for="default_bucket_name">Bucket Name</label>
+            <input type="text" id="default_bucket_name" name="default_bucket_name"
+                   value="{{strDefault .Config.DefaultBucketName "mongo-backups"}}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="minio_port">API Port</label>
+            <input type="number" id="minio_port" name="minio_port"
+                   value="{{intDefault .Config.MinioPort 9000}}">
+          </div>
+          <div class="form-group">
+            <label for="minio_console_port">Console Port</label>
+            <input type="number" id="minio_console_port" name="minio_console_port"
+                   value="{{intDefault .Config.MinioConsolePort 9001}}">
+          </div>
+          <div class="form-group">
+            <label for="backup_retention">Retention (days)</label>
+            <input type="number" id="backup_retention" name="backup_retention"
+                   value="{{intDefault .Config.BackupRetention 2}}" min="1">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="minio_cpu_cores">Minio VM vCPU</label>
+            <select id="minio_cpu_cores" name="minio_cpu_cores">
+              {{$v := .Config.MinioCpuCores}}
+              <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
+              <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
+              <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="minio_memory_gb">Minio VM Memory (GB)</label>
+            <select id="minio_memory_gb" name="minio_memory_gb">
+              {{$v := .Config.MinioMemoryGb}}
+              <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
+              <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
+              <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="minio_volume_size">Minio VM Disk (GB)</label>
+            <select id="minio_volume_size" name="minio_volume_size">
+              {{$v := .Config.MinioVolumeSize}}
+              <option value="20" {{if eq $v 20}}selected{{end}}>20 GB</option>
+              <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
+              <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
+              <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
+              <option value="100" {{if or (eq $v 0) (eq $v 100)}}selected{{end}}>100 GB</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -1247,6 +1282,21 @@ function toggleComputeBlock(btn) {
   const hidden = body.style.display === 'none';
   body.style.display = hidden ? '' : 'none';
   btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
+}
+
+function loadChaosTokenFromFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('chaos_api_token').value = e.target.result.trim();
+  };
+  reader.readAsText(file);
+}
+
+function toggleMinioBody(checkbox) {
+  const body = document.getElementById('minio-vm-body');
+  if (body) body.style.display = checkbox.checked ? '' : 'none';
 }
 
 // Toggle the per-block .customize-body panel (clusters, replsets, Docker servers).

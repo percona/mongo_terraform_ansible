@@ -195,6 +195,7 @@ variable "delete_after_days" {
 
 
 variable "source_ranges" {
-  type    = string
-  default = "0.0.0.0/0"
+  type        = string
+  default     = ""
+  description = "CIDR range for firewall rules. Leave empty for no firewall rules."
 }

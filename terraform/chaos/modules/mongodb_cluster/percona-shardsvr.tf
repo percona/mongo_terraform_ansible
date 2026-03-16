@@ -17,12 +17,12 @@ resource "chaos_instance" "shard" {
       - mkdir -p /var/lib/mongo
   CLOUDINIT
 
-  firewall_rules = [
+  firewall_rules = var.source_ranges != "" ? [
     {
       source   = var.source_ranges
       port     = "22"
       protocol = "tcp"
       comment  = "Allow SSH access"
     },
-  ]
+  ] : []
 }

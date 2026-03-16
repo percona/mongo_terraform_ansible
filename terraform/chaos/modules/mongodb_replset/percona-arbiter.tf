@@ -16,12 +16,12 @@ resource "chaos_instance" "arbiter" {
       - echo "127.0.0.1 $(hostname) localhost" > /etc/hosts
   CLOUDINIT
 
-  firewall_rules = [
+  firewall_rules = var.source_ranges != "" ? [
     {
       source   = var.source_ranges
       port     = "22"
       protocol = "tcp"
       comment  = "Allow SSH access"
     },
-  ]
+  ] : []
 }

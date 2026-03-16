@@ -280,8 +280,9 @@ variable "subnet_cidr" {
 
 # Source IPs that will connect to the cluster from outside the subnet
 variable "source_ranges" {
-  type    = string
-  default = "0.0.0.0/0"
+  type        = string
+  default     = ""
+  description = "CIDR range for firewall rules. Leave empty to create instances with no firewall rules."
 }
 
 #############
@@ -291,5 +292,12 @@ variable "source_ranges" {
 variable "chaos_api_token" {
   type        = string
   sensitive   = true
-  description = "API token for authenticating with the CHAOS provider. Required to create resources."
+  default     = null
+  description = "CHAOS API token. If null, the CHAOS_API_TOKEN environment variable is used."
+}
+
+variable "enable_minio" {
+  type        = bool
+  default     = false
+  description = "Deploy a Minio S3-compatible backup storage VM. Set to true to provision Minio."
 }

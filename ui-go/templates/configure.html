@@ -1280,7 +1280,7 @@ function buildCloudComputeRows(type) {
         <button type="button" class="btn btn-outline btn-sm compute-toggle-btn" onclick="toggleComputeBlock(this)">▼ Customize</button>
       </div>
       <div class="compute-block-body" style="display:none">
-        <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all clusters/replica sets</strong> in this deployment. Leave blank for Terraform defaults.</p>
+        <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all ${type === 'cluster' ? 'clusters' : 'replica sets'}</strong> in this deployment. Leave blank for Terraform defaults.</p>
         ${rows}
       </div>`;
   }
@@ -1335,7 +1335,7 @@ function buildCloudComputeRows(type) {
       <button type="button" class="btn btn-outline btn-sm compute-toggle-btn" onclick="toggleComputeBlock(this)">▼ Customize</button>
     </div>
     <div class="compute-block-body" style="display:none">
-      <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all clusters/replica sets</strong> in this deployment. Leave blank for Terraform defaults.</p>
+      <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all ${type === 'cluster' ? 'clusters' : 'replica sets'}</strong> in this deployment. Leave blank for Terraform defaults.</p>
       ${rows}
     </div>`;
 }

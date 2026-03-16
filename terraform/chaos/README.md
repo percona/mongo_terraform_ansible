@@ -86,18 +86,8 @@ Before deploying, make sure to edit `variables.tf`. These are the variables you 
 
 - **my_ssh_user**
 
-    Your own SSH user name. This is used to generate an SSH config file for you to login easily
-
-- **chaos_ssh_users**
-
-    Map of SSH user names to their public key file paths. These keys are injected into all instances via cloud-init.
-
-    Example:
-    ```hcl
-    chaos_ssh_users = {
-      john_doe = "~/.ssh/id_rsa.pub"
-    }
-    ```
+    Your own SSH user name. This is used to generate an SSH config file for you to login easily.
+    SSH key management is handled automatically by the CHAOS platform — no public key injection is needed.
 
 - **delete_after_days**
 
@@ -110,8 +100,9 @@ Since the CHAOS environment does not feature managed object storage, a dedicated
 The Minio server:
 - Listens on port `9000` (API) and `9001` (web console)
 - Uses root credentials defined by `minio_root_user` and `minio_root_password` variables
-- Automatically creates the backup bucket on startup
-- Is referenced in the generated Ansible inventory as the `endpointUrl` for PBM
+- Is **installed and configured via Ansible** (`minio_install.yml` playbook) — the Terraform `user_data` only sets the hostname
+- Automatically creates the backup bucket during Ansible provisioning
+- Is referenced in the generated Ansible inventory as the `endpointUrl` for PBM with `storage_provider=minio`
 
 To access the Minio web console, use SSH port forwarding:
 

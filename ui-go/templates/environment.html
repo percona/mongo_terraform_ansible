@@ -28,7 +28,19 @@
       <button class="btn btn-outline btn-sm" onclick="clearTerminal()" title="Clear the output terminal">Clear</button>
     </div>
   </div>
-  <div class="terminal" id="terminal" style="display:none"></div>
+  <div class="terminal-wrapper" id="terminal-wrapper" style="display:none">
+    <div class="terminal" id="terminal"></div>
+    <div class="terminal-sidebar">
+      <button class="terminal-nav-btn" onclick="termNavTop()" title="Jump to top">⏫</button>
+      <button class="terminal-nav-btn" onclick="termNavUp()" title="Scroll up">▲</button>
+      <input type="range" id="terminal-slider" class="terminal-slider"
+             min="0" max="100" value="0" step="1"
+             title="Drag to navigate"
+             oninput="termSliderInput(this.value)">
+      <button class="terminal-nav-btn" onclick="termNavDown()" title="Scroll down">▼</button>
+      <button class="terminal-nav-btn" onclick="termNavBottom()" title="Jump to bottom">⏬</button>
+    </div>
+  </div>
 </div>
 
 <!-- Primary action buttons -->
@@ -437,35 +449,116 @@ function toggleAutoScroll() {
   if (btn) btn.textContent = autoScroll ? '⏸ Pause' : '▶ Resume';
 }
 
+// ─── Terminal sidebar navigation ──────────────────────────────────────────────
+
+function termUpdateSlider() {
+  const term = document.getElementById('terminal');
+  const slider = document.getElementById('terminal-slider');
+  if (!slider || !term) return;
+  const scrollable = term.scrollHeight - term.clientHeight;
+  if (scrollable <= 0) { slider.value = 0; return; }
+  slider.value = Math.round((term.scrollTop / scrollable) * 100);
+}
+
+function termSliderInput(val) {
+  const term = document.getElementById('terminal');
+  if (!term) return;
+  const scrollable = term.scrollHeight - term.clientHeight;
+  term.scrollTop = (Number(val) / 100) * scrollable;
+  // Pause auto-scroll when user drags away from the bottom.
+  if (Number(val) < 99 && autoScroll) {
+    autoScroll = false;
+    const btn = document.getElementById('btn-auto-scroll');
+    if (btn) btn.textContent = '▶ Resume';
+  } else if (Number(val) >= 99 && !autoScroll) {
+    autoScroll = true;
+    const btn = document.getElementById('btn-auto-scroll');
+    if (btn) btn.textContent = '⏸ Pause';
+  }
+}
+
+function termNavTop() {
+  const term = document.getElementById('terminal');
+  if (!term) return;
+  term.scrollTop = 0;
+  termUpdateSlider();
+  if (autoScroll) {
+    autoScroll = false;
+    const btn = document.getElementById('btn-auto-scroll');
+    if (btn) btn.textContent = '▶ Resume';
+  }
+}
+
+function termNavBottom() {
+  const term = document.getElementById('terminal');
+  if (!term) return;
+  term.scrollTop = term.scrollHeight;
+  termUpdateSlider();
+  if (!autoScroll) {
+    autoScroll = true;
+    const btn = document.getElementById('btn-auto-scroll');
+    if (btn) btn.textContent = '⏸ Pause';
+  }
+}
+
+function termNavUp() {
+  const term = document.getElementById('terminal');
+  if (!term) return;
+  term.scrollTop -= Math.floor(term.clientHeight * 0.6);
+  termUpdateSlider();
+  if (autoScroll) {
+    autoScroll = false;
+    const btn = document.getElementById('btn-auto-scroll');
+    if (btn) btn.textContent = '▶ Resume';
+  }
+}
+
+function termNavDown() {
+  const term = document.getElementById('terminal');
+  if (!term) return;
+  term.scrollTop += Math.floor(term.clientHeight * 0.6);
+  termUpdateSlider();
+}
+
+// Register scroll listener so the slider tracks manual scrolling.
+document.addEventListener('DOMContentLoaded', () => {
+  const term = document.getElementById('terminal');
+  if (term) term.addEventListener('scroll', termUpdateSlider);
+});
+
 function appendToTerminal(text) {
   const term = document.getElementById('terminal');
   const line = document.createElement('div');
   line.className = 'terminal-line';
   line.textContent = text;
   term.appendChild(line);
-  if (autoScroll) term.scrollTop = term.scrollHeight;
+  if (autoScroll) {
+    term.scrollTop = term.scrollHeight;
+    termUpdateSlider();
+  }
 }
 
 // Toggle whether the raw terminal output is visible.
 // The job controls row is always shown while a job is running (or has run);
-// only the inner .terminal div is toggled.
+// only the inner .terminal-wrapper div is toggled.
 let outputVisible = false;
 function toggleOutput() {
   outputVisible = !outputVisible;
-  const term = document.getElementById('terminal');
+  const wrapper = document.getElementById('terminal-wrapper');
+  const term    = document.getElementById('terminal');
   const dot  = document.getElementById('status-progress-dot');
   const lbl  = document.getElementById('progress-label');
   const btn  = document.getElementById('btn-toggle-output');
   const pauseBtn = document.getElementById('btn-auto-scroll');
   if (outputVisible) {
-    term.style.display = '';
+    wrapper.style.display = '';
     if (dot) dot.style.display = 'none';
     if (lbl) lbl.style.display = 'none';
     if (btn) btn.textContent = '▲ Hide Output';
     if (pauseBtn) pauseBtn.style.display = '';
-    if (autoScroll) term.scrollTop = term.scrollHeight;
+    if (autoScroll) { term.scrollTop = term.scrollHeight; termUpdateSlider(); }
   } else {
-    term.style.display = 'none';
+    wrapper.style.display = 'none';
     // Re-show blinking indicator only while a job is still running.
     if (activeEventSource) {
       if (dot) dot.style.display = '';
@@ -515,7 +608,7 @@ function showTerminalSection(action) {
   // Always start with output hidden; show blinking progress indicator.
   outputVisible = false;
   autoScroll = true;
-  document.getElementById('terminal').style.display = 'none';
+  document.getElementById('terminal-wrapper').style.display = 'none';
   const dot = document.getElementById('status-progress-dot');
   const lbl = document.getElementById('progress-label');
   const pauseBtn = document.getElementById('btn-auto-scroll');
@@ -652,6 +745,9 @@ async function executeAction(action) {
         appendToTerminal('Environment destroyed. Redirecting to home…');
         setTimeout(() => { window.location.href = '/'; }, 2000);
       } else {
+        if (action === 'destroy') {
+          appendToTerminal('⚠ Destroy failed – environment has been retained. Check the output above and retry.');
+        }
         // Refresh the status bar from the server so it reflects the
         // final persisted state (e.g. reset_success, stop_failed, …).
         refreshEnvStatus();

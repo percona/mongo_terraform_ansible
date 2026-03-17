@@ -451,7 +451,7 @@ a:hover { text-decoration: underline; }
   margin-left: 1rem;
 }
 .status-progress-label { font-size: 0.8rem; color: var(--color-muted); }
-.status-bar .terminal { border-top: 1px solid var(--color-border); }
+.status-bar .terminal-wrapper { border-top: 1px solid var(--color-border); }
 
 .action-buttons {
   display: flex;
@@ -523,7 +523,12 @@ td {
 tr:last-child td { border-bottom: none; }
 
 /* ─── Terminal ───────────────────────────────────────────────────── */
+.terminal-wrapper {
+  display: flex;
+  align-items: stretch;
+}
 .terminal {
+  flex: 1;
   background: #0a0c10;
   padding: 1rem;
   height: 380px;
@@ -534,6 +539,49 @@ tr:last-child td { border-bottom: none; }
   scroll-behavior: smooth;
 }
 .terminal-line { white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+
+/* Sidebar navigation panel next to the terminal */
+.terminal-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  background: #0d0f14;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  width: 34px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.terminal-nav-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: #7a8baa;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 3px;
+  width: 24px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.terminal-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #c5d0e4;
+}
+/* Vertical range slider – runs top-to-bottom (min at top, max at bottom) */
+.terminal-slider {
+  flex: 1;
+  min-height: 40px;
+  width: 14px;
+  writing-mode: vertical-lr;
+  cursor: pointer;
+  accent-color: #4a6fa5;
+}
 
 .progress-dot {
   width: 10px;

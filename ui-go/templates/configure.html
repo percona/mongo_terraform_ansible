@@ -1895,6 +1895,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     'mongos_type','arbiter_type',
     'replsetsvr_type','replsetsvr_volume_size',
     // CHAOS-specific fields
+    'chaos_api_token',
     'delete_after_days','os_image',
     'shardsvr_cpu_cores','shardsvr_memory_gb',
     'configsvr_cpu_cores','configsvr_memory_gb',
@@ -1917,6 +1918,9 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     // enable_pmm is a tri-state *bool on the server: only send false when the
     // user explicitly unchecked it; when checked send true so it's stored.
     config.enable_pmm = fd.has('enable_pmm');
+  }
+  if (PLATFORM === 'chaos') {
+    config.enable_minio = fd.has('enable_minio');
   }
 
   // SSH Users map (cloud only)

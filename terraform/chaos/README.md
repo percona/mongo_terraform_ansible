@@ -91,7 +91,7 @@ Before deploying, make sure to edit `variables.tf`. These are the variables you 
 
 - **delete_after_days**
 
-    Number of days before instances are automatically deleted (default: 7). Useful for temporary lab environments.
+    Number of days before instances are automatically deleted (default: 14). Useful for temporary lab environments.
 
 ## Backup Storage (Minio)
 

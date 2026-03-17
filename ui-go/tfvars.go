@@ -133,6 +133,9 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			writeOptInt("pmm_cpu_cores", cfg.PmmCpuCores)
 			writeOptInt("pmm_memory_gb", cfg.PmmMemoryGb)
 			// Minio
+			if cfg.EnableMinio != nil {
+				writeVar("enable_minio", *cfg.EnableMinio)
+			}
 			writeOptStr("minio_root_user", cfg.MinioRootUser)
 			writeOptStr("minio_root_password", cfg.MinioRootPassword)
 			writeOptInt("minio_port", cfg.MinioPort)

@@ -180,7 +180,7 @@ locals {
 }
 
 variable "backup_retention" {
-  default     = "2"
+  default     = 2
   description = "Days to keep backups in Minio bucket"
 }
 

@@ -32,7 +32,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       ip_pmm                  = var.enable_pmm ? chaos_instance.pmm[0].ip_address : ""
       bucket                  = local.bucket_name
       minio_hostname          = local.minio_host
-      minio_ip                = chaos_instance.minio.ip_address
+      minio_ip                = var.enable_minio ? chaos_instance.minio[0].ip_address : ""
       minio_port              = var.minio_port
       access_key              = var.minio_root_user
       secret_access_key       = var.minio_root_password
@@ -89,7 +89,7 @@ resource "local_file" "AnsibleInventoryRS" {
       ip_pmm                  = var.enable_pmm ? chaos_instance.pmm[0].ip_address : ""
       bucket                  = local.bucket_name
       minio_hostname          = local.minio_host
-      minio_ip                = chaos_instance.minio.ip_address
+      minio_ip                = var.enable_minio ? chaos_instance.minio[0].ip_address : ""
       minio_port              = var.minio_port
       access_key              = var.minio_root_user
       secret_access_key       = var.minio_root_password

@@ -1385,9 +1385,7 @@ function buildCloudComputeRows(type) {
           <div class="form-group"><label>Arbiter CPU Cores</label>
             <input type="number" name="arbiter_cpu_cores" placeholder="2" min="1"></div>
           <div class="form-group"><label>Arbiter Memory (GB)</label>
-            <input type="number" name="arbiter_memory_gb" placeholder="2" min="1"></div>
-        </div>`;
-    } else {
+            <input type="number" name="arbiter_memory_gb" placeholder="4" min="1"></div>
       rows = `
         <div class="form-row">
           <div class="form-group"><label>Data Node CPU Cores</label>
@@ -1401,10 +1399,7 @@ function buildCloudComputeRows(type) {
           <div class="form-group"><label>Arbiter CPU Cores</label>
             <input type="number" name="arbiter_cpu_cores" placeholder="2" min="1"></div>
           <div class="form-group"><label>Arbiter Memory (GB)</label>
-            <input type="number" name="arbiter_memory_gb" placeholder="2" min="1"></div>
-        </div>`;
-    }
-    return `
+            <input type="number" name="arbiter_memory_gb" placeholder="4" min="1"></div>
       <div class="subsection-header">
         <span class="subsection-title">Compute Resources</span>
         <button type="button" class="btn btn-outline btn-sm compute-toggle-btn" onclick="toggleComputeBlock(this)">▼ Customize</button>

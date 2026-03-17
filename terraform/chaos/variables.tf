@@ -250,7 +250,7 @@ variable "arbiter_cpu_cores" {
 }
 
 variable "arbiter_memory_gb" {
-  default     = 2
+  default     = 4
   description = "Memory in GB for MongoDB arbiter instances"
 }
 

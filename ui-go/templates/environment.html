@@ -110,21 +110,11 @@
 <div class="config-summary">
   <h2>Configuration Summary</h2>
   <div class="summary-grid">
-    <div class="summary-item"><label>Platform</label><value>{{upper .Env.Platform}}</value></div>
-    {{if .Env.Config.Prefix}}
-    <div class="summary-item"><label>Prefix</label><value>{{.Env.Config.Prefix}}</value></div>
-    {{end}}
     {{if .Env.Config.Region}}
     <div class="summary-item"><label>Region</label><value>{{.Env.Config.Region}}</value></div>
     {{end}}
     {{if .Env.Config.Location}}
     <div class="summary-item"><label>Location</label><value>{{.Env.Config.Location}}</value></div>
-    {{end}}
-    {{if .SortedClusters}}
-    <div class="summary-item"><label>Sharded Clusters</label><value>{{len .SortedClusters}}</value></div>
-    {{end}}
-    {{if .SortedReplsets}}
-    <div class="summary-item"><label>Replica Sets</label><value>{{len .SortedReplsets}}</value></div>
     {{end}}
     {{if .Env.Config.ShardsvrType}}
     <div class="summary-item"><label>Shard Svr Type</label><value>{{.Env.Config.ShardsvrType}}</value></div>

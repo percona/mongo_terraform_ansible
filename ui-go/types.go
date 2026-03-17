@@ -24,6 +24,10 @@ type ReplsetConfig struct {
 	EnvTag             string `json:"env_tag"`
 	DataNodesPerReplset int   `json:"data_nodes_per_replset"`
 	ArbitersPerReplset  int   `json:"arbiters_per_replset"`
+	// Docker-only port assignment: starting port for data nodes and arbiters.
+	// Auto-assigned on save to avoid collisions between multiple replica sets.
+	ReplsetPort    int    `json:"replset_port,omitempty"`
+	ArbiterPort    int    `json:"arbiter_port,omitempty"`
 	// Docker-only
 	PsmdbImage     string `json:"psmdb_image,omitempty"`
 	PbmImage       string `json:"pbm_image,omitempty"`

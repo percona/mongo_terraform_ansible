@@ -280,6 +280,12 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			write(fmt.Sprintf("    data_nodes_per_replset = %s", formatHCLVal(intDefault(r.DataNodesPerReplset, 2))))
 			write(fmt.Sprintf("    arbiters_per_replset = %s", formatHCLVal(intDefault(r.ArbitersPerReplset, 1))))
 			if platform == "docker" {
+				if r.ReplsetPort != 0 {
+					write(fmt.Sprintf("    replset_port = %s", formatHCLVal(r.ReplsetPort)))
+				}
+				if r.ArbiterPort != 0 {
+					write(fmt.Sprintf("    arbiter_port = %s", formatHCLVal(r.ArbiterPort)))
+				}
 				if r.PsmdbImage != "" {
 					write(fmt.Sprintf("    psmdb_image = %s", formatHCLVal(r.PsmdbImage)))
 				}

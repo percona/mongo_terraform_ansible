@@ -141,13 +141,18 @@ func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
 
 	for name := range env.Config.Replsets {
 		containerPrefix := prefix + "-" + name
-		count := env.Config.Replsets[name].DataNodesPerReplset
+		rs := env.Config.Replsets[name]
+		count := rs.DataNodesPerReplset
 		if count == 0 {
 			count = 2
 		}
+		basePort := rs.ReplsetPort
+		if basePort == 0 {
+			basePort = 27017
+		}
 		var members []string
 		for i := 0; i < count; i++ {
-			members = append(members, fmt.Sprintf("%s:%d", host, 27017+i))
+			members = append(members, fmt.Sprintf("%s:%d", host, basePort+i))
 		}
 		connStr := fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=%s&authSource=admin",
 			url.QueryEscape(user), encodedPass, strings.Join(members, ","), containerPrefix)

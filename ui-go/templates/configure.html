@@ -662,6 +662,16 @@
               <label>Arbiters</label>
               <input type="number" name="replset_arbiters[]" value="{{intDefault .Config.ArbitersPerReplset 1}}" min="0" max="3">
             </div>
+            {{if eq $p "docker"}}
+            <div class="form-group">
+              <label>Base Port</label>
+              <input type="number" name="replset_port[]"
+                     value="{{intDefault .Config.ReplsetPort 27017}}"
+                     placeholder="27017" min="1024" max="65000"
+                     title="Starting port for data nodes. Auto-assigned to avoid collisions.">
+              <small>Auto-assigned; change only if needed.</small>
+            </div>
+            {{end}}
           </div>
           {{if eq $p "docker"}}
           <div class="form-row">
@@ -829,15 +839,20 @@
     {{if eq $p "docker"}}
     <div class="section-header">
       <h2>PMM Monitoring Server</h2>
+      <label class="toggle-label">
+        <input type="checkbox" id="enable-pmm-docker"
+               {{if .SortedPmmServers}}checked{{end}}
+               onchange="toggleDockerSingleServer('pmm-servers-container', this, addPmmServer)">
+        Include PMM Server
+      </label>
     </div>
     <div id="pmm-servers-container">
       {{range .SortedPmmServers}}
       <div class="component-block">
         <div class="component-block-header">
-          <input type="text" name="pmm_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="pmm-server">
+          <input type="text" name="pmm_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="pmm-server" readonly>
           <div class="block-header-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
           </div>
         </div>
         <div class="customize-body" style="display:none">
@@ -877,7 +892,6 @@
       </div>
       {{end}}
     </div>
-    <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addPmmServer()">+ Add PMM Server</button>
     {{else}}
     {{$pmmCustomized := or (ptrBoolFalse .Config.EnablePmm) .Config.PmmType .Config.PmmImage .Config.PmmDiskType .Config.PmmCpuCores .Config.PmmMemoryGb}}
     <div class="section-header">
@@ -1077,16 +1091,20 @@
   <section class="form-section">
     <div class="section-header">
       <h2>Minio Backup Storage</h2>
-      <button type="button" class="btn btn-outline btn-sm" onclick="addMinioServer()">+ Add Minio Server</button>
+      <label class="toggle-label">
+        <input type="checkbox" id="enable-minio-docker"
+               {{if .SortedMinio}}checked{{end}}
+               onchange="toggleDockerSingleServer('minio-servers-container', this, addMinioServer)">
+        Include Minio Server
+      </label>
     </div>
     <div id="minio-servers-container">
       {{range .SortedMinio}}
       <div class="component-block">
         <div class="component-block-header">
-          <input type="text" name="minio_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="minio">
+          <input type="text" name="minio_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="minio" readonly>
           <div class="block-header-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
           </div>
         </div>
         <div class="customize-body" style="display:none">
@@ -1137,16 +1155,20 @@
   <section class="form-section">
     <div class="section-header">
       <h2>LDAP Servers</h2>
-      <button type="button" class="btn btn-outline btn-sm" onclick="addLdapServer()">+ Add LDAP Server</button>
+      <label class="toggle-label">
+        <input type="checkbox" id="enable-ldap-docker"
+               {{if .SortedLdap}}checked{{end}}
+               onchange="toggleDockerSingleServer('ldap-servers-container', this, addLdapServer)">
+        Include LDAP Server
+      </label>
     </div>
     <div id="ldap-servers-container">
       {{range .SortedLdap}}
       <div class="component-block">
         <div class="component-block-header">
-          <input type="text" name="ldap_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="ldap">
+          <input type="text" name="ldap_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="ldap" readonly>
           <div class="block-header-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
           </div>
         </div>
         <div class="customize-body" style="display:none">
@@ -1258,7 +1280,42 @@ const PSMDB_VERSIONS  = {{json .PSMDBVersions}};
 const PBM_VERSIONS    = {{json .PBMVersions}};
 
 function removeBlock(btn) {
-  btn.closest('.component-block').remove();
+  const block = btn.closest('.component-block');
+  const container = block.parentElement;
+  block.remove();
+  // If this was a single-server container (PMM/Minio/LDAP), uncheck the toggle.
+  const toggleMap = {
+    'pmm-servers-container':  'enable-pmm-docker',
+    'minio-servers-container':'enable-minio-docker',
+    'ldap-servers-container': 'enable-ldap-docker',
+  };
+  const cbId = toggleMap[container.id];
+  if (cbId) {
+    const cb = document.getElementById(cbId);
+    if (cb) cb.checked = false;
+  }
+}
+
+// Toggle a Docker single-server block (PMM / Minio / LDAP).
+// When checked: show the block (auto-creating it if empty).
+// When unchecked: disable & hide the block so it is excluded from form data.
+function toggleDockerSingleServer(containerId, checkbox, addFn) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (checkbox.checked) {
+    if (!container.querySelector('.component-block')) {
+      addFn();
+    }
+    container.querySelectorAll('.component-block').forEach(b => {
+      b.style.display = '';
+      b.querySelectorAll('input,select,textarea').forEach(f => { f.disabled = false; });
+    });
+  } else {
+    container.querySelectorAll('.component-block').forEach(b => {
+      b.style.display = 'none';
+      b.querySelectorAll('input,select,textarea').forEach(f => { f.disabled = true; });
+    });
+  }
 }
 
 // Toggle the PMM cloud-settings sub-panel when the enable_pmm checkbox changes.
@@ -1594,6 +1651,10 @@ function addReplset() {
           <input type="number" name="replset_data_nodes[]" value="2" min="1" max="7"></div>
         <div class="form-group"><label>Arbiters</label>
           <input type="number" name="replset_arbiters[]" value="1" min="0" max="3"></div>
+        ${PLATFORM === 'docker' ? `<div class="form-group"><label>Base Port</label>
+          <input type="number" name="replset_port[]" value="0" placeholder="auto" min="1024" max="65000"
+                 title="Leave 0 to auto-assign a collision-free port on save.">
+          <small>Auto-assigned on save.</small></div>` : ''}
       </div>
       ${dockerRows}${computeRows}
     </div>`;
@@ -1601,14 +1662,15 @@ function addReplset() {
 }
 
 function addPmmServer() {
+  const container = document.getElementById('pmm-servers-container');
+  if (container.querySelectorAll('.component-block').length >= 1) return;
   const c = document.createElement('div');
   c.className = 'component-block';
   c.innerHTML = `
     <div class="component-block-header">
-      <input type="text" name="pmm_server_name[]" class="block-name-input" placeholder="pmm-server">
+      <input type="text" name="pmm_server_name[]" class="block-name-input" placeholder="pmm-server" value="pmm-server" readonly>
       <div class="block-header-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
-        <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
       </div>
     </div>
     <div class="customize-body" style="display:none">
@@ -1626,21 +1688,22 @@ function addPmmServer() {
         <div class="form-group"><label>Admin Password</label>
           <input type="password" name="pmm_server_pwd[]" placeholder="admin"></div>
         <div class="form-group form-group-checkbox">
-          <label><input type="checkbox" name="pmm_server_bind_localhost[]" value="1"> Bind to localhost only</label></div>
+          <label><input type="checkbox" name="pmm_server_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
       </div>
     </div>`;
-  document.getElementById('pmm-servers-container').appendChild(c);
+  container.appendChild(c);
 }
 
 function addMinioServer() {
+  const container = document.getElementById('minio-servers-container');
+  if (container.querySelectorAll('.component-block').length >= 1) return;
   const c = document.createElement('div');
   c.className = 'component-block';
   c.innerHTML = `
     <div class="component-block-header">
-      <input type="text" name="minio_server_name[]" class="block-name-input" placeholder="minio">
+      <input type="text" name="minio_server_name[]" class="block-name-input" placeholder="minio" value="minio" readonly>
       <div class="block-header-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
-        <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
       </div>
     </div>
     <div class="customize-body" style="display:none">
@@ -1665,18 +1728,19 @@ function addMinioServer() {
           <label><input type="checkbox" name="minio_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
       </div>
     </div>`;
-  document.getElementById('minio-servers-container').appendChild(c);
+  container.appendChild(c);
 }
 
 function addLdapServer() {
+  const container = document.getElementById('ldap-servers-container');
+  if (container.querySelectorAll('.component-block').length >= 1) return;
   const c = document.createElement('div');
   c.className = 'component-block';
   c.innerHTML = `
     <div class="component-block-header">
-      <input type="text" name="ldap_server_name[]" class="block-name-input" placeholder="ldap">
+      <input type="text" name="ldap_server_name[]" class="block-name-input" placeholder="ldap" value="ldap" readonly>
       <div class="block-header-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
-        <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
       </div>
     </div>
     <div class="customize-body" style="display:none">
@@ -1695,7 +1759,7 @@ function addLdapServer() {
           <label><input type="checkbox" name="ldap_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
       </div>
     </div>`;
-  document.getElementById('ldap-servers-container').appendChild(c);
+  container.appendChild(c);
 }
 
 // Integer fields – send as numbers in JSON (not strings) so Go unmarshal works cleanly.
@@ -2071,6 +2135,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   const rsEnvTag  = fd.getAll('replset_env_tag[]');
   const rsNodes   = fd.getAll('replset_data_nodes[]');
   const rsArbiters= fd.getAll('replset_arbiters[]');
+  const rsPorts   = fd.getAll('replset_port[]');
   const rsPsmdb   = fd.getAll('replset_psmdb_image[]');
   const rsPbm     = fd.getAll('replset_pbm_image[]');
   const rsPmmClient = fd.getAll('replset_pmm_client_image[]');
@@ -2087,6 +2152,8 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       arbiters_per_replset: parseInt(rsArbiters[i]) || 1,
     };
     if (PLATFORM === 'docker') {
+      const port = parseInt(rsPorts[i]);
+      if (port > 0) { r.replset_port = port; r.arbiter_port = port; }
       if (rsPsmdb[i]) r.psmdb_image = `percona/percona-server-mongodb:${rsPsmdb[i]}`;
       if (rsPbm[i])   r.pbm_image   = `percona/percona-backup-mongodb:${rsPbm[i]}`;
       if (rsPmmClient[i]) r.pmm_client_image = `percona/pmm-client:${rsPmmClient[i]}`;

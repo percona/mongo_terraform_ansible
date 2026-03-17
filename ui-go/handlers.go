@@ -223,6 +223,12 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		payload.Config.Prefix = payload.EnvID
 	}
 
+	// For Docker deployments, auto-assign unique port ranges to replica sets
+	// that don't yet have a port assigned, to prevent collisions.
+	if payload.Platform == "docker" {
+		assignDockerReplsetPorts(&payload.Config)
+	}
+
 	state, _ := loadState()
 	existing := state[payload.EnvID]
 	status := "configured"
@@ -411,6 +417,8 @@ func getHostsHandler(w http.ResponseWriter, r *http.Request) {
 				state[envID] = env
 				saveState(state) //nolint:errcheck
 			}
+			// Keep local SSH config in sync so container names can be resolved.
+			updateDockerSSHConfig(envID, hosts)
 		}
 	} else {
 		hosts, mongoConns, msg = collectCloudHosts(envID, env)
@@ -695,6 +703,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			if status == "success" {
 				e.Status = "deleted"
 				os.Remove(varfile)
+				if platform == "docker" {
+					removeDockerSSHConfig(envID)
+				}
 			} else {
 				e.Status = "destroy_failed"
 			}
@@ -852,4 +863,38 @@ func jobLogHandler(w http.ResponseWriter, r *http.Request) {
 		status = "unknown"
 	}
 	writeJSON(w, 200, map[string]string{"log": stripAnsi(string(content)), "status": status})
+}
+
+// assignDockerReplsetPorts auto-assigns unique port ranges to Docker replica
+// sets that don't yet have a replset_port set, to avoid collisions when
+// multiple replica sets are deployed in the same Docker environment.
+// Each replica set receives a block of 20 ports (enough for 7 data nodes + 3
+// arbiters). Existing non-zero port assignments are preserved; only zero-valued
+// ones receive a new assignment starting above the current maximum.
+func assignDockerReplsetPorts(cfg *Config) {
+if len(cfg.Replsets) == 0 {
+return
+}
+// Find the highest already-assigned port.
+maxPort := 27017 - 20
+for _, nr := range sortedReplsets(cfg.Replsets) {
+if nr.Config.ReplsetPort > maxPort {
+maxPort = nr.Config.ReplsetPort
+}
+}
+nextPort := maxPort + 20
+if nextPort < 27017 {
+nextPort = 27017
+}
+for _, nr := range sortedReplsets(cfg.Replsets) {
+rs := cfg.Replsets[nr.Name]
+if rs.ReplsetPort == 0 {
+rs.ReplsetPort = nextPort
+rs.ArbiterPort = nextPort
+nextPort += 20
+} else if rs.ArbiterPort == 0 {
+rs.ArbiterPort = rs.ReplsetPort
+}
+cfg.Replsets[nr.Name] = rs
+}
 }

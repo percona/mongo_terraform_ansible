@@ -17,26 +17,42 @@ resource "chaos_instance" "minio" {
       - mkdir -p /data/minio
   CLOUDINIT
 
-  firewall_rules = var.source_ranges != "" ? [
-    {
-      source   = var.source_ranges
-      port     = "22"
-      protocol = "tcp"
-      comment  = "Allow SSH access"
-    },
-    {
-      source   = var.source_ranges
-      port     = tostring(var.minio_port)
-      protocol = "tcp"
-      comment  = "Allow Minio API access"
-    },
-    {
-      source   = var.source_ranges
-      port     = tostring(var.minio_console_port)
-      protocol = "tcp"
-      comment  = "Allow Minio console access"
-    },
-  ] : []
+  firewall_rules = concat(
+    var.source_ranges != "" ? [
+      {
+        source   = var.source_ranges
+        port     = "22"
+        protocol = "tcp"
+        comment  = "Allow SSH access"
+      },
+      {
+        source   = var.source_ranges
+        port     = tostring(var.minio_port)
+        protocol = "tcp"
+        comment  = "Allow Minio API access"
+      },
+      {
+        source   = var.source_ranges
+        port     = tostring(var.minio_console_port)
+        protocol = "tcp"
+        comment  = "Allow Minio console access"
+      },
+    ] : [],
+    [
+      {
+        source   = var.subnet_cidr
+        port     = tostring(var.minio_port)
+        protocol = "tcp"
+        comment  = "Allow Minio API access from subnet"
+      },
+      {
+        source   = var.subnet_cidr
+        port     = tostring(var.minio_console_port)
+        protocol = "tcp"
+        comment  = "Allow Minio console access from subnet"
+      },
+    ]
+  )
 }
 
 output "minio_access_key" {

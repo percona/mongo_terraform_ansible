@@ -17,18 +17,28 @@ resource "chaos_instance" "pmm" {
       - mkdir -p /var/lib/docker
   CLOUDINIT
 
-  firewall_rules = var.source_ranges != "" ? [
-    {
-      source   = var.source_ranges
-      port     = "22"
-      protocol = "tcp"
-      comment  = "Allow SSH access"
-    },
-    {
-      source   = var.source_ranges
-      port     = tostring(var.pmm_port)
-      protocol = "tcp"
-      comment  = "Allow PMM UI access"
-    },
-  ] : []
+  firewall_rules = concat(
+    var.source_ranges != "" ? [
+      {
+        source   = var.source_ranges
+        port     = "22"
+        protocol = "tcp"
+        comment  = "Allow SSH access"
+      },
+      {
+        source   = var.source_ranges
+        port     = tostring(var.pmm_port)
+        protocol = "tcp"
+        comment  = "Allow PMM UI access"
+      },
+    ] : [],
+    [
+      {
+        source   = var.subnet_cidr
+        port     = tostring(var.pmm_port)
+        protocol = "tcp"
+        comment  = "Allow PMM access from subnet"
+      },
+    ]
+  )
 }

@@ -45,6 +45,7 @@ module "mongodb_clusters" {
   arbiter_memory_gb     = var.arbiter_memory_gb
 
   source_ranges = var.source_ranges
+  subnet_cidr   = var.subnet_cidr
 
 }
 
@@ -69,5 +70,6 @@ module "mongodb_replsets" {
   arbiter_memory_gb      = var.arbiter_memory_gb
 
   source_ranges = var.source_ranges
+  subnet_cidr   = var.subnet_cidr
 
 }

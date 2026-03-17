@@ -16,12 +16,22 @@ resource "chaos_instance" "mongos" {
       - echo "127.0.0.1 $(hostname) localhost" > /etc/hosts
   CLOUDINIT
 
-  firewall_rules = var.source_ranges != "" ? [
-    {
-      source   = var.source_ranges
-      port     = "22"
-      protocol = "tcp"
-      comment  = "Allow SSH access"
-    },
-  ] : []
+  firewall_rules = concat(
+    var.source_ranges != "" ? [
+      {
+        source   = var.source_ranges
+        port     = "22"
+        protocol = "tcp"
+        comment  = "Allow SSH access"
+      },
+    ] : [],
+    [
+      {
+        source   = var.subnet_cidr
+        port     = tostring(var.mongos_port)
+        protocol = "tcp"
+        comment  = "Allow MongoDB access from subnet"
+      },
+    ]
+  )
 }

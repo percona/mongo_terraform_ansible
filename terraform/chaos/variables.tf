@@ -273,11 +273,6 @@ variable "replsetsvr_volume_size" {
 # Networking
 #############
 
-variable "subnet_cidr" {
-  type    = string
-  default = "10.128.0.0/20"
-}
-
 # Source IPs that will connect to the cluster from outside the subnet
 variable "source_ranges" {
   type        = string

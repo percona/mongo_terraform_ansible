@@ -21,12 +21,6 @@ resource "chaos_instance" "pmm" {
     var.source_ranges != "" ? [
       {
         source   = var.source_ranges
-        port     = "22"
-        protocol = "tcp"
-        comment  = "Allow SSH access"
-      },
-      {
-        source   = var.source_ranges
         port     = tostring(var.pmm_port)
         protocol = "tcp"
         comment  = "Allow PMM UI access"
@@ -34,7 +28,7 @@ resource "chaos_instance" "pmm" {
     ] : [],
     [
       {
-        source   = var.subnet_cidr
+        source   = "10.30.50.0/24"
         port     = tostring(var.pmm_port)
         protocol = "tcp"
         comment  = "Allow PMM access from subnet"

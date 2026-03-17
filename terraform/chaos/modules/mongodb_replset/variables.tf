@@ -118,12 +118,6 @@ variable "delete_after_days" {
 #############
 
 
-variable "subnet_cidr" {
-  type        = string
-  default     = "10.128.0.0/20"
-  description = "Subnet CIDR where all CHAOS VMs reside; used to allow inter-VM connectivity"
-}
-
 variable "source_ranges" {
   type        = string
   default     = ""

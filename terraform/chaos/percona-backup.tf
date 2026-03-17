@@ -21,12 +21,6 @@ resource "chaos_instance" "minio" {
     var.source_ranges != "" ? [
       {
         source   = var.source_ranges
-        port     = "22"
-        protocol = "tcp"
-        comment  = "Allow SSH access"
-      },
-      {
-        source   = var.source_ranges
         port     = tostring(var.minio_port)
         protocol = "tcp"
         comment  = "Allow Minio API access"
@@ -40,13 +34,13 @@ resource "chaos_instance" "minio" {
     ] : [],
     [
       {
-        source   = var.subnet_cidr
+        source   = "10.30.50.0/24"
         port     = tostring(var.minio_port)
         protocol = "tcp"
         comment  = "Allow Minio API access from subnet"
       },
       {
-        source   = var.subnet_cidr
+        source   = "10.30.50.0/24"
         port     = tostring(var.minio_console_port)
         protocol = "tcp"
         comment  = "Allow Minio console access from subnet"

@@ -113,13 +113,19 @@
       <div class="form-group form-group-full">
         <label for="machine_image">Machine Image</label>
         <div style="display:flex;gap:0.5rem;align-items:center">
-          <select id="machine_image" name="machine_image" style="flex:1">
+          <select id="machine_image" name="machine_image" style="flex:1"
+                  onchange="toggleMachineImageCustom(this)">
             <option value="">— select a region first —</option>
             {{if .Config.MachineImage}}<option value="{{.Config.MachineImage}}" selected>{{.Config.MachineImage}}</option>{{end}}
+            <option value="__custom__">Custom…</option>
           </select>
           <a href="#" onclick="reloadImages(event)" style="white-space:nowrap">↻ Refresh</a>
         </div>
-        <small>GCP image used for all instances. Images are fetched from GCP and grouped by OS.</small>
+        <input type="text" id="machine_image_custom" name="machine_image_custom"
+               placeholder="projects/my-project/global/images/my-image"
+               style="display:none;margin-top:0.3rem;width:100%"
+               oninput="document.getElementById('machine_image').value='__custom__'">
+        <small>GCP image used for all instances. Images are fetched from GCP and grouped by OS. Select "Custom…" to enter a full image path.</small>
       </div>
     </div>
     <!-- gce_ssh_users: additional users whose public keys are provisioned on every instance -->
@@ -208,13 +214,19 @@
       <div class="form-group form-group-full">
         <label for="machine_image">Machine Image (AMI)</label>
         <div style="display:flex;gap:0.5rem;align-items:center">
-          <select id="machine_image" name="machine_image" style="flex:1">
+          <select id="machine_image" name="machine_image" style="flex:1"
+                  onchange="toggleMachineImageCustom(this)">
             <option value="">— select a region first —</option>
             {{if .Config.MachineImage}}<option value="{{.Config.MachineImage}}" selected>{{.Config.MachineImage}}</option>{{end}}
+            <option value="__custom__">Custom…</option>
           </select>
           <a href="#" onclick="reloadImages(event)" style="white-space:nowrap">↻ Refresh</a>
         </div>
-        <small>AMI used for all instances. Images are fetched from AWS for the selected region and grouped by OS.</small>
+        <input type="text" id="machine_image_custom" name="machine_image_custom"
+               placeholder="ami-0abcdef1234567890"
+               style="display:none;margin-top:0.3rem;width:100%"
+               oninput="document.getElementById('machine_image').value='__custom__'">
+        <small>AMI used for all instances. Images are fetched from AWS for the selected region and grouped by OS. Select "Custom…" to enter an AMI ID directly.</small>
       </div>
     </div>
     <div class="form-row">
@@ -1256,39 +1268,48 @@
 
   <!-- ──────────── Credentials ──────────── -->
   <section class="form-section">
-    <h2>Credentials</h2>
-    <p class="hint">Usernames and passwords passed to Ansible and Terraform. Values here populate <code>group_vars</code> or <code>--extra-vars</code>.</p>
-    <div class="credentials-grid">
-      <div class="form-group">
-        <label for="cred_mongo_admin_user">MongoDB Admin User</label>
-        <input type="text" id="cred_mongo_admin_user" name="cred_mongo_admin_user"
-               value="{{index .Config.AnsibleVars "mongo_admin_user"}}" placeholder="admin">
+    <details {{if or (index .Config.AnsibleVars "mongo_admin_user") (index .Config.AnsibleVars "mongo_admin_password") (index .Config.AnsibleVars "pmm_server_user") (index .Config.AnsibleVars "pmm_server_pwd") (index .Config.AnsibleVars "pbm_agent_user") (index .Config.AnsibleVars "pbmpwd")}}open{{end}}>
+      <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:0.5rem">
+        <h2 style="margin:0;display:inline">Credentials</h2>
+        <span style="font-size:0.8rem;color:var(--color-muted)">(click to expand)</span>
+      </summary>
+      <p class="hint" style="margin-top:0.75rem">Usernames and passwords passed to Ansible and Terraform. Values here populate <code>group_vars</code> or <code>--extra-vars</code>.</p>
+      <div class="credentials-grid">
+        <div class="form-group">
+          <label for="cred_mongo_admin_user">MongoDB Root User</label>
+          <input type="text" id="cred_mongo_admin_user" name="cred_mongo_admin_user"
+                 value="{{index .Config.AnsibleVars "mongo_admin_user"}}" placeholder="admin">
+        </div>
+        <div class="form-group">
+          <label for="cred_mongo_admin_password">MongoDB Root Password</label>
+          <input type="password" id="cred_mongo_admin_password" name="cred_mongo_admin_password"
+                 value="{{index .Config.AnsibleVars "mongo_admin_password"}}" placeholder="admin"
+                 autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label for="cred_pmm_server_user">PMM User</label>
+          <input type="text" id="cred_pmm_server_user" name="cred_pmm_server_user"
+                 value="{{index .Config.AnsibleVars "pmm_server_user"}}" placeholder="admin">
+        </div>
+        <div class="form-group">
+          <label for="cred_pmm_server_pwd">PMM Password</label>
+          <input type="password" id="cred_pmm_server_pwd" name="cred_pmm_server_pwd"
+                 value="{{index .Config.AnsibleVars "pmm_server_pwd"}}" placeholder="admin"
+                 autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label for="cred_pbm_agent_user">PBM Agent User</label>
+          <input type="text" id="cred_pbm_agent_user" name="cred_pbm_agent_user"
+                 value="{{index .Config.AnsibleVars "pbm_agent_user"}}" placeholder="pbmagent">
+        </div>
+        <div class="form-group">
+          <label for="cred_pbmpwd">PBM Agent Password</label>
+          <input type="password" id="cred_pbmpwd" name="cred_pbmpwd"
+                 value="{{index .Config.AnsibleVars "pbmpwd"}}" placeholder="pbmpassword"
+                 autocomplete="new-password">
+        </div>
       </div>
-      <div class="form-group">
-        <label for="cred_mongo_admin_password">MongoDB Admin Password</label>
-        <input type="password" id="cred_mongo_admin_password" name="cred_mongo_admin_password"
-               value="{{index .Config.AnsibleVars "mongo_admin_password"}}" placeholder="admin"
-               autocomplete="new-password">
-      </div>
-      <div class="form-group">
-        <label for="cred_pmm_server_pwd">PMM Admin Password</label>
-        <input type="password" id="cred_pmm_server_pwd" name="cred_pmm_server_pwd"
-               value="{{index .Config.AnsibleVars "pmm_server_pwd"}}" placeholder="admin"
-               autocomplete="new-password">
-      </div>
-      <div class="form-group">
-        <label for="cred_mongodb_pmm_user_pwd">PMM Monitoring User Password</label>
-        <input type="password" id="cred_mongodb_pmm_user_pwd" name="cred_mongodb_pmm_user_pwd"
-               value="{{index .Config.AnsibleVars "mongodb_pmm_user_pwd"}}" placeholder="pmmpassword"
-               autocomplete="new-password">
-      </div>
-      <div class="form-group">
-        <label for="cred_pbmpwd">PBM Service Password</label>
-        <input type="password" id="cred_pbmpwd" name="cred_pbmpwd"
-               value="{{index .Config.AnsibleVars "pbmpwd"}}" placeholder="pbmpassword"
-               autocomplete="new-password">
-      </div>
-    </div>
+    </details>
   </section>
 
   <!-- ──────────── Ansible Variable Overrides (cloud only) ──────────── -->
@@ -1302,7 +1323,7 @@
     </p>
     <div id="ansible-vars-container">
       {{range $k, $v := .Config.AnsibleVars}}
-      {{if not (or (eq $k "mongo_admin_user") (eq $k "mongo_admin_password") (eq $k "pmm_server_pwd") (eq $k "mongodb_pmm_user_pwd") (eq $k "pbmpwd"))}}
+      {{if not (or (eq $k "mongo_admin_user") (eq $k "mongo_admin_password") (eq $k "pmm_server_user") (eq $k "pmm_server_pwd") (eq $k "pbm_agent_user") (eq $k "mongodb_pmm_user_pwd") (eq $k "pbmpwd"))}}
       <div class="ansible-var-row">
         <input type="text"     name="ansible_var_key[]"   value="{{$k}}" placeholder="variable_name">
         <input type="password" name="ansible_var_val[]"   value="{{$v}}" placeholder="value"
@@ -1431,6 +1452,17 @@ function toggleCustomizeBlock(btn) {
   const hidden = body.style.display === 'none';
   body.style.display = hidden ? '' : 'none';
   btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
+}
+
+function toggleMachineImageCustom(sel) {
+  const customInput = document.getElementById('machine_image_custom');
+  if (!customInput) return;
+  if (sel.value === '__custom__') {
+    customInput.style.display = '';
+    customInput.focus();
+  } else {
+    customInput.style.display = 'none';
+  }
 }
 
 function nextClusterName() {
@@ -1722,7 +1754,10 @@ function addCluster() {
   const computeRows = buildCloudComputeRows('cluster');
   c.innerHTML = `
     <div class="component-block-header">
-      <input type="text" name="cluster_name[]" value="${escHtml(name)}" class="block-name-input" placeholder="cl01" required>
+      <div class="block-name-field">
+        <label class="block-name-label">Name</label>
+        <input type="text" name="cluster_name[]" value="${escHtml(name)}" class="block-name-input" placeholder="cl01" required>
+      </div>
       <div class="block-header-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
         <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
@@ -1754,9 +1789,14 @@ function addReplset() {
   c.className = 'component-block';
   const dockerRows = PLATFORM === 'docker' ? buildDockerImageRows('replset') : '';
   const computeRows = buildCloudComputeRows('replset');
+  // Pick a random base port between 28000-38000 for Docker to avoid collisions.
+  const randomPort = PLATFORM === 'docker' ? (28000 + Math.floor(Math.random() * 10000)) : 0;
   c.innerHTML = `
     <div class="component-block-header">
-      <input type="text" name="replset_name[]" value="${escHtml(name)}" class="block-name-input" placeholder="rs01">
+      <div class="block-name-field">
+        <label class="block-name-label">Name</label>
+        <input type="text" name="replset_name[]" value="${escHtml(name)}" class="block-name-input" placeholder="rs01">
+      </div>
       <div class="block-header-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
         <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
@@ -1771,9 +1811,9 @@ function addReplset() {
         <div class="form-group"><label>Arbiters</label>
           <input type="number" name="replset_arbiters[]" value="1" min="0" max="3"></div>
         ${PLATFORM === 'docker' ? `<div class="form-group"><label>Base Port</label>
-          <input type="number" name="replset_port[]" value="0" placeholder="auto" min="1024" max="65000"
-                 title="Leave 0 to auto-assign a collision-free port on save.">
-          <small>Auto-assigned on save.</small></div>` : ''}
+          <input type="number" name="replset_port[]" value="${randomPort}" placeholder="auto" min="1024" max="65000"
+                 title="Auto-assigned random port to avoid collisions with other replica sets.">
+          <small>Auto-assigned on creation.</small></div>` : ''}
       </div>
       ${dockerRows}${computeRows}
     </div>`;
@@ -1787,7 +1827,10 @@ function addPmmServer() {
   c.className = 'component-block';
   c.innerHTML = `
     <div class="component-block-header">
-      <input type="text" name="pmm_server_name[]" class="block-name-input" placeholder="pmm-server" value="pmm-server" readonly>
+      <div class="block-name-field">
+        <label class="block-name-label">Name</label>
+        <input type="text" name="pmm_server_name[]" class="block-name-input" placeholder="pmm-server" value="pmm-server" readonly>
+      </div>
       <div class="block-header-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
       </div>
@@ -1820,7 +1863,10 @@ function addMinioServer() {
   c.className = 'component-block';
   c.innerHTML = `
     <div class="component-block-header">
-      <input type="text" name="minio_server_name[]" class="block-name-input" placeholder="minio" value="minio" readonly>
+      <div class="block-name-field">
+        <label class="block-name-label">Name</label>
+        <input type="text" name="minio_server_name[]" class="block-name-input" placeholder="minio" value="minio" readonly>
+      </div>
       <div class="block-header-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
       </div>
@@ -1857,7 +1903,10 @@ function addLdapServer() {
   c.className = 'component-block';
   c.innerHTML = `
     <div class="component-block-header">
-      <input type="text" name="ldap_server_name[]" class="block-name-input" placeholder="ldap" value="ldap" readonly>
+      <div class="block-name-field">
+        <label class="block-name-label">Name</label>
+        <input type="text" name="ldap_server_name[]" class="block-name-input" placeholder="ldap" value="ldap" readonly>
+      </div>
       <div class="block-header-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
       </div>
@@ -2176,6 +2225,11 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       config[f] = numericFields.has(f) ? parseInt(raw, 10) : raw;
     }
   }
+  // Handle custom machine image: if "__custom__" selected, use the text input value.
+  if (config.machine_image === '__custom__') {
+    const customVal = (fd.get('machine_image_custom') || '').trim();
+    config.machine_image = customVal;
+  }
   config.use_spot_instances = fd.has('use_spot_instances');
   if (PLATFORM !== 'docker') {
     // enable_pmm is a tri-state *bool on the server: only send false when the
@@ -2228,8 +2282,9 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   const credFields = [
     ['mongo_admin_user',      fd.get('cred_mongo_admin_user')],
     ['mongo_admin_password',  fd.get('cred_mongo_admin_password')],
+    ['pmm_server_user',       fd.get('cred_pmm_server_user')],
     ['pmm_server_pwd',        fd.get('cred_pmm_server_pwd')],
-    ['mongodb_pmm_user_pwd',  fd.get('cred_mongodb_pmm_user_pwd')],
+    ['pbm_agent_user',        fd.get('cred_pbm_agent_user')],
     ['pbmpwd',                fd.get('cred_pbmpwd')],
   ];
   for (const [key, val] of credFields) {
@@ -2284,9 +2339,11 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       mongos_count: parseInt(clMongos[i]) || 2,
     };
     if (PLATFORM === 'docker') {
-      if (clPsmdb[i]) c.psmdb_image = `percona/percona-server-mongodb:${clPsmdb[i]}`;
-      if (clPbm[i])   c.pbm_image   = `percona/percona-backup-mongodb:${clPbm[i]}`;
-      if (clPmmClient[i]) c.pmm_client_image = `percona/pmm-client:${clPmmClient[i]}`;
+      const resolveDockerImg = (prefix, tag, customVal) =>
+        tag === '__custom__' ? (customVal || '') : (tag ? `${prefix}:${tag}` : '');
+      if (clPsmdb[i]) c.psmdb_image = resolveDockerImg('percona/percona-server-mongodb', clPsmdb[i], fd.getAll('cluster_psmdb_image_custom')[i]);
+      if (clPbm[i])   c.pbm_image   = resolveDockerImg('percona/percona-backup-mongodb', clPbm[i],   fd.getAll('cluster_pbm_image_custom')[i]);
+      if (clPmmClient[i]) c.pmm_client_image = resolveDockerImg('percona/pmm-client', clPmmClient[i], fd.getAll('cluster_pmm_client_image_custom')[i]);
       c.enable_pmm = clEnPmm.some((v,idx) => idx === i && v === '1');
       c.enable_pbm = clEnPbm.some((v,idx) => idx === i && v === '1');
       c.bind_to_localhost = clBind.some((v,idx) => idx === i && v === '1');
@@ -2316,11 +2373,13 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       arbiters_per_replset: parseInt(rsArbiters[i]) || 1,
     };
     if (PLATFORM === 'docker') {
+      const resolveDockerImg = (prefix, tag, customVal) =>
+        tag === '__custom__' ? (customVal || '') : (tag ? `${prefix}:${tag}` : '');
       const port = parseInt(rsPorts[i]);
       if (port > 0) { r.replset_port = port; r.arbiter_port = port; }
-      if (rsPsmdb[i]) r.psmdb_image = `percona/percona-server-mongodb:${rsPsmdb[i]}`;
-      if (rsPbm[i])   r.pbm_image   = `percona/percona-backup-mongodb:${rsPbm[i]}`;
-      if (rsPmmClient[i]) r.pmm_client_image = `percona/pmm-client:${rsPmmClient[i]}`;
+      if (rsPsmdb[i]) r.psmdb_image = resolveDockerImg('percona/percona-server-mongodb', rsPsmdb[i], fd.getAll('replset_psmdb_image_custom')[i]);
+      if (rsPbm[i])   r.pbm_image   = resolveDockerImg('percona/percona-backup-mongodb', rsPbm[i],   fd.getAll('replset_pbm_image_custom')[i]);
+      if (rsPmmClient[i]) r.pmm_client_image = resolveDockerImg('percona/pmm-client', rsPmmClient[i], fd.getAll('replset_pmm_client_image_custom')[i]);
       r.enable_pmm = rsEnPmm.some((v,idx) => idx === i && v === '1');
       r.enable_pbm = rsEnPbm.some((v,idx) => idx === i && v === '1');
       r.bind_to_localhost = rsBind.some((v,idx) => idx === i && v === '1');

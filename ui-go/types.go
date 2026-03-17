@@ -169,13 +169,17 @@ type HistoryEvent struct {
 
 // Environment is one record in the state file.
 type Environment struct {
-	Platform  string         `json:"platform"`
-	Config    Config         `json:"config"`
-	Status    string         `json:"status"`
-	CreatedAt string         `json:"created_at"`
-	UpdatedAt string         `json:"updated_at"`
-	LastJobID string         `json:"last_job_id,omitempty"`
-	History   []HistoryEvent `json:"history,omitempty"`
+	Platform  string            `json:"platform"`
+	Config    Config            `json:"config"`
+	Status    string            `json:"status"`
+	CreatedAt string            `json:"created_at"`
+	UpdatedAt string            `json:"updated_at"`
+	LastJobID string            `json:"last_job_id,omitempty"`
+	History   []HistoryEvent    `json:"history,omitempty"`
+	// HostIPs caches the last-known IP address for each Docker container so
+	// that the UI can continue to display addresses even when containers are
+	// stopped (and docker inspect returns an empty IP).
+	HostIPs   map[string]string `json:"host_ips,omitempty"`
 }
 
 // ─── Named pair helpers (sorted map iteration for templates) ──────────────────

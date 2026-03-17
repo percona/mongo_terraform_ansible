@@ -40,7 +40,7 @@ resource "docker_container" "ycsb" {
   command = [ "sleep", "infinity"]
   network_mode = "bridge"
   networks_advanced {
-    name = "${var.network_name}"
+    name = "${local.name_prefix}${var.network_name}"
   }
   healthcheck {
     test        = ["CMD-SHELL", "/ycsb/bin/ycsb --help"]
@@ -51,4 +51,6 @@ resource "docker_container" "ycsb" {
   }   
   wait = false  
   restart = "on-failure"
+
+  depends_on = [docker_network.mongo_network]
 }

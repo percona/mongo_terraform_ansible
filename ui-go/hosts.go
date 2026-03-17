@@ -34,17 +34,6 @@ func collectDockerHosts(envID string, env *Environment) ([]HostInfo, []ServiceUR
 		return nil, nil, nil, "No containers found. Run Deploy first."
 	}
 
-	type dockerInspectNet struct {
-		IPAddress string `json:"IPAddress"`
-	}
-	type dockerInspectNetworks struct {
-		Networks map[string]dockerInspectNet `json:"Networks"`
-	}
-	type dockerInspectResult struct {
-		Name            string `json:"Name"`
-		NetworkSettings dockerInspectNetworks `json:"NetworkSettings"`
-	}
-
 	var hosts []HostInfo
 
 	names := strings.Split(strings.TrimSpace(out), "\n")
@@ -71,7 +60,14 @@ func collectDockerHosts(envID string, env *Environment) ([]HostInfo, []ServiceUR
 				break
 			}
 		}
-		if err != nil || ip == "" {
+		if (err != nil || ip == "") && env.HostIPs != nil {
+			// Container is stopped – fall back to the last-known IP so the UI
+			// continues to show meaningful addresses.
+			if cached, ok := env.HostIPs[name]; ok && cached != "" && cached != "—" {
+				ip = cached
+			}
+		}
+		if ip == "" {
 			ip = "—"
 		}
 		connectCmd := fmt.Sprintf("docker exec -it %s bash", name)

@@ -393,6 +393,25 @@ func getHostsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if env.Platform == "docker" {
 		hosts, serviceURLs, mongoConns, msg = collectDockerHosts(envID, env)
+		// Persist any newly discovered IPs so they survive container stop.
+		if len(hosts) > 0 {
+			updated := false
+			if env.HostIPs == nil {
+				env.HostIPs = make(map[string]string)
+			}
+			for _, h := range hosts {
+				if h.IP != "" && h.IP != "—" {
+					if env.HostIPs[h.Name] != h.IP {
+						env.HostIPs[h.Name] = h.IP
+						updated = true
+					}
+				}
+			}
+			if updated {
+				state[envID] = env
+				saveState(state) //nolint:errcheck
+			}
+		}
 	} else {
 		hosts, mongoConns, msg = collectCloudHosts(envID, env)
 		serviceURLs = configServiceURLs(envID, env)

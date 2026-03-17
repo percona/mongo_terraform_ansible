@@ -53,9 +53,24 @@ func collectDockerHosts(envID string, env *Environment) ([]HostInfo, []ServiceUR
 		if name == "" {
 			continue
 		}
+		// Skip transient init containers – they exit immediately after setup and
+		// have no useful IP or connect command to show the user.
+		if strings.HasSuffix(name, "-init_keyfile_container") {
+			continue
+		}
+		// Use a newline separator so that containers attached to multiple Docker
+		// networks (e.g. pmm-client sidecars that sit on both the default bridge
+		// and the custom network) don't produce a concatenated, unparseable IP
+		// string like "172.17.0.3172.20.0.5".  We take the first non-empty value.
 		ipOut, err := execOutput("docker", "inspect",
-			"--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", name)
-		ip := strings.TrimSpace(ipOut)
+			"--format", "{{range .NetworkSettings.Networks}}{{if .IPAddress}}{{.IPAddress}}\n{{end}}{{end}}", name)
+		ip := ""
+		for _, line := range strings.Split(ipOut, "\n") {
+			if line = strings.TrimSpace(line); line != "" {
+				ip = line
+				break
+			}
+		}
 		if err != nil || ip == "" {
 			ip = "—"
 		}

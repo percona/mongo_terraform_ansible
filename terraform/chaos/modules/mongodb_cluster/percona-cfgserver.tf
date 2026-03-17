@@ -2,7 +2,7 @@ resource "chaos_instance" "cfg" {
   count             = var.configsvr_count
   name              = "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
   os                = var.os_image
-  vcpu              = var.configsvr_cpu_cores
+  cpu_cores         = var.configsvr_cpu_cores
   memory            = var.configsvr_memory_gb
   disk              = var.configsvr_volume_size
   ssh_user          = var.my_ssh_user

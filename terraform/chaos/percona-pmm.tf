@@ -2,7 +2,7 @@ resource "chaos_instance" "pmm" {
   count             = var.enable_pmm ? 1 : 0
   name              = local.pmm_host
   os                = var.os_image
-  vcpu              = var.pmm_cpu_cores
+  cpu_cores         = var.pmm_cpu_cores
   memory            = var.pmm_memory_gb
   disk              = var.pmm_volume_size
   ssh_user          = var.my_ssh_user

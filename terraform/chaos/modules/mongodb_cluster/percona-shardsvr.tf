@@ -2,7 +2,7 @@ resource "chaos_instance" "shard" {
   count             = var.shard_count * var.shardsvr_replicas
   name              = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
   os                = var.os_image
-  vcpu              = var.shardsvr_cpu_cores
+  cpu_cores         = var.shardsvr_cpu_cores
   memory            = var.shardsvr_memory_gb
   disk              = var.shardsvr_volume_size
   ssh_user          = var.my_ssh_user

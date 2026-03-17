@@ -2,7 +2,7 @@ resource "chaos_instance" "mongos" {
   count             = var.mongos_count
   name              = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
   os                = var.os_image
-  vcpu              = var.mongos_cpu_cores
+  cpu_cores         = var.mongos_cpu_cores
   memory            = var.mongos_memory_gb
   disk              = 20
   ssh_user          = var.my_ssh_user

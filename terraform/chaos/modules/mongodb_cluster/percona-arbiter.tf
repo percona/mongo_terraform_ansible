@@ -2,7 +2,7 @@ resource "chaos_instance" "arbiter" {
   count             = var.shard_count * var.arbiters_per_replset
   name              = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
   os                = var.os_image
-  vcpu              = var.arbiter_cpu_cores
+  cpu_cores         = var.arbiter_cpu_cores
   memory            = var.arbiter_memory_gb
   disk              = 20
   ssh_user          = var.my_ssh_user

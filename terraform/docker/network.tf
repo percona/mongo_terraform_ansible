@@ -1,3 +1,3 @@
 resource "docker_network" "mongo_network" {
-  name = var.network_name
+  name = "${local.name_prefix}${var.network_name}"
 }

@@ -24,8 +24,9 @@
       <div class="form-group">
         <label for="prefix">Resource Prefix</label>
         <input type="text" id="prefix" name="prefix"
-               value="{{strDefault .Config.Prefix "ig"}}" placeholder="ig">
-        <small>Prefix applied to all cloud resources to avoid naming collisions.</small>
+               value="{{if eq $p "docker"}}{{strDefault .Config.Prefix .EnvID}}{{else}}{{strDefault .Config.Prefix "ig"}}{{end}}"
+               placeholder="{{if eq $p "docker"}}env name{{else}}ig{{end}}">
+        <small>{{if eq $p "docker"}}Prefix applied to all Docker containers, volumes and network. Defaults to environment name.{{else}}Prefix applied to all cloud resources to avoid naming collisions.{{end}}</small>
       </div>
     </div>
 

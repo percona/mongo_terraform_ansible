@@ -44,7 +44,7 @@ module "mongodb_clusters" {
   psmdb_image             = each.value.psmdb_image
   pbm_image               = each.value.pbm_image
   pmm_client_image        = each.value.pmm_client_image
-  network_name            = each.value.network_name
+  network_name            = "${local.name_prefix}${each.value.network_name}"
   ldap_servers            = "${local.name_prefix}${each.value.ldap_servers}"
   ldap_bind_dn            = each.value.ldap_bind_dn
   ldap_bind_pw            = each.value.ldap_bind_pw
@@ -90,7 +90,7 @@ module "mongodb_replsets" {
   psmdb_image             = each.value.psmdb_image
   pbm_image               = each.value.pbm_image
   pmm_client_image        = each.value.pmm_client_image  
-  network_name            = each.value.network_name  
+  network_name            = "${local.name_prefix}${each.value.network_name}"
   enable_ldap             = each.value.enable_ldap
   ldap_servers            = "${local.name_prefix}${each.value.ldap_servers}"
   ldap_bind_dn            = each.value.ldap_bind_dn
@@ -130,7 +130,7 @@ module "pmm_server" {
   pmm_server_pwd          = each.value.pmm_server_pwd
   renderer_image          = each.value.renderer_image
   watchtower_image        = each.value.watchtower_image
-  network_name            = each.value.network_name  
+  network_name            = "${local.name_prefix}${each.value.network_name}"
   bind_to_localhost       = each.value.bind_to_localhost
 }
 
@@ -148,7 +148,7 @@ module "minio_server" {
   minio_secret_key        = each.value.minio_secret_key
   bucket_name             = each.value.bucket_name
   backup_retention        = each.value.backup_retention
-  network_name            = each.value.network_name  
+  network_name            = "${local.name_prefix}${each.value.network_name}"
   bind_to_localhost       = each.value.bind_to_localhost
 }
 
@@ -166,6 +166,6 @@ module "ldap_server" {
   ldap_org                = each.value.ldap_org
   ldap_admin_password     = each.value.ldap_admin_password
   ldap_users              = each.value.ldap_users
-  network_name            = each.value.network_name  
+  network_name            = "${local.name_prefix}${each.value.network_name}"
   bind_to_localhost       = each.value.bind_to_localhost
 }

@@ -201,10 +201,10 @@ a:hover { text-decoration: underline; }
   font-weight: 700;
   letter-spacing: 0.05em;
 }
-.platform-aws   { background: #ff9900; color: #000; }
+.platform-aws   { background: #232f3e; color: #fff; }
 .platform-gcp   { background: #4285f4; color: #fff; }
 .platform-azure { background: #0078d4; color: #fff; }
-.platform-chaos { background: #e53935; color: #fff; }
+.platform-chaos { background: #6a1b9a; color: #fff; }
 .platform-docker { background: #2496ed; color: #fff; }
 
 /* ─── Status dots ────────────────────────────────────────────────── */

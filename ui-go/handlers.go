@@ -217,6 +217,12 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// For Docker deployments, default the prefix to the environment name so
+	// every resource (container, volume, network) is namespaced automatically.
+	if payload.Platform == "docker" && payload.Config.Prefix == "" {
+		payload.Config.Prefix = payload.EnvID
+	}
+
 	state, _ := loadState()
 	existing := state[payload.EnvID]
 	status := "configured"

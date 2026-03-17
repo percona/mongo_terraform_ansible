@@ -17,12 +17,23 @@ resource "chaos_instance" "replset" {
       - mkdir -p /var/lib/mongo
   CLOUDINIT
 
-  firewall_rules = [
-    {
-      source   = "10.30.50.0/24"
-      port     = tostring(var.replsetsvr_port)
-      protocol = "tcp"
-      comment  = "Allow MongoDB access from subnet"
-    },
-  ]
+  firewall_rules = concat(
+    var.firewall_rules,
+    length(var.firewall_rules) == 0 && var.source_ranges != "" ? [
+      {
+        source   = var.source_ranges
+        port     = tostring(var.replsetsvr_port)
+        protocol = "tcp"
+        comment  = "Allow MongoDB access"
+      },
+    ] : [],
+    [
+      {
+        source   = "10.30.50.0/24"
+        port     = tostring(var.replsetsvr_port)
+        protocol = "tcp"
+        comment  = "Allow MongoDB access from subnet"
+      },
+    ]
+  )
 }

@@ -199,3 +199,14 @@ variable "source_ranges" {
   default     = ""
   description = "CIDR range for firewall rules. Leave empty for no firewall rules."
 }
+
+variable "firewall_rules" {
+  type = list(object({
+    source   = string
+    port     = string
+    protocol = string
+    comment  = string
+  }))
+  default     = []
+  description = "Custom firewall rules (CIDR+port) that override source_ranges when non-empty."
+}

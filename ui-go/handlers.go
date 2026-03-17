@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -75,10 +76,20 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Get current OS user for SSH user field default.
+	osUser := ""
+	if u, err := user.Current(); err == nil {
+		osUser = u.Username
+	}
+	if osUser == "" {
+		osUser = os.Getenv("USER")
+	}
+
 	renderPage(w, "configure", ConfigureData{
 		Platform:         platform,
 		EnvID:            envID,
 		Config:           cfg,
+		OSUser:           osUser,
 		PSMDBVersions:    getPSMDBVersions(),
 		PBMVersions:      getPBMReleases(),
 		PMMImages:        getPMMServerImages(),
@@ -217,9 +228,9 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For Docker deployments, default the prefix to the environment name so
-	// every resource (container, volume, network) is namespaced automatically.
-	if payload.Platform == "docker" && payload.Config.Prefix == "" {
+	// Default the prefix to the environment name for all platforms so resources
+	// are namespaced consistently. Users can override this in the form.
+	if payload.Config.Prefix == "" {
 		payload.Config.Prefix = payload.EnvID
 	}
 

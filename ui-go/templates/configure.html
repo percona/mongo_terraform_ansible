@@ -24,9 +24,9 @@
       <div class="form-group">
         <label for="prefix">Resource Prefix</label>
         <input type="text" id="prefix" name="prefix"
-               value="{{if eq $p "docker"}}{{strDefault .Config.Prefix .EnvID}}{{else}}{{strDefault .Config.Prefix "ig"}}{{end}}"
-               placeholder="{{if eq $p "docker"}}env name{{else}}ig{{end}}">
-        <small>{{if eq $p "docker"}}Prefix applied to all Docker containers, volumes and network. Defaults to environment name.{{else}}Prefix applied to all cloud resources to avoid naming collisions.{{end}}</small>
+               value="{{strDefault .Config.Prefix .EnvID}}"
+               placeholder="{{.EnvID}}">
+        <small>{{if eq $p "docker"}}Prefix applied to all Docker containers, volumes and network. Defaults to environment name.{{else}}Prefix applied to all cloud resources to avoid naming collisions. Defaults to environment name.{{end}}</small>
       </div>
     </div>
 
@@ -79,7 +79,7 @@
       <div class="form-group">
         <label for="my_ssh_user">Default SSH User</label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
-               value="{{.Config.MySSHUser}}" placeholder="my_username">
+               value="{{strDefault .Config.MySSHUser .OSUser}}" placeholder="{{.OSUser}}">
         <small>Primary username Ansible uses to connect to instances (also used to generate ssh_config).</small>
       </div>
       <div class="form-group">
@@ -162,7 +162,7 @@
       <div class="form-group">
         <label for="my_ssh_user">Default SSH User</label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
-               value="{{strDefault .Config.MySSHUser "ec2-user"}}" placeholder="ec2-user">
+               value="{{strDefault .Config.MySSHUser "ec2-user"}}" placeholder="{{strDefault .OSUser "ec2-user"}}">
         <small>Primary username Ansible uses to connect (e.g. ec2-user for CentOS, ubuntu for Ubuntu).</small>
       </div>
     </div>
@@ -261,7 +261,7 @@
       <div class="form-group">
         <label for="my_ssh_user">Default SSH User</label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
-               value="{{.Config.MySSHUser}}" placeholder="azureuser">
+               value="{{strDefault .Config.MySSHUser .OSUser}}" placeholder="{{strDefault .OSUser "azureuser"}}">
         <small>Primary username Ansible uses to connect to instances.</small>
       </div>
     </div>
@@ -320,14 +320,27 @@
       <div class="form-group">
         <label for="my_ssh_user">SSH User</label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
-               value="{{.Config.MySSHUser}}" placeholder="ubuntu">
+               value="{{strDefault .Config.MySSHUser .OSUser}}" placeholder="{{strDefault .OSUser "ubuntu"}}">
         <small>Username Ansible uses to connect to all CHAOS instances.</small>
       </div>
-      <div class="form-group">
-        <label for="source_ranges">Source Ranges (SSH / Service Access)</label>
-        <input type="text" id="source_ranges" name="source_ranges"
-               value="{{.Config.SourceRanges}}" placeholder="e.g. 0.0.0.0/0 (leave empty for no firewall rules)">
-        <small>CIDR range(s) for firewall rules. Leave empty to create instances with no firewall restrictions.</small>
+    </div>
+    <!-- Firewall rules: multiple per-rule entries (CIDR + port) -->
+    <div class="form-row">
+      <div class="form-group form-group-full">
+        <label>Firewall Access Rules</label>
+        <small>Define individual ingress rules. Each rule specifies the source CIDR and the destination port.
+          Leave empty for no external firewall restrictions.</small>
+        <div id="firewall-rules-container" style="margin-top:0.5rem">
+          {{range .Config.FirewallRules}}
+          <div class="firewall-rule-row" style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.4rem">
+            <input type="text" name="fw_cidr[]" value="{{.CIDR}}" placeholder="0.0.0.0/0" style="flex:2">
+            <input type="text" name="fw_port[]" value="{{.Port}}" placeholder="22" style="flex:1">
+            <input type="text" name="fw_comment[]" value="{{.Comment}}" placeholder="Comment (optional)" style="flex:3">
+            <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.firewall-rule-row').remove()">✕</button>
+          </div>
+          {{end}}
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.4rem" onclick="addFirewallRule()">+ Add Rule</button>
       </div>
     </div>
     <div class="form-row">
@@ -367,7 +380,10 @@
       {{$clusterComputeConfigured := or $.Config.ShardsvrType $.Config.ConfigsvrType $.Config.MongosType $.Config.ArbiterType $.Config.ShardsvrVolumeSize $.Config.ConfigsvrVolumeSize $.Config.DataDiskType}}
       <div class="component-block">
         <div class="component-block-header">
-          <input type="text" name="cluster_name[]" value="{{.Name}}" class="block-name-input" placeholder="cl01" required>
+          <div class="block-name-field">
+            <label class="block-name-label">Name</label>
+            <input type="text" name="cluster_name[]" value="{{.Name}}" class="block-name-input" placeholder="cl01" required>
+          </div>
           <div class="block-header-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
             <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
@@ -642,7 +658,10 @@
       {{$replsetComputeConfigured := or $.Config.ReplsetSvrType $.Config.ReplsetSvrVolumeSize $.Config.ArbiterType $.Config.DataDiskType}}
       <div class="component-block">
         <div class="component-block-header">
-          <input type="text" name="replset_name[]" value="{{.Name}}" class="block-name-input" placeholder="rs01">
+          <div class="block-name-field">
+            <label class="block-name-label">Name</label>
+            <input type="text" name="replset_name[]" value="{{.Name}}" class="block-name-input" placeholder="rs01">
+          </div>
           <div class="block-header-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
             <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
@@ -850,7 +869,10 @@
       {{range .SortedPmmServers}}
       <div class="component-block">
         <div class="component-block-header">
-          <input type="text" name="pmm_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="pmm-server" readonly>
+          <div class="block-name-field">
+            <label class="block-name-label">Name</label>
+            <input type="text" name="pmm_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="pmm-server" readonly>
+          </div>
           <div class="block-header-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
           </div>
@@ -1010,46 +1032,49 @@
     </div>
     <p class="hint">Optional: deploy a dedicated VM running <a href="https://min.io" target="_blank">Minio</a> for S3-compatible backup storage, provisioned via Ansible.</p>
     <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio true)}}style="display:none"{{end}}>
-      <div class="subsection-header">
-        <span class="subsection-title">Minio Settings</span>
-        <button type="button" class="btn btn-outline btn-sm compute-toggle-btn"
-                onclick="toggleComputeBlock(this)">&#9660; Customize</button>
+      <!-- Basic Minio settings always visible -->
+      <div class="form-row">
+        <div class="form-group">
+          <label for="minio_root_user">Minio Root User</label>
+          <input type="text" id="minio_root_user" name="minio_root_user"
+                 value="{{strDefault .Config.MinioRootUser "minioadmin"}}">
+        </div>
+        <div class="form-group">
+          <label for="minio_root_password">Minio Root Password</label>
+          <input type="password" id="minio_root_password" name="minio_root_password"
+                 value="{{strDefault .Config.MinioRootPassword "minioadmin"}}" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label for="default_bucket_name">Bucket Name</label>
+          <input type="text" id="default_bucket_name" name="default_bucket_name"
+                 value="{{strDefault .Config.DefaultBucketName "mongo-backups"}}">
+        </div>
       </div>
-      <div class="compute-block-body" style="display:none">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="minio_root_user">Minio Root User</label>
-            <input type="text" id="minio_root_user" name="minio_root_user"
-                   value="{{strDefault .Config.MinioRootUser "minioadmin"}}">
-          </div>
-          <div class="form-group">
-            <label for="minio_root_password">Minio Root Password</label>
-            <input type="password" id="minio_root_password" name="minio_root_password"
-                   value="{{strDefault .Config.MinioRootPassword "minioadmin"}}" autocomplete="new-password">
-          </div>
-          <div class="form-group">
-            <label for="default_bucket_name">Bucket Name</label>
-            <input type="text" id="default_bucket_name" name="default_bucket_name"
-                   value="{{strDefault .Config.DefaultBucketName "mongo-backups"}}">
-          </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="minio_port">API Port</label>
+          <input type="number" id="minio_port" name="minio_port"
+                 value="{{intDefault .Config.MinioPort 9000}}">
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="minio_port">API Port</label>
-            <input type="number" id="minio_port" name="minio_port"
-                   value="{{intDefault .Config.MinioPort 9000}}">
-          </div>
-          <div class="form-group">
-            <label for="minio_console_port">Console Port</label>
-            <input type="number" id="minio_console_port" name="minio_console_port"
-                   value="{{intDefault .Config.MinioConsolePort 9001}}">
-          </div>
-          <div class="form-group">
-            <label for="backup_retention">Retention (days)</label>
-            <input type="number" id="backup_retention" name="backup_retention"
-                   value="{{intDefault .Config.BackupRetention 2}}" min="1">
-          </div>
+        <div class="form-group">
+          <label for="minio_console_port">Console Port</label>
+          <input type="number" id="minio_console_port" name="minio_console_port"
+                 value="{{intDefault .Config.MinioConsolePort 9001}}">
         </div>
+        <div class="form-group">
+          <label for="backup_retention">Retention (days)</label>
+          <input type="number" id="backup_retention" name="backup_retention"
+                 value="{{intDefault .Config.BackupRetention 2}}" min="1">
+        </div>
+      </div>
+      <!-- Compute resources hidden under Customize -->
+      {{$minioComputeConfigured := or .Config.MinioCpuCores .Config.MinioMemoryGb .Config.MinioVolumeSize}}
+      <div class="subsection-header">
+        <span class="subsection-title">Compute Resources</span>
+        <button type="button" class="btn btn-outline btn-sm compute-toggle-btn"
+                onclick="toggleComputeBlock(this)">{{if $minioComputeConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+      </div>
+      <div class="compute-block-body" {{if not $minioComputeConfigured}}style="display:none"{{end}}>
         <div class="form-row">
           <div class="form-group">
             <label for="minio_cpu_cores">Minio VM vCPU</label>
@@ -1102,7 +1127,10 @@
       {{range .SortedMinio}}
       <div class="component-block">
         <div class="component-block-header">
-          <input type="text" name="minio_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="minio" readonly>
+          <div class="block-name-field">
+            <label class="block-name-label">Name</label>
+            <input type="text" name="minio_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="minio" readonly>
+          </div>
           <div class="block-header-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
           </div>
@@ -1166,7 +1194,10 @@
       {{range .SortedLdap}}
       <div class="component-block">
         <div class="component-block-header">
-          <input type="text" name="ldap_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="ldap" readonly>
+          <div class="block-name-field">
+            <label class="block-name-label">Name</label>
+            <input type="text" name="ldap_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="ldap" readonly>
+          </div>
           <div class="block-header-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
           </div>
@@ -1223,6 +1254,43 @@
   </section>
   {{end}}
 
+  <!-- ──────────── Credentials ──────────── -->
+  <section class="form-section">
+    <h2>Credentials</h2>
+    <p class="hint">Usernames and passwords passed to Ansible and Terraform. Values here populate <code>group_vars</code> or <code>--extra-vars</code>.</p>
+    <div class="credentials-grid">
+      <div class="form-group">
+        <label for="cred_mongo_admin_user">MongoDB Admin User</label>
+        <input type="text" id="cred_mongo_admin_user" name="cred_mongo_admin_user"
+               value="{{index .Config.AnsibleVars "mongo_admin_user"}}" placeholder="admin">
+      </div>
+      <div class="form-group">
+        <label for="cred_mongo_admin_password">MongoDB Admin Password</label>
+        <input type="password" id="cred_mongo_admin_password" name="cred_mongo_admin_password"
+               value="{{index .Config.AnsibleVars "mongo_admin_password"}}" placeholder="admin"
+               autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="cred_pmm_server_pwd">PMM Admin Password</label>
+        <input type="password" id="cred_pmm_server_pwd" name="cred_pmm_server_pwd"
+               value="{{index .Config.AnsibleVars "pmm_server_pwd"}}" placeholder="admin"
+               autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="cred_mongodb_pmm_user_pwd">PMM Monitoring User Password</label>
+        <input type="password" id="cred_mongodb_pmm_user_pwd" name="cred_mongodb_pmm_user_pwd"
+               value="{{index .Config.AnsibleVars "mongodb_pmm_user_pwd"}}" placeholder="pmmpassword"
+               autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="cred_pbmpwd">PBM Service Password</label>
+        <input type="password" id="cred_pbmpwd" name="cred_pbmpwd"
+               value="{{index .Config.AnsibleVars "pbmpwd"}}" placeholder="pbmpassword"
+               autocomplete="new-password">
+      </div>
+    </div>
+  </section>
+
   <!-- ──────────── Ansible Variable Overrides (cloud only) ──────────── -->
   {{if ne $p "docker"}}
   <section class="form-section">
@@ -1234,6 +1302,7 @@
     </p>
     <div id="ansible-vars-container">
       {{range $k, $v := .Config.AnsibleVars}}
+      {{if not (or (eq $k "mongo_admin_user") (eq $k "mongo_admin_password") (eq $k "pmm_server_pwd") (eq $k "mongodb_pmm_user_pwd") (eq $k "pbmpwd"))}}
       <div class="ansible-var-row">
         <input type="text"     name="ansible_var_key[]"   value="{{$k}}" placeholder="variable_name">
         <input type="password" name="ansible_var_val[]"   value="{{$v}}" placeholder="value"
@@ -1241,6 +1310,7 @@
         <button type="button" class="btn btn-danger btn-sm" onclick="removeAnsibleVar(this)"
                 title="Remove this variable override">✕</button>
       </div>
+      {{end}}
       {{end}}
     </div>
     <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem"
@@ -1250,11 +1320,7 @@
         Common variables to override
       </summary>
       <ul style="margin:0.5rem 0 0 1rem;font-size:0.83rem;color:var(--color-muted)">
-        <li><code>mongo_admin_password</code> – MongoDB root password</li>
         <li><code>keyfile_content</code> – replica-set keyfile (output of <code>openssl rand -base64 741</code>)</li>
-        <li><code>pmm_server_pwd</code> – PMM admin password</li>
-        <li><code>mongodb_pmm_user_pwd</code> – PMM monitoring user password</li>
-        <li><code>pbmpwd</code> – PBM service account password</li>
         <li><code>access_key_id</code> – S3/object-storage access key for backups</li>
         <li><code>secret_access_key</code> – S3/object-storage secret key for backups</li>
         <li><code>encryption_key_content</code> – data-at-rest encryption key</li>
@@ -1389,19 +1455,72 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function buildImageSelect(name, images, prefix, defaultVal) {
+  const sel = images.map(t => `<option value="${escHtml(t)}"${defaultVal === t ? ' selected' : ''}>${escHtml(prefix)}:${escHtml(t)}</option>`).join('');
+  const uid = name.replace(/[\[\]]/g, '_') + '_' + Math.random().toString(36).slice(2, 6);
+  return `<div class="image-select-wrapper">
+    <select name="${escHtml(name)}" id="${uid}" onchange="toggleCustomImageInput(this)">
+      ${sel}
+      <option value="__custom__">Custom…</option>
+    </select>
+    <input type="text" class="custom-image-input" id="${uid}_custom" name="${escHtml(name)}_custom"
+           placeholder="registry/repo:tag"
+           style="display:none;margin-top:0.3rem"
+           oninput="syncCustomImageOption(this)">
+  </div>`;
+}
+
+function toggleCustomImageInput(sel) {
+  const wrapper = sel.parentElement;
+  const customInput = wrapper.querySelector('.custom-image-input');
+  if (sel.value === '__custom__') {
+    customInput.style.display = '';
+    customInput.focus();
+  } else {
+    customInput.style.display = 'none';
+  }
+}
+
+function syncCustomImageOption(input) {
+  // Keep the __custom__ option selected and store value in hidden field.
+  const wrapper = input.parentElement;
+  const sel = wrapper.querySelector('select');
+  sel.value = '__custom__';
+}
+
+function getImageValue(wrapper) {
+  if (!wrapper) return '';
+  const sel = wrapper.querySelector('select');
+  if (!sel) return '';
+  if (sel.value === '__custom__') {
+    const ci = wrapper.querySelector('.custom-image-input');
+    return ci ? ci.value.trim() : '';
+  }
+  return sel.value;
+}
+
 function buildDockerImageRows(type) {
   if (type !== 'cluster' && type !== 'replset') return '';
-  const psmdbSel = PSMDB_IMAGES.map(t => `<option value="${escHtml(t)}">percona/percona-server-mongodb:${escHtml(t)}</option>`).join('');
-  const pbmSel   = PBM_IMAGES.map(t => `<option value="${escHtml(t)}">percona/percona-backup-mongodb:${escHtml(t)}</option>`).join('');
-  const pmmcSel  = PMM_CLIENT_IMAGES.map(t => `<option value="${escHtml(t)}">percona/pmm-client:${escHtml(t)}</option>`).join('');
+  const psmdbSel = PSMDB_IMAGES.map(t => `<option value="${escHtml(t)}">percona/percona-server-mongodb:${escHtml(t)}</option>`).join('') +
+    `<option value="__custom__">Custom…</option>`;
+  const pbmSel   = PBM_IMAGES.map(t => `<option value="${escHtml(t)}">percona/percona-backup-mongodb:${escHtml(t)}</option>`).join('') +
+    `<option value="__custom__">Custom…</option>`;
+  const pmmcSel  = PMM_CLIENT_IMAGES.map(t => `<option value="${escHtml(t)}">percona/pmm-client:${escHtml(t)}</option>`).join('') +
+    `<option value="__custom__">Custom…</option>`;
+  const makeImageGroup = (label, selectName, options) => `
+    <div class="form-group"><label>${label}</label>
+      <div class="image-select-wrapper">
+        <select name="${type}_${selectName}" onchange="toggleCustomImageInput(this)">${options}</select>
+        <input type="text" class="custom-image-input" name="${type}_${selectName}_custom"
+               placeholder="registry/repo:tag" style="display:none;margin-top:0.3rem"
+               oninput="syncCustomImageOption(this)">
+      </div>
+    </div>`;
   return `
     <div class="form-row">
-      <div class="form-group"><label>PSMDB Image</label>
-        <select name="${type}_psmdb_image[]">${psmdbSel}</select></div>
-      <div class="form-group"><label>PBM Image</label>
-        <select name="${type}_pbm_image[]">${pbmSel}</select></div>
-      <div class="form-group"><label>PMM Client Image</label>
-        <select name="${type}_pmm_client_image[]">${pmmcSel}</select></div>
+      ${makeImageGroup('PSMDB Image', 'psmdb_image[]', psmdbSel)}
+      ${makeImageGroup('PBM Image', 'pbm_image[]', pbmSel)}
+      ${makeImageGroup('PMM Client Image', 'pmm_client_image[]', pmmcSel)}
     </div>
     <div class="form-row">
       <div class="form-group form-group-checkbox">
@@ -1820,6 +1939,18 @@ function removeAnsibleVar(btn) {
   btn.closest('.ansible-var-row').remove();
 }
 
+function addFirewallRule() {
+  const row = document.createElement('div');
+  row.className = 'firewall-rule-row';
+  row.style.cssText = 'display:flex;gap:0.5rem;align-items:center;margin-bottom:0.4rem';
+  row.innerHTML = `
+    <input type="text" name="fw_cidr[]" placeholder="0.0.0.0/0" style="flex:2">
+    <input type="text" name="fw_port[]" placeholder="22" style="flex:1">
+    <input type="text" name="fw_comment[]" placeholder="Comment (optional)" style="flex:3">
+    <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.firewall-rule-row').remove()">✕</button>`;
+  document.getElementById('firewall-rules-container').appendChild(row);
+}
+
 // ── Cloud Regions ─────────────────────────────────────────────────────────────
 // Default region per platform when no value has been saved yet.
 const DEFAULT_REGION = { gcp: 'northamerica-northeast1', aws: 'us-east-1', azure: 'eastus' };
@@ -2090,6 +2221,39 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     }
     if (Object.keys(ansibleVars).length > 0) {
       config.ansible_vars = ansibleVars;
+    }
+  }
+
+  // Credentials: merge into ansible_vars for all platforms.
+  const credFields = [
+    ['mongo_admin_user',      fd.get('cred_mongo_admin_user')],
+    ['mongo_admin_password',  fd.get('cred_mongo_admin_password')],
+    ['pmm_server_pwd',        fd.get('cred_pmm_server_pwd')],
+    ['mongodb_pmm_user_pwd',  fd.get('cred_mongodb_pmm_user_pwd')],
+    ['pbmpwd',                fd.get('cred_pbmpwd')],
+  ];
+  for (const [key, val] of credFields) {
+    if (val && val.trim()) {
+      if (!config.ansible_vars) config.ansible_vars = {};
+      config.ansible_vars[key] = val.trim();
+    }
+  }
+
+  // Firewall rules (CHAOS only) — collected from multi-row table.
+  if (PLATFORM === 'chaos') {
+    const fwCidrs    = fd.getAll('fw_cidr[]');
+    const fwPorts    = fd.getAll('fw_port[]');
+    const fwComments = fd.getAll('fw_comment[]');
+    const firewallRules = [];
+    for (let i = 0; i < fwCidrs.length; i++) {
+      const cidr = fwCidrs[i].trim();
+      const port = fwPorts[i].trim();
+      if (cidr && port) {
+        firewallRules.push({ cidr, port, comment: fwComments[i] ? fwComments[i].trim() : '' });
+      }
+    }
+    if (firewallRules.length > 0) {
+      config.firewall_rules = firewallRules;
     }
   }
 

@@ -124,6 +124,27 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			writeOptStr("chaos_api_token", cfg.ChaosApiToken)
 			writeOptInt("delete_after_days", cfg.DeleteAfterDays)
 			writeOptStr("os_image", cfg.OsImage)
+			// Firewall rules: new structured per-rule list replaces source_ranges string.
+			// For backward compat, also write source_ranges if FirewallRules is empty.
+			if len(cfg.FirewallRules) > 0 {
+				write("")
+				write("firewall_rules = [")
+				for _, r := range cfg.FirewallRules {
+					comment := r.Comment
+					if comment == "" {
+						comment = "Custom access rule"
+					}
+					write("  {")
+					write(fmt.Sprintf("    source   = %s", formatHCLVal(r.CIDR)))
+					write(fmt.Sprintf("    port     = %s", formatHCLVal(r.Port)))
+					write(`    protocol = "tcp"`)
+					write(fmt.Sprintf("    comment  = %s", formatHCLVal(comment)))
+					write("  },")
+				}
+				write("]")
+			} else {
+				writeOptStr("source_ranges", cfg.SourceRanges)
+			}
 			// PMM
 			if cfg.EnablePmm != nil {
 				writeVar("enable_pmm", *cfg.EnablePmm)

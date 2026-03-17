@@ -280,6 +280,19 @@ variable "source_ranges" {
   description = "CIDR range for firewall rules. Leave empty to create instances with no firewall rules."
 }
 
+# Structured per-rule firewall access rules (replaces source_ranges when non-empty).
+# Each rule: { source = "CIDR", port = "PORT", protocol = "tcp", comment = "..." }
+variable "firewall_rules" {
+  type = list(object({
+    source   = string
+    port     = string
+    protocol = string
+    comment  = string
+  }))
+  default     = []
+  description = "Custom firewall rules. Each entry specifies a CIDR, port, protocol, and comment."
+}
+
 #############
 # CHAOS Provider
 #############

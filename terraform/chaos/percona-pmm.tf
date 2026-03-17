@@ -18,7 +18,8 @@ resource "chaos_instance" "pmm" {
   CLOUDINIT
 
   firewall_rules = concat(
-    var.source_ranges != "" ? [
+    var.firewall_rules,
+    length(var.firewall_rules) == 0 && var.source_ranges != "" ? [
       {
         source   = var.source_ranges
         port     = tostring(var.pmm_port)

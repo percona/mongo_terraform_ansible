@@ -920,3 +920,43 @@ tr:last-child td { border-bottom: none; }
   vertical-align: middle;
 }
 .history-table tr:last-child td { border-bottom: none; }
+
+/* Block name field: wraps the label + input in component block headers */
+.block-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 100px;
+  max-width: 240px;
+}
+.block-name-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  line-height: 1;
+}
+
+/* Toggle label (enable PMM/Minio/LDAP toggles) */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Credentials section */
+.credentials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+/* Firewall rule rows */
+.firewall-rule-row input {
+  min-width: 0;
+}

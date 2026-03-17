@@ -44,7 +44,8 @@ module "mongodb_clusters" {
   arbiter_cpu_cores     = var.arbiter_cpu_cores
   arbiter_memory_gb     = var.arbiter_memory_gb
 
-  source_ranges = var.source_ranges
+  source_ranges  = var.source_ranges
+  firewall_rules = var.firewall_rules
 
 }
 
@@ -68,6 +69,7 @@ module "mongodb_replsets" {
   arbiter_cpu_cores      = var.arbiter_cpu_cores
   arbiter_memory_gb      = var.arbiter_memory_gb
 
-  source_ranges = var.source_ranges
+  source_ranges  = var.source_ranges
+  firewall_rules = var.firewall_rules
 
 }

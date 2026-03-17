@@ -16,12 +16,23 @@ resource "chaos_instance" "arbiter" {
       - echo "127.0.0.1 $(hostname) localhost" > /etc/hosts
   CLOUDINIT
 
-  firewall_rules = [
-    {
-      source   = "10.30.50.0/24"
-      port     = tostring(var.arbiter_port)
-      protocol = "tcp"
-      comment  = "Allow MongoDB access from subnet"
-    },
-  ]
+  firewall_rules = concat(
+    var.firewall_rules,
+    length(var.firewall_rules) == 0 && var.source_ranges != "" ? [
+      {
+        source   = var.source_ranges
+        port     = tostring(var.arbiter_port)
+        protocol = "tcp"
+        comment  = "Allow MongoDB arbiter access"
+      },
+    ] : [],
+    [
+      {
+        source   = "10.30.50.0/24"
+        port     = tostring(var.arbiter_port)
+        protocol = "tcp"
+        comment  = "Allow MongoDB access from subnet"
+      },
+    ]
+  )
 }

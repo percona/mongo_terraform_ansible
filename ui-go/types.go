@@ -2,6 +2,13 @@ package main
 
 import "sort"
 
+// ChaosFirewallRule is a single ingress rule for CHAOS deployments.
+type ChaosFirewallRule struct {
+	CIDR    string `json:"cidr"`
+	Port    string `json:"port"`
+	Comment string `json:"comment,omitempty"`
+}
+
 // ClusterConfig maps to the Terraform "clusters" map object type.
 type ClusterConfig struct {
 	EnvTag            string `json:"env_tag"`
@@ -116,6 +123,9 @@ type Config struct {
 	EnableMinio      *bool  `json:"enable_minio,omitempty"`
 	DeleteAfterDays  int    `json:"delete_after_days,omitempty"`
 	OsImage          string `json:"os_image,omitempty"`
+	// FirewallRules replaces the old SourceRanges single string for CHAOS.
+	// Each entry is an independent ingress rule with its own CIDR and port.
+	FirewallRules    []ChaosFirewallRule `json:"firewall_rules,omitempty"`
 	ShardsvrCpuCores int    `json:"shardsvr_cpu_cores,omitempty"`
 	ShardsvrMemoryGb int    `json:"shardsvr_memory_gb,omitempty"`
 	ConfigsvrCpuCores int   `json:"configsvr_cpu_cores,omitempty"`
@@ -294,6 +304,7 @@ type ConfigureData struct {
 	Platform        string
 	EnvID           string
 	Config          Config
+	OSUser          string // current OS user, used as SSH user default
 	PSMDBVersions   []string
 	PBMVersions     []string
 	PMMImages       []string

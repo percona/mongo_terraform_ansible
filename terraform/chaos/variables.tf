@@ -100,7 +100,7 @@ variable "pmm_memory_gb" {
 }
 
 variable "pmm_volume_size" {
-  default     = 100
+  default     = 20
   description = "Root disk size in GB for the PMM server"
 }
 
@@ -140,7 +140,7 @@ variable "minio_memory_gb" {
 }
 
 variable "minio_volume_size" {
-  default     = 100
+  default     = 20
   description = "Root disk size in GB for the Minio server (stores all backups)"
 }
 
@@ -215,7 +215,7 @@ variable "shardsvr_memory_gb" {
 }
 
 variable "shardsvr_volume_size" {
-  default     = 60
+  default     = 20
   description = "Root disk size in GB for MongoDB shard server instances"
 }
 
@@ -265,7 +265,7 @@ variable "replsetsvr_memory_gb" {
 }
 
 variable "replsetsvr_volume_size" {
-  default     = 100
+  default     = 20
   description = "Root disk size in GB for standalone replica set data-bearing node instances"
 }
 
@@ -293,6 +293,6 @@ variable "chaos_api_token" {
 
 variable "enable_minio" {
   type        = bool
-  default     = false
-  description = "Deploy a Minio S3-compatible backup storage VM. Set to true to provision Minio."
+  default     = true
+  description = "Deploy a Minio S3-compatible backup storage VM. Set to false to skip Minio."
 }

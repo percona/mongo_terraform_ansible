@@ -80,7 +80,7 @@ variable "shardsvr_memory_gb" {
 
 variable "shardsvr_volume_size" {
   type        = number
-  default     = 60
+  default     = 20
   description = "Root disk size in GB for shard server instances"
 }
 

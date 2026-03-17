@@ -55,7 +55,7 @@ variable "replsetsvr_port" {
 
 variable "replsetsvr_volume_size" {
   type        = number
-  default     = 100
+  default     = 20
   description = "Root disk size in GB for replica set data-bearing nodes"
 }
 

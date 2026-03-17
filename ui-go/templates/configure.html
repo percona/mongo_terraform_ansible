@@ -338,6 +338,7 @@
           <option value="Ubuntu 22.04" {{if eq $curOs "Ubuntu 22.04"}}selected{{end}}>Ubuntu 22.04</option>
           <option value="Rocky Linux 9" {{if eq $curOs "Rocky Linux 9"}}selected{{end}}>Rocky Linux 9</option>
           <option value="Rocky Linux 8" {{if eq $curOs "Rocky Linux 8"}}selected{{end}}>Rocky Linux 8</option>
+          <option value="CentOS 9" {{if eq $curOs "CentOS 9"}}selected{{end}}>CentOS 9</option>
           <option value="Oracle Linux 9" {{if eq $curOs "Oracle Linux 9"}}selected{{end}}>Oracle Linux 9</option>
           <option value="Oracle Linux 8" {{if eq $curOs "Oracle Linux 8"}}selected{{end}}>Oracle Linux 8</option>
           <option value="Debian 12" {{if eq $curOs "Debian 12"}}selected{{end}}>Debian 12</option>
@@ -483,9 +484,9 @@
                 <label>Shard Svr Disk (GB)</label>
                 <select name="shardsvr_volume_size">
                   {{$v := $.Config.ShardsvrVolumeSize}}
-                  <option value="20" {{if eq $v 20}}selected{{end}}>20 GB</option>
+                  <option value="20" {{if or (eq $v 0) (eq $v 20)}}selected{{end}}>20 GB</option>
                   <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
-                  <option value="60" {{if or (eq $v 0) (eq $v 60)}}selected{{end}}>60 GB</option>
+                  <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
                   <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
                   <option value="100" {{if eq $v 100}}selected{{end}}>100 GB</option>
                 </select>
@@ -746,11 +747,11 @@
                 <label>Data Node Disk (GB)</label>
                 <select name="replsetsvr_volume_size">
                   {{$v := $.Config.ReplsetSvrVolumeSize}}
-                  <option value="20" {{if eq $v 20}}selected{{end}}>20 GB</option>
+                  <option value="20" {{if or (eq $v 0) (eq $v 20)}}selected{{end}}>20 GB</option>
                   <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
                   <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
                   <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
-                  <option value="100" {{if or (eq $v 0) (eq $v 100)}}selected{{end}}>100 GB</option>
+                  <option value="100" {{if eq $v 100}}selected{{end}}>100 GB</option>
                 </select>
               </div>
             </div>
@@ -920,11 +921,11 @@
         <label for="pmm_volume_size">Disk (GB)</label>
         <select id="pmm_volume_size" name="pmm_volume_size">
           {{$v := .Config.PmmVolumeSize}}
-          <option value="20" {{if eq $v 20}}selected{{end}}>20 GB</option>
+          <option value="20" {{if or (eq $v 0) (eq $v 20)}}selected{{end}}>20 GB</option>
           <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
           <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
           <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
-          <option value="100" {{if or (eq $v 0) (eq $v 100)}}selected{{end}}>100 GB</option>
+          <option value="100" {{if eq $v 100}}selected{{end}}>100 GB</option>
         </select>
       </div>
       <div class="form-group">
@@ -987,13 +988,13 @@
       <h2>Minio Backup Storage VM</h2>
       <label class="toggle-label">
         <input type="checkbox" id="enable_minio" name="enable_minio" value="true"
-               {{if boolDefault .Config.EnableMinio false}}checked{{end}}
+               {{if boolDefault .Config.EnableMinio true}}checked{{end}}
                onchange="toggleMinioBody(this)">
         Enable Minio
       </label>
     </div>
     <p class="hint">Optional: deploy a dedicated VM running <a href="https://min.io" target="_blank">Minio</a> for S3-compatible backup storage, provisioned via Ansible.</p>
-    <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio false)}}style="display:none"{{end}}>
+    <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio true)}}style="display:none"{{end}}>
       <div class="subsection-header">
         <span class="subsection-title">Minio Settings</span>
         <button type="button" class="btn btn-outline btn-sm compute-toggle-btn"
@@ -1057,11 +1058,11 @@
             <label for="minio_volume_size">Minio VM Disk (GB)</label>
             <select id="minio_volume_size" name="minio_volume_size">
               {{$v := .Config.MinioVolumeSize}}
-              <option value="20" {{if eq $v 20}}selected{{end}}>20 GB</option>
+              <option value="20" {{if or (eq $v 0) (eq $v 20)}}selected{{end}}>20 GB</option>
               <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
               <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
               <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
-              <option value="100" {{if or (eq $v 0) (eq $v 100)}}selected{{end}}>100 GB</option>
+              <option value="100" {{if eq $v 100}}selected{{end}}>100 GB</option>
             </select>
           </div>
         </div>
@@ -1362,46 +1363,112 @@ function buildCloudComputeRows(type) {
     if (type === 'cluster') {
       rows = `
         <div class="form-row">
-          <div class="form-group"><label>Shard Svr CPU Cores</label>
-            <input type="number" name="shardsvr_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Shard Svr vCPU</label>
+            <select name="shardsvr_cpu_cores">
+              <option value="2" selected>2 vCPU</option>
+              <option value="4">4 vCPU</option>
+              <option value="8">8 vCPU</option>
+            </select></div>
           <div class="form-group"><label>Shard Svr Memory (GB)</label>
-            <input type="number" name="shardsvr_memory_gb" placeholder="4" min="1"></div>
+            <select name="shardsvr_memory_gb">
+              <option value="4" selected>4 GB</option>
+              <option value="8">8 GB</option>
+              <option value="16">16 GB</option>
+            </select></div>
           <div class="form-group"><label>Shard Svr Disk (GB)</label>
-            <input type="number" name="shardsvr_volume_size" placeholder="50" min="10"></div>
+            <select name="shardsvr_volume_size">
+              <option value="20" selected>20 GB</option>
+              <option value="40">40 GB</option>
+              <option value="60">60 GB</option>
+              <option value="80">80 GB</option>
+              <option value="100">100 GB</option>
+            </select></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Config Svr CPU Cores</label>
-            <input type="number" name="configsvr_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Config Svr vCPU</label>
+            <select name="configsvr_cpu_cores">
+              <option value="2" selected>2 vCPU</option>
+              <option value="4">4 vCPU</option>
+              <option value="8">8 vCPU</option>
+            </select></div>
           <div class="form-group"><label>Config Svr Memory (GB)</label>
-            <input type="number" name="configsvr_memory_gb" placeholder="4" min="1"></div>
+            <select name="configsvr_memory_gb">
+              <option value="4" selected>4 GB</option>
+              <option value="8">8 GB</option>
+              <option value="16">16 GB</option>
+            </select></div>
           <div class="form-group"><label>Config Svr Disk (GB)</label>
-            <input type="number" name="configsvr_volume_size" placeholder="20" min="10"></div>
+            <select name="configsvr_volume_size">
+              <option value="20" selected>20 GB</option>
+              <option value="40">40 GB</option>
+              <option value="60">60 GB</option>
+              <option value="80">80 GB</option>
+              <option value="100">100 GB</option>
+            </select></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Mongos CPU Cores</label>
-            <input type="number" name="mongos_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Mongos vCPU</label>
+            <select name="mongos_cpu_cores">
+              <option value="2" selected>2 vCPU</option>
+              <option value="4">4 vCPU</option>
+              <option value="8">8 vCPU</option>
+            </select></div>
           <div class="form-group"><label>Mongos Memory (GB)</label>
-            <input type="number" name="mongos_memory_gb" placeholder="4" min="1"></div>
-          <div class="form-group"><label>Arbiter CPU Cores</label>
-            <input type="number" name="arbiter_cpu_cores" placeholder="2" min="1"></div>
+            <select name="mongos_memory_gb">
+              <option value="4" selected>4 GB</option>
+              <option value="8">8 GB</option>
+              <option value="16">16 GB</option>
+            </select></div>
+          <div class="form-group"><label>Arbiter vCPU</label>
+            <select name="arbiter_cpu_cores">
+              <option value="2" selected>2 vCPU</option>
+              <option value="4">4 vCPU</option>
+              <option value="8">8 vCPU</option>
+            </select></div>
           <div class="form-group"><label>Arbiter Memory (GB)</label>
-            <input type="number" name="arbiter_memory_gb" placeholder="4" min="1"></div>
+            <select name="arbiter_memory_gb">
+              <option value="4" selected>4 GB</option>
+              <option value="8">8 GB</option>
+              <option value="16">16 GB</option>
+            </select></div>
         </div>`;
     } else {
       rows = `
         <div class="form-row">
-          <div class="form-group"><label>Data Node CPU Cores</label>
-            <input type="number" name="replsetsvr_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Data Node vCPU</label>
+            <select name="replsetsvr_cpu_cores">
+              <option value="2" selected>2 vCPU</option>
+              <option value="4">4 vCPU</option>
+              <option value="8">8 vCPU</option>
+            </select></div>
           <div class="form-group"><label>Data Node Memory (GB)</label>
-            <input type="number" name="replsetsvr_memory_gb" placeholder="4" min="1"></div>
+            <select name="replsetsvr_memory_gb">
+              <option value="4" selected>4 GB</option>
+              <option value="8">8 GB</option>
+              <option value="16">16 GB</option>
+            </select></div>
           <div class="form-group"><label>Data Node Disk (GB)</label>
-            <input type="number" name="replsetsvr_volume_size" placeholder="100" min="10"></div>
+            <select name="replsetsvr_volume_size">
+              <option value="20" selected>20 GB</option>
+              <option value="40">40 GB</option>
+              <option value="60">60 GB</option>
+              <option value="80">80 GB</option>
+              <option value="100">100 GB</option>
+            </select></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Arbiter CPU Cores</label>
-            <input type="number" name="arbiter_cpu_cores" placeholder="2" min="1"></div>
+          <div class="form-group"><label>Arbiter vCPU</label>
+            <select name="arbiter_cpu_cores">
+              <option value="2" selected>2 vCPU</option>
+              <option value="4">4 vCPU</option>
+              <option value="8">8 vCPU</option>
+            </select></div>
           <div class="form-group"><label>Arbiter Memory (GB)</label>
-            <input type="number" name="arbiter_memory_gb" placeholder="4" min="1"></div>
+            <select name="arbiter_memory_gb">
+              <option value="4" selected>4 GB</option>
+              <option value="8">8 GB</option>
+              <option value="16">16 GB</option>
+            </select></div>
         </div>`;
     }
     return `
@@ -1410,7 +1477,7 @@ function buildCloudComputeRows(type) {
         <button type="button" class="btn btn-outline btn-sm compute-toggle-btn" onclick="toggleComputeBlock(this)">▼ Customize</button>
       </div>
       <div class="compute-block-body" style="display:none">
-        <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all ${type === 'cluster' ? 'clusters' : 'replica sets'}</strong> in this deployment. Leave blank for Terraform defaults.</p>
+        <p class="hint" style="margin-bottom:0.75rem">These compute settings are shared across <strong>all ${type === 'cluster' ? 'clusters' : 'replica sets'}</strong> in this deployment.</p>
         ${rows}
       </div>`;
   }

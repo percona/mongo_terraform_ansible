@@ -17,7 +17,15 @@ storage:
     prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
     credentials:
       key: {{ key }}
-{% elif storage_provider == "s3" or storage_provider == "minio" %}
+{% elif storage_provider == "minio" %}
+  minio:
+    endpoint: {{ endpointUrl | replace('http://', '') | replace('https://', '') }}
+    bucket: {{ bucket }}
+    prefix: {{ prefix | default(cluster) | default(group_names[0]) }}
+    credentials:
+      access-key-id: {{ access_key_id }}
+      secret-access-key: {{ secret_access_key }}
+{% elif storage_provider == "s3" %}
   s3:
     region: {{ region }}
     bucket: {{ bucket }}

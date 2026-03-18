@@ -91,9 +91,8 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		Config:             cfg,
 		OSUser:             osUser,
 		PSMDBVersions:      getPSMDBVersions(),
-		PBMVersions:        getPBMReleases(),
+		PBMVersions:        getPBMVersions(),
 		PSMDBMinorVersions: getPSMDBMinorVersionsByMajor(),
-		PBMMinorVersions:   getPBMMinorVersionsByMajor(),
 		PMMImages:          getPMMServerImages(),
 		PSMDBImages:        getPSMDBImages(),
 		PBMImages:          getPBMImages(),
@@ -128,7 +127,7 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]interface{}{
 		"psmdb_versions":    getPSMDBVersions(),
-		"pbm_releases":      getPBMReleases(),
+		"pbm_versions":      getPBMVersions(),
 		"pmm_server_images": getPMMServerImages(),
 		"psmdb_images":      getPSMDBImages(),
 		"pbm_images":        getPBMImages(),

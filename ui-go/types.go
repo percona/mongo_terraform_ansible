@@ -308,10 +308,13 @@ type ConfigureData struct {
 	Config          Config
 	OSUser          string // current OS user, used as SSH user default
 	PSMDBVersions   []string
+	// PBMVersions holds a flat sorted-descending list of all available PBM package
+	// versions (e.g. ["2.7.0", "2.6.1", "2.6.0", ...]). PBM uses a single Percona
+	// repository so there is no per-major-version grouping.
 	PBMVersions     []string
-	// Minor versions for each major release key, e.g. {"psmdb-70": ["7.0.12", "7.0.11", ...]}
+	// PSMDBMinorVersions maps major release key → sorted minor versions
+	// e.g. {"psmdb-70": ["7.0.12", "7.0.11", ...]}
 	PSMDBMinorVersions map[string][]string
-	PBMMinorVersions   map[string][]string
 	PMMImages          []string
 	PSMDBImages        []string
 	PBMImages          []string

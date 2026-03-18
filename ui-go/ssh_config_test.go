@@ -80,6 +80,14 @@ Package: percona-backup-mongodb
 Version: 2.7.0-1.jammy
 Architecture: amd64
 
+Package: percona-backup-mongodb
+Version: 2.11.0-1.jammy
+Architecture: amd64
+
+Package: percona-backup-mongodb
+Version: 2.0.5-1.jammy
+Architecture: amd64
+
 Package: percona-mongodb-mongosh
 Version: 2.3.7-1.jammy
 Architecture: amd64
@@ -95,10 +103,20 @@ Architecture: amd64
 		t.Errorf("expected second version 7.0.11, got %s", got[1])
 	}
 
-	// Verify PBM version is parsed independently.
+	// PBM: all versions should appear in a flat list, newest first.
+	// Specifically 2.11.0 > 2.7.0 > 2.0.5 (semantic sort, not lexicographic).
 	pbmVers := parseAPTPackageVersions(samplePackages, "percona-backup-mongodb")
-	if len(pbmVers) != 1 || pbmVers[0] != "2.7.0" {
-		t.Errorf("expected [2.7.0], got %v", pbmVers)
+	if len(pbmVers) != 3 {
+		t.Errorf("expected 3 PBM versions, got %d: %v", len(pbmVers), pbmVers)
+	}
+	if pbmVers[0] != "2.11.0" {
+		t.Errorf("expected first PBM version 2.11.0 (semantic > 2.7.0), got %s", pbmVers[0])
+	}
+	if pbmVers[1] != "2.7.0" {
+		t.Errorf("expected second PBM version 2.7.0, got %s", pbmVers[1])
+	}
+	if pbmVers[2] != "2.0.5" {
+		t.Errorf("expected third PBM version 2.0.5, got %s", pbmVers[2])
 	}
 }
 

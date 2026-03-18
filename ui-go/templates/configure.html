@@ -61,27 +61,12 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label for="pbm_release">PBM Major Version</label>
-        <select id="pbm_release" name="pbm_release"
-                onchange="onPbmReleaseChange(this)">
-          {{$curPbm := .Config.PbmRelease}}
-          {{range .PBMVersions}}
-          <option value="{{.}}" {{if eq $curPbm .}}selected{{end}}>{{.}}</option>
-          {{end}}
-        </select>
-        <small>Percona Backup for MongoDB repository identifier.</small>
-      </div>
-      <div class="form-group">
-        <label for="pbm_version">PBM Specific Version</label>
+        <label for="pbm_version">PBM Version</label>
         <select id="pbm_version" name="pbm_version">
           <option value="">latest (default)</option>
           {{$curPbmVer := .Config.PbmVersion}}
-          {{$pbmRelease := .Config.PbmRelease}}
-          {{if $pbmRelease}}
-            {{$pbmMinors := index $.PBMMinorVersions $pbmRelease}}
-            {{range $pbmMinors}}
-            <option value="{{.}}" {{if eq $curPbmVer .}}selected{{end}}>{{.}}</option>
-            {{end}}
+          {{range .PBMVersions}}
+          <option value="{{.}}" {{if eq $curPbmVer .}}selected{{end}}>{{.}}</option>
           {{end}}
         </select>
         <small>Optional: pin to a specific PBM version (e.g., 2.7.0). Leave empty to install the latest.</small>
@@ -1401,7 +1386,6 @@ const PSMDB_VERSIONS  = {{json .PSMDBVersions}};
 const PBM_VERSIONS    = {{json .PBMVersions}};
 // Minor versions keyed by major release identifier, e.g. {"psmdb-70": ["7.0.12", ...]}
 const PSMDB_MINOR_VERSIONS = {{json .PSMDBMinorVersions}};
-const PBM_MINOR_VERSIONS   = {{json .PBMMinorVersions}};
 
 function removeBlock(btn) {
   const block = btn.closest('.component-block');
@@ -1516,16 +1500,6 @@ function onMongoReleaseChange(sel) {
 }
 
 // Cascade: when the major PBM release changes, repopulate the version dropdown.
-function onPbmReleaseChange(sel) {
-  const versionSel = document.getElementById('pbm_version');
-  if (!versionSel) return;
-  const release = sel.value;
-  const minors = (PBM_MINOR_VERSIONS && PBM_MINOR_VERSIONS[release]) || [];
-  const prevVal = versionSel.value;
-  versionSel.innerHTML = '<option value="">latest (default)</option>' +
-    minors.map(v => `<option value="${escHtml(v)}" ${v === prevVal ? 'selected' : ''}>${escHtml(v)}</option>`).join('');
-}
-
 function nextClusterName() {
   let max = 0;
   document.querySelectorAll('#clusters-container input[name="cluster_name[]"]').forEach(el => {
@@ -2243,7 +2217,13 @@ async function pickSshUserKey(btn) {
   fileInput.click();
 }
 
-
+// On page load, populate the MongoDB specific version dropdown based on the
+// currently selected major release, so the dropdown is ready without requiring
+// user interaction.
+document.addEventListener('DOMContentLoaded', () => {
+  const mongoRelSel = document.getElementById('mongo_release');
+  if (mongoRelSel) onMongoReleaseChange(mongoRelSel);
+});
 
 document.getElementById('config-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -2254,7 +2234,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 
   // Simple scalar fields
   const simpleFields = [
-    'prefix','mongo_release','mongo_version','pbm_release','pbm_version','project_id','region','location',
+    'prefix','mongo_release','mongo_version','pbm_version','project_id','region','location',
     'subnet_cidr','subnet_count','source_ranges',
     'my_ssh_user','ssh_public_key_path','default_key_pair','default_vpc_name',
     'enable_ssh_gateway','ssh_gateway_name','port_to_forward',

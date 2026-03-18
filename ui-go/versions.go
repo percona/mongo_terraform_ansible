@@ -48,8 +48,7 @@ func getDockerHubTags(namespace, repo string, limit int) []string {
 }
 
 // fetchPerconaRepoPage fetches the Percona repository listing page and returns
-// its body text. The result is cached to avoid redundant HTTP requests since
-// both getPSMDBVersions and getPBMReleases need it.
+// its body text. The result is cached to avoid redundant HTTP requests.
 func fetchPerconaRepoPage() string {
 	const key = "percona_repo_page"
 	if v, ok := cacheGet(key); ok {
@@ -109,33 +108,39 @@ func getPSMDBVersions() []string {
 	return versions
 }
 
-func getPBMReleases() []string {
-	const key = "pbm_releases"
+// getPBMVersions returns a flat, sorted-descending list of all available
+// percona-backup-mongodb package versions from the Percona "pbm" APT repository.
+// PBM uses a single repository (no per-major-version repos), so there is no
+// "release" concept for PBM — all versions live together in one place.
+func getPBMVersions() []string {
+	const key = "pbm_all_versions"
 	if v, ok := cacheGet(key); ok {
 		return v.([]string)
 	}
-	var releases []string
-	page := fetchPerconaRepoPage()
-	if page != "" {
-		re := regexp.MustCompile(`pbm-\d+`)
-		found := re.FindAllString(page, -1)
-		seen := map[string]bool{}
-		for _, v := range found {
-			if !seen[v] {
-				seen[v] = true
-				releases = append(releases, v)
-			}
+	versions := fetchPerconaAPTPackageVersions("pbm", "percona-backup-mongodb")
+	if len(versions) == 0 {
+		slog.Warn("PBM versions fetch failed – using Docker Hub fallback")
+		versions = pbmVersionsFromDockerHub()
+	}
+	cacheSet(key, versions)
+	return versions
+}
+
+// pbmVersionsFromDockerHub derives a flat sorted-descending list of PBM versions
+// from Docker Hub tags, used when the Percona APT repository is unreachable.
+func pbmVersionsFromDockerHub() []string {
+	tags := getDockerHubTags("percona", "percona-backup-mongodb", 100)
+	re := regexp.MustCompile(`^(\d+\.\d+\.\d+)$`)
+	seen := map[string]bool{}
+	var versions []string
+	for _, tag := range tags {
+		if re.MatchString(tag) && !seen[tag] {
+			seen[tag] = true
+			versions = append(versions, tag)
 		}
-		sort.Slice(releases, func(i, j int) bool { return releases[i] > releases[j] })
-		slog.Info("fetched PBM releases", "count", len(releases))
-	} else {
-		slog.Warn("pbm releases fetch failed – using defaults")
 	}
-	if len(releases) == 0 {
-		releases = defaultPBMReleases
-	}
-	cacheSet(key, releases)
-	return releases
+	sort.Slice(versions, func(i, j int) bool { return semverGreater(versions[i], versions[j]) })
+	return versions
 }
 
 func getPMMServerImages() []string {
@@ -341,78 +346,15 @@ func psmdbMinorVersionsFromDockerHub() map[string][]string {
 	return result
 }
 
-// getPBMMinorVersionsByMajor returns a map from PBM major-series key (e.g. "pbm-27")
-// to a sorted-descending list of specific minor versions (e.g. ["2.7.0"]).
-// All PBM versions live in a single Percona "pbm" repository; versions are grouped
-// by major.minor here purely for the UI cascade selector.
-// Falls back to Docker Hub image tags if the Percona APT repo is unreachable.
-func getPBMMinorVersionsByMajor() map[string][]string {
-	const key = "pbm_minor_by_major"
-	if v, ok := cacheGet(key); ok {
-		return v.(map[string][]string)
-	}
-
-	result := map[string][]string{}
-	allVersions := fetchPerconaAPTPackageVersions("pbm", "percona-backup-mongodb")
-
-	if len(allVersions) == 0 {
-		// Fall back to Docker Hub.
-		result = pbmMinorVersionsFromDockerHub()
-	} else {
-		// Group by major.minor series: "2.7.0" → key "pbm-27".
-		for _, v := range allVersions {
-			parts := strings.SplitN(v, ".", 3)
-			if len(parts) < 2 {
-				continue
-			}
-			releaseKey := "pbm-" + parts[0] + parts[1]
-			result[releaseKey] = append(result[releaseKey], v)
-		}
-		// Each slice is already sorted descending from fetchPerconaAPTPackageVersions.
-	}
-
-	cacheSet(key, result)
-	return result
-}
-
-// pbmMinorVersionsFromDockerHub derives PBM minor versions from Docker Hub image tags.
-// Used as a fallback when the Percona APT repository is unreachable.
-func pbmMinorVersionsFromDockerHub() map[string][]string {
-	result := map[string][]string{}
-	tags := getDockerHubTags("percona", "percona-backup-mongodb", 100)
-	re := regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)`)
-	seen := map[string]map[string]bool{}
-	for _, tag := range tags {
-		m := re.FindStringSubmatch(tag)
-		if m == nil {
-			continue
-		}
-		version := m[1] + "." + m[2] + "." + m[3]
-		releaseKey := "pbm-" + m[1] + m[2]
-		if seen[releaseKey] == nil {
-			seen[releaseKey] = map[string]bool{}
-		}
-		if !seen[releaseKey][version] {
-			seen[releaseKey][version] = true
-			result[releaseKey] = append(result[releaseKey], version)
-		}
-	}
-	for k := range result {
-		sort.Slice(result[k], func(i, j int) bool { return semverGreater(result[k][i], result[k][j]) })
-	}
-	return result
-}
-
 // prefetchVersions warms all image/version caches at startup in a goroutine.
 func prefetchVersions() {
 	slog.Info("prefetching container image tags and PSMDB versions…")
 	getPSMDBVersions()
-	getPBMReleases()
+	getPBMVersions()
 	getPMMServerImages()
 	getPSMDBImages()
 	getPBMImages()
 	getPMMClientImages()
 	getPSMDBMinorVersionsByMajor()
-	getPBMMinorVersionsByMajor()
 	slog.Info("version prefetch complete")
 }

@@ -1052,24 +1052,27 @@
 
   <!-- ──────────── Minio VM (CHAOS only) ──────────── -->
   {{if eq $p "chaos"}}
+  {{$minioDetailsConfigured := or .Config.MinioRootUser .Config.MinioRootPassword .Config.DefaultBucketName .Config.MinioPort .Config.MinioConsolePort .Config.BackupRetention .Config.MinioCpuCores .Config.MinioMemoryGb .Config.MinioVolumeSize}}
   <section class="form-section">
     <div class="section-header">
       <h2>Minio Backup Storage VM</h2>
-      <label class="toggle-label">
-        <input type="checkbox" id="enable_minio" name="enable_minio" value="true"
-               {{if boolDefault .Config.EnableMinio true}}checked{{end}}
-               onchange="toggleMinioBody(this)">
-        Enable Minio
-      </label>
+      <button type="button" class="btn btn-outline btn-sm"
+              id="minio-details-toggle"
+              onclick="toggleMinioDetails(this)"
+              {{if not (boolDefault .Config.EnableMinio true)}}style="display:none"{{end}}
+              >{{if $minioDetailsConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+    </div>
+    <!-- Enable Minio checkbox always visible, outside the collapsible body -->
+    <div class="form-row" style="margin-bottom:0.5rem">
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" id="enable_minio" name="enable_minio" value="true"
+                      {{if boolDefault .Config.EnableMinio true}}checked{{end}}>
+          Deploy Minio backup storage VM</label>
+        <small>Uncheck to skip the Minio VM for this environment.</small>
+      </div>
     </div>
     <p class="hint">Optional: deploy a dedicated VM running <a href="https://min.io" target="_blank">Minio</a> for S3-compatible backup storage, provisioned via Ansible.</p>
     <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio true)}}style="display:none"{{end}}>
-      {{$minioDetailsConfigured := or .Config.MinioRootUser .Config.MinioRootPassword .Config.DefaultBucketName .Config.MinioPort .Config.MinioConsolePort .Config.BackupRetention .Config.MinioCpuCores .Config.MinioMemoryGb .Config.MinioVolumeSize}}
-      <div class="subsection-header">
-        <button type="button" class="btn btn-outline btn-sm"
-                id="minio-details-toggle"
-                onclick="toggleMinioDetails(this)">{{if $minioDetailsConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
-      </div>
       <div id="minio-details-body" {{if not $minioDetailsConfigured}}style="display:none"{{end}}>
         <span class="subsection-title">VM Details</span>
         <div class="form-row">
@@ -1396,7 +1399,26 @@ const PMM_SERVER_IMAGES = {{json .PMMImages}};
 const PSMDB_VERSIONS  = {{json .PSMDBVersions}};
 const PBM_VERSIONS    = {{json .PBMVersions}};
 // Minor versions keyed by major release identifier, e.g. {"psmdb-70": ["7.0.12", ...]}
-const PSMDB_MINOR_VERSIONS = {{json .PSMDBMinorVersions}};
+// Declared as let so the async /api/versions refresh can update it in-place.
+let PSMDB_MINOR_VERSIONS = {{json .PSMDBMinorVersions}};
+
+// Refresh a <select> with a new list of values, preserving the current selection.
+// valueOf(v) maps a raw list item to the option value; labelOf(v) maps it to the
+// display label. An empty/"latest" option is prepended when includeEmpty is true.
+function refreshVersionSelect(id, items, valueOf, labelOf, includeEmpty = true) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const prev = sel.value;
+  let html = includeEmpty ? '<option value="">latest (default)</option>' : '';
+  for (const v of items) {
+    const val = escHtml(valueOf(v));
+    const lbl = escHtml(labelOf(v));
+    html += `<option value="${val}"${val === prev ? ' selected' : ''}>${lbl}</option>`;
+  }
+  sel.innerHTML = html;
+  // Restore previous value if still present.
+  if (prev) sel.value = prev;
+}
 
 function removeBlock(btn) {
   const block = btn.closest('.component-block');
@@ -1485,10 +1507,25 @@ function loadChaosTokenFromFile(input) {
   reader.readAsText(file);
 }
 
-function toggleMinioBody(checkbox) {
+// Toggle the Minio VM body and Customize button when enable_minio checkbox changes.
+(function() {
+  const cb = document.getElementById('enable_minio');
+  if (!cb) return;
   const body = document.getElementById('minio-vm-body');
-  if (body) body.style.display = checkbox.checked ? '' : 'none';
-}
+  const toggleBtn = document.getElementById('minio-details-toggle');
+  cb.addEventListener('change', () => {
+    if (body) body.style.display = cb.checked ? '' : 'none';
+    if (toggleBtn) {
+      toggleBtn.style.display = cb.checked ? '' : 'none';
+      // Collapse the customize body when Minio is disabled.
+      if (!cb.checked) {
+        const detailsBody = document.getElementById('minio-details-body');
+        if (detailsBody) detailsBody.style.display = 'none';
+        toggleBtn.textContent = '▼ Customize';
+      }
+    }
+  });
+})();
 
 function toggleMinioDetails(btn) {
   const body = document.getElementById('minio-details-body');
@@ -2260,9 +2297,31 @@ async function pickSshUserKey(btn) {
 // On page load, populate the MongoDB specific version dropdown based on the
 // currently selected major release, so the dropdown is ready without requiring
 // user interaction.
+// Also fetch versions asynchronously so selects are populated even if the cache
+// was cold when the page was server-rendered.
 document.addEventListener('DOMContentLoaded', () => {
   const mongoRelSel = document.getElementById('mongo_release');
   if (mongoRelSel) onMongoReleaseChange(mongoRelSel);
+
+  // Async version refresh — updates global JS constants and repopulates selects.
+  fetch('/api/versions')
+    .then(r => r.json())
+    .then(data => {
+      if (data.psmdb_versions && data.psmdb_versions.length) {
+        refreshVersionSelect('mongo_release', data.psmdb_versions, v => v,
+          v => v.replace('psmdb-', 'PSMDB ').replace(/(\d)(\d)$/, '$1.$2'));
+        // Keep PSMDB_MINOR_VERSIONS in sync so cascade still works.
+        if (data.psmdb_minor_versions) {
+          Object.assign(PSMDB_MINOR_VERSIONS, data.psmdb_minor_versions);
+        }
+        const rel = document.getElementById('mongo_release');
+        if (rel) onMongoReleaseChange(rel);
+      }
+      if (data.pbm_versions && data.pbm_versions.length) {
+        refreshVersionSelect('pbm_version', data.pbm_versions, v => v, v => v);
+      }
+    })
+    .catch(() => {}); // silently ignore if offline
 });
 
 document.getElementById('config-form').addEventListener('submit', async (e) => {

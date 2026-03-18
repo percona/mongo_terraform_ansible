@@ -8,13 +8,24 @@ This automation framework deploys the full stack of Percona Software for MongoDB
 
 You can choose between:
 
-- Creating all resources in a public cloud platform, using a combination of Terraform and Ansible.
-- Run everything on a single server (even your own laptop) using Terraform alone (Ansible is not required in this case).
+- Creating all resources in a public cloud platform (AWS, GCP, Azure) or a private CHAOS
+  cluster, using a combination of Terraform and Ansible.
+- Run everything locally on a single server or your own laptop using Docker containers or
+  Libvirt/KVM virtual machines (Terraform only — Ansible is not required).
 
-## Web UI (Optional)
+## Web UI (Recommended)
 
 A zero-dependency web frontend (written in Go) is available in [`ui-go/`](./ui-go/README.md).
-It lets you configure, deploy, stop, and destroy MongoDB environments through a browser instead of editing `.tfvars` files by hand.
+It lets you configure, deploy, stop, restart, and destroy MongoDB environments through a
+browser instead of editing `.tfvars` files by hand.
+
+Key features:
+- Visual wizard for cluster topology, images/packages, credentials, and networking
+- Live deployment log streamed in the browser via Server-Sent Events
+- Hosts & Connections panel with one-click SSH/`docker exec` commands, MongoDB connection
+  strings, and direct links to PMM and MinIO Console web UIs
+- Multiple concurrent environments supported — each gets its own prefixed inventory and
+  SSH config files (e.g. `myenv_inventory_cl01`, `myenv_ssh_config_cl01`)
 
 ```bash
 cd ui-go
@@ -24,7 +35,7 @@ go run .
 
 See [`ui-go/README.md`](./ui-go/README.md) for full details.
 
-## Instructions
+## Manual Instructions (without the Web UI)
 
 1. Clone this repository on your machine and `cd` to it
 

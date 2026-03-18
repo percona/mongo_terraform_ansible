@@ -90,13 +90,13 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		EnvID:              envID,
 		Config:             cfg,
 		OSUser:             osUser,
-		PSMDBVersions:      getPSMDBVersions(),
-		PBMVersions:        getPBMVersions(),
-		PSMDBMinorVersions: getPSMDBMinorVersionsByMajor(),
-		PMMImages:          getPMMServerImages(),
-		PSMDBImages:        getPSMDBImages(),
-		PBMImages:          getPBMImages(),
-		PMMClientImages:    getPMMClientImages(),
+		PSMDBVersions:      cachedPSMDBVersions(),
+		PBMVersions:        cachedPBMVersions(),
+		PSMDBMinorVersions: cachedPSMDBMinorVersionsByMajor(),
+		PMMImages:          cachedPMMServerImages(),
+		PSMDBImages:        cachedPSMDBImages(),
+		PBMImages:          cachedPBMImages(),
+		PMMClientImages:    cachedPMMClientImages(),
 		SortedClusters:     sortedClusters(cfg.Clusters),
 		SortedReplsets:     sortedReplsets(cfg.Replsets),
 		SortedPmmServers:   sortedPmmServers(cfg.PmmServers),
@@ -126,12 +126,13 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 // GET /api/versions
 func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]interface{}{
-		"psmdb_versions":    getPSMDBVersions(),
-		"pbm_versions":      getPBMVersions(),
-		"pmm_server_images": getPMMServerImages(),
-		"psmdb_images":      getPSMDBImages(),
-		"pbm_images":        getPBMImages(),
-		"pmm_client_images": getPMMClientImages(),
+		"psmdb_versions":       getPSMDBVersions(),
+		"pbm_versions":         getPBMVersions(),
+		"pmm_server_images":    getPMMServerImages(),
+		"psmdb_images":         getPSMDBImages(),
+		"pbm_images":           getPBMImages(),
+		"pmm_client_images":    getPMMClientImages(),
+		"psmdb_minor_versions": getPSMDBMinorVersionsByMajor(),
 	})
 }
 

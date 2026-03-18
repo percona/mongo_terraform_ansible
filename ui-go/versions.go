@@ -358,3 +358,58 @@ func prefetchVersions() {
 	getPSMDBMinorVersionsByMajor()
 	slog.Info("version prefetch complete")
 }
+
+// ─── Cached-only getters ─────────────────────────────────────────────────────
+// These variants return whatever is currently in cache (or safe defaults) without
+// making any outbound HTTP requests. They are used to render the configure page
+// immediately; the browser then refreshes the version dropdowns asynchronously
+// via /api/versions once the page has loaded.
+
+func cachedPSMDBVersions() []string {
+	if v, ok := cacheGet("psmdb_versions"); ok {
+		return v.([]string)
+	}
+	return defaultPSMDBVersions
+}
+
+func cachedPBMVersions() []string {
+	if v, ok := cacheGet("pbm_all_versions"); ok {
+		return v.([]string)
+	}
+	return []string{}
+}
+
+func cachedPMMServerImages() []string {
+	if v, ok := cacheGet("dh:percona/pmm-server"); ok {
+		return v.([]string)
+	}
+	return []string{"latest"}
+}
+
+func cachedPSMDBImages() []string {
+	if v, ok := cacheGet("dh:percona/percona-server-mongodb"); ok {
+		return v.([]string)
+	}
+	return []string{"latest"}
+}
+
+func cachedPBMImages() []string {
+	if v, ok := cacheGet("dh:percona/percona-backup-mongodb"); ok {
+		return v.([]string)
+	}
+	return []string{"latest"}
+}
+
+func cachedPMMClientImages() []string {
+	if v, ok := cacheGet("dh:percona/pmm-client"); ok {
+		return v.([]string)
+	}
+	return []string{"latest"}
+}
+
+func cachedPSMDBMinorVersionsByMajor() map[string][]string {
+	if v, ok := cacheGet("psmdb_minor_by_major"); ok {
+		return v.(map[string][]string)
+	}
+	return map[string][]string{}
+}

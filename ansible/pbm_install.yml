@@ -53,7 +53,7 @@
 
         - name: Install pbm packages from repository (specific version – Debian/Ubuntu)
           apt:
-            name: "{{ pbm_package | map('regex_replace', '^percona-backup-mongodb$', 'percona-backup-mongodb={{ pbm_version }}*') | list }}"
+            name: "{{ pbm_package | map('regex_replace', '^percona-backup-mongodb$', 'percona-backup-mongodb=' ~ pbm_version ~ '*') | list }}"
             state: present
             allow_downgrade: true
           when:
@@ -62,7 +62,7 @@
 
         - name: Install pbm packages from repository (specific version – RedHat)
           yum:
-            name: "{{ pbm_package | map('regex_replace', '^percona-backup-mongodb$', 'percona-backup-mongodb-{{ pbm_version }}') | list }}"
+            name: "{{ pbm_package | map('regex_replace', '^percona-backup-mongodb$', 'percona-backup-mongodb-' ~ pbm_version) | list }}"
             state: present
           when:
             - pbm_version is defined and pbm_version != ''

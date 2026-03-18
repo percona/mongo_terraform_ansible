@@ -1063,78 +1063,86 @@
     </div>
     <p class="hint">Optional: deploy a dedicated VM running <a href="https://min.io" target="_blank">Minio</a> for S3-compatible backup storage, provisioned via Ansible.</p>
     <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio true)}}style="display:none"{{end}}>
-      <!-- Basic Minio settings always visible -->
-      <div class="form-row">
-        <div class="form-group">
-          <label for="minio_root_user">Minio Root User</label>
-          <input type="text" id="minio_root_user" name="minio_root_user"
-                 value="{{strDefault .Config.MinioRootUser "minioadmin"}}">
-        </div>
-        <div class="form-group">
-          <label for="minio_root_password">Minio Root Password</label>
-          <input type="password" id="minio_root_password" name="minio_root_password"
-                 value="{{strDefault .Config.MinioRootPassword "minioadmin"}}" autocomplete="new-password">
-        </div>
-        <div class="form-group">
-          <label for="default_bucket_name">Bucket Name</label>
-          <input type="text" id="default_bucket_name" name="default_bucket_name"
-                 value="{{strDefault .Config.DefaultBucketName "mongo-backups"}}">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="minio_port">API Port</label>
-          <input type="number" id="minio_port" name="minio_port"
-                 value="{{intDefault .Config.MinioPort 9000}}">
-        </div>
-        <div class="form-group">
-          <label for="minio_console_port">Console Port</label>
-          <input type="number" id="minio_console_port" name="minio_console_port"
-                 value="{{intDefault .Config.MinioConsolePort 9001}}">
-        </div>
-        <div class="form-group">
-          <label for="backup_retention">Retention (days)</label>
-          <input type="number" id="backup_retention" name="backup_retention"
-                 value="{{intDefault .Config.BackupRetention 2}}" min="1">
-        </div>
-      </div>
-      <!-- Compute resources hidden under Customize -->
-      {{$minioComputeConfigured := or .Config.MinioCpuCores .Config.MinioMemoryGb .Config.MinioVolumeSize}}
+      {{$minioDetailsConfigured := or .Config.MinioRootUser .Config.MinioRootPassword .Config.DefaultBucketName .Config.MinioPort .Config.MinioConsolePort .Config.BackupRetention .Config.MinioCpuCores .Config.MinioMemoryGb .Config.MinioVolumeSize}}
       <div class="subsection-header">
-        <span class="subsection-title">Compute Resources</span>
-        <button type="button" class="btn btn-outline btn-sm compute-toggle-btn"
-                onclick="toggleComputeBlock(this)">{{if $minioComputeConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+        <span class="subsection-title">VM Details</span>
+        <button type="button" class="btn btn-outline btn-sm"
+                id="minio-details-toggle"
+                onclick="toggleMinioDetails(this)">{{if $minioDetailsConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
       </div>
-      <div class="compute-block-body" {{if not $minioComputeConfigured}}style="display:none"{{end}}>
+      <div id="minio-details-body" {{if not $minioDetailsConfigured}}style="display:none"{{end}}>
         <div class="form-row">
           <div class="form-group">
-            <label for="minio_cpu_cores">Minio VM vCPU</label>
-            <select id="minio_cpu_cores" name="minio_cpu_cores">
-              {{$v := .Config.MinioCpuCores}}
-              <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
-              <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
-              <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
-            </select>
+            <label for="minio_root_user">Minio Root User</label>
+            <input type="text" id="minio_root_user" name="minio_root_user"
+                   value="{{strDefault .Config.MinioRootUser "minioadmin"}}">
           </div>
           <div class="form-group">
-            <label for="minio_memory_gb">Minio VM Memory (GB)</label>
-            <select id="minio_memory_gb" name="minio_memory_gb">
-              {{$v := .Config.MinioMemoryGb}}
-              <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
-              <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
-              <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
-            </select>
+            <label for="minio_root_password">Minio Root Password</label>
+            <input type="password" id="minio_root_password" name="minio_root_password"
+                   value="{{strDefault .Config.MinioRootPassword "minioadmin"}}" autocomplete="new-password">
           </div>
           <div class="form-group">
-            <label for="minio_volume_size">Minio VM Disk (GB)</label>
-            <select id="minio_volume_size" name="minio_volume_size">
-              {{$v := .Config.MinioVolumeSize}}
-              <option value="20" {{if or (eq $v 0) (eq $v 20)}}selected{{end}}>20 GB</option>
-              <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
-              <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
-              <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
-              <option value="100" {{if eq $v 100}}selected{{end}}>100 GB</option>
-            </select>
+            <label for="default_bucket_name">Bucket Name</label>
+            <input type="text" id="default_bucket_name" name="default_bucket_name"
+                   value="{{strDefault .Config.DefaultBucketName "mongo-backups"}}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="minio_port">API Port</label>
+            <input type="number" id="minio_port" name="minio_port"
+                   value="{{intDefault .Config.MinioPort 9000}}">
+          </div>
+          <div class="form-group">
+            <label for="minio_console_port">Console Port</label>
+            <input type="number" id="minio_console_port" name="minio_console_port"
+                   value="{{intDefault .Config.MinioConsolePort 9001}}">
+          </div>
+          <div class="form-group">
+            <label for="backup_retention">Retention (days)</label>
+            <input type="number" id="backup_retention" name="backup_retention"
+                   value="{{intDefault .Config.BackupRetention 2}}" min="1">
+          </div>
+        </div>
+        <!-- Compute resources hidden under nested Customize -->
+        {{$minioComputeConfigured := or .Config.MinioCpuCores .Config.MinioMemoryGb .Config.MinioVolumeSize}}
+        <div class="subsection-header">
+          <span class="subsection-title">Compute Resources</span>
+          <button type="button" class="btn btn-outline btn-sm compute-toggle-btn"
+                  onclick="toggleComputeBlock(this)">{{if $minioComputeConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+        </div>
+        <div class="compute-block-body" {{if not $minioComputeConfigured}}style="display:none"{{end}}>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="minio_cpu_cores">Minio VM vCPU</label>
+              <select id="minio_cpu_cores" name="minio_cpu_cores">
+                {{$v := .Config.MinioCpuCores}}
+                <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
+                <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
+                <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="minio_memory_gb">Minio VM Memory (GB)</label>
+              <select id="minio_memory_gb" name="minio_memory_gb">
+                {{$v := .Config.MinioMemoryGb}}
+                <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
+                <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
+                <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="minio_volume_size">Minio VM Disk (GB)</label>
+              <select id="minio_volume_size" name="minio_volume_size">
+                {{$v := .Config.MinioVolumeSize}}
+                <option value="20" {{if or (eq $v 0) (eq $v 20)}}selected{{end}}>20 GB</option>
+                <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
+                <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
+                <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
+                <option value="100" {{if eq $v 100}}selected{{end}}>100 GB</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -1287,12 +1295,14 @@
 
   <!-- ──────────── Credentials ──────────── -->
   <section class="form-section">
-    <details {{if or (index .Config.AnsibleVars "mongo_admin_user") (index .Config.AnsibleVars "mongo_admin_password") (index .Config.AnsibleVars "pmm_server_user") (index .Config.AnsibleVars "pmm_server_pwd") (index .Config.AnsibleVars "pbm_agent_user") (index .Config.AnsibleVars "pbmpwd")}}open{{end}}>
-      <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:0.5rem">
-        <h2 style="margin:0;display:inline">Credentials</h2>
-        <span style="font-size:0.8rem;color:var(--color-muted)">(click to expand)</span>
-      </summary>
-      <p class="hint" style="margin-top:0.75rem">Usernames and passwords passed to Ansible and Terraform. Values here populate <code>group_vars</code> or <code>--extra-vars</code>.</p>
+    {{$credConfigured := or (index .Config.AnsibleVars "mongo_admin_user") (index .Config.AnsibleVars "mongo_admin_password") (index .Config.AnsibleVars "pmm_server_user") (index .Config.AnsibleVars "pmm_server_pwd") (index .Config.AnsibleVars "pbm_agent_user") (index .Config.AnsibleVars "pbmpwd")}}
+    <div class="section-header">
+      <h2>Credentials</h2>
+      <button type="button" class="btn btn-outline btn-sm" id="credentials-toggle"
+              onclick="toggleCredentials(this)">{{if $credConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+    </div>
+    <div id="credentials-body" {{if not $credConfigured}}style="display:none"{{end}}>
+      <p class="hint">Usernames and passwords passed to Ansible and Terraform. Values here populate <code>group_vars</code> or <code>--extra-vars</code>.</p>
       <div class="credentials-grid">
         <div class="form-group">
           <label for="cred_mongo_admin_user">MongoDB Root User</label>
@@ -1328,7 +1338,7 @@
                  autocomplete="new-password">
         </div>
       </div>
-    </details>
+    </div>
   </section>
 
   <!-- ──────────── Ansible Variable Overrides (cloud only) ──────────── -->
@@ -1464,6 +1474,22 @@ function loadChaosTokenFromFile(input) {
 function toggleMinioBody(checkbox) {
   const body = document.getElementById('minio-vm-body');
   if (body) body.style.display = checkbox.checked ? '' : 'none';
+}
+
+function toggleMinioDetails(btn) {
+  const body = document.getElementById('minio-details-body');
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
+}
+
+function toggleCredentials(btn) {
+  const body = document.getElementById('credentials-body');
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
 }
 
 // Toggle the per-block .customize-body panel (clusters, replsets, Docker servers).
@@ -2229,6 +2255,21 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target;
   const fd = new FormData(form);
+
+  // Validate mandatory CHAOS API token before doing anything else.
+  if (PLATFORM === 'chaos') {
+    const token = (fd.get('chaos_api_token') || '').trim();
+    if (!token) {
+      const tokenInput = document.getElementById('chaos_api_token');
+      if (tokenInput) {
+        tokenInput.focus();
+        tokenInput.style.outline = '2px solid red';
+        setTimeout(() => { tokenInput.style.outline = ''; }, 3000);
+      }
+      alert('CHAOS API Token is required. Please paste your token or load it from a file.');
+      return;
+    }
+  }
 
   const config = {};
 

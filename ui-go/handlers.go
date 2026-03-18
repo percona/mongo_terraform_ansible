@@ -489,18 +489,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	cloudAnsibleCmd := func(playbookPath string, waitForSSH bool) string {
 		effectiveVars := make(map[string]string)
-		if env.Config.MongoRelease != "" {
-			effectiveVars["mongo_release"] = env.Config.MongoRelease
-		}
-		if env.Config.MongoVersion != "" {
-			effectiveVars["mongo_version"] = env.Config.MongoVersion
-		}
-		if env.Config.PbmRelease != "" {
-			effectiveVars["pbm_release"] = env.Config.PbmRelease
-		}
-		if env.Config.PbmVersion != "" {
-			effectiveVars["pbm_version"] = env.Config.PbmVersion
-		}
+		// Note: mongo_release, mongo_version, pbm_release, pbm_version are now written
+		// into the inventory [all:vars] section via Terraform variables, so they are
+		// not included here in --extra-vars.
 		for k, v := range env.Config.AnsibleVars {
 			effectiveVars[k] = v
 		}

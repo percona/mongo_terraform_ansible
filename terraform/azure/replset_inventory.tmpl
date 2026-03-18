@@ -21,5 +21,17 @@ region=${location}
 endpointUrl=${endpointUrl}
 key=${key}
 storage_provider=azure
+%{ if mongo_release != "" ~}
+mongo_release=${mongo_release}
+%{ endif ~}
+%{ if mongo_version != "" ~}
+mongo_version=${mongo_version}
+%{ endif ~}
+%{ if pbm_release != "" ~}
+pbm_release=${pbm_release}
+%{ endif ~}
+%{ if pbm_version != "" ~}
+pbm_version=${pbm_version}
+%{ endif ~}
 env_tag=${env_tag}
 account=${account}

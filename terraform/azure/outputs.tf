@@ -35,6 +35,10 @@ resource "local_file" "AnsibleInventoryCluster" {
       endpointUrl              = local.storage_endpoint
       key                      = azurerm_storage_account.mongo_backups.primary_access_key
       account                  = azurerm_storage_account.mongo_backups.name
+      mongo_release            = var.mongo_release
+      mongo_version            = var.mongo_version
+      pbm_release              = var.pbm_release
+      pbm_version              = var.pbm_version
     }
   )
 
@@ -91,6 +95,10 @@ resource "local_file" "AnsibleInventoryRS" {
       endpointUrl              = local.storage_endpoint
       key                      = azurerm_storage_account.mongo_backups.primary_access_key
       account                  = azurerm_storage_account.mongo_backups.name
+      mongo_release            = var.mongo_release
+      mongo_version            = var.mongo_version
+      pbm_release              = var.pbm_release
+      pbm_version              = var.pbm_version
     }
   )
 

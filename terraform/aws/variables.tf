@@ -255,3 +255,31 @@ variable "source_ranges" {
   type    = string
   default = "0.0.0.0/0"
 }
+
+#############
+# Package Versions
+#############
+
+variable "mongo_release" {
+  type        = string
+  default     = ""
+  description = "Percona release channel for MongoDB (e.g. psmdb-80). Empty string uses the default from group_vars."
+}
+
+variable "mongo_version" {
+  type        = string
+  default     = ""
+  description = "Specific MongoDB version to install (e.g. 8.0.4). Empty string installs the latest available."
+}
+
+variable "pbm_release" {
+  type        = string
+  default     = ""
+  description = "Percona release channel for PBM (e.g. pbm). Empty string uses the default from group_vars."
+}
+
+variable "pbm_version" {
+  type        = string
+  default     = ""
+  description = "Specific PBM version to install (e.g. 2.4.0). Empty string installs the latest available."
+}

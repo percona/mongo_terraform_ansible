@@ -36,6 +36,10 @@ resource "local_file" "AnsibleInventoryCluster" {
       minio_port              = var.minio_port
       access_key              = var.minio_root_user
       secret_access_key       = var.minio_root_password
+      mongo_release           = var.mongo_release
+      mongo_version           = var.mongo_version
+      pbm_release             = var.pbm_release
+      pbm_version             = var.pbm_version
     }
   )
 
@@ -93,6 +97,10 @@ resource "local_file" "AnsibleInventoryRS" {
       minio_port              = var.minio_port
       access_key              = var.minio_root_user
       secret_access_key       = var.minio_root_password
+      mongo_release           = var.mongo_release
+      mongo_version           = var.mongo_version
+      pbm_release             = var.pbm_release
+      pbm_version             = var.pbm_version
     }
   )
 

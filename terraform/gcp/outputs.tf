@@ -33,6 +33,10 @@ resource "local_file" "AnsibleInventoryCluster" {
       bucket                   = google_storage_bucket.mongo-backups.name
       access_key               = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key        = google_storage_hmac_key.mongo-backup-service-account.secret 
+      mongo_release            = var.mongo_release
+      mongo_version            = var.mongo_version
+      pbm_release              = var.pbm_release
+      pbm_version              = var.pbm_version
     }
   )
 
@@ -87,6 +91,10 @@ resource "local_file" "AnsibleInventoryRS" {
       bucket                   = google_storage_bucket.mongo-backups.name
       access_key               = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key        = google_storage_hmac_key.mongo-backup-service-account.secret
+      mongo_release            = var.mongo_release
+      mongo_version            = var.mongo_version
+      pbm_release              = var.pbm_release
+      pbm_version              = var.pbm_version
     }
   )
 

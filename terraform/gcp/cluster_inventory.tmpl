@@ -37,3 +37,15 @@ env_tag=${env_tag}
 access_key_id=${access_key}
 secret_access_key=${secret_access_key}
 storage_provider=gcs
+%{ if mongo_release != "" ~}
+mongo_release=${mongo_release}
+%{ endif ~}
+%{ if mongo_version != "" ~}
+mongo_version=${mongo_version}
+%{ endif ~}
+%{ if pbm_release != "" ~}
+pbm_release=${pbm_release}
+%{ endif ~}
+%{ if pbm_version != "" ~}
+pbm_version=${pbm_version}
+%{ endif ~}

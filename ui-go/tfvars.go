@@ -119,6 +119,13 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			write("}")
 		}
 
+		// Package version vars – written for all cloud platforms so Terraform
+		// passes them into the inventory [all:vars] section instead of using --extra-vars.
+		writeOptStr("mongo_release", cfg.MongoRelease)
+		writeOptStr("mongo_version", cfg.MongoVersion)
+		writeOptStr("pbm_release", cfg.PbmRelease)
+		writeOptStr("pbm_version", cfg.PbmVersion)
+
 		if platform == "chaos" {
 			// CHAOS-specific vars
 			writeOptStr("chaos_api_token", cfg.ChaosApiToken)

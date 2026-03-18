@@ -34,6 +34,10 @@ resource "local_file" "AnsibleInventoryCluster" {
 
     access_key               = aws_iam_access_key.mongo_backup_access_key.id
     secret_access_key        = aws_iam_access_key.mongo_backup_access_key.secret
+    mongo_release            = var.mongo_release
+    mongo_version            = var.mongo_version
+    pbm_release              = var.pbm_release
+    pbm_version              = var.pbm_version
     })
 
   filename = "inventory_${each.key}"
@@ -89,8 +93,12 @@ resource "local_file" "AnsibleInventoryRS" {
     bucket                   = aws_s3_bucket.mongo_backups.bucket
     endpointUrl              = local.storage_endpoint
 
-    access_key               = aws_iam_access_key.mongo_backup_access_key.id,
-    secret_access_key        = aws_iam_access_key.mongo_backup_access_key.secret   
+    access_key               = aws_iam_access_key.mongo_backup_access_key.id
+    secret_access_key        = aws_iam_access_key.mongo_backup_access_key.secret
+    mongo_release            = var.mongo_release
+    mongo_version            = var.mongo_version
+    pbm_release              = var.pbm_release
+    pbm_version              = var.pbm_version
     })
 
   filename = "inventory_${each.key}"

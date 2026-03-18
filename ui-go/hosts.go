@@ -325,6 +325,17 @@ func parseInventoryHosts(content, group, sshUser string) []HostInfo {
 			role = "arbiter"
 		case strings.Contains(sec, "pmm"):
 			role = "pmm"
+		case strings.Contains(sec, "minio"):
+			role = "minio"
+		}
+		// Service hosts (minio, pmm) get their own logical group so they appear in
+		// a separate subsection rather than inside the replica-set/cluster group.
+		hostGroup := group
+		switch role {
+		case "minio":
+			hostGroup = "Minio"
+		case "pmm":
+			hostGroup = "PMM"
 		}
 		sshCmd := fmt.Sprintf("ssh %s@%s", sshUser, ip)
 		hosts = append(hosts, HostInfo{
@@ -332,7 +343,7 @@ func parseInventoryHosts(content, group, sshUser string) []HostInfo {
 			IP:         ip,
 			ConnectCmd: sshCmd,
 			Role:       role,
-			Group:      group,
+			Group:      hostGroup,
 		})
 	}
 	return hosts

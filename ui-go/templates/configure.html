@@ -952,6 +952,7 @@
       <button type="button" class="btn btn-outline btn-sm"
               id="pmm-toggle"
               onclick="togglePmmSettings()"
+              {{if not (boolDefault .Config.EnablePmm true)}}style="display:none"{{end}}
               >{{if $pmmCustomized}}▲ Collapse{{else}}▼ Customize{{end}}</button>
     </div>
     <!-- Deploy PMM checkbox always visible, outside the collapsible body -->
@@ -1065,12 +1066,12 @@
     <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio true)}}style="display:none"{{end}}>
       {{$minioDetailsConfigured := or .Config.MinioRootUser .Config.MinioRootPassword .Config.DefaultBucketName .Config.MinioPort .Config.MinioConsolePort .Config.BackupRetention .Config.MinioCpuCores .Config.MinioMemoryGb .Config.MinioVolumeSize}}
       <div class="subsection-header">
-        <span class="subsection-title">VM Details</span>
         <button type="button" class="btn btn-outline btn-sm"
                 id="minio-details-toggle"
                 onclick="toggleMinioDetails(this)">{{if $minioDetailsConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
       </div>
       <div id="minio-details-body" {{if not $minioDetailsConfigured}}style="display:none"{{end}}>
+        <span class="subsection-title">VM Details</span>
         <div class="form-row">
           <div class="form-group">
             <label for="minio_root_user">Minio Root User</label>
@@ -1301,8 +1302,8 @@
       <button type="button" class="btn btn-outline btn-sm" id="credentials-toggle"
               onclick="toggleCredentials(this)">{{if $credConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
     </div>
+    <p class="hint">Usernames and passwords passed to Ansible and Terraform. Values here populate <code>group_vars</code> or <code>--extra-vars</code>.</p>
     <div id="credentials-body" {{if not $credConfigured}}style="display:none"{{end}}>
-      <p class="hint">Usernames and passwords passed to Ansible and Terraform. Values here populate <code>group_vars</code> or <code>--extra-vars</code>.</p>
       <div class="credentials-grid">
         <div class="form-group">
           <label for="cred_mongo_admin_user">MongoDB Root User</label>
@@ -1437,11 +1438,24 @@ function toggleDockerSingleServer(containerId, checkbox, addFn) {
 }
 
 // Toggle the PMM cloud-settings sub-panel when the enable_pmm checkbox changes.
+// Also show/hide the ▼ Customize button so it only appears when PMM is enabled.
 (function() {
   const cb = document.getElementById('enable_pmm');
   if (!cb) return;
   const panel = document.getElementById('pmm-cloud-settings');
-  cb.addEventListener('change', () => { panel.style.display = cb.checked ? '' : 'none'; });
+  const toggleBtn = document.getElementById('pmm-toggle');
+  cb.addEventListener('change', () => {
+    if (panel) panel.style.display = cb.checked ? '' : 'none';
+    if (toggleBtn) {
+      toggleBtn.style.display = cb.checked ? '' : 'none';
+      // Collapse the customize body when PMM is disabled.
+      if (!cb.checked) {
+        const body = document.getElementById('pmm-cloud-body');
+        if (body) body.style.display = 'none';
+        toggleBtn.textContent = '▼ Customize';
+      }
+    }
+  });
 })();
 
 function togglePmmSettings() {

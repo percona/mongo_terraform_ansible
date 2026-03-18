@@ -745,7 +745,14 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		saveState(st)
 	}
 
-	jobID := startJob(cmd, tfDir, nil, onComplete)
+	jobID := startJob(cmd, tfDir, func() map[string]string {
+		// For CHAOS environments, pass the API token via an environment variable so
+		// it is never written to the tfvars file on disk.
+		if platform == "chaos" && env.Config.ChaosApiToken != "" {
+			return map[string]string{"CHAOS_API_TOKEN": env.Config.ChaosApiToken}
+		}
+		return nil
+	}(), onComplete)
 
 	env.Status = action + "_in_progress"
 	env.LastJobID = jobID

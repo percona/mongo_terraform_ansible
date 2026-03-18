@@ -128,7 +128,9 @@ func writeTfvars(envID, platform string, cfg Config) error {
 
 		if platform == "chaos" {
 			// CHAOS-specific vars
-			writeOptStr("chaos_api_token", cfg.ChaosApiToken)
+			// Note: chaos_api_token is intentionally NOT written to the tfvars file because
+			// it is sensitive. It is passed at runtime via the CHAOS_API_TOKEN environment
+			// variable (see handlers.go).
 			writeOptInt("delete_after_days", cfg.DeleteAfterDays)
 			writeOptStr("os_image", cfg.OsImage)
 			// Firewall rules: new structured per-rule list replaces source_ranges string.

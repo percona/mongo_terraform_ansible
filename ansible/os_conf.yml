@@ -64,7 +64,6 @@
         group: root
         mode: "0644"
       when:
-        - mongo_release is defined
         - mongo_major | int < 80
       notify:
         - reload systemd

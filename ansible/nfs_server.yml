@@ -1,6 +1,6 @@
 ---
 - name: Install NFS server and export /backup directory
-  hosts: pmm
+  hosts: nfs
   become: yes
   tags: nfs
   vars:

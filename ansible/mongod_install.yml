@@ -6,72 +6,31 @@
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: Install packages from local filesystem
-      block:
-        - name: copy files
-          copy:
-            src: "{{ mongod_local_package_location }}"
-            dest: "{{ mongod_target_package_location }}"
+    - name: Enable the specific MongoDB version
+      shell: "/usr/bin/percona-release enable {{ mongo_release }}"
 
-        - name: Find and register copied packages
-          find:
-            paths: "{{ mongod_target_package_location }}"
-            patterns:
-              - "*.rpm"
-              - "*.deb"
-          register: copied_packages  
+    - name: Install mongod packages from repository (latest)
+      package:
+        name: "{{ mongod_packages }}"
+        state: present
+      when: mongo_version is not defined or mongo_version == ''
 
-        - name: Get the paths of copied files
-          set_fact:
-            mongod_package_list: "{{ copied_packages.files | map(attribute='path') | list }}"      
+    - name: Install mongod packages from repository (specific version – Debian/Ubuntu)
+      apt:
+        name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb=' ~ mongo_version ~ '*') | list }}"
+        state: present
+        allow_downgrade: true
+      when:
+        - mongo_version is defined and mongo_version != ''
+        - ansible_os_family == 'Debian'
 
-        - name: Install copied RPM packages (RedHat)
-          yum:
-            name: "{{ mongod_package_list }}"
-            state: present
-            disablerepo: "*"
-          when:
-            - ansible_os_family == 'RedHat'
-
-        - name: Install copied DEB packages (Debian/Ubuntu)
-          apt:
-            deb: "{{ item }}"
-            state: present
-          loop: "{{ mongod_package_list }}"
-          when:
-            - ansible_os_family == 'Debian'
-
-      when: copy_files | bool
-
-    - name: Install mongod from repository
-      block:
-        - name: Enable the specific MongoDB version
-          shell: "/usr/bin/percona-release enable {{ mongo_release }}"
-
-        - name: Install mongod packages from repository (latest)
-          package:
-            name: "{{ mongod_packages }}"
-            state: present
-          when: mongo_version is not defined or mongo_version == ''
-
-        - name: Install mongod packages from repository (specific version – Debian/Ubuntu)
-          apt:
-            name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb=' ~ mongo_version ~ '*') | list }}"
-            state: present
-            allow_downgrade: true
-          when:
-            - mongo_version is defined and mongo_version != ''
-            - ansible_os_family == 'Debian'
-
-        - name: Install mongod packages from repository (specific version – RedHat)
-          yum:
-            name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb-' ~ mongo_version) | list }}"
-            state: present
-          when:
-            - mongo_version is defined and mongo_version != ''
-            - ansible_os_family == 'RedHat'
-
-      when: not copy_files | bool
+    - name: Install mongod packages from repository (specific version – RedHat)
+      yum:
+        name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb-' ~ mongo_version) | list }}"
+        state: present
+      when:
+        - mongo_version is defined and mongo_version != ''
+        - ansible_os_family == 'RedHat'
 
     - name: Disable Percona telemetry
       systemd:
@@ -192,19 +151,19 @@
         name: mongod
         state: restarted
 
-    - name: Wait for MongoDB port
-      wait_for:
-        host: 127.0.0.1
-        port: "{{ mongo_port }}"
-        delay: 2
-        timeout: 60      
-
     - name: Prepare the init command for replica set
       template:
         src: "{{ rs_init_template }}"
         dest: /tmp/init-rs.js
         mode: 0644
       when: mongodb_primary | default(false)
+
+    - name: Wait for MongoDB port
+      wait_for:
+        host: 127.0.0.1
+        port: "{{ mongo_port }}"
+        delay: 1
+        timeout: 60
 
     - name: Initialize replica set
       command: >
@@ -223,10 +182,11 @@
         --eval 'rs.status().members.filter(m => m.stateStr=="PRIMARY").length'
         | grep -q 1
       register: primary_check
-      retries: 10
-      delay: 2
+      retries: 30
+      delay: 1
       until: primary_check.rc == 0
       changed_when: false
+      when: mongodb_primary | default(false)
 
 - name: Create the local users & logrotate
   hosts: cfg:shards:replsets

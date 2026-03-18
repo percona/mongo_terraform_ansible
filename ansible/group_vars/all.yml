@@ -34,7 +34,6 @@ pmm_client_repo: pmm3-client
 ## Package sources
 #########################
 
-# "mongod_packages" and "mongos_packages" lists are only relevant if copy_files: false
 # you can use a specific version instead of the default `latest` by passing the package names and version e.g. "percona-server-mongodb-7.0.12-7.el9"
 mongod_packages:
   - percona-server-mongodb
@@ -49,21 +48,6 @@ pbm_package:
 
 pmm_client_package:
   - pmm-client
-
-# copy package files from a local path on your machine. Useful in environments without direct access to the Internet
-# If set to false, package manager will try to download packages from the repository
-copy_files: false
-
-# where to copy package files from if copy_files:true. We need to have pbm, pmm-client and percona-server-mongodb packages available
-mongod_local_package_location: /home/my-user/mongod
-mongos_local_package_location: /home/my-user/mongos
-pbm_local_package_location: /home/my-user/pbm
-pmm_local_package_location: /home/my-user/pmm-client
-# where to copy rpm files to in the target hosts
-mongod_target_package_location: /tmp/mongod/
-mongos_target_package_location: /tmp/mongos
-pbm_target_package_location: /tmp/pbm
-pmm_target_package_location: /tmp/pmm-client
 
 disable_telemetry: false
 

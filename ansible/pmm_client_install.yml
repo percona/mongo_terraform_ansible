@@ -15,56 +15,13 @@
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: Install packages from local filesystem
-      block:
+    - name: Enable PMM client repository
+      shell: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
 
-        - name: copy files
-          copy:
-            src: "{{ pmm_local_package_location }}"
-            dest: "{{ pmm_target_package_location }}"
-
-        - name: Find and register copied packages
-          find:
-            paths: "{{ pmm_target_package_location }}"
-            patterns:
-              - "*.rpm"
-              - "*.deb"
-          register: copied_packages  
-
-        - name: Get the paths of copied files
-          set_fact:
-            pmm_package_list: "{{ copied_packages.files | map(attribute='path') | list }}"      
-
-        - name: Install copied RPM packages (RedHat)
-          yum:
-            name: "{{ pmm_package_list }}"
-            state: present
-            disablerepo: "*"
-          when:
-            - ansible_os_family == 'RedHat'
-
-        - name: Install copied DEB packages (Debian/Ubuntu)
-          apt:
-            deb: "{{ item }}"
-            state: present
-          loop: "{{ pmm_package_list }}"
-          when:
-            - ansible_os_family == 'Debian'
-
-      when: copy_files | bool
-
-    - name: Install PMM client package from repository
-      block:
-
-        - name: Enable PMM client repository
-          shell: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
-
-        - name: Install pmm-client package from repository
-          package:
-            name: "{{ pmm_client_package }}"
-            state: present
-
-      when: not copy_files | bool
+    - name: Install pmm-client package from repository
+      package:
+        name: "{{ pmm_client_package }}"
+        state: present
 
     - name: Disable Percona telemetry
       systemd:

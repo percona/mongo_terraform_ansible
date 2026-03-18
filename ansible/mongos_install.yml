@@ -26,55 +26,13 @@
       {% endif %}
 
   tasks:    
-    - name: Install packages from local filesystem
-      block:
-        
-        - name: copy files
-          copy:
-            src: "{{ mongos_local_package_location }}"
-            dest: "{{ mongos_target_package_location }}"
+    - name: Enable specific MongoDB version
+      shell: "/usr/bin/percona-release enable {{ mongo_release }}"
 
-        - name: Find and register copied packages
-          find:
-            paths: "{{ mongos_target_package_location }}"
-            patterns:
-              - "*.rpm"
-              - "*.deb"
-          register: copied_packages  
-
-        - name: Get the paths of copied files
-          set_fact:
-            mongos_package_list: "{{ copied_packages.files | map(attribute='path') | list }}"      
-
-        - name: Install copied RPM packages (RedHat)
-          yum:
-            name: "{{ mongos_package_list }}"
-            state: present
-            disablerepo: "*"
-          when:
-            - ansible_os_family == 'RedHat'
-
-        - name: Install copied DEB packages (Debian/Ubuntu)
-          apt:
-            deb: "{{ item }}"
-            state: present
-          loop: "{{ mongos_package_list }}"
-          when:
-            - ansible_os_family == 'Debian'
-
-      when: copy_files | bool
-
-    - name: Install mongos from repository
-      block:
-        - name: Enable specific MongoDB version
-          shell: "/usr/bin/percona-release enable {{ mongo_release }}"
-
-        - name: Install mongos packages from repository
-          package:
-            name: "{{ mongos_packages }}"
-            state: present
-
-      when: not copy_files | bool
+    - name: Install mongos packages from repository
+      package:
+        name: "{{ mongos_packages }}"
+        state: present
 
     - name: Disable Percona telemetry
       systemd:

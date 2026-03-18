@@ -6,69 +6,31 @@
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: Install packages from local filesystem
-      block:
+    - name: Enable PBM repository
+      shell: "/usr/bin/percona-release enable pbm release"
 
-        - name: copy files
-          copy:
-            src: "{{ pbm_local_package_location }}"
-            dest: "{{ pbm_target_package_location }}"
+    - name: Install pbm packages from repository (latest)
+      package:
+        name: "{{ pbm_package }}"
+        state: present
+      when: pbm_version is not defined or pbm_version == ''
 
-        - name: Find and register copied packages
-          find:
-            paths: "{{ pbm_target_package_location }}"
-            patterns:
-              - "*.rpm"
-              - "*.deb"
-          register: copied_packages  
+    - name: Install pbm packages from repository (specific version – Debian/Ubuntu)
+      apt:
+        name: "{{ pbm_package | map('regex_replace', '^percona-backup-mongodb$', 'percona-backup-mongodb=' ~ pbm_version ~ '*') | list }}"
+        state: present
+        allow_downgrade: true
+      when:
+        - pbm_version is defined and pbm_version != ''
+        - ansible_os_family == 'Debian'
 
-        - name: Install copied RPM packages (RedHat)
-          yum:
-            name: "{{ copied_packages.files | map(attribute='path') | list }}"
-            state: present
-            disablerepo: "*"
-          when:
-            - ansible_os_family == 'RedHat'
-
-        - name: Install copied DEB packages (Debian/Ubuntu)
-          apt:
-            deb: "{{ item }}"
-            state: present
-          loop: "{{ pbm_package_list }}"
-          when:
-            - ansible_os_family == 'Debian'
-
-      when: copy_files | bool
-
-    - name: Install PBM package files from repository
-      block:
-        - name: Enable PBM repository
-          shell: "/usr/bin/percona-release enable pbm release"
-
-        - name: Install pbm packages from repository (latest)
-          package:
-            name: "{{ pbm_package }}"
-            state: present
-          when: pbm_version is not defined or pbm_version == ''
-
-        - name: Install pbm packages from repository (specific version – Debian/Ubuntu)
-          apt:
-            name: "{{ pbm_package | map('regex_replace', '^percona-backup-mongodb$', 'percona-backup-mongodb=' ~ pbm_version ~ '*') | list }}"
-            state: present
-            allow_downgrade: true
-          when:
-            - pbm_version is defined and pbm_version != ''
-            - ansible_os_family == 'Debian'
-
-        - name: Install pbm packages from repository (specific version – RedHat)
-          yum:
-            name: "{{ pbm_package | map('regex_replace', '^percona-backup-mongodb$', 'percona-backup-mongodb-' ~ pbm_version) | list }}"
-            state: present
-          when:
-            - pbm_version is defined and pbm_version != ''
-            - ansible_os_family == 'RedHat'
-
-      when: not copy_files | bool
+    - name: Install pbm packages from repository (specific version – RedHat)
+      yum:
+        name: "{{ pbm_package | map('regex_replace', '^percona-backup-mongodb$', 'percona-backup-mongodb-' ~ pbm_version) | list }}"
+        state: present
+      when:
+        - pbm_version is defined and pbm_version != ''
+        - ansible_os_family == 'RedHat'
 
     - name: Disable Percona telemetry
       systemd:
@@ -129,7 +91,7 @@
       when: arbiter is not defined
 
 - name: Gather facts of NFS server if needed
-  hosts: pmm
+  hosts: nfs
   gather_facts: yes
   tags: backup
   tasks:
@@ -152,7 +114,7 @@
     - name: Add NFS mount entry to /etc/fstab and mount it
       ansible.posix.mount:
         path: "{{ pbm_path }}"
-        src: "{{ hostvars[groups['pmm'][0]]['ansible_default_ipv4']['address'] }}:{{ pbm_path }}"
+        src: "{{ hostvars[groups['nfs'][0]]['ansible_default_ipv4']['address'] }}:{{ pbm_path }}"
         fstype: nfs
         opts: rw
         dump: 0

@@ -168,29 +168,6 @@ func getPMMClientImages() []string {
 	return tags
 }
 
-// psmdbMajorFromRelease converts "psmdb-70" → "7.0", "psmdb-80" → "8.0", etc.
-func psmdbMajorFromRelease(release string) string {
-	re := regexp.MustCompile(`psmdb-(\d)(\d)`)
-	m := re.FindStringSubmatch(release)
-	if len(m) == 3 {
-		return m[1] + "." + m[2]
-	}
-	return ""
-}
-
-// pbmMajorFromRelease converts "pbm-30" → "3.", "pbm-20" → "2.", etc.
-func pbmMajorFromRelease(release string) string {
-	re := regexp.MustCompile(`pbm-(\d)(\d?)`)
-	m := re.FindStringSubmatch(release)
-	if len(m) >= 2 {
-		if m[2] != "" && m[2] != "0" {
-			return m[1] + "." + m[2]
-		}
-		return m[1] + "."
-	}
-	return ""
-}
-
 // getPSMDBMinorVersionsByMajor returns a map from major release (e.g. "psmdb-70") to
 // a slice of specific minor versions (e.g. ["7.0.12", "7.0.11", "7.0.10"]).
 // Versions are derived from the percona/percona-server-mongodb Docker Hub tags which

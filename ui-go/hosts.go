@@ -217,8 +217,9 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 	sort.Strings(names)
 
 	var hosts []HostInfo
+	filePrefix := strDefault(env.Config.Prefix, envID)
 	for _, name := range names {
-		p := filepath.Join(tfDir, "inventory_"+name)
+		p := filepath.Join(tfDir, filePrefix+"_inventory_"+name)
 		content, err := os.ReadFile(p)
 		if err != nil {
 			continue
@@ -404,8 +405,9 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 		sort.Strings(names)
 		minioHost := ""
 		minioIP := ""
+		filePrefix2 := strDefault(env.Config.Prefix, envID)
 		for _, name := range names {
-			p := filepath.Join(tfDir, "inventory_"+name)
+			p := filepath.Join(tfDir, filePrefix2+"_inventory_"+name)
 			content, err := os.ReadFile(p)
 			if err != nil {
 				continue

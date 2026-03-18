@@ -40,7 +40,7 @@ resource "local_file" "AnsibleInventoryCluster" {
     pbm_version              = var.pbm_version
     })
 
-  filename = "inventory_${each.key}"
+  filename = "${var.prefix}_inventory_${each.key}"
 }
 
 
@@ -68,7 +68,7 @@ resource "local_file" "SSHConfigCluster" {
     pmm_port               = var.pmm_port
   })
 
-  filename = "ssh_config_${each.key}"
+  filename = "${var.prefix}_ssh_config_${each.key}"
 }
 
 resource "local_file" "AnsibleInventoryRS" {
@@ -101,7 +101,7 @@ resource "local_file" "AnsibleInventoryRS" {
     pbm_version              = var.pbm_version
     })
 
-  filename = "inventory_${each.key}"
+  filename = "${var.prefix}_inventory_${each.key}"
 }
 
 resource "local_file" "SSHConfigRS" {
@@ -123,5 +123,5 @@ resource "local_file" "SSHConfigRS" {
     pmm_port                   = var.pmm_port    
   })
 
-  filename = "ssh_config_${each.key}"
+  filename = "${var.prefix}_ssh_config_${each.key}"
 }

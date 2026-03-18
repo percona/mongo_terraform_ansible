@@ -370,14 +370,15 @@ func getInventoryHandler(w http.ResponseWriter, r *http.Request) {
 		Name    string `json:"name"`
 		Content string `json:"content"`
 	}
+	filePrefix := strDefault(env.Config.Prefix, envID)
 	var files []invFile
 	for _, name := range names {
-		p := filepath.Join(tfDir, "inventory_"+name)
+		p := filepath.Join(tfDir, filePrefix+"_inventory_"+name)
 		content, err := os.ReadFile(p)
 		if err != nil {
 			continue
 		}
-		files = append(files, invFile{Name: "inventory_" + name, Content: string(content)})
+		files = append(files, invFile{Name: filePrefix + "_inventory_" + name, Content: string(content)})
 	}
 
 	if len(files) == 0 {
@@ -487,6 +488,11 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(invNames)
 
+	// filePrefix is prepended to generated inventory and ssh_config filenames so
+	// that multiple environments sharing the same Terraform directory do not
+	// overwrite each other's files (e.g. "myenv_inventory_cl01").
+	filePrefix := strDefault(env.Config.Prefix, envID)
+
 	cloudAnsibleCmd := func(playbookPath string, waitForSSH bool) string {
 		effectiveVars := make(map[string]string)
 		// Note: mongo_release, mongo_version, pbm_release, pbm_version are now written
@@ -519,7 +525,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 
 		var b strings.Builder
 		for _, name := range invNames {
-			inv := shellQuote("inventory_" + name)
+			inv := shellQuote(filePrefix + "_inventory_" + name)
 			b.WriteString(fmt.Sprintf(
 				`{ [ -f %[1]s ] || { printf "ERROR: inventory file %%s not found\n" %[1]s; exit 1; }; `,
 				inv,
@@ -559,7 +565,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`[ -f "${_sshcfg}" ] || touch "${_sshcfg}"; `)
 		b.WriteString(`chmod 600 "${_sshcfg}"; `)
 		for _, name := range invNames {
-			src := shellQuote("ssh_config_" + name)
+			src := shellQuote(filePrefix + "_ssh_config_" + name)
 			begin := shellQuote("# BEGIN mongodeploy:" + envID + ":" + name)
 			end := shellQuote("# END mongodeploy:" + envID + ":" + name)
 			b.WriteString(fmt.Sprintf(

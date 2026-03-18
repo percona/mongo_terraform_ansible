@@ -48,10 +48,28 @@
         - name: Enable the specific MongoDB version
           shell: "/usr/bin/percona-release enable {{ mongo_release }}"
 
-        - name: Install mongod packages from repository
-          package: 
+        - name: Install mongod packages from repository (latest)
+          package:
             name: "{{ mongod_packages }}"
             state: present
+          when: mongo_version is not defined or mongo_version == ''
+
+        - name: Install mongod packages from repository (specific version – Debian/Ubuntu)
+          apt:
+            name: "{{ mongod_packages | map('regex_replace', '$', '={{ mongo_version }}') | list }}"
+            state: present
+            allow_downgrade: true
+          when:
+            - mongo_version is defined and mongo_version != ''
+            - ansible_os_family == 'Debian'
+
+        - name: Install mongod packages from repository (specific version – RedHat)
+          yum:
+            name: "{{ mongod_packages | map('regex_replace', '$', '-{{ mongo_version }}') | list }}"
+            state: present
+          when:
+            - mongo_version is defined and mongo_version != ''
+            - ansible_os_family == 'RedHat'
 
       when: not copy_files | bool
 

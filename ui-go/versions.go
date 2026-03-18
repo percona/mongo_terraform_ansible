@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -167,6 +168,107 @@ func getPMMClientImages() []string {
 	return tags
 }
 
+// psmdbMajorFromRelease converts "psmdb-70" → "7.0", "psmdb-80" → "8.0", etc.
+func psmdbMajorFromRelease(release string) string {
+	re := regexp.MustCompile(`psmdb-(\d)(\d)`)
+	m := re.FindStringSubmatch(release)
+	if len(m) == 3 {
+		return m[1] + "." + m[2]
+	}
+	return ""
+}
+
+// pbmMajorFromRelease converts "pbm-30" → "3.", "pbm-20" → "2.", etc.
+func pbmMajorFromRelease(release string) string {
+	re := regexp.MustCompile(`pbm-(\d)(\d?)`)
+	m := re.FindStringSubmatch(release)
+	if len(m) >= 2 {
+		if m[2] != "" && m[2] != "0" {
+			return m[1] + "." + m[2]
+		}
+		return m[1] + "."
+	}
+	return ""
+}
+
+// getPSMDBMinorVersionsByMajor returns a map from major release (e.g. "psmdb-70") to
+// a slice of specific minor versions (e.g. ["7.0.12", "7.0.11", "7.0.10"]).
+// Versions are derived from the percona/percona-server-mongodb Docker Hub tags which
+// use the same version numbering as the Percona apt/yum repositories.
+func getPSMDBMinorVersionsByMajor() map[string][]string {
+	const key = "psmdb_minor_by_major"
+	if v, ok := cacheGet(key); ok {
+		return v.(map[string][]string)
+	}
+	result := map[string][]string{}
+	// Fetch up to 200 tags to cover all major versions.
+	tags := getDockerHubTags("percona", "percona-server-mongodb", 200)
+	// Pattern: e.g. "7.0.12-1-multi" or "7.0.12" – capture major and full version.
+	re := regexp.MustCompile(`^(\d+\.\d+)\.(\d+)`)
+	seen := map[string]map[string]bool{}
+	for _, tag := range tags {
+		m := re.FindStringSubmatch(tag)
+		if m == nil {
+			continue
+		}
+		majorMinor := m[1]               // e.g. "7.0"
+		version := majorMinor + "." + m[2] // e.g. "7.0.12"
+		// Map major.minor to psmdb release key: "7.0" → "psmdb-70", "8.0" → "psmdb-80"
+		parts := strings.SplitN(majorMinor, ".", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		releaseKey := "psmdb-" + parts[0] + parts[1] // "psmdb-70"
+		if seen[releaseKey] == nil {
+			seen[releaseKey] = map[string]bool{}
+		}
+		if !seen[releaseKey][version] {
+			seen[releaseKey][version] = true
+			result[releaseKey] = append(result[releaseKey], version)
+		}
+	}
+	// Sort each list descending.
+	for k := range result {
+		sort.Slice(result[k], func(i, j int) bool { return result[k][i] > result[k][j] })
+	}
+	cacheSet(key, result)
+	return result
+}
+
+// getPBMMinorVersionsByMajor returns a map from major release (e.g. "pbm-20") to
+// a slice of specific minor versions (e.g. ["2.7.0", "2.6.0"]).
+func getPBMMinorVersionsByMajor() map[string][]string {
+	const key = "pbm_minor_by_major"
+	if v, ok := cacheGet(key); ok {
+		return v.(map[string][]string)
+	}
+	result := map[string][]string{}
+	tags := getDockerHubTags("percona", "percona-backup-mongodb", 100)
+	re := regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)`)
+	seen := map[string]map[string]bool{}
+	for _, tag := range tags {
+		m := re.FindStringSubmatch(tag)
+		if m == nil {
+			continue
+		}
+		major := m[1]
+		version := major + "." + m[2] + "." + m[3]
+		releaseKey := "pbm-" + major + m[2] // e.g. "pbm-27" for 2.7.x
+		if seen[releaseKey] == nil {
+			seen[releaseKey] = map[string]bool{}
+		}
+		if !seen[releaseKey][version] {
+			seen[releaseKey][version] = true
+			result[releaseKey] = append(result[releaseKey], version)
+		}
+	}
+	for k := range result {
+		sort.Slice(result[k], func(i, j int) bool { return result[k][i] > result[k][j] })
+	}
+	cacheSet(key, result)
+	return result
+}
+
 // prefetchVersions warms all image/version caches at startup in a goroutine.
 func prefetchVersions() {
 	slog.Info("prefetching container image tags and PSMDB versions…")
@@ -176,5 +278,7 @@ func prefetchVersions() {
 	getPSMDBImages()
 	getPBMImages()
 	getPMMClientImages()
+	getPSMDBMinorVersionsByMajor()
+	getPBMMinorVersionsByMajor()
 	slog.Info("version prefetch complete")
 }

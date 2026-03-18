@@ -33,24 +33,58 @@
     {{if ne $p "docker"}}
     <div class="form-row">
       <div class="form-group">
-        <label for="mongo_release">MongoDB Release (Ansible)</label>
-        <select id="mongo_release" name="mongo_release">
+        <label for="mongo_release">MongoDB Major Version</label>
+        <select id="mongo_release" name="mongo_release"
+                onchange="onMongoReleaseChange(this)">
           {{$cur := .Config.MongoRelease}}
           {{range .PSMDBVersions}}
           <option value="{{.}}" {{if eq $cur .}}selected{{end}}>{{.}}</option>
           {{end}}
         </select>
-        <small>Percona repository identifier used by Ansible to install PSMDB.</small>
+        <small>Percona repository identifier – selects the major MongoDB release line.</small>
       </div>
       <div class="form-group">
-        <label for="pbm_release">PBM Release (Ansible)</label>
-        <select id="pbm_release" name="pbm_release">
+        <label for="mongo_version">MongoDB Specific Version</label>
+        <select id="mongo_version" name="mongo_version">
+          <option value="">latest (default)</option>
+          {{$curVer := .Config.MongoVersion}}
+          {{$release := .Config.MongoRelease}}
+          {{if $release}}
+            {{$minors := index $.PSMDBMinorVersions $release}}
+            {{range $minors}}
+            <option value="{{.}}" {{if eq $curVer .}}selected{{end}}>{{.}}</option>
+            {{end}}
+          {{end}}
+        </select>
+        <small>Optional: pin to a specific version (e.g., 7.0.12). Leave empty to install the latest available in the selected major release.</small>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="pbm_release">PBM Major Version</label>
+        <select id="pbm_release" name="pbm_release"
+                onchange="onPbmReleaseChange(this)">
           {{$curPbm := .Config.PbmRelease}}
           {{range .PBMVersions}}
           <option value="{{.}}" {{if eq $curPbm .}}selected{{end}}>{{.}}</option>
           {{end}}
         </select>
         <small>Percona Backup for MongoDB repository identifier.</small>
+      </div>
+      <div class="form-group">
+        <label for="pbm_version">PBM Specific Version</label>
+        <select id="pbm_version" name="pbm_version">
+          <option value="">latest (default)</option>
+          {{$curPbmVer := .Config.PbmVersion}}
+          {{$pbmRelease := .Config.PbmRelease}}
+          {{if $pbmRelease}}
+            {{$pbmMinors := index $.PBMMinorVersions $pbmRelease}}
+            {{range $pbmMinors}}
+            <option value="{{.}}" {{if eq $curPbmVer .}}selected{{end}}>{{.}}</option>
+            {{end}}
+          {{end}}
+        </select>
+        <small>Optional: pin to a specific PBM version (e.g., 2.7.0). Leave empty to install the latest.</small>
       </div>
     </div>
     {{end}}
@@ -1365,6 +1399,9 @@ const PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
 const PMM_SERVER_IMAGES = {{json .PMMImages}};
 const PSMDB_VERSIONS  = {{json .PSMDBVersions}};
 const PBM_VERSIONS    = {{json .PBMVersions}};
+// Minor versions keyed by major release identifier, e.g. {"psmdb-70": ["7.0.12", ...]}
+const PSMDB_MINOR_VERSIONS = {{json .PSMDBMinorVersions}};
+const PBM_MINOR_VERSIONS   = {{json .PBMMinorVersions}};
 
 function removeBlock(btn) {
   const block = btn.closest('.component-block');
@@ -1463,6 +1500,30 @@ function toggleMachineImageCustom(sel) {
   } else {
     customInput.style.display = 'none';
   }
+}
+
+// Cascade: when the major MongoDB release (psmdb-70, psmdb-80…) changes,
+// repopulate the specific version dropdown.
+function onMongoReleaseChange(sel) {
+  const versionSel = document.getElementById('mongo_version');
+  if (!versionSel) return;
+  const release = sel.value;
+  const minors = (PSMDB_MINOR_VERSIONS && PSMDB_MINOR_VERSIONS[release]) || [];
+  // Keep the currently selected value if it's still valid.
+  const prevVal = versionSel.value;
+  versionSel.innerHTML = '<option value="">latest (default)</option>' +
+    minors.map(v => `<option value="${escHtml(v)}" ${v === prevVal ? 'selected' : ''}>${escHtml(v)}</option>`).join('');
+}
+
+// Cascade: when the major PBM release changes, repopulate the version dropdown.
+function onPbmReleaseChange(sel) {
+  const versionSel = document.getElementById('pbm_version');
+  if (!versionSel) return;
+  const release = sel.value;
+  const minors = (PBM_MINOR_VERSIONS && PBM_MINOR_VERSIONS[release]) || [];
+  const prevVal = versionSel.value;
+  versionSel.innerHTML = '<option value="">latest (default)</option>' +
+    minors.map(v => `<option value="${escHtml(v)}" ${v === prevVal ? 'selected' : ''}>${escHtml(v)}</option>`).join('');
 }
 
 function nextClusterName() {
@@ -2193,7 +2254,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 
   // Simple scalar fields
   const simpleFields = [
-    'prefix','mongo_release','pbm_release','project_id','region','location',
+    'prefix','mongo_release','mongo_version','pbm_release','pbm_version','project_id','region','location',
     'subnet_cidr','subnet_count','source_ranges',
     'my_ssh_user','ssh_public_key_path','default_key_pair','default_vpc_name',
     'enable_ssh_gateway','ssh_gateway_name','port_to_forward',

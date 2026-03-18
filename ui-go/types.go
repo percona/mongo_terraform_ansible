@@ -81,8 +81,10 @@ type LdapServerConfig struct {
 type Config struct {
 	// General
 	Prefix       string `json:"prefix"`
-	MongoRelease string `json:"mongo_release,omitempty"`
-	PbmRelease   string `json:"pbm_release,omitempty"`
+	MongoRelease  string `json:"mongo_release,omitempty"`
+	MongoVersion  string `json:"mongo_version,omitempty"`
+	PbmRelease    string `json:"pbm_release,omitempty"`
+	PbmVersion    string `json:"pbm_version,omitempty"`
 
 	// Cloud credentials / settings
 	ProjectID        string `json:"project_id,omitempty"`
@@ -307,10 +309,13 @@ type ConfigureData struct {
 	OSUser          string // current OS user, used as SSH user default
 	PSMDBVersions   []string
 	PBMVersions     []string
-	PMMImages       []string
-	PSMDBImages     []string
-	PBMImages       []string
-	PMMClientImages []string
+	// Minor versions for each major release key, e.g. {"psmdb-70": ["7.0.12", "7.0.11", ...]}
+	PSMDBMinorVersions map[string][]string
+	PBMMinorVersions   map[string][]string
+	PMMImages          []string
+	PSMDBImages        []string
+	PBMImages          []string
+	PMMClientImages    []string
 	// Pre-sorted for templates
 	SortedClusters   []NamedCluster
 	SortedReplsets   []NamedReplset

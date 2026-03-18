@@ -86,21 +86,23 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderPage(w, "configure", ConfigureData{
-		Platform:         platform,
-		EnvID:            envID,
-		Config:           cfg,
-		OSUser:           osUser,
-		PSMDBVersions:    getPSMDBVersions(),
-		PBMVersions:      getPBMReleases(),
-		PMMImages:        getPMMServerImages(),
-		PSMDBImages:      getPSMDBImages(),
-		PBMImages:        getPBMImages(),
-		PMMClientImages:  getPMMClientImages(),
-		SortedClusters:   sortedClusters(cfg.Clusters),
-		SortedReplsets:   sortedReplsets(cfg.Replsets),
-		SortedPmmServers: sortedPmmServers(cfg.PmmServers),
-		SortedMinio:      sortedMinioServers(cfg.MinioServers),
-		SortedLdap:       sortedLdapServers(cfg.LdapServers),
+		Platform:           platform,
+		EnvID:              envID,
+		Config:             cfg,
+		OSUser:             osUser,
+		PSMDBVersions:      getPSMDBVersions(),
+		PBMVersions:        getPBMReleases(),
+		PSMDBMinorVersions: getPSMDBMinorVersionsByMajor(),
+		PBMMinorVersions:   getPBMMinorVersionsByMajor(),
+		PMMImages:          getPMMServerImages(),
+		PSMDBImages:        getPSMDBImages(),
+		PBMImages:          getPBMImages(),
+		PMMClientImages:    getPMMClientImages(),
+		SortedClusters:     sortedClusters(cfg.Clusters),
+		SortedReplsets:     sortedReplsets(cfg.Replsets),
+		SortedPmmServers:   sortedPmmServers(cfg.PmmServers),
+		SortedMinio:        sortedMinioServers(cfg.MinioServers),
+		SortedLdap:         sortedLdapServers(cfg.LdapServers),
 	})
 }
 
@@ -491,8 +493,14 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		if env.Config.MongoRelease != "" {
 			effectiveVars["mongo_release"] = env.Config.MongoRelease
 		}
+		if env.Config.MongoVersion != "" {
+			effectiveVars["mongo_version"] = env.Config.MongoVersion
+		}
 		if env.Config.PbmRelease != "" {
 			effectiveVars["pbm_release"] = env.Config.PbmRelease
+		}
+		if env.Config.PbmVersion != "" {
+			effectiveVars["pbm_version"] = env.Config.PbmVersion
 		}
 		for k, v := range env.Config.AnsibleVars {
 			effectiveVars[k] = v

@@ -43,12 +43,30 @@
     - name: Install PBM package files from repository
       block:
         - name: Enable PBM repository
-          shell: "/usr/bin/percona-release enable pbm release"
+          shell: "/usr/bin/percona-release enable {{ pbm_release | default('pbm') }} release"
 
-        - name: Install pbm packages from repository
+        - name: Install pbm packages from repository (latest)
           package:
             name: "{{ pbm_package }}"
             state: present
+          when: pbm_version is not defined or pbm_version == ''
+
+        - name: Install pbm packages from repository (specific version – Debian/Ubuntu)
+          apt:
+            name: "{{ pbm_package | map('regex_replace', '$', '={{ pbm_version }}') | list }}"
+            state: present
+            allow_downgrade: true
+          when:
+            - pbm_version is defined and pbm_version != ''
+            - ansible_os_family == 'Debian'
+
+        - name: Install pbm packages from repository (specific version – RedHat)
+          yum:
+            name: "{{ pbm_package | map('regex_replace', '$', '-{{ pbm_version }}') | list }}"
+            state: present
+          when:
+            - pbm_version is defined and pbm_version != ''
+            - ansible_os_family == 'RedHat'
 
       when: not copy_files | bool
 

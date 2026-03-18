@@ -56,7 +56,7 @@
 
         - name: Install mongod packages from repository (specific version – Debian/Ubuntu)
           apt:
-            name: "{{ mongod_packages | map('regex_replace', '$', '={{ mongo_version }}') | list }}"
+            name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb={{ mongo_version }}*') | list }}"
             state: present
             allow_downgrade: true
           when:
@@ -65,7 +65,7 @@
 
         - name: Install mongod packages from repository (specific version – RedHat)
           yum:
-            name: "{{ mongod_packages | map('regex_replace', '$', '-{{ mongo_version }}') | list }}"
+            name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb-{{ mongo_version }}') | list }}"
             state: present
           when:
             - mongo_version is defined and mongo_version != ''

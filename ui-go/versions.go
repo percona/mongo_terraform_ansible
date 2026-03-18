@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -168,19 +170,149 @@ func getPMMClientImages() []string {
 	return tags
 }
 
-// getPSMDBMinorVersionsByMajor returns a map from major release (e.g. "psmdb-70") to
-// a slice of specific minor versions (e.g. ["7.0.12", "7.0.11", "7.0.10"]).
-// Versions are derived from the percona/percona-server-mongodb Docker Hub tags which
-// use the same version numbering as the Percona apt/yum repositories.
+// semverGreater returns true if version string a is semantically greater than b.
+// Versions are dot-separated numeric components (e.g., "7.0.12" vs "7.0.9").
+// Lexicographic comparison fails for multi-digit patch numbers ("7.0.9" > "7.0.10"
+// lexicographically but "7.0.10" is newer semantically).
+func semverGreater(a, b string) bool {
+	ap := strings.Split(a, ".")
+	bp := strings.Split(b, ".")
+	n := len(ap)
+	if len(bp) > n {
+		n = len(bp)
+	}
+	for i := 0; i < n; i++ {
+		var ai, bi int
+		if i < len(ap) {
+			ai, _ = strconv.Atoi(ap[i])
+		}
+		if i < len(bp) {
+			bi, _ = strconv.Atoi(bp[i])
+		}
+		if ai != bi {
+			return ai > bi
+		}
+	}
+	return false
+}
+
+// fetchPerconaAPTPackageVersions queries the Percona APT repository Packages index
+// for repoName (e.g., "psmdb-70", "pbm") and returns a sorted-descending list of
+// upstream version strings (e.g., ["7.0.12", "7.0.11"]) for the given packageName.
+// It tries the gzip-compressed index first, then the plain-text index.
+// The distro "jammy" (Ubuntu 22.04 LTS) is used because Percona supports it well
+// and its version strings match those in other distributions.
+func fetchPerconaAPTPackageVersions(repoName, packageName string) []string {
+	cacheKey := "percona_apt:" + repoName + ":" + packageName
+	if v, ok := cacheGet(cacheKey); ok {
+		return v.([]string)
+	}
+
+	baseURL := "https://repo.percona.com/" + repoName + "/apt/dists/jammy/main/binary-amd64/"
+	versions := readAPTPackages(baseURL+"Packages.gz", true, packageName)
+	if len(versions) == 0 {
+		versions = readAPTPackages(baseURL+"Packages", false, packageName)
+	}
+
+	slog.Info("fetched Percona APT package versions", "repo", repoName, "package", packageName, "count", len(versions))
+	cacheSet(cacheKey, versions)
+	return versions
+}
+
+// readAPTPackages fetches a Debian Packages (or Packages.gz) file and returns
+// the sorted-descending upstream version list for the named package.
+func readAPTPackages(url string, gzipped bool, packageName string) []string {
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		slog.Warn("APT Packages fetch failed", "url", url, "err", err)
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil
+	}
+
+	var reader io.Reader = resp.Body
+	if gzipped {
+		gz, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			slog.Warn("APT Packages gzip open failed", "url", url, "err", err)
+			return nil
+		}
+		defer gz.Close()
+		reader = gz
+	}
+
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		slog.Warn("APT Packages read failed", "url", url, "err", err)
+		return nil
+	}
+
+	return parseAPTPackageVersions(string(body), packageName)
+}
+
+// parseAPTPackageVersions parses a Debian Packages file and extracts unique
+// upstream version strings for the given package name.
+// A typical version field is "7.0.12-3.jammy"; this function strips the
+// Debian revision suffix ("-3.jammy") and returns "7.0.12".
+func parseAPTPackageVersions(content, packageName string) []string {
+	seen := map[string]bool{}
+	var versions []string
+
+	var currentPackage string
+	for _, line := range strings.Split(content, "\n") {
+		switch {
+		case strings.HasPrefix(line, "Package: "):
+			currentPackage = strings.TrimPrefix(line, "Package: ")
+		case strings.HasPrefix(line, "Version: ") && currentPackage == packageName:
+			fullVer := strings.TrimPrefix(line, "Version: ")
+			// Strip Debian revision suffix: "7.0.12-3.jammy" → "7.0.12"
+			upstream := strings.SplitN(fullVer, "-", 2)[0]
+			if upstream != "" && !seen[upstream] {
+				seen[upstream] = true
+				versions = append(versions, upstream)
+			}
+		}
+	}
+
+	sort.Slice(versions, func(i, j int) bool { return semverGreater(versions[i], versions[j]) })
+	return versions
+}
+
+// getPSMDBMinorVersionsByMajor returns a map from major release key (e.g. "psmdb-70")
+// to a sorted-descending list of specific minor versions (e.g. ["7.0.12", "7.0.11"]).
+// Versions are pulled from the Percona APT repository index for each major release.
+// Falls back to Docker Hub image tags if the APT repo is unreachable.
 func getPSMDBMinorVersionsByMajor() map[string][]string {
 	const key = "psmdb_minor_by_major"
 	if v, ok := cacheGet(key); ok {
 		return v.(map[string][]string)
 	}
+
 	result := map[string][]string{}
-	// Fetch up to 200 tags to cover all major versions.
+	for _, release := range getPSMDBVersions() {
+		versions := fetchPerconaAPTPackageVersions(release, "percona-server-mongodb")
+		if len(versions) > 0 {
+			result[release] = versions
+		}
+	}
+
+	// Fall back to Docker Hub tags when the Percona repo is unreachable.
+	if len(result) == 0 {
+		result = psmdbMinorVersionsFromDockerHub()
+	}
+
+	cacheSet(key, result)
+	return result
+}
+
+// psmdbMinorVersionsFromDockerHub derives PSMDB minor versions from Docker Hub image tags.
+// Used as a fallback when the Percona APT repository is unreachable.
+func psmdbMinorVersionsFromDockerHub() map[string][]string {
+	result := map[string][]string{}
 	tags := getDockerHubTags("percona", "percona-server-mongodb", 200)
-	// Pattern: e.g. "7.0.12-1-multi" or "7.0.12" – capture major and full version.
 	re := regexp.MustCompile(`^(\d+\.\d+)\.(\d+)`)
 	seen := map[string]map[string]bool{}
 	for _, tag := range tags {
@@ -188,14 +320,13 @@ func getPSMDBMinorVersionsByMajor() map[string][]string {
 		if m == nil {
 			continue
 		}
-		majorMinor := m[1]               // e.g. "7.0"
-		version := majorMinor + "." + m[2] // e.g. "7.0.12"
-		// Map major.minor to psmdb release key: "7.0" → "psmdb-70", "8.0" → "psmdb-80"
+		majorMinor := m[1]
+		version := majorMinor + "." + m[2]
 		parts := strings.SplitN(majorMinor, ".", 2)
 		if len(parts) != 2 {
 			continue
 		}
-		releaseKey := "psmdb-" + parts[0] + parts[1] // "psmdb-70"
+		releaseKey := "psmdb-" + parts[0] + parts[1]
 		if seen[releaseKey] == nil {
 			seen[releaseKey] = map[string]bool{}
 		}
@@ -204,21 +335,49 @@ func getPSMDBMinorVersionsByMajor() map[string][]string {
 			result[releaseKey] = append(result[releaseKey], version)
 		}
 	}
-	// Sort each list descending.
 	for k := range result {
-		sort.Slice(result[k], func(i, j int) bool { return result[k][i] > result[k][j] })
+		sort.Slice(result[k], func(i, j int) bool { return semverGreater(result[k][i], result[k][j]) })
 	}
-	cacheSet(key, result)
 	return result
 }
 
-// getPBMMinorVersionsByMajor returns a map from major release (e.g. "pbm-20") to
-// a slice of specific minor versions (e.g. ["2.7.0", "2.6.0"]).
+// getPBMMinorVersionsByMajor returns a map from PBM major-series key (e.g. "pbm-27")
+// to a sorted-descending list of specific minor versions (e.g. ["2.7.0"]).
+// All PBM versions live in a single Percona "pbm" repository; versions are grouped
+// by major.minor here purely for the UI cascade selector.
+// Falls back to Docker Hub image tags if the Percona APT repo is unreachable.
 func getPBMMinorVersionsByMajor() map[string][]string {
 	const key = "pbm_minor_by_major"
 	if v, ok := cacheGet(key); ok {
 		return v.(map[string][]string)
 	}
+
+	result := map[string][]string{}
+	allVersions := fetchPerconaAPTPackageVersions("pbm", "percona-backup-mongodb")
+
+	if len(allVersions) == 0 {
+		// Fall back to Docker Hub.
+		result = pbmMinorVersionsFromDockerHub()
+	} else {
+		// Group by major.minor series: "2.7.0" → key "pbm-27".
+		for _, v := range allVersions {
+			parts := strings.SplitN(v, ".", 3)
+			if len(parts) < 2 {
+				continue
+			}
+			releaseKey := "pbm-" + parts[0] + parts[1]
+			result[releaseKey] = append(result[releaseKey], v)
+		}
+		// Each slice is already sorted descending from fetchPerconaAPTPackageVersions.
+	}
+
+	cacheSet(key, result)
+	return result
+}
+
+// pbmMinorVersionsFromDockerHub derives PBM minor versions from Docker Hub image tags.
+// Used as a fallback when the Percona APT repository is unreachable.
+func pbmMinorVersionsFromDockerHub() map[string][]string {
 	result := map[string][]string{}
 	tags := getDockerHubTags("percona", "percona-backup-mongodb", 100)
 	re := regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)`)
@@ -228,9 +387,8 @@ func getPBMMinorVersionsByMajor() map[string][]string {
 		if m == nil {
 			continue
 		}
-		major := m[1]
-		version := major + "." + m[2] + "." + m[3]
-		releaseKey := "pbm-" + major + m[2] // e.g. "pbm-27" for 2.7.x
+		version := m[1] + "." + m[2] + "." + m[3]
+		releaseKey := "pbm-" + m[1] + m[2]
 		if seen[releaseKey] == nil {
 			seen[releaseKey] = map[string]bool{}
 		}
@@ -240,9 +398,8 @@ func getPBMMinorVersionsByMajor() map[string][]string {
 		}
 	}
 	for k := range result {
-		sort.Slice(result[k], func(i, j int) bool { return result[k][i] > result[k][j] })
+		sort.Slice(result[k], func(i, j int) bool { return semverGreater(result[k][i], result[k][j]) })
 	}
-	cacheSet(key, result)
 	return result
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -223,5 +224,67 @@ func TestWriteTfvarsDockerNoCredentials(t *testing.T) {
 		if strings.Contains(tfvars, unwanted) {
 			t.Errorf("expected no %q in tfvars when credentials are empty:\n%s", unwanted, tfvars)
 		}
+	}
+}
+
+func TestCleanupDockerModuleArtifacts(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	// Create fake module directory tree.
+	replsetDir := filepath.Join(dir, "docker", "modules", "mongodb_replset")
+	clusterDir := filepath.Join(dir, "docker", "modules", "mongodb_cluster")
+	if err := os.MkdirAll(replsetDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(clusterDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate files created by Terraform for an environment with prefix "myenv".
+	filesToCreate := []string{
+		filepath.Join(replsetDir, "pbm-storage.conf.myenv-rs01"),
+		filepath.Join(replsetDir, "myenv-rs01-percona-pbm-agent.Dockerfile"),
+		filepath.Join(clusterDir, "pbm-storage.conf.myenv-cl01"),
+		filepath.Join(clusterDir, "myenv-cl01-percona-pbm-agent.Dockerfile"),
+	}
+	for _, f := range filesToCreate {
+		if err := os.WriteFile(f, []byte("test"), 0644); err != nil {
+			t.Fatalf("create %s: %v", f, err)
+		}
+	}
+
+	// Simulate old-style subdirectory created when image name had a "/".
+	oldDir := filepath.Join(replsetDir, "myenv-rs01-percona")
+	if err := os.MkdirAll(oldDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	oldFile := filepath.Join(oldDir, "pbm-agent.Dockerfile")
+	if err := os.WriteFile(oldFile, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Config{
+		Prefix: "myenv",
+		Replsets: map[string]ReplsetConfig{
+			"rs01": {EnvTag: "test"},
+		},
+		Clusters: map[string]ClusterConfig{
+			"cl01": {EnvTag: "test"},
+		},
+	}
+
+	cleanupDockerModuleArtifacts(cfg)
+
+	// All created files and directories should be gone.
+	for _, f := range filesToCreate {
+		if _, err := os.Stat(f); !os.IsNotExist(err) {
+			t.Errorf("expected %s to be removed", f)
+		}
+	}
+	if _, err := os.Stat(oldDir); !os.IsNotExist(err) {
+		t.Errorf("expected old-style directory %s to be removed", oldDir)
 	}
 }

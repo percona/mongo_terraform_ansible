@@ -896,7 +896,7 @@
       <label class="toggle-label">
         <input type="checkbox" id="enable-pmm-docker"
                {{if .SortedPmmServers}}checked{{end}}
-               onchange="toggleDockerSingleServer('pmm-servers-container', this, addPmmServer)">
+               onchange="toggleDockerSingleServer('pmm-servers-container', this, addPmmServer); toggleCredentialRow('cred-pmm-row', this.checked)">
         Include PMM Server
       </label>
     </div>
@@ -931,14 +931,6 @@
             </div>
           </div>
           <div class="form-row">
-            <div class="form-group">
-              <label>Admin User</label>
-              <input type="text" name="pmm_server_user[]" value="{{strDefault .Config.PmmServerUser "admin"}}">
-            </div>
-            <div class="form-group">
-              <label>Admin Password</label>
-              <input type="password" name="pmm_server_pwd[]" value="{{strDefault .Config.PmmServerPwd "admin"}}" placeholder="admin">
-            </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="pmm_server_bind_localhost[]" value="1"
                             {{if .Config.BindToLocalhost}}checked{{end}}>
@@ -1166,7 +1158,7 @@
       <label class="toggle-label">
         <input type="checkbox" id="enable-minio-docker"
                {{if .SortedMinio}}checked{{end}}
-               onchange="toggleDockerSingleServer('minio-servers-container', this, addMinioServer)">
+               onchange="toggleDockerSingleServer('minio-servers-container', this, addMinioServer); toggleCredentialRow('cred-minio-row', this.checked)">
         Include Minio Server
       </label>
     </div>
@@ -1206,14 +1198,6 @@
               <label>Retention (days)</label>
               <input type="number" name="minio_backup_retention[]" value="{{intDefault .Config.BackupRetention 2}}" min="1">
             </div>
-            <div class="form-group">
-              <label>Access Key</label>
-              <input type="text" name="minio_access_key[]" value="{{strDefault .Config.MinioAccessKey "minio"}}">
-            </div>
-            <div class="form-group">
-              <label>Secret Key</label>
-              <input type="password" name="minio_secret_key[]" value="{{strDefault .Config.MinioSecretKey "minioadmin"}}">
-            </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="minio_bind_localhost[]" value="1"
                             {{if .Config.BindToLocalhost}}checked{{end}}>
@@ -1233,7 +1217,7 @@
       <label class="toggle-label">
         <input type="checkbox" id="enable-ldap-docker"
                {{if .SortedLdap}}checked{{end}}
-               onchange="toggleDockerSingleServer('ldap-servers-container', this, addLdapServer)">
+               onchange="toggleDockerSingleServer('ldap-servers-container', this, addLdapServer); toggleCredentialRow('cred-ldap-row', this.checked)">
         Include LDAP Server
       </label>
     </div>
@@ -1264,10 +1248,6 @@
             <div class="form-group">
               <label>Domain</label>
               <input type="text" name="ldap_domain[]" value="{{strDefault .Config.LdapDomain "example.org"}}">
-            </div>
-            <div class="form-group">
-              <label>Admin Password</label>
-              <input type="password" name="ldap_admin_password[]" value="{{strDefault .Config.LdapAdminPassword "admin"}}">
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="ldap_bind_localhost[]" value="1"
@@ -1303,7 +1283,7 @@
 
   <!-- ──────────── Credentials ──────────── -->
   <section class="form-section">
-    {{$credConfigured := or (index .Config.AnsibleVars "mongo_admin_user") (index .Config.AnsibleVars "mongo_admin_password") (index .Config.AnsibleVars "pmm_server_user") (index .Config.AnsibleVars "pmm_server_pwd") (index .Config.AnsibleVars "pbm_agent_user") (index .Config.AnsibleVars "pbmpwd")}}
+    {{$credConfigured := or (index .Config.AnsibleVars "mongo_admin_user") (index .Config.AnsibleVars "mongo_admin_password") (index .Config.AnsibleVars "pmm_server_user") (index .Config.AnsibleVars "pmm_server_pwd") (index .Config.AnsibleVars "pbm_agent_user") (index .Config.AnsibleVars "pbmpwd") .SortedPmmServers .SortedMinio .SortedLdap}}
     <div class="section-header">
       <h2>Credentials</h2>
       <button type="button" class="btn btn-outline btn-sm" id="credentials-toggle"
@@ -1325,14 +1305,51 @@
                    autocomplete="new-password">
           </div>
         </div>
-        <div class="form-row">
+        {{if eq $p "docker"}}
+        <div class="form-row" id="cred-pmm-row" {{if not .SortedPmmServers}}style="display:none"{{end}}>
           <div class="form-group">
-            <label for="cred_pmm_server_user">PMM User</label>
+            <label for="cred_pmm_server_user">PMM Admin User</label>
             <input type="text" id="cred_pmm_server_user" name="cred_pmm_server_user"
                    value="{{index .Config.AnsibleVars "pmm_server_user"}}" placeholder="admin">
           </div>
           <div class="form-group">
-            <label for="cred_pmm_server_pwd">PMM Password</label>
+            <label for="cred_pmm_server_pwd">PMM Admin Password</label>
+            <input type="password" id="cred_pmm_server_pwd" name="cred_pmm_server_pwd"
+                   value="{{index .Config.AnsibleVars "pmm_server_pwd"}}" placeholder="admin"
+                   autocomplete="new-password">
+          </div>
+        </div>
+        <div class="form-row" id="cred-minio-row" {{if not .SortedMinio}}style="display:none"{{end}}>
+          <div class="form-group">
+            <label for="cred_minio_access_key">Minio Access Key</label>
+            <input type="text" id="cred_minio_access_key" name="cred_minio_access_key"
+                   value="{{if .SortedMinio}}{{(index .SortedMinio 0).Config.MinioAccessKey}}{{end}}"
+                   placeholder="minio">
+          </div>
+          <div class="form-group">
+            <label for="cred_minio_secret_key">Minio Secret Key</label>
+            <input type="password" id="cred_minio_secret_key" name="cred_minio_secret_key"
+                   value="{{if .SortedMinio}}{{(index .SortedMinio 0).Config.MinioSecretKey}}{{end}}"
+                   placeholder="minioadmin" autocomplete="new-password">
+          </div>
+        </div>
+        <div class="form-row" id="cred-ldap-row" {{if not .SortedLdap}}style="display:none"{{end}}>
+          <div class="form-group">
+            <label for="cred_ldap_admin_password">LDAP Admin Password</label>
+            <input type="password" id="cred_ldap_admin_password" name="cred_ldap_admin_password"
+                   value="{{if .SortedLdap}}{{(index .SortedLdap 0).Config.LdapAdminPassword}}{{end}}"
+                   placeholder="admin" autocomplete="new-password">
+          </div>
+        </div>
+        {{else}}
+        <div class="form-row" id="cred-pmm-row">
+          <div class="form-group">
+            <label for="cred_pmm_server_user">PMM Admin User</label>
+            <input type="text" id="cred_pmm_server_user" name="cred_pmm_server_user"
+                   value="{{index .Config.AnsibleVars "pmm_server_user"}}" placeholder="admin">
+          </div>
+          <div class="form-group">
+            <label for="cred_pmm_server_pwd">PMM Admin Password</label>
             <input type="password" id="cred_pmm_server_pwd" name="cred_pmm_server_pwd"
                    value="{{index .Config.AnsibleVars "pmm_server_pwd"}}" placeholder="admin"
                    autocomplete="new-password">
@@ -1351,6 +1368,7 @@
                    autocomplete="new-password">
           </div>
         </div>
+        {{end}}
       </div>
     </div>
   </section>
@@ -1434,16 +1452,19 @@ function removeBlock(btn) {
   const block = btn.closest('.component-block');
   const container = block.parentElement;
   block.remove();
-  // If this was a single-server container (PMM/Minio/LDAP), uncheck the toggle.
+  // If this was a single-server container (PMM/Minio/LDAP), uncheck the toggle
+  // and hide the corresponding credential row.
   const toggleMap = {
-    'pmm-servers-container':  'enable-pmm-docker',
-    'minio-servers-container':'enable-minio-docker',
-    'ldap-servers-container': 'enable-ldap-docker',
+    'pmm-servers-container':  { cb: 'enable-pmm-docker',   credRow: 'cred-pmm-row' },
+    'minio-servers-container':{ cb: 'enable-minio-docker',  credRow: 'cred-minio-row' },
+    'ldap-servers-container': { cb: 'enable-ldap-docker',   credRow: 'cred-ldap-row' },
   };
-  const cbId = toggleMap[container.id];
-  if (cbId) {
-    const cb = document.getElementById(cbId);
+  const mapping = toggleMap[container.id];
+  if (mapping) {
+    const cb = document.getElementById(mapping.cb);
     if (cb) cb.checked = false;
+    const row = document.getElementById(mapping.credRow);
+    if (row) row.style.display = 'none';
   }
 }
 
@@ -1467,6 +1488,13 @@ function toggleDockerSingleServer(containerId, checkbox, addFn) {
       b.querySelectorAll('input,select,textarea').forEach(f => { f.disabled = true; });
     });
   }
+}
+
+// Show or hide a credential row inside the Credentials section based on whether
+// the corresponding server type (PMM/Minio/LDAP) is included.
+function toggleCredentialRow(rowId, show) {
+  const row = document.getElementById(rowId);
+  if (row) row.style.display = show ? '' : 'none';
 }
 
 // Toggle the PMM cloud-settings sub-panel when the enable_pmm checkbox changes.
@@ -1981,10 +2009,6 @@ function addPmmServer() {
           <input type="number" name="pmm_server_port[]" value="8443"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Admin User</label>
-          <input type="text" name="pmm_server_user[]" value="admin"></div>
-        <div class="form-group"><label>Admin Password</label>
-          <input type="password" name="pmm_server_pwd[]" placeholder="admin"></div>
         <div class="form-group form-group-checkbox">
           <label><input type="checkbox" name="pmm_server_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
       </div>
@@ -2021,10 +2045,6 @@ function addMinioServer() {
           <input type="text" name="minio_bucket_name[]" value="mongo-backups"></div>
         <div class="form-group"><label>Retention (days)</label>
           <input type="number" name="minio_backup_retention[]" value="2" min="1"></div>
-        <div class="form-group"><label>Access Key</label>
-          <input type="text" name="minio_access_key[]" value="minio"></div>
-        <div class="form-group"><label>Secret Key</label>
-          <input type="password" name="minio_secret_key[]" value="minioadmin"></div>
         <div class="form-group form-group-checkbox">
           <label><input type="checkbox" name="minio_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
       </div>
@@ -2057,8 +2077,6 @@ function addLdapServer() {
       <div class="form-row">
         <div class="form-group"><label>Domain</label>
           <input type="text" name="ldap_domain[]" value="example.org"></div>
-        <div class="form-group"><label>Admin Password</label>
-          <input type="password" name="ldap_admin_password[]" value="admin"></div>
         <div class="form-group form-group-checkbox">
           <label><input type="checkbox" name="ldap_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
       </div>
@@ -2571,8 +2589,6 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     const pNames  = fd.getAll('pmm_server_name[]');
     const pImages = fd.getAll('pmm_server_image[]');
     const pPorts  = fd.getAll('pmm_server_port[]');
-    const pUsers  = fd.getAll('pmm_server_user[]');
-    const pPwds   = fd.getAll('pmm_server_pwd[]');
     const pBind   = fd.getAll('pmm_server_bind_localhost[]');
     config.pmm_servers = {};
     for (let i = 0; i < pNames.length; i++) {
@@ -2582,22 +2598,22 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
         env_tag: 'test',
         pmm_server_image: `percona/pmm-server:${pImages[i] || 'latest'}`,
         pmm_port: parseInt(pPorts[i]) || 8443,
-        pmm_server_user: pUsers[i] || 'admin',
-        pmm_server_pwd:  pPwds[i]  || 'admin',
+        // pmm_server_user/pwd intentionally omitted – managed via the Credentials section
+        // (stored in ansible_vars and applied by tfvars.go)
         bind_to_localhost: pBind.some((v,idx) => idx === i && v === '1'),
       };
     }
 
-    // Minio Servers
+    // Minio Servers – access/secret key come from the Credentials section
     const mNames   = fd.getAll('minio_server_name[]');
     const mImages  = fd.getAll('minio_image[]');
     const mPorts   = fd.getAll('minio_port[]');
     const mCPorts  = fd.getAll('minio_console_port[]');
     const mBuckets = fd.getAll('minio_bucket_name[]');
     const mRet     = fd.getAll('minio_backup_retention[]');
-    const mAccess  = fd.getAll('minio_access_key[]');
-    const mSecret  = fd.getAll('minio_secret_key[]');
     const mBind    = fd.getAll('minio_bind_localhost[]');
+    const credMinioAccess = fd.get('cred_minio_access_key');
+    const credMinioSecret = fd.get('cred_minio_secret_key');
     config.minio_servers = {};
     for (let i = 0; i < mNames.length; i++) {
       const name = mNames[i].trim();
@@ -2609,30 +2625,30 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
         minio_console_port: parseInt(mCPorts[i]) || 9001,
         bucket_name:        mBuckets[i] || 'mongo-backups',
         backup_retention:   parseInt(mRet[i])    || 2,
-        minio_access_key:   mAccess[i]  || 'minio',
-        minio_secret_key:   mSecret[i]  || 'minioadmin',
+        minio_access_key:   credMinioAccess || 'minio',
+        minio_secret_key:   credMinioSecret || 'minioadmin',
         bind_to_localhost:  mBind.some((v,idx) => idx === i && v === '1'),
       };
     }
 
-    // LDAP Servers
+    // LDAP Servers – admin password comes from the Credentials section
     const lNames  = fd.getAll('ldap_server_name[]');
     const lImages = fd.getAll('ldap_image[]');
     const lPorts  = fd.getAll('ldap_port[]');
     const lDomains= fd.getAll('ldap_domain[]');
-    const lPwds   = fd.getAll('ldap_admin_password[]');
     const lBind   = fd.getAll('ldap_bind_localhost[]');
+    const credLdapPwd = fd.get('cred_ldap_admin_password');
     config.ldap_servers = {};
     for (let i = 0; i < lNames.length; i++) {
       const name = lNames[i].trim();
       if (!name) continue;
       config.ldap_servers[name] = {
         env_tag: 'test',
-        ldap_image:         lImages[i]  || 'osixia/openldap:1.5.0',
-        ldap_port:          parseInt(lPorts[i]) || 389,
-        ldap_domain:        lDomains[i] || 'example.org',
-        ldap_admin_password:lPwds[i]    || 'admin',
-        bind_to_localhost:  lBind.some((v,idx) => idx === i && v === '1'),
+        ldap_image:          lImages[i]  || 'osixia/openldap:1.5.0',
+        ldap_port:           parseInt(lPorts[i]) || 389,
+        ldap_domain:         lDomains[i] || 'example.org',
+        ldap_admin_password: credLdapPwd || 'admin',
+        bind_to_localhost:   lBind.some((v,idx) => idx === i && v === '1'),
       };
     }
   }

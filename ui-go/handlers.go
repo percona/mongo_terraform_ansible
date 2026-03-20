@@ -15,6 +15,56 @@ import (
 	"time"
 )
 
+// cleanupDockerModuleArtifacts removes files and directories that Terraform
+// created inside the docker module directories (modules/mongodb_replset and
+// modules/mongodb_cluster) for the given environment. These include:
+//   - pbm-storage.conf.{name} files
+//   - {name}-*.Dockerfile files (new sanitized naming)
+//   - {name}-percona/ subdirectories (old naming, created when the image name
+//     contained a "/" which Terraform mistakenly turned into a path separator)
+//
+// This is safe to call even when the files do not exist.
+func cleanupDockerModuleArtifacts(cfg Config) {
+	namePrefix := cfg.Prefix
+	if namePrefix != "" {
+		namePrefix += "-"
+	}
+
+	replsetDir := filepath.Join(terraformDir, "docker", "modules", "mongodb_replset")
+	clusterDir := filepath.Join(terraformDir, "docker", "modules", "mongodb_cluster")
+
+	for key := range cfg.Replsets {
+		cleanupModuleResourceFiles(replsetDir, namePrefix+key)
+	}
+	for key := range cfg.Clusters {
+		cleanupModuleResourceFiles(clusterDir, namePrefix+key)
+	}
+}
+
+// cleanupModuleResourceFiles removes Terraform-generated artifacts for a single
+// named resource (replica-set or cluster) inside a module directory.
+func cleanupModuleResourceFiles(moduleDir, resourceName string) {
+	// pbm-storage.conf.{resourceName}
+	os.Remove(filepath.Join(moduleDir, "pbm-storage.conf."+resourceName))
+
+	// {resourceName}-*.Dockerfile (sanitized image name)
+	if matches, _ := filepath.Glob(filepath.Join(moduleDir, resourceName+"-*.Dockerfile")); matches != nil {
+		for _, f := range matches {
+			os.Remove(f)
+		}
+	}
+
+	// Old-style subdirectory created when the image name contained "/" and
+	// Terraform interpreted it as a directory separator (e.g. {resourceName}-percona/).
+	if entries, _ := filepath.Glob(filepath.Join(moduleDir, resourceName+"-*")); entries != nil {
+		for _, entry := range entries {
+			if info, err := os.Stat(entry); err == nil && info.IsDir() {
+				os.RemoveAll(entry)
+			}
+		}
+	}
+}
+
 // GET /
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -289,6 +339,9 @@ func deleteEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	if env != nil {
 		p := tfvarsPath(envID, env.Platform)
 		os.Remove(p)
+		if env.Platform == "docker" {
+			cleanupDockerModuleArtifacts(env.Config)
+		}
 	} else {
 		for _, pl := range platforms {
 			os.Remove(tfvarsPath(envID, pl))
@@ -309,6 +362,9 @@ func purgeDeletedEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 		if env.Status == "deleted" {
 			delete(state, id)
 			os.Remove(tfvarsPath(id, env.Platform))
+			if env.Platform == "docker" {
+				cleanupDockerModuleArtifacts(env.Config)
+			}
 			count++
 		}
 	}
@@ -717,6 +773,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			if status == "success" {
 				e.Status = "deleted"
 				os.Remove(varfile)
+				if platform == "docker" {
+					cleanupDockerModuleArtifacts(e.Config)
+				}
 			} else {
 				e.Status = "destroy_failed"
 			}

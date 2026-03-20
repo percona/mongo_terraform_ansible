@@ -949,13 +949,6 @@ tr:last-child td { border-bottom: none; }
   user-select: none;
 }
 
-/* Credentials section */
-.credentials-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 0.75rem 1rem;
-}
-
 /* Firewall rule rows */
 .firewall-rule-row input {
   min-width: 0;

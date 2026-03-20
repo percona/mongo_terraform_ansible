@@ -146,7 +146,7 @@ func pbmVersionsFromDockerHub() []string {
 func getPMMServerImages() []string {
 	tags := getDockerHubTags("percona", "pmm-server", 30)
 	if len(tags) == 0 {
-		return []string{"latest"}
+		return defaultPMMServerImages
 	}
 	return tags
 }
@@ -154,7 +154,7 @@ func getPMMServerImages() []string {
 func getPSMDBImages() []string {
 	tags := getDockerHubTags("percona", "percona-server-mongodb", 30)
 	if len(tags) == 0 {
-		return []string{"latest"}
+		return defaultPSMDBImages
 	}
 	return tags
 }
@@ -162,7 +162,7 @@ func getPSMDBImages() []string {
 func getPBMImages() []string {
 	tags := getDockerHubTags("percona", "percona-backup-mongodb", 20)
 	if len(tags) == 0 {
-		return []string{"latest"}
+		return defaultPBMImages
 	}
 	return tags
 }
@@ -170,7 +170,7 @@ func getPBMImages() []string {
 func getPMMClientImages() []string {
 	tags := getDockerHubTags("percona", "pmm-client", 20)
 	if len(tags) == 0 {
-		return []string{"latest"}
+		return defaultPMMClientImages
 	}
 	return tags
 }
@@ -383,28 +383,28 @@ func cachedPMMServerImages() []string {
 	if v, ok := cacheGet("dh:percona/pmm-server"); ok {
 		return v.([]string)
 	}
-	return []string{"latest"}
+	return defaultPMMServerImages
 }
 
 func cachedPSMDBImages() []string {
 	if v, ok := cacheGet("dh:percona/percona-server-mongodb"); ok {
 		return v.([]string)
 	}
-	return []string{"latest"}
+	return defaultPSMDBImages
 }
 
 func cachedPBMImages() []string {
 	if v, ok := cacheGet("dh:percona/percona-backup-mongodb"); ok {
 		return v.([]string)
 	}
-	return []string{"latest"}
+	return defaultPBMImages
 }
 
 func cachedPMMClientImages() []string {
 	if v, ok := cacheGet("dh:percona/pmm-client"); ok {
 		return v.([]string)
 	}
-	return []string{"latest"}
+	return defaultPMMClientImages
 }
 
 func cachedPSMDBMinorVersionsByMajor() map[string][]string {

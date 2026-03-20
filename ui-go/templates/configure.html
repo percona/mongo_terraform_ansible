@@ -448,6 +448,25 @@
             </div>
           </div>
           {{if eq $p "docker"}}
+            <div class="form-row">
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="cluster_enable_pmm[]" value="1"
+                            {{if .Config.EnablePmm}}checked{{end}}
+                            onchange="toggleImageGroup(this,'pmm')">
+                Enable PMM monitoring</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="cluster_enable_pbm[]" value="1"
+                            {{if .Config.EnablePbm}}checked{{end}}
+                            onchange="toggleImageGroup(this,'pbm')">
+                Enable PBM backups</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="cluster_bind_to_localhost[]" value="1"
+                            {{if .Config.BindToLocalhost}}checked{{end}}>
+                Bind ports to localhost only</label>
+            </div>
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label>PSMDB Image</label>
@@ -460,7 +479,7 @@
                 {{end}}
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-image-group="pbm" {{if not .Config.EnablePbm}}style="display:none"{{end}}>
               <label>PBM Image</label>
               <select name="cluster_pbm_image[]">
                 {{$curPbm := .Config.PbmImage}}
@@ -471,7 +490,7 @@
                 {{end}}
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-image-group="pmm" {{if not .Config.EnablePmm}}style="display:none"{{end}}>
               <label>PMM Client Image</label>
               <select name="cluster_pmm_client_image[]">
                 {{$curPmmc := .Config.PmmClientImage}}
@@ -481,23 +500,6 @@
                 </option>
                 {{end}}
               </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_enable_pmm[]" value="1"
-                            {{if .Config.EnablePmm}}checked{{end}}>
-                Enable PMM monitoring</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_enable_pbm[]" value="1"
-                            {{if .Config.EnablePbm}}checked{{end}}>
-                Enable PBM backups</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_bind_to_localhost[]" value="1"
-                            {{if .Config.BindToLocalhost}}checked{{end}}>
-                Bind ports to localhost only</label>
             </div>
           </div>
           {{else if eq $p "chaos"}}
@@ -725,6 +727,25 @@
           </div>
           {{if eq $p "docker"}}
           <div class="form-row">
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="replset_enable_pmm[]" value="1"
+                            {{if .Config.EnablePmm}}checked{{end}}
+                            onchange="toggleImageGroup(this,'pmm')">
+                Enable PMM monitoring</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="replset_enable_pbm[]" value="1"
+                            {{if .Config.EnablePbm}}checked{{end}}
+                            onchange="toggleImageGroup(this,'pbm')">
+                Enable PBM backups</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="replset_bind_to_localhost[]" value="1"
+                            {{if .Config.BindToLocalhost}}checked{{end}}>
+                Bind ports to localhost only</label>
+            </div>
+          </div>
+          <div class="form-row">
             <div class="form-group">
               <label>PSMDB Image</label>
               <select name="replset_psmdb_image[]">
@@ -736,7 +757,7 @@
                 {{end}}
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-image-group="pbm" {{if not .Config.EnablePbm}}style="display:none"{{end}}>
               <label>PBM Image</label>
               <select name="replset_pbm_image[]">
                 {{$curPbm := .Config.PbmImage}}
@@ -747,7 +768,7 @@
                 {{end}}
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-image-group="pmm" {{if not .Config.EnablePmm}}style="display:none"{{end}}>
               <label>PMM Client Image</label>
               <select name="replset_pmm_client_image[]">
                 {{$curPmmc := .Config.PmmClientImage}}
@@ -757,23 +778,6 @@
                 </option>
                 {{end}}
               </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_enable_pmm[]" value="1"
-                            {{if .Config.EnablePmm}}checked{{end}}>
-                Enable PMM monitoring</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_enable_pbm[]" value="1"
-                            {{if .Config.EnablePbm}}checked{{end}}>
-                Enable PBM backups</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_bind_to_localhost[]" value="1"
-                            {{if .Config.BindToLocalhost}}checked{{end}}>
-                Bind ports to localhost only</label>
             </div>
           </div>
           {{else if eq $p "chaos"}}
@@ -1307,39 +1311,45 @@
     </div>
     <p class="hint">Usernames and passwords passed to Ansible and Terraform. Values here populate <code>group_vars</code> or <code>--extra-vars</code>.</p>
     <div id="credentials-body" {{if not $credConfigured}}style="display:none"{{end}}>
-      <div class="credentials-grid">
-        <div class="form-group">
-          <label for="cred_mongo_admin_user">MongoDB Root User</label>
-          <input type="text" id="cred_mongo_admin_user" name="cred_mongo_admin_user"
-                 value="{{index .Config.AnsibleVars "mongo_admin_user"}}" placeholder="admin">
+      <div class="credentials-list">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cred_mongo_admin_user">MongoDB Root User</label>
+            <input type="text" id="cred_mongo_admin_user" name="cred_mongo_admin_user"
+                   value="{{index .Config.AnsibleVars "mongo_admin_user"}}" placeholder="root">
+          </div>
+          <div class="form-group">
+            <label for="cred_mongo_admin_password">MongoDB Root Password</label>
+            <input type="password" id="cred_mongo_admin_password" name="cred_mongo_admin_password"
+                   value="{{index .Config.AnsibleVars "mongo_admin_password"}}" placeholder="percona"
+                   autocomplete="new-password">
+          </div>
         </div>
-        <div class="form-group">
-          <label for="cred_mongo_admin_password">MongoDB Root Password</label>
-          <input type="password" id="cred_mongo_admin_password" name="cred_mongo_admin_password"
-                 value="{{index .Config.AnsibleVars "mongo_admin_password"}}" placeholder="admin"
-                 autocomplete="new-password">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cred_pmm_server_user">PMM User</label>
+            <input type="text" id="cred_pmm_server_user" name="cred_pmm_server_user"
+                   value="{{index .Config.AnsibleVars "pmm_server_user"}}" placeholder="admin">
+          </div>
+          <div class="form-group">
+            <label for="cred_pmm_server_pwd">PMM Password</label>
+            <input type="password" id="cred_pmm_server_pwd" name="cred_pmm_server_pwd"
+                   value="{{index .Config.AnsibleVars "pmm_server_pwd"}}" placeholder="admin"
+                   autocomplete="new-password">
+          </div>
         </div>
-        <div class="form-group">
-          <label for="cred_pmm_server_user">PMM User</label>
-          <input type="text" id="cred_pmm_server_user" name="cred_pmm_server_user"
-                 value="{{index .Config.AnsibleVars "pmm_server_user"}}" placeholder="admin">
-        </div>
-        <div class="form-group">
-          <label for="cred_pmm_server_pwd">PMM Password</label>
-          <input type="password" id="cred_pmm_server_pwd" name="cred_pmm_server_pwd"
-                 value="{{index .Config.AnsibleVars "pmm_server_pwd"}}" placeholder="admin"
-                 autocomplete="new-password">
-        </div>
-        <div class="form-group">
-          <label for="cred_pbm_agent_user">PBM Agent User</label>
-          <input type="text" id="cred_pbm_agent_user" name="cred_pbm_agent_user"
-                 value="{{index .Config.AnsibleVars "pbm_agent_user"}}" placeholder="pbmagent">
-        </div>
-        <div class="form-group">
-          <label for="cred_pbmpwd">PBM Agent Password</label>
-          <input type="password" id="cred_pbmpwd" name="cred_pbmpwd"
-                 value="{{index .Config.AnsibleVars "pbmpwd"}}" placeholder="pbmpassword"
-                 autocomplete="new-password">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cred_pbm_agent_user">PBM Agent User</label>
+            <input type="text" id="cred_pbm_agent_user" name="cred_pbm_agent_user"
+                   value="{{index .Config.AnsibleVars "pbm_agent_user"}}" placeholder="pbm">
+          </div>
+          <div class="form-group">
+            <label for="cred_pbmpwd">PBM Agent Password</label>
+            <input type="password" id="cred_pbmpwd" name="cred_pbmpwd"
+                   value="{{index .Config.AnsibleVars "pbmpwd"}}" placeholder="secretpwd"
+                   autocomplete="new-password">
+          </div>
         </div>
       </div>
     </div>
@@ -1543,6 +1553,18 @@ function toggleCredentials(btn) {
   btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
 }
 
+// Toggle a nearby image-selector group element when a PMM/PBM checkbox changes.
+// `group` is 'pmm' or 'pbm'. The function searches within the nearest
+// .customize-body ancestor for an element with the matching data-image-group attribute,
+// so it works correctly for both server-rendered and dynamically added blocks.
+function toggleImageGroup(checkbox, group) {
+  const body = checkbox.closest('.customize-body');
+  if (!body) return;
+  const el = body.querySelector(`[data-image-group="${group}"]`);
+  if (!el) return;
+  el.style.display = checkbox.checked ? '' : 'none';
+}
+
 // Toggle the per-block .customize-body panel (clusters, replsets, Docker servers).
 function toggleCustomizeBlock(btn) {
   const body = btn.closest('.component-block').querySelector('.customize-body');
@@ -1651,8 +1673,8 @@ function buildDockerImageRows(type) {
     `<option value="__custom__">Custom…</option>`;
   const pmmcSel  = PMM_CLIENT_IMAGES.map(t => `<option value="${escHtml(t)}">percona/pmm-client:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
-  const makeImageGroup = (label, selectName, options) => `
-    <div class="form-group"><label>${label}</label>
+  const makeImageGroup = (label, selectName, options, dataGroup) => `
+    <div class="form-group"${dataGroup ? ` data-image-group="${dataGroup}" style="display:none"` : ''}><label>${label}</label>
       <div class="image-select-wrapper">
         <select name="${type}_${selectName}" onchange="toggleCustomImageInput(this)">${options}</select>
         <input type="text" class="custom-image-input" name="${type}_${selectName}_custom"
@@ -1662,17 +1684,19 @@ function buildDockerImageRows(type) {
     </div>`;
   return `
     <div class="form-row">
-      ${makeImageGroup('PSMDB Image', 'psmdb_image[]', psmdbSel)}
-      ${makeImageGroup('PBM Image', 'pbm_image[]', pbmSel)}
-      ${makeImageGroup('PMM Client Image', 'pmm_client_image[]', pmmcSel)}
-    </div>
-    <div class="form-row">
       <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_enable_pmm[]" value="1"> Enable PMM monitoring</label></div>
+        <label><input type="checkbox" name="${type}_enable_pmm[]" value="1"
+          onchange="toggleImageGroup(this,'pmm')"> Enable PMM monitoring</label></div>
       <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_enable_pbm[]" value="1"> Enable PBM backups</label></div>
+        <label><input type="checkbox" name="${type}_enable_pbm[]" value="1"
+          onchange="toggleImageGroup(this,'pbm')"> Enable PBM backups</label></div>
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" name="${type}_bind_to_localhost[]" value="1"> Bind ports to localhost only</label></div>
+    </div>
+    <div class="form-row">
+      ${makeImageGroup('PSMDB Image', 'psmdb_image[]', psmdbSel, null)}
+      ${makeImageGroup('PBM Image', 'pbm_image[]', pbmSel, 'pbm')}
+      ${makeImageGroup('PMM Client Image', 'pmm_client_image[]', pmmcSel, 'pmm')}
     </div>`;
 }
 

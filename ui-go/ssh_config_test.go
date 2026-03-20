@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -137,6 +138,90 @@ func TestSemverGreater(t *testing.T) {
 		got := semverGreater(c.a, c.b)
 		if got != c.want {
 			t.Errorf("semverGreater(%q, %q) = %v, want %v", c.a, c.b, got, c.want)
+		}
+	}
+}
+
+func TestWriteTfvarsDockerCredentials(t *testing.T) {
+	dir := t.TempDir()
+	// Override terraformDir so writeTfvars writes into the temp directory.
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{
+		Clusters: map[string]ClusterConfig{
+			"cl01": {EnvTag: "test", ConfigsvrCount: 1, ShardCount: 1, ShardsvrReplicas: 1, MongosCount: 1},
+		},
+		Replsets: map[string]ReplsetConfig{
+			"rs01": {EnvTag: "test", DataNodesPerReplset: 1},
+		},
+		PmmServers: map[string]PmmServerConfig{
+			"pmm-server": {EnvTag: "test"},
+		},
+		AnsibleVars: map[string]string{
+			"mongo_admin_password": "mysecret",
+			"pmm_server_user":      "mypmmuser",
+			"pmm_server_pwd":       "mypmmpass",
+		},
+	}
+
+	if err := writeTfvars("testenv", "docker", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tfvarsPath("testenv", "docker"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	tfvars := string(content)
+
+	checks := []struct {
+		desc string
+		want string
+	}{
+		{"mongodb_root_password in clusters", `mongodb_root_password = "mysecret"`},
+		{"pmm_server_user in clusters", `pmm_server_user = "mypmmuser"`},
+		{"pmm_server_pwd in clusters", `pmm_server_pwd = "mypmmpass"`},
+		{"mongodb_root_password in replsets", `mongodb_root_password = "mysecret"`},
+		{"pmm_server_user in replsets", `pmm_server_user = "mypmmuser"`},
+		{"pmm_server_pwd in replsets", `pmm_server_pwd = "mypmmpass"`},
+		{"pmm_server_user in pmm_servers", `pmm_server_user = "mypmmuser"`},
+		{"pmm_server_pwd in pmm_servers", `pmm_server_pwd = "mypmmpass"`},
+	}
+	for _, c := range checks {
+		if !strings.Contains(tfvars, c.want) {
+			t.Errorf("%s: expected %q in tfvars:\n%s", c.desc, c.want, tfvars)
+		}
+	}
+}
+
+func TestWriteTfvarsDockerNoCredentials(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{
+		Clusters: map[string]ClusterConfig{
+			"cl01": {EnvTag: "test"},
+		},
+		Replsets: map[string]ReplsetConfig{},
+	}
+
+	if err := writeTfvars("testenv2", "docker", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tfvarsPath("testenv2", "docker"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	tfvars := string(content)
+
+	for _, unwanted := range []string{"mongodb_root_password", "pmm_server_user", "pmm_server_pwd"} {
+		if strings.Contains(tfvars, unwanted) {
+			t.Errorf("expected no %q in tfvars when credentials are empty:\n%s", unwanted, tfvars)
 		}
 	}
 }

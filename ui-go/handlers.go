@@ -431,8 +431,6 @@ func getHostsHandler(w http.ResponseWriter, r *http.Request) {
 				state[envID] = env
 				saveState(state) //nolint:errcheck
 			}
-			// Keep local SSH config in sync so container names can be resolved.
-			updateDockerSSHConfig(envID, hosts)
 		}
 	} else {
 		hosts, mongoConns, msg = collectCloudHosts(envID, env)
@@ -719,9 +717,6 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			if status == "success" {
 				e.Status = "deleted"
 				os.Remove(varfile)
-				if platform == "docker" {
-					removeDockerSSHConfig(envID)
-				}
 			} else {
 				e.Status = "destroy_failed"
 			}

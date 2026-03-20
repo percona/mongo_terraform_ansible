@@ -896,7 +896,7 @@
       <label class="toggle-label">
         <input type="checkbox" id="enable-pmm-docker"
                {{if .SortedPmmServers}}checked{{end}}
-               onchange="toggleDockerSingleServer('pmm-servers-container', this, addPmmServer); toggleCredentialRow('cred-pmm-row', this.checked)">
+               onchange="toggleDockerSingleServer('pmm-servers-container', this, addPmmServer)">
         Include PMM Server
       </label>
     </div>
@@ -1283,7 +1283,7 @@
 
   <!-- ──────────── Credentials ──────────── -->
   <section class="form-section">
-    {{$credConfigured := or (index .Config.AnsibleVars "mongo_admin_user") (index .Config.AnsibleVars "mongo_admin_password") (index .Config.AnsibleVars "pmm_server_user") (index .Config.AnsibleVars "pmm_server_pwd") (index .Config.AnsibleVars "pbm_agent_user") (index .Config.AnsibleVars "pbmpwd") .SortedPmmServers .SortedMinio .SortedLdap}}
+    {{$credConfigured := or (index .Config.AnsibleVars "mongo_admin_user") (index .Config.AnsibleVars "mongo_admin_password") (index .Config.AnsibleVars "pbm_agent_user") (index .Config.AnsibleVars "pbmpwd") .SortedPmmServers .SortedMinio .SortedLdap}}
     <div class="section-header">
       <h2>Credentials</h2>
       <button type="button" class="btn btn-outline btn-sm" id="credentials-toggle"
@@ -1306,19 +1306,6 @@
           </div>
         </div>
         {{if eq $p "docker"}}
-        <div class="form-row" id="cred-pmm-row" {{if not .SortedPmmServers}}style="display:none"{{end}}>
-          <div class="form-group">
-            <label for="cred_pmm_server_user">PMM Admin User</label>
-            <input type="text" id="cred_pmm_server_user" name="cred_pmm_server_user"
-                   value="{{index .Config.AnsibleVars "pmm_server_user"}}" placeholder="admin">
-          </div>
-          <div class="form-group">
-            <label for="cred_pmm_server_pwd">PMM Admin Password</label>
-            <input type="password" id="cred_pmm_server_pwd" name="cred_pmm_server_pwd"
-                   value="{{index .Config.AnsibleVars "pmm_server_pwd"}}" placeholder="admin"
-                   autocomplete="new-password">
-          </div>
-        </div>
         <div class="form-row" id="cred-minio-row" {{if not .SortedMinio}}style="display:none"{{end}}>
           <div class="form-group">
             <label for="cred_minio_access_key">Minio Access Key</label>
@@ -1342,19 +1329,6 @@
           </div>
         </div>
         {{else}}
-        <div class="form-row" id="cred-pmm-row">
-          <div class="form-group">
-            <label for="cred_pmm_server_user">PMM Admin User</label>
-            <input type="text" id="cred_pmm_server_user" name="cred_pmm_server_user"
-                   value="{{index .Config.AnsibleVars "pmm_server_user"}}" placeholder="admin">
-          </div>
-          <div class="form-group">
-            <label for="cred_pmm_server_pwd">PMM Admin Password</label>
-            <input type="password" id="cred_pmm_server_pwd" name="cred_pmm_server_pwd"
-                   value="{{index .Config.AnsibleVars "pmm_server_pwd"}}" placeholder="admin"
-                   autocomplete="new-password">
-          </div>
-        </div>
         <div class="form-row">
           <div class="form-group">
             <label for="cred_pbm_agent_user">PBM Agent User</label>
@@ -1384,7 +1358,7 @@
     </p>
     <div id="ansible-vars-container">
       {{range $k, $v := .Config.AnsibleVars}}
-      {{if not (or (eq $k "mongo_admin_user") (eq $k "mongo_admin_password") (eq $k "pmm_server_user") (eq $k "pmm_server_pwd") (eq $k "pbm_agent_user") (eq $k "mongodb_pmm_user_pwd") (eq $k "pbmpwd"))}}
+      {{if not (or (eq $k "mongo_admin_user") (eq $k "mongo_admin_password") (eq $k "pbm_agent_user") (eq $k "mongodb_pmm_user_pwd") (eq $k "pbmpwd"))}}
       <div class="ansible-var-row">
         <input type="text"     name="ansible_var_key[]"   value="{{$k}}" placeholder="variable_name">
         <input type="password" name="ansible_var_val[]"   value="{{$v}}" placeholder="value"
@@ -1455,7 +1429,7 @@ function removeBlock(btn) {
   // If this was a single-server container (PMM/Minio/LDAP), uncheck the toggle
   // and hide the corresponding credential row.
   const toggleMap = {
-    'pmm-servers-container':  { cb: 'enable-pmm-docker',   credRow: 'cred-pmm-row' },
+    'pmm-servers-container':  { cb: 'enable-pmm-docker' },
     'minio-servers-container':{ cb: 'enable-minio-docker',  credRow: 'cred-minio-row' },
     'ldap-servers-container': { cb: 'enable-ldap-docker',   credRow: 'cred-ldap-row' },
   };
@@ -2479,8 +2453,6 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   const credFields = [
     ['mongo_admin_user',      fd.get('cred_mongo_admin_user')],
     ['mongo_admin_password',  fd.get('cred_mongo_admin_password')],
-    ['pmm_server_user',       fd.get('cred_pmm_server_user')],
-    ['pmm_server_pwd',        fd.get('cred_pmm_server_pwd')],
     ['pbm_agent_user',        fd.get('cred_pbm_agent_user')],
     ['pbmpwd',                fd.get('cred_pbmpwd')],
   ];
@@ -2598,8 +2570,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
         env_tag: 'test',
         pmm_server_image: `percona/pmm-server:${pImages[i] || 'latest'}`,
         pmm_port: parseInt(pPorts[i]) || 8443,
-        // pmm_server_user/pwd intentionally omitted – managed via the Credentials section
-        // (stored in ansible_vars and applied by tfvars.go)
+        // pmm_server_user/pwd not set here – they use the Terraform defaults
         bind_to_localhost: pBind.some((v,idx) => idx === i && v === '1'),
       };
     }

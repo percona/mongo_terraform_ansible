@@ -276,14 +276,10 @@ func writeTfvars(envID, platform string, cfg Config) error {
 	// Credentials entered in the UI are stored in cfg.AnsibleVars (keyed by
 	// Ansible variable name).  For Docker environments Ansible is not invoked,
 	// so we read the credential values here and inject them as Terraform
-	// per-cluster/replset/pmm_server variables.
+	// per-cluster/replset variables.
 	dockerMongoRootPassword := ""
-	dockerPmmServerUser := ""
-	dockerPmmServerPwd := ""
 	if platform == "docker" && len(cfg.AnsibleVars) > 0 {
 		dockerMongoRootPassword = cfg.AnsibleVars["mongo_admin_password"]
-		dockerPmmServerUser = cfg.AnsibleVars["pmm_server_user"]
-		dockerPmmServerPwd = cfg.AnsibleVars["pmm_server_pwd"]
 	}
 
 	// ── clusters – always write (even as empty map) to override Terraform defaults ──
@@ -317,12 +313,6 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				write(fmt.Sprintf("    bind_to_localhost = %s", formatHCLVal(c.BindToLocalhost)))
 				if dockerMongoRootPassword != "" {
 					write(fmt.Sprintf("    mongodb_root_password = %s", formatHCLVal(dockerMongoRootPassword)))
-				}
-				if dockerPmmServerUser != "" {
-					write(fmt.Sprintf("    pmm_server_user = %s", formatHCLVal(dockerPmmServerUser)))
-				}
-				if dockerPmmServerPwd != "" {
-					write(fmt.Sprintf("    pmm_server_pwd = %s", formatHCLVal(dockerPmmServerPwd)))
 				}
 			}
 			write("  }")
@@ -365,12 +355,6 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				if dockerMongoRootPassword != "" {
 					write(fmt.Sprintf("    mongodb_root_password = %s", formatHCLVal(dockerMongoRootPassword)))
 				}
-				if dockerPmmServerUser != "" {
-					write(fmt.Sprintf("    pmm_server_user = %s", formatHCLVal(dockerPmmServerUser)))
-				}
-				if dockerPmmServerPwd != "" {
-					write(fmt.Sprintf("    pmm_server_pwd = %s", formatHCLVal(dockerPmmServerPwd)))
-				}
 			}
 			write("  }")
 		}
@@ -394,13 +378,9 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				}
 				if s.PmmServerUser != "" {
 					write(fmt.Sprintf("    pmm_server_user = %s", formatHCLVal(s.PmmServerUser)))
-				} else if dockerPmmServerUser != "" {
-					write(fmt.Sprintf("    pmm_server_user = %s", formatHCLVal(dockerPmmServerUser)))
 				}
 				if s.PmmServerPwd != "" {
 					write(fmt.Sprintf("    pmm_server_pwd = %s", formatHCLVal(s.PmmServerPwd)))
-				} else if dockerPmmServerPwd != "" {
-					write(fmt.Sprintf("    pmm_server_pwd = %s", formatHCLVal(dockerPmmServerPwd)))
 				}
 				write(fmt.Sprintf("    bind_to_localhost = %s", formatHCLVal(s.BindToLocalhost)))
 				write("  }")

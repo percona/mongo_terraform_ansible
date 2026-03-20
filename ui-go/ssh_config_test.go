@@ -162,8 +162,6 @@ func TestWriteTfvarsDockerCredentials(t *testing.T) {
 		},
 		AnsibleVars: map[string]string{
 			"mongo_admin_password": "mysecret",
-			"pmm_server_user":      "mypmmuser",
-			"pmm_server_pwd":       "mypmmpass",
 		},
 	}
 
@@ -182,17 +180,18 @@ func TestWriteTfvarsDockerCredentials(t *testing.T) {
 		want string
 	}{
 		{"mongodb_root_password in clusters", `mongodb_root_password = "mysecret"`},
-		{"pmm_server_user in clusters", `pmm_server_user = "mypmmuser"`},
-		{"pmm_server_pwd in clusters", `pmm_server_pwd = "mypmmpass"`},
 		{"mongodb_root_password in replsets", `mongodb_root_password = "mysecret"`},
-		{"pmm_server_user in replsets", `pmm_server_user = "mypmmuser"`},
-		{"pmm_server_pwd in replsets", `pmm_server_pwd = "mypmmpass"`},
-		{"pmm_server_user in pmm_servers", `pmm_server_user = "mypmmuser"`},
-		{"pmm_server_pwd in pmm_servers", `pmm_server_pwd = "mypmmpass"`},
 	}
 	for _, c := range checks {
 		if !strings.Contains(tfvars, c.want) {
 			t.Errorf("%s: expected %q in tfvars:\n%s", c.desc, c.want, tfvars)
+		}
+	}
+
+	// pmm_server_user/pwd are no longer set via the credentials section
+	for _, unwanted := range []string{"pmm_server_user", "pmm_server_pwd"} {
+		if strings.Contains(tfvars, unwanted) {
+			t.Errorf("expected no %q in tfvars (PMM user/pwd not settable via credentials section):\n%s", unwanted, tfvars)
 		}
 	}
 }

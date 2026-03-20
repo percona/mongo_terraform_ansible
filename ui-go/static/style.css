@@ -828,7 +828,28 @@ tr:last-child td { border-bottom: none; }
 .role-arbiter   { background: rgba(251,191,36,0.18); color: var(--color-warning); }
 .role-configsvr { background: rgba(167,139,250,0.18); color: #a78bfa; }
 .role-pmm       { background: rgba(251,191,36,0.18); color: var(--color-warning); }
+.role-pmm-client { background: rgba(251,191,36,0.12); color: var(--color-warning); }
+.role-pbm-agent { background: rgba(167,139,250,0.12); color: #a78bfa; }
 .role-minio     { background: rgba(52,211,153,0.18); color: var(--color-success); }
+
+/* Sortable column headers */
+.hosts-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.hosts-table th.sortable:hover { background: var(--color-surface2); }
+.sort-icon {
+  display: inline-block;
+  margin-left: 0.3em;
+  opacity: 0.45;
+  font-size: 0.8em;
+}
+.hosts-table th[data-sort-dir="asc"] .sort-icon,
+.hosts-table th[data-sort-dir="desc"] .sort-icon {
+  opacity: 1;
+  color: var(--color-info);
+}
 
 /* Copy command rows */
 .copy-cmd-row {

@@ -854,18 +854,19 @@ function renderHosts(data) {
 
   // ── Hosts table ──
   if (hosts.length > 0) {
-    // Group hosts by their "group" field.  All PMM-role hosts (pmm-server,
-    // grafana-renderer, watchtower, per-node pmm-client sidecars) are
-    // collapsed into a single "PMM" group regardless of what the backend set.
+    // Group hosts by their "group" field.  The backend assigns each container
+    // to the correct group: MongoDB nodes → cluster/replset name; PMM server
+    // containers → "PMM"; PMM client sidecars → "PMM Clients"; PBM agent
+    // sidecars → "PBM"; other services use their own group name.
     const groups = {};
     hosts.forEach(h => {
-      const groupKey = h.role === 'pmm' ? 'PMM' : h.group;
+      const groupKey = h.group;
       if (!groups[groupKey]) groups[groupKey] = [];
       groups[groupKey].push(h);
     });
 
     // Determine which groups belong to MongoDB clusters/replsets (they come
-    // first); remaining service groups (PMM, minio, ldap, etc.) follow.
+    // first); remaining service groups (PMM, PBM, minio, ldap, etc.) follow.
     const mongoRoles = new Set(['mongod', 'mongos', 'configsvr', 'arbiter']);
     const mongoGroups = [];
     const serviceGroups = [];
@@ -884,7 +885,12 @@ function renderHosts(data) {
         <h3 class="hosts-group-title">${escHtml(grp)}</h3>
         <div class="table-wrapper">
           <table class="hosts-table">
-            <thead><tr><th>Name</th><th>IP / Address</th><th>Role</th><th>Connect</th></tr></thead>
+            <thead><tr>
+              <th class="sortable" data-col="0" onclick="sortHostsTable(this)">Name <span class="sort-icon">↕</span></th>
+              <th class="sortable" data-col="1" onclick="sortHostsTable(this)">IP / Address <span class="sort-icon">↕</span></th>
+              <th class="sortable" data-col="2" onclick="sortHostsTable(this)">Role <span class="sort-icon">↕</span></th>
+              <th>Connect</th>
+            </tr></thead>
             <tbody>`;
       groups[grp].forEach(h => {
         html += `<tr>
@@ -931,6 +937,32 @@ function renderHosts(data) {
 
   content.innerHTML = html;
   section.style.display = '';
+}
+
+// Sort a hosts table by the clicked column header.  Clicking a second time on
+// the same column reverses the sort direction.
+function sortHostsTable(th) {
+  const table = th.closest('table');
+  const tbody = table.querySelector('tbody');
+  const col = parseInt(th.dataset.col, 10);
+  const currentDir = th.dataset.sortDir || '';
+  const dir = currentDir === 'asc' ? 'desc' : 'asc';
+
+  // Reset all sortable headers in this table, then mark the active one.
+  table.querySelectorAll('th.sortable').forEach(h => {
+    h.dataset.sortDir = '';
+    h.querySelector('.sort-icon').textContent = '↕';
+  });
+  th.dataset.sortDir = dir;
+  th.querySelector('.sort-icon').textContent = dir === 'asc' ? '↑' : '↓';
+
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort((a, b) => {
+    const aText = (a.cells[col]?.textContent || '').trim();
+    const bText = (b.cells[col]?.textContent || '').trim();
+    return dir === 'asc' ? aText.localeCompare(bText) : bText.localeCompare(aText);
+  });
+  rows.forEach(r => tbody.appendChild(r));
 }
 
 function copyText(text, btn) {

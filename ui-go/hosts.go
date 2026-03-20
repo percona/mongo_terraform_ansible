@@ -96,7 +96,11 @@ func collectDockerHosts(envID string, env *Environment) ([]HostInfo, []ServiceUR
 func guessDockerRole(name, prefix string) string {
 	base := strings.TrimPrefix(name, prefix+"-")
 	switch {
-	case strings.HasSuffix(base, "-pmm-client") || strings.HasSuffix(base, "-pmm"):
+	case strings.HasSuffix(base, "-pbm-agent"):
+		return "pbm-agent"
+	case strings.HasSuffix(base, "-pmm-client"):
+		return "pmm-client"
+	case strings.HasSuffix(base, "-pmm"):
 		return "pmm"
 	case strings.Contains(base, "svr"):
 		return "mongod"
@@ -120,8 +124,13 @@ func guessDockerRole(name, prefix string) string {
 // guessDockerGroup extracts the logical group (cluster/replset name) from a
 // container name.
 func guessDockerGroup(name, prefix string) string {
-	if guessDockerRole(name, prefix) == "pmm" {
+	switch guessDockerRole(name, prefix) {
+	case "pmm":
 		return "PMM"
+	case "pmm-client":
+		return "PMM Clients"
+	case "pbm-agent":
+		return "PBM"
 	}
 	base := strings.TrimPrefix(name, prefix+"-")
 	parts := strings.Split(base, "-")

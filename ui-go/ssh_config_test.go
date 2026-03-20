@@ -358,3 +358,56 @@ func TestTfstateRemovedOnDeleteHandler(t *testing.T) {
 		}
 	}
 }
+
+func TestGuessDockerRole(t *testing.T) {
+	prefix := "myenv"
+	tests := []struct {
+		name string
+		want string
+	}{
+		{"myenv-rs01-node1-pbm-agent", "pbm-agent"},
+		{"myenv-cl01-node2-pbm-agent", "pbm-agent"},
+		{"myenv-rs01-node1-pmm-client", "pmm-client"},
+		{"myenv-cl01-cfg1-pmm-client", "pmm-client"},
+		{"myenv-pmm-server", "pmm"},
+		{"myenv-pmm-server-pmm", "pmm"},
+		{"myenv-rs01-node1svr", "mongod"},
+		{"myenv-rs01-arb1", "arbiter"},
+		{"myenv-cl01-cfg1", "configsvr"},
+		{"myenv-cl01-mongos1", "mongos"},
+		{"myenv-minio-server", "minio"},
+		{"myenv-ldap-server", "ldap"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := guessDockerRole(tc.name, prefix)
+			if got != tc.want {
+				t.Errorf("guessDockerRole(%q, %q) = %q, want %q", tc.name, prefix, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestGuessDockerGroup(t *testing.T) {
+	prefix := "myenv"
+	tests := []struct {
+		name string
+		want string
+	}{
+		{"myenv-rs01-node1-pbm-agent", "PBM"},
+		{"myenv-cl01-node2-pbm-agent", "PBM"},
+		{"myenv-rs01-node1-pmm-client", "PMM Clients"},
+		{"myenv-cl01-cfg1-pmm-client", "PMM Clients"},
+		{"myenv-pmm-server", "PMM"},
+		{"myenv-rs01-node1svr", "rs01"},
+		{"myenv-cl01-arb1", "cl01"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := guessDockerGroup(tc.name, prefix)
+			if got != tc.want {
+				t.Errorf("guessDockerGroup(%q, %q) = %q, want %q", tc.name, prefix, got, tc.want)
+			}
+		})
+	}
+}

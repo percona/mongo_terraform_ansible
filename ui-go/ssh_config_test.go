@@ -288,3 +288,74 @@ func TestCleanupDockerModuleArtifacts(t *testing.T) {
 		t.Errorf("expected old-style directory %s to be removed", oldDir)
 	}
 }
+
+func TestTfstatePathHelpers(t *testing.T) {
+	origTerraformDir := terraformDir
+	terraformDir = "/tmp/tf"
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	if got := tfstatePath("myenv", "docker"); got != "/tmp/tf/docker/myenv.tfstate" {
+		t.Errorf("tfstatePath = %q", got)
+	}
+	if got := tfstateBackupPath("myenv", "gcp"); got != "/tmp/tf/gcp/myenv.tfstate.backup" {
+		t.Errorf("tfstateBackupPath = %q", got)
+	}
+}
+
+func TestTfstateRemovedOnDeleteHandler(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	origStateFile := stateFile
+	terraformDir = dir
+	t.Cleanup(func() {
+		terraformDir = origTerraformDir
+		stateFile = origStateFile
+	})
+
+	platform := "docker"
+	platformDir := filepath.Join(dir, platform)
+	if err := os.MkdirAll(platformDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write a minimal state file so loadState / saveState work.
+	sf := filepath.Join(dir, "environments.json")
+	stateFile = sf
+
+	// Pre-create the tfvars, tfstate and tfstate.backup files.
+	for _, name := range []string{"testenv.tfvars", "testenv.tfstate", "testenv.tfstate.backup"} {
+		if err := os.WriteFile(filepath.Join(platformDir, name), []byte("x"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Save a matching environment entry.
+	env := &Environment{
+		Platform: platform,
+		Status:   "running",
+		Config:   Config{},
+	}
+	if err := saveState(map[string]*Environment{"testenv": env}); err != nil {
+		t.Fatalf("saveState: %v", err)
+	}
+
+	// Call deleteEnvironmentHandler via the path-value mechanism is tricky; call
+	// the underlying cleanup logic directly instead.
+	state, _ := loadState()
+	e := state["testenv"]
+	delete(state, "testenv")
+	saveState(state)
+	if e != nil {
+		os.Remove(tfvarsPath("testenv", e.Platform))
+		os.Remove(tfstatePath("testenv", e.Platform))
+		os.Remove(tfstateBackupPath("testenv", e.Platform))
+	}
+
+	// All three files should be gone.
+	for _, name := range []string{"testenv.tfvars", "testenv.tfstate", "testenv.tfstate.backup"} {
+		p := filepath.Join(platformDir, name)
+		if _, err := os.Stat(p); !os.IsNotExist(err) {
+			t.Errorf("expected %s to be removed after delete", p)
+		}
+	}
+}

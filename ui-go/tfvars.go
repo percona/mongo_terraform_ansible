@@ -15,6 +15,17 @@ func tfvarsPath(envID, platform string) string {
 	return filepath.Join(terraformDir, platform, envID+".tfvars")
 }
 
+// tfstatePath returns the path for the env's Terraform state file.
+// Terraform also writes a backup alongside it; use tfstateBackupPath for that.
+func tfstatePath(envID, platform string) string {
+	return filepath.Join(terraformDir, platform, envID+".tfstate")
+}
+
+// tfstateBackupPath returns the path for the env's Terraform state backup file.
+func tfstateBackupPath(envID, platform string) string {
+	return filepath.Join(terraformDir, platform, envID+".tfstate.backup")
+}
+
 // formatHCLVal formats a Go value as an HCL literal.
 func formatHCLVal(v interface{}) string {
 	switch t := v.(type) {

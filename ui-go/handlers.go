@@ -339,12 +339,16 @@ func deleteEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	if env != nil {
 		p := tfvarsPath(envID, env.Platform)
 		os.Remove(p)
+		os.Remove(tfstatePath(envID, env.Platform))
+		os.Remove(tfstateBackupPath(envID, env.Platform))
 		if env.Platform == "docker" {
 			cleanupDockerModuleArtifacts(env.Config)
 		}
 	} else {
 		for _, pl := range platforms {
 			os.Remove(tfvarsPath(envID, pl))
+			os.Remove(tfstatePath(envID, pl))
+			os.Remove(tfstateBackupPath(envID, pl))
 		}
 	}
 	writeJSON(w, 200, map[string]string{"status": "deleted"})
@@ -362,6 +366,8 @@ func purgeDeletedEnvironmentsHandler(w http.ResponseWriter, r *http.Request) {
 		if env.Status == "deleted" {
 			delete(state, id)
 			os.Remove(tfvarsPath(id, env.Platform))
+			os.Remove(tfstatePath(id, env.Platform))
+			os.Remove(tfstateBackupPath(id, env.Platform))
 			if env.Platform == "docker" {
 				cleanupDockerModuleArtifacts(env.Config)
 			}
@@ -773,6 +779,8 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			if status == "success" {
 				e.Status = "deleted"
 				os.Remove(varfile)
+				os.Remove(tfstatePath(envID, platform))
+				os.Remove(tfstateBackupPath(envID, platform))
 				if platform == "docker" {
 					cleanupDockerModuleArtifacts(e.Config)
 				}

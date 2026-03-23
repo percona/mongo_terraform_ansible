@@ -98,6 +98,8 @@ func guessDockerRole(name, prefix string) string {
 	switch {
 	case strings.HasSuffix(base, "-pbm-agent"):
 		return "pbm-agent"
+	case strings.HasSuffix(base, "-pbm-cli"):
+		return "pbm-cli"
 	case strings.HasSuffix(base, "-pmm-client"):
 		return "pmm-client"
 	case strings.HasSuffix(base, "-pmm"):
@@ -129,7 +131,7 @@ func guessDockerGroup(name, prefix string) string {
 		return "PMM"
 	case "pmm-client":
 		return "PMM Clients"
-	case "pbm-agent":
+	case "pbm-agent", "pbm-cli":
 		return "PBM"
 	}
 	base := strings.TrimPrefix(name, prefix+"-")
@@ -179,9 +181,22 @@ func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
 		if mongosCount == 0 {
 			mongosCount = 2
 		}
+		// Build connection string using the actual host ports of the mongos
+		// containers.  Each container is named "{prefix}-{cluster}-mongos0{i}"
+		// (matching the Terraform mongos_tag default "mongos") and exposes a
+		// single port.  We query Docker for the external host port so the
+		// string is correct regardless of which port Docker chose.
+		clusterPrefix := prefix + "-" + name
 		var mongosHosts []string
 		for i := 0; i < mongosCount; i++ {
-			mongosHosts = append(mongosHosts, fmt.Sprintf("%s:%d", host, 27017+i))
+			containerName := fmt.Sprintf("%s-mongos0%d", clusterPrefix, i)
+			hostPort := dockerContainerHostPort(containerName)
+			if hostPort == "" {
+				// Docker not available or container not running – fall back to
+				// the well-known default port so something is shown.
+				hostPort = "27017"
+			}
+			mongosHosts = append(mongosHosts, fmt.Sprintf("%s:%s", host, hostPort))
 		}
 		connStr := fmt.Sprintf("mongodb://%s:%s@%s/?authSource=admin",
 			url.QueryEscape(user), encodedPass, strings.Join(mongosHosts, ","))
@@ -194,6 +209,28 @@ func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
 		})
 	}
 	return conns
+}
+
+// dockerContainerHostPort returns the first external host port bound for the
+// given Docker container.  It uses "docker inspect" with a Go template that
+// iterates over the HostConfig port bindings (populated even when the
+// container is stopped), falling back to NetworkSettings.Ports for running
+// containers.  Returns an empty string when the container is not found or has
+// no port bindings.
+func dockerContainerHostPort(containerName string) string {
+	// HostConfig.PortBindings is available even when the container is stopped.
+	out, err := execOutput("docker", "inspect",
+		"--format", `{{range $p, $bindings := .HostConfig.PortBindings}}{{range $bindings}}{{.HostPort}} {{end}}{{end}}`,
+		containerName)
+	if err != nil {
+		return ""
+	}
+	for _, f := range strings.Fields(out) {
+		if f != "" {
+			return f
+		}
+	}
+	return ""
 }
 
 // mongoAdminCredentials returns the MongoDB admin username and password for

@@ -367,6 +367,8 @@ func TestGuessDockerRole(t *testing.T) {
 	}{
 		{"myenv-rs01-node1-pbm-agent", "pbm-agent"},
 		{"myenv-cl01-node2-pbm-agent", "pbm-agent"},
+		{"myenv-rs01-pbm-cli", "pbm-cli"},
+		{"myenv-cl01-pbm-cli", "pbm-cli"},
 		{"myenv-rs01-node1-pmm-client", "pmm-client"},
 		{"myenv-cl01-cfg1-pmm-client", "pmm-client"},
 		{"myenv-pmm-server", "pmm"},
@@ -396,6 +398,8 @@ func TestGuessDockerGroup(t *testing.T) {
 	}{
 		{"myenv-rs01-node1-pbm-agent", "PBM"},
 		{"myenv-cl01-node2-pbm-agent", "PBM"},
+		{"myenv-rs01-pbm-cli", "PBM"},
+		{"myenv-cl01-pbm-cli", "PBM"},
 		{"myenv-rs01-node1-pmm-client", "PMM Clients"},
 		{"myenv-cl01-cfg1-pmm-client", "PMM Clients"},
 		{"myenv-pmm-server", "PMM"},

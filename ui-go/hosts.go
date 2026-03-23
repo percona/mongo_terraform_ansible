@@ -213,20 +213,22 @@ func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
 
 // dockerContainerHostPort returns the first external host port bound for the
 // given Docker container.  It uses "docker inspect" with a Go template that
-// iterates over the HostConfig port bindings (populated even when the
-// container is stopped), falling back to NetworkSettings.Ports for running
-// containers.  Returns an empty string when the container is not found or has
-// no port bindings.
+// iterates over NetworkSettings.Ports (populated for running containers,
+// contains the actual auto-assigned port).  HostConfig.PortBindings is NOT
+// used because when Terraform omits an explicit external port, Docker records
+// HostPort as "0" there (meaning "auto-assign"), and the real port only
+// appears in NetworkSettings.Ports once the container is running.
+// Returns an empty string when the container is not found, not running, or
+// has no port bindings.
 func dockerContainerHostPort(containerName string) string {
-	// HostConfig.PortBindings is available even when the container is stopped.
 	out, err := execOutput("docker", "inspect",
-		"--format", `{{range $p, $bindings := .HostConfig.PortBindings}}{{range $bindings}}{{.HostPort}} {{end}}{{end}}`,
+		"--format", `{{range $p, $bindings := .NetworkSettings.Ports}}{{range $bindings}}{{.HostPort}} {{end}}{{end}}`,
 		containerName)
 	if err != nil {
 		return ""
 	}
 	for _, f := range strings.Fields(out) {
-		if f != "" {
+		if f != "" && f != "0" {
 			return f
 		}
 	}

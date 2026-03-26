@@ -2504,7 +2504,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       configsvr_count: parseInt(clCfgsvr[i]) || 3,
       shard_count: parseInt(clShards[i]) || 2,
       shardsvr_replicas: parseInt(clReplicas[i]) || 2,
-      arbiters_per_replset: parseInt(clArbiters[i]) || 1,
+      arbiters_per_replset: parseInt(clArbiters[i] || '1'),
       mongos_count: parseInt(clMongos[i]) || 2,
     };
     if (PLATFORM === 'docker') {
@@ -2538,8 +2538,8 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     if (!name) continue;
     const r = {
       env_tag: rsEnvTag[i] || 'test',
-      data_nodes_per_replset: parseInt(rsNodes[i]) || 2,
-      arbiters_per_replset: parseInt(rsArbiters[i]) || 1,
+      data_nodes_per_replset: parseInt(rsNodes[i] || '2'),
+      arbiters_per_replset: parseInt(rsArbiters[i] || '0'),
     };
     if (PLATFORM === 'docker') {
       const resolveDockerImg = (prefix, tag, customVal) =>

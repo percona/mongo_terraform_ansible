@@ -143,7 +143,7 @@
           <td>{{intDefault .Config.ConfigsvrCount 3}}</td>
           <td>{{intDefault .Config.ShardCount 2}}</td>
           <td>{{intDefault .Config.ShardsvrReplicas 2}}</td>
-          <td>{{intDefault .Config.ArbitersPerReplset 1}}</td>
+          <td>{{intPtrDefault .Config.ArbitersPerReplset 1}}</td>
           <td>{{intDefault .Config.MongosCount 2}}</td>
         </tr>
         {{end}}
@@ -163,7 +163,7 @@
           <td>{{.Name}}</td>
           <td>{{strDefault .Config.EnvTag "test"}}</td>
           <td>{{intDefault .Config.DataNodesPerReplset 2}}</td>
-          <td>{{intDefault .Config.ArbitersPerReplset 1}}</td>
+          <td>{{intPtrDefault .Config.ArbitersPerReplset 1}}</td>
         </tr>
         {{end}}
       </tbody>

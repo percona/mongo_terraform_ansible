@@ -77,6 +77,13 @@ return def
 }
 return n
 },
+// Return *n if non-nil, otherwise def.
+"intPtrDefault": func(n *int, def int) int {
+	if n == nil {
+		return def
+	}
+	return *n
+},
 // Return *b if non-nil, otherwise def.
 "boolDefault": func(b *bool, def bool) bool {
 if b == nil {
@@ -237,6 +244,13 @@ if n == 0 {
 return def
 }
 return n
+}
+
+func intPtrDefault(n *int, def int) int {
+if n == nil {
+return def
+}
+return *n
 }
 
 // ─── ANSI stripping ───────────────────────────────────────────────────────────

@@ -366,3 +366,18 @@ type CloudImage struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 }
+
+// PrereqTool describes a single prerequisite tool and whether it is installed.
+type PrereqTool struct {
+Name        string `json:"name"`
+Installed   bool   `json:"installed"`
+InstallDoc  string `json:"install_doc"`   // short URL / reference
+InstallCmds []string `json:"install_cmds"` // copy-pasteable shell commands
+}
+
+// PrereqResult is the JSON response from GET /api/prerequisites/{platform}.
+type PrereqResult struct {
+Platform string       `json:"platform"`
+OK       bool         `json:"ok"` // true when all tools are installed
+Tools    []PrereqTool `json:"tools"`
+}

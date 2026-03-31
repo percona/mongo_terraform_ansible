@@ -9,7 +9,8 @@
 
 <div class="platform-grid">
   {{range .Platforms}}
-  <a href="/configure/{{.}}" class="platform-card platform-card-{{.}}">
+  <a href="/configure/{{.}}" class="platform-card platform-card-{{.}}"
+     onclick="return checkPrereqs(event, '{{.}}')">
     <div class="platform-icon">
       {{if eq . "aws"}}☁️{{else if eq . "gcp"}}🌐{{else if eq . "azure"}}🔷{{else if eq . "chaos"}}⚡{{else}}🐳{{end}}
     </div>
@@ -24,4 +25,192 @@
 <div class="form-actions" style="margin-top:2rem">
   <a href="/" class="btn btn-outline btn-lg">Cancel</a>
 </div>
+
+<!-- Prerequisites modal -->
+<div class="modal-backdrop" id="prereq-modal" style="display:none">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2 id="prereq-modal-title">Checking prerequisites…</h2>
+    </div>
+    <div id="prereq-modal-body" style="margin-bottom:1rem"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="prereq-continue-btn"
+              style="display:none" onclick="prereqContinue()">Continue anyway</button>
+      <button type="button" class="btn btn-outline" onclick="closePrereqModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.prereq-tool {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+.prereq-tool .tool-status {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.prereq-tool .tool-name {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+.prereq-install {
+  margin-top: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.prereq-install-header {
+  background: var(--color-surface-raised, #1e1e2e);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.prereq-install-header a {
+  font-size: 0.75rem;
+}
+.prereq-install pre {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.8rem;
+  overflow-x: auto;
+  white-space: pre;
+  background: var(--color-code-bg, #13131a);
+  color: var(--color-code-fg, #cdd6f4);
+}
+.copy-btn {
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  padding: 0;
+}
+.copy-btn:hover { color: var(--color-primary); }
+</style>
+
+<script>
+let prereqTargetHref = '';
+
+function checkPrereqs(event, platform) {
+  event.preventDefault();
+  prereqTargetHref = '/configure/' + platform;
+  const modal = document.getElementById('prereq-modal');
+  const title = document.getElementById('prereq-modal-title');
+  const body  = document.getElementById('prereq-modal-body');
+  const contBtn = document.getElementById('prereq-continue-btn');
+  title.textContent = 'Checking prerequisites…';
+  body.innerHTML = '<p style="color:var(--color-muted)">Verifying required tools…</p>';
+  contBtn.style.display = 'none';
+  modal.style.display = 'flex';
+
+  fetch('/api/prerequisites/' + platform)
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        // All tools installed – navigate immediately.
+        modal.style.display = 'none';
+        window.location.href = prereqTargetHref;
+        return;
+      }
+      renderPrereqResult(data);
+    })
+    .catch(() => {
+      // If API fails (e.g. network error), just navigate.
+      modal.style.display = 'none';
+      window.location.href = prereqTargetHref;
+    });
+  return false;
+}
+
+function renderPrereqResult(data) {
+  const title = document.getElementById('prereq-modal-title');
+  const body  = document.getElementById('prereq-modal-body');
+  const contBtn = document.getElementById('prereq-continue-btn');
+
+  const missing = data.tools.filter(t => !t.installed);
+  const present = data.tools.filter(t =>  t.installed);
+
+  title.textContent = 'Missing prerequisites for ' + data.platform.toUpperCase();
+
+  let html = '';
+
+  // Show installed tools (brief)
+  if (present.length) {
+    html += '<div style="margin-bottom:0.6rem">';
+    for (const t of present) {
+      html += `<div class="prereq-tool"><span class="tool-status">✅</span>
+        <span class="tool-name">${escHtml(t.name)}</span>
+        <span style="color:var(--color-muted);font-size:0.85rem">found</span></div>`;
+    }
+    html += '</div>';
+  }
+
+  // Show missing tools with install instructions
+  for (const t of missing) {
+    html += `<div class="prereq-tool"><span class="tool-status">❌</span>
+      <span class="tool-name">${escHtml(t.name)}</span>
+      <span style="color:var(--color-warning,#f38ba8);font-size:0.85rem">not found</span>
+      ${t.install_doc ? `<a href="${escHtml(t.install_doc)}" target="_blank" rel="noopener" style="font-size:0.8rem">docs ↗</a>` : ''}
+    </div>`;
+
+    if (t.install_cmds && t.install_cmds.length) {
+      const code = t.install_cmds.join('\n');
+      const btnId = 'copy-' + escHtml(t.name);
+      html += `<div class="prereq-install">
+        <div class="prereq-install-header">
+          <span>Install <strong>${escHtml(t.name)}</strong></span>
+          <button class="copy-btn" id="${btnId}" data-copy-text="${escAttr(code)}">⧉ Copy</button>
+        </div>
+        <pre>${escHtml(code)}</pre>
+      </div>`;
+    }
+  }
+
+  body.innerHTML = html;
+
+  // Attach copy handlers via data attributes (avoids inline onclick / XSS risk).
+  body.querySelectorAll('.copy-btn[data-copy-text]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const text = this.getAttribute('data-copy-text');
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = this.textContent;
+        this.textContent = '✓ Copied';
+        setTimeout(() => { this.textContent = orig; }, 1500);
+      });
+    });
+  });
+
+  contBtn.style.display = '';
+}
+
+function closePrereqModal() {
+  document.getElementById('prereq-modal').style.display = 'none';
+}
+
+function prereqContinue() {
+  closePrereqModal();
+  window.location.href = prereqTargetHref;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function escAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+</script>
 {{end}}

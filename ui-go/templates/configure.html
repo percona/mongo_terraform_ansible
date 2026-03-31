@@ -678,7 +678,7 @@
   <!-- ──────────── Replica Sets ──────────── -->
   <section class="form-section">
     <div class="section-header">
-      <h2>Standalone Replica Sets</h2>
+      <h2>Standalone Replica Sets <span class="field-tip" data-tip="Optional: standalone replica sets separate from the sharded clusters above.">ⓘ</span></h2>
       <button type="button" class="btn btn-outline btn-sm" onclick="addReplset()">+ Add Replica Set</button>
     </div>
     <div id="replsets-container">
@@ -887,7 +887,6 @@
       </div>
       {{end}}
     </div>
-    <p class="hint">Optional: standalone replica sets separate from the sharded clusters above.</p>
   </section>
 
   <!-- ──────────── PMM Server ──────────── -->
@@ -1347,12 +1346,7 @@
   <!-- ──────────── Ansible Variable Overrides (cloud only) ──────────── -->
   {{if ne $p "docker"}}
   <section class="form-section">
-    <h2>Ansible Variable Overrides</h2>
-    <p style="color:var(--color-muted);margin-bottom:1rem">
-      Values entered here are passed to every <code>ansible-playbook</code> invocation via
-      <code>--extra-vars</code>, overriding defaults in <code>group_vars/all.yml</code>.
-      Typical use: passwords, key material, and cloud storage credentials.
-    </p>
+    <h2>Ansible Variable Overrides <span class="field-tip" data-tip="Values entered here are passed to every ansible-playbook invocation via --extra-vars, overriding defaults in group_vars/all.yml. Typical use: passwords, key material, and cloud storage credentials.">ⓘ</span></h2>
     <div id="ansible-vars-container">
       {{range $k, $v := .Config.AnsibleVars}}
       {{if not (or (eq $k "mongo_admin_user") (eq $k "mongo_admin_password") (eq $k "pbm_agent_user") (eq $k "mongodb_pmm_user_pwd") (eq $k "pbmpwd"))}}

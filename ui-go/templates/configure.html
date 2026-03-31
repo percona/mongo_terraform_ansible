@@ -447,13 +447,13 @@
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="cluster_enable_pmm[]" value="1"
                             {{if .Config.EnablePmm}}checked{{end}}
-                            onchange="toggleImageGroup(this,'pmm')">
+                            onchange="toggleImageGroup(this,'pmm'); if (this.checked) ensureDockerPmmServer()">
                 Enable PMM monitoring</label>
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="cluster_enable_pbm[]" value="1"
                             {{if .Config.EnablePbm}}checked{{end}}
-                            onchange="toggleImageGroup(this,'pbm')">
+                            onchange="toggleImageGroup(this,'pbm'); if (this.checked) ensureDockerMinioServer()">
                 Enable PBM backups</label>
             </div>
             <div class="form-group form-group-checkbox">
@@ -732,13 +732,13 @@
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="replset_enable_pmm[]" value="1"
                             {{if .Config.EnablePmm}}checked{{end}}
-                            onchange="toggleImageGroup(this,'pmm')">
+                            onchange="toggleImageGroup(this,'pmm'); if (this.checked) ensureDockerPmmServer()">
                 Enable PMM monitoring</label>
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="replset_enable_pbm[]" value="1"
                             {{if .Config.EnablePbm}}checked{{end}}
-                            onchange="toggleImageGroup(this,'pbm')">
+                            onchange="toggleImageGroup(this,'pbm'); if (this.checked) ensureDockerMinioServer()">
                 Enable PBM backups</label>
             </div>
             <div class="form-group form-group-checkbox">
@@ -1174,8 +1174,8 @@
         <div class="customize-body" style="display:none">
           <div class="form-row">
             <div class="form-group">
-              <label>Minio Image <span class="field-tip" data-tip="Minio Docker image to use (e.g. minio/minio).">ⓘ</span></label>
-              <input type="text" name="minio_image[]" value="{{strDefault .Config.MinioImage "minio/minio"}}" placeholder="minio/minio">
+              <label>Minio Image <span class="field-tip" data-tip="Minio Docker image to use (e.g. minio/minio:latest).">ⓘ</span></label>
+              <input type="text" name="minio_image[]" value="{{strDefault .Config.MinioImage "minio/minio:latest"}}" placeholder="minio/minio:latest">
             </div>
             <div class="form-group">
               <label>API Port <span class="field-tip" data-tip="Host port for the Minio S3 API (default: 9000).">ⓘ</span></label>
@@ -1233,8 +1233,8 @@
         <div class="customize-body" style="display:none">
           <div class="form-row">
             <div class="form-group">
-              <label>LDAP Image <span class="field-tip" data-tip="OpenLDAP Docker image to use (e.g. osixia/openldap:1.5.0).">ⓘ</span></label>
-              <input type="text" name="ldap_image[]" value="{{strDefault .Config.LdapImage "osixia/openldap:1.5.0"}}" placeholder="osixia/openldap:1.5.0">
+              <label>LDAP Image <span class="field-tip" data-tip="OpenLDAP Docker image to use (e.g. osixia/openldap:latest).">ⓘ</span></label>
+              <input type="text" name="ldap_image[]" value="{{strDefault .Config.LdapImage "osixia/openldap:latest"}}" placeholder="osixia/openldap:latest">
             </div>
             <div class="form-group">
               <label>Port <span class="field-tip" data-tip="Host port for the LDAP service (default: 389).">ⓘ</span></label>
@@ -1464,6 +1464,24 @@ function toggleDockerSingleServer(containerId, checkbox, addFn) {
   }
 }
 
+function ensureDockerSingleServerSelected(toggleId, containerId, addFn, credRowId = '') {
+  const checkbox = document.getElementById(toggleId);
+  if (!checkbox) return;
+  checkbox.checked = true;
+  toggleDockerSingleServer(containerId, checkbox, addFn);
+  if (credRowId) toggleCredentialRow(credRowId, true);
+}
+
+function ensureDockerPmmServer() {
+  if (PLATFORM !== 'docker') return;
+  ensureDockerSingleServerSelected('enable-pmm-docker', 'pmm-servers-container', addPmmServer);
+}
+
+function ensureDockerMinioServer() {
+  if (PLATFORM !== 'docker') return;
+  ensureDockerSingleServerSelected('enable-minio-docker', 'minio-servers-container', addMinioServer, 'cred-minio-row');
+}
+
 // Show or hide a credential row inside the Credentials section based on whether
 // the corresponding server type (PMM/Minio/LDAP) is included.
 function toggleCredentialRow(rowId, show) {
@@ -1669,11 +1687,11 @@ function getImageValue(wrapper) {
 
 function buildDockerImageRows(type) {
   if (type !== 'cluster' && type !== 'replset') return '';
-  const psmdbSel = PSMDB_IMAGES.map(t => `<option value="${escHtml(t)}">percona/percona-server-mongodb:${escHtml(t)}</option>`).join('') +
+  const psmdbSel = PSMDB_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/percona-server-mongodb:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
-  const pbmSel   = PBM_IMAGES.map(t => `<option value="${escHtml(t)}">percona/percona-backup-mongodb:${escHtml(t)}</option>`).join('') +
+  const pbmSel   = PBM_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/percona-backup-mongodb:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
-  const pmmcSel  = PMM_CLIENT_IMAGES.map(t => `<option value="${escHtml(t)}">percona/pmm-client:${escHtml(t)}</option>`).join('') +
+  const pmmcSel  = PMM_CLIENT_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/pmm-client:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
   const makeImageGroup = (label, tip, selectName, options, dataGroup) => `
     <div class="form-group"${dataGroup ? ` data-image-group="${dataGroup}" style="display:none"` : ''}><label>${label} <span class="field-tip" data-tip="${tip}">ⓘ</span></label>
@@ -1687,11 +1705,11 @@ function buildDockerImageRows(type) {
   return `
     <div class="form-row">
       <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_enable_pmm[]" value="1"
-          onchange="toggleImageGroup(this,'pmm')"> Enable PMM monitoring</label></div>
+          <label><input type="checkbox" name="${type}_enable_pmm[]" value="1"
+          onchange="toggleImageGroup(this,'pmm'); if (this.checked) ensureDockerPmmServer()"> Enable PMM monitoring</label></div>
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" name="${type}_enable_pbm[]" value="1"
-          onchange="toggleImageGroup(this,'pbm')"> Enable PBM backups</label></div>
+          onchange="toggleImageGroup(this,'pbm'); if (this.checked) ensureDockerMinioServer()"> Enable PBM backups</label></div>
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" name="${type}_bind_to_localhost[]" value="1"> Bind ports to localhost only</label></div>
     </div>
@@ -1971,7 +1989,7 @@ function addPmmServer() {
       <div class="form-row">
         <div class="form-group"><label>PMM Server Image <span class="field-tip" data-tip="Percona PMM Server Docker image tag.">ⓘ</span></label>
           <select name="pmm_server_image[]">
-            ${PMM_SERVER_IMAGES.map(t => `<option value="${escHtml(t)}">percona/pmm-server:${escHtml(t)}</option>`).join('')}
+            ${PMM_SERVER_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/pmm-server:${escHtml(t)}</option>`).join('')}
           </select></div>
         <div class="form-group"><label>PMM Port <span class="field-tip" data-tip="Host port exposed for the PMM Server HTTPS interface (default: 8443).">ⓘ</span></label>
           <input type="number" name="pmm_server_port[]" value="8443"></div>
@@ -2002,7 +2020,7 @@ function addMinioServer() {
     <div class="customize-body" style="display:none">
       <div class="form-row">
         <div class="form-group"><label>Minio Image <span class="field-tip" data-tip="Minio Docker image to use.">ⓘ</span></label>
-          <input type="text" name="minio_image[]" value="minio/minio"></div>
+          <input type="text" name="minio_image[]" value="minio/minio:latest"></div>
         <div class="form-group"><label>API Port <span class="field-tip" data-tip="Host port for the Minio S3 API (default: 9000).">ⓘ</span></label>
           <input type="number" name="minio_port[]" value="9000"></div>
         <div class="form-group"><label>Console Port <span class="field-tip" data-tip="Host port for the Minio web console (default: 9001).">ⓘ</span></label>
@@ -2038,7 +2056,7 @@ function addLdapServer() {
     <div class="customize-body" style="display:none">
       <div class="form-row">
         <div class="form-group"><label>LDAP Image <span class="field-tip" data-tip="OpenLDAP Docker image to use.">ⓘ</span></label>
-          <input type="text" name="ldap_image[]" value="osixia/openldap:1.5.0"></div>
+          <input type="text" name="ldap_image[]" value="osixia/openldap:latest"></div>
         <div class="form-group"><label>Port <span class="field-tip" data-tip="Host port for the LDAP service (default: 389).">ⓘ</span></label>
           <input type="number" name="ldap_port[]" value="389"></div>
       </div>
@@ -2585,7 +2603,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       if (!name) continue;
       config.minio_servers[name] = {
         env_tag: 'test',
-        minio_image:        mImages[i]  || 'minio/minio',
+        minio_image:        mImages[i]  || 'minio/minio:latest',
         minio_port:         parseInt(mPorts[i])  || 9000,
         minio_console_port: parseInt(mCPorts[i]) || 9001,
         bucket_name:        mBuckets[i] || 'mongo-backups',
@@ -2609,7 +2627,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       if (!name) continue;
       config.ldap_servers[name] = {
         env_tag: 'test',
-        ldap_image:          lImages[i]  || 'osixia/openldap:1.5.0',
+        ldap_image:          lImages[i]  || 'osixia/openldap:latest',
         ldap_port:           parseInt(lPorts[i]) || 389,
         ldap_domain:         lDomains[i] || 'example.org',
         ldap_admin_password: credLdapPwd || 'admin',

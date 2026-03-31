@@ -113,19 +113,6 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if platform == "docker" {
-		if len(cfg.PmmServers) == 0 {
-			cfg.PmmServers = map[string]PmmServerConfig{
-				"pmm-server": {EnvTag: "test"},
-			}
-		}
-		if len(cfg.MinioServers) == 0 {
-			cfg.MinioServers = map[string]MinioServerConfig{
-				"minio": {EnvTag: "test", MinioPort: 9000, MinioConsolePort: 9001, MinioAccessKey: "minio", MinioSecretKey: "minioadmin", BucketName: "mongo-backups", BackupRetention: 2},
-			}
-		}
-	}
-
 	// Get current OS user for SSH user field default.
 	osUser := ""
 	if u, err := user.Current(); err == nil {

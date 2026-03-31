@@ -975,3 +975,88 @@ tr:last-child td { border-bottom: none; }
 .firewall-rule-row input {
   min-width: 0;
 }
+
+/* ── Field-tip tooltip ── */
+.field-tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  font-size: 0.7rem;
+  border-radius: 50%;
+  color: var(--color-muted);
+  cursor: help;
+  position: relative;
+  vertical-align: middle;
+  margin-left: 0.2rem;
+  opacity: 0.85;
+}
+.field-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  max-width: 280px;
+  background: var(--color-surface2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+  color: var(--color-text);
+  line-height: 1.4;
+  white-space: normal;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.field-tip:hover::after {
+  opacity: 1;
+}
+
+/* ── Number stepper widget ── */
+.number-stepper {
+  display: flex;
+  align-items: center;
+}
+.stepper-btn {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  background: var(--color-surface2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.stepper-btn:first-child {
+  border-radius: 4px 0 0 4px;
+  border-right: none;
+}
+.stepper-btn:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+}
+.stepper-btn:hover {
+  background: var(--color-border);
+}
+.number-stepper input[type="number"] {
+  text-align: center;
+  min-width: 3rem;
+  border-radius: 0;
+  -webkit-appearance: textfield;
+  appearance: textfield;
+}
+.number-stepper input[type="number"]::-webkit-inner-spin-button,
+.number-stepper input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

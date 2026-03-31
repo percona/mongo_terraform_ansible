@@ -15,25 +15,23 @@
     <h2>General</h2>
     <div class="form-row">
       <div class="form-group">
-        <label for="env_id_field">Name</label>
+        <label for="env_id_field">Name <span class="field-tip" data-tip="Unique identifier for this environment. Leave blank to auto-generate. Also used as the tfvars filename prefix.">ⓘ</span></label>
         <input type="text" id="env_id_field" name="env_id" placeholder="e.g. dev01"
                value="{{.EnvID}}" maxlength="20" pattern="[a-zA-Z0-9_-]+"
                title="Alphanumeric, hyphens and underscores only">
-        <small>Leave blank to auto-generate. Used as tfvars filename prefix.</small>
       </div>
       <div class="form-group">
-        <label for="prefix">Resource Prefix</label>
+        <label for="prefix">Resource Prefix <span class="field-tip" data-tip="Prefix applied to all created resources to avoid naming collisions. Defaults to the environment name.">ⓘ</span></label>
         <input type="text" id="prefix" name="prefix"
                value="{{strDefault .Config.Prefix .EnvID}}"
                placeholder="{{.EnvID}}">
-        <small>{{if eq $p "docker"}}Prefix applied to all Docker containers, volumes and network. Defaults to environment name.{{else}}Prefix applied to all cloud resources to avoid naming collisions. Defaults to environment name.{{end}}</small>
       </div>
     </div>
 
     {{if ne $p "docker"}}
     <div class="form-row">
       <div class="form-group">
-        <label for="mongo_release">MongoDB Major Version</label>
+        <label for="mongo_release">MongoDB Major Version <span class="field-tip" data-tip="Percona repository identifier – selects the major MongoDB release line to install.">ⓘ</span></label>
         <select id="mongo_release" name="mongo_release"
                 onchange="onMongoReleaseChange(this)">
           {{$cur := .Config.MongoRelease}}
@@ -41,10 +39,9 @@
           <option value="{{.}}" {{if eq $cur .}}selected{{end}}>{{.}}</option>
           {{end}}
         </select>
-        <small>Percona repository identifier – selects the major MongoDB release line.</small>
       </div>
       <div class="form-group">
-        <label for="mongo_version">MongoDB Specific Version</label>
+        <label for="mongo_version">MongoDB Specific Version <span class="field-tip" data-tip="Optional: pin to a specific version (e.g., 7.0.12). Leave empty to install the latest available in the selected major release.">ⓘ</span></label>
         <select id="mongo_version" name="mongo_version">
           <option value="">latest (default)</option>
           {{$curVer := .Config.MongoVersion}}
@@ -56,12 +53,11 @@
             {{end}}
           {{end}}
         </select>
-        <small>Optional: pin to a specific version (e.g., 7.0.12). Leave empty to install the latest available in the selected major release.</small>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label for="pbm_version">PBM Version</label>
+        <label for="pbm_version">PBM Version <span class="field-tip" data-tip="Optional: pin to a specific PBM version (e.g., 2.7.0). Leave empty to install the latest.">ⓘ</span></label>
         <select id="pbm_version" name="pbm_version">
           <option value="">latest (default)</option>
           {{$curPbmVer := .Config.PbmVersion}}
@@ -69,7 +65,6 @@
           <option value="{{.}}" {{if eq $curPbmVer .}}selected{{end}}>{{.}}</option>
           {{end}}
         </select>
-        <small>Optional: pin to a specific PBM version (e.g., 2.7.0). Leave empty to install the latest.</small>
       </div>
     </div>
     {{end}}
@@ -96,21 +91,19 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label for="my_ssh_user">Default SSH User</label>
+        <label for="my_ssh_user">Default SSH User <span class="field-tip" data-tip="Primary username Ansible uses to connect to instances (also used to generate ssh_config).">ⓘ</span></label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
                value="{{strDefault .Config.MySSHUser .OSUser}}" placeholder="{{.OSUser}}">
-        <small>Primary username Ansible uses to connect to instances (also used to generate ssh_config).</small>
       </div>
       <div class="form-group">
-        <label for="default_vpc_name">VPC Name</label>
+        <label for="default_vpc_name">VPC Name <span class="field-tip" data-tip="Base name for the VPC (full name = prefix-vpc_name).">ⓘ</span></label>
         <input type="text" id="default_vpc_name" name="default_vpc_name"
                value="{{strDefault .Config.DefaultVpcName "mongo"}}" placeholder="mongo">
-        <small>Base name for the VPC (full name = prefix-vpc_name).</small>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>SSH Public Key for Default User</label>
+        <label>SSH Public Key for Default User <span class="field-tip" data-tip="Public key added to every GCP instance for the default SSH user.">ⓘ</span></label>
         <div class="file-picker-row">
           <span id="ssh-key-filename" class="file-picker-name">{{if .Config.SSHPublicKeyPath}}{{.Config.SSHPublicKeyPath}}{{else}}No file selected{{end}}</span>
           <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('ssh_key_file_input').click()">Browse…</button>
@@ -119,7 +112,6 @@
                onchange="uploadSSHKey(this)">
         <input type="hidden" id="ssh_public_key_path" name="ssh_public_key_path"
                value="{{.Config.SSHPublicKeyPath}}">
-        <small>Public key added to every GCP instance for the default SSH user (<code>gce_ssh_users</code>).</small>
       </div>
       <div class="form-group">
         <label for="subnet_cidr">Subnet CIDR</label>
@@ -185,15 +177,14 @@
         <small><a href="#" onclick="reloadRegions(event)">↻ Refresh from AWS</a></small>
       </div>
       <div class="form-group">
-        <label for="my_ssh_user">Default SSH User</label>
+        <label for="my_ssh_user">Default SSH User <span class="field-tip" data-tip="Primary username Ansible uses to SSH into instances.">ⓘ</span></label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
                value="{{strDefault .Config.MySSHUser "ec2-user"}}" placeholder="{{strDefault .OSUser "ec2-user"}}">
-        <small>Primary username Ansible uses to connect (e.g. ec2-user for CentOS, ubuntu for Ubuntu).</small>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>SSH Public Key File</label>
+        <label>SSH Public Key File <span class="field-tip" data-tip="Public key uploaded to AWS as an EC2 Key Pair and used by Terraform/Ansible to connect.">ⓘ</span></label>
         <div class="file-picker-row">
           <span id="ssh-key-filename" class="file-picker-name">{{if .Config.SSHPublicKeyPath}}{{.Config.SSHPublicKeyPath}}{{else}}No file selected{{end}}</span>
           <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('ssh_key_file_input').click()">Browse…</button>
@@ -202,7 +193,6 @@
                onchange="uploadSSHKey(this)">
         <input type="hidden" id="ssh_public_key_path" name="ssh_public_key_path"
                value="{{.Config.SSHPublicKeyPath}}">
-        <small>Public key uploaded to AWS as an EC2 Key Pair and used by Terraform/Ansible to connect.</small>
       </div>
       <div class="form-group">
         <label for="default_key_pair">Key Pair Name</label>
@@ -215,7 +205,6 @@
         <label for="default_vpc_name">VPC Name</label>
         <input type="text" id="default_vpc_name" name="default_vpc_name"
                value="{{strDefault .Config.DefaultVpcName "mongo"}}" placeholder="mongo">
-        <small>Base name for the VPC (full name = prefix-vpc_name).</small>
       </div>
       <div class="form-group">
         <label for="subnet_cidr">Subnet CIDR</label>
@@ -231,7 +220,7 @@
     <!-- Machine Image -->
     <div class="form-row">
       <div class="form-group form-group-full">
-        <label for="machine_image">Machine Image (AMI)</label>
+        <label for="machine_image">Machine Image (AMI) <span class="field-tip" data-tip="AMI used for all instances. Select from available images or choose Custom… to enter an AMI ID directly.">ⓘ</span></label>
         <div style="display:flex;gap:0.5rem;align-items:center">
           <select id="machine_image" name="machine_image" style="flex:1"
                   onchange="toggleMachineImageCustom(this)">
@@ -245,7 +234,6 @@
                placeholder="ami-0abcdef1234567890"
                style="display:none;margin-top:0.3rem;width:100%"
                oninput="document.getElementById('machine_image').value='__custom__'">
-        <small>AMI used for all instances. Images are fetched from AWS for the selected region and grouped by OS. Select "Custom…" to enter an AMI ID directly.</small>
       </div>
     </div>
     <div class="form-row">
@@ -376,7 +364,7 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label for="os_image">OS Image</label>
+        <label for="os_image">OS Image <span class="field-tip" data-tip="Operating system for all CHAOS instances. Default: Ubuntu 24.04.">ⓘ</span></label>
         <select id="os_image" name="os_image">
           {{$curOs := strDefault .Config.OsImage "Ubuntu 24.04"}}
           <option value="Ubuntu 24.04" {{if eq $curOs "Ubuntu 24.04"}}selected{{end}}>Ubuntu 24.04</option>
@@ -388,13 +376,11 @@
           <option value="Oracle Linux 8" {{if eq $curOs "Oracle Linux 8"}}selected{{end}}>Oracle Linux 8</option>
           <option value="Debian 12" {{if eq $curOs "Debian 12"}}selected{{end}}>Debian 12</option>
         </select>
-        <small>Operating system for all CHAOS instances. Default: Ubuntu 24.04.</small>
       </div>
       <div class="form-group">
-        <label for="delete_after_days">Delete After (days)</label>
+        <label for="delete_after_days">Delete After (days) <span class="field-tip" data-tip="CHAOS will automatically delete instances after this many days (0–30, default 14).">ⓘ</span></label>
         <input type="number" id="delete_after_days" name="delete_after_days"
                value="{{intDefault .Config.DeleteAfterDays 14}}" min="0" max="30">
-        <small>CHAOS will automatically delete instances after this many days (0–30, default 14).</small>
       </div>
     </div>
   </section>
@@ -423,28 +409,48 @@
         <div class="customize-body" style="display:none">
           <div class="form-row">
             <div class="form-group">
-              <label>Env Tag</label>
+              <label>Env Tag <span class="field-tip" data-tip="Tag applied to resources in this cluster (e.g. test, prod).">ⓘ</span></label>
               <input type="text" name="cluster_env_tag[]" value="{{strDefault .Config.EnvTag "test"}}" placeholder="test">
             </div>
             <div class="form-group">
-              <label>Config Servers</label>
-              <input type="number" name="cluster_configsvr_count[]" value="{{intDefault .Config.ConfigsvrCount 3}}" min="1" max="7">
+              <label>Config Servers <span class="field-tip" data-tip="Number of config server replica set members (CSRS). Use an odd number, typically 3.">ⓘ</span></label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button>
+                <input type="number" name="cluster_configsvr_count[]" value="{{intDefault .Config.ConfigsvrCount 3}}" min="1" max="7">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button>
+              </div>
             </div>
             <div class="form-group">
-              <label>Shards</label>
-              <input type="number" name="cluster_shard_count[]" value="{{intDefault .Config.ShardCount 2}}" min="1" max="10">
+              <label>Shards <span class="field-tip" data-tip="Number of shards in this cluster.">ⓘ</span></label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button>
+                <input type="number" name="cluster_shard_count[]" value="{{intDefault .Config.ShardCount 2}}" min="1" max="10">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button>
+              </div>
             </div>
             <div class="form-group">
-              <label>Replicas / Shard</label>
-              <input type="number" name="cluster_shardsvr_replicas[]" value="{{intDefault .Config.ShardsvrReplicas 2}}" min="1" max="7">
+              <label>Replicas / Shard <span class="field-tip" data-tip="Number of data-bearing replica set members per shard.">ⓘ</span></label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button>
+                <input type="number" name="cluster_shardsvr_replicas[]" value="{{intDefault .Config.ShardsvrReplicas 2}}" min="1" max="7">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button>
+              </div>
             </div>
             <div class="form-group">
-              <label>Arbiters / Shard</label>
-              <input type="number" name="cluster_arbiters_per_replset[]" value="{{intPtrDefault .Config.ArbitersPerReplset 1}}" min="0" max="3">
+              <label>Arbiters / Shard <span class="field-tip" data-tip="Number of arbiters per shard replica set. Use 0 for none.">ⓘ</span></label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button>
+                <input type="number" name="cluster_arbiters_per_replset[]" value="{{intPtrDefault .Config.ArbitersPerReplset 1}}" min="0" max="3">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button>
+              </div>
             </div>
             <div class="form-group">
-              <label>Mongos Routers</label>
-              <input type="number" name="cluster_mongos_count[]" value="{{intDefault .Config.MongosCount 2}}" min="1" max="10">
+              <label>Mongos Routers <span class="field-tip" data-tip="Number of mongos query router instances.">ⓘ</span></label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button>
+                <input type="number" name="cluster_mongos_count[]" value="{{intDefault .Config.MongosCount 2}}" min="1" max="10">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button>
+              </div>
             </div>
           </div>
           {{if eq $p "docker"}}
@@ -703,25 +709,32 @@
         <div class="customize-body" style="display:none">
           <div class="form-row">
             <div class="form-group">
-              <label>Env Tag</label>
+              <label>Env Tag <span class="field-tip" data-tip="Tag applied to resources in this cluster (e.g. test, prod).">ⓘ</span></label>
               <input type="text" name="replset_env_tag[]" value="{{strDefault .Config.EnvTag "test"}}">
             </div>
             <div class="form-group">
-              <label>Data Nodes</label>
-              <input type="number" name="replset_data_nodes[]" value="{{intDefault .Config.DataNodesPerReplset 2}}" min="1" max="7">
+              <label>Data Nodes <span class="field-tip" data-tip="Number of data-bearing replica set members.">ⓘ</span></label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button>
+                <input type="number" name="replset_data_nodes[]" value="{{intDefault .Config.DataNodesPerReplset 2}}" min="1" max="7">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button>
+              </div>
             </div>
             <div class="form-group">
-              <label>Arbiters</label>
-              <input type="number" name="replset_arbiters[]" value="{{intPtrDefault .Config.ArbitersPerReplset 1}}" min="0" max="3">
+              <label>Arbiters <span class="field-tip" data-tip="Number of arbiters in this replica set. Use 0 for none.">ⓘ</span></label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button>
+                <input type="number" name="replset_arbiters[]" value="{{intPtrDefault .Config.ArbitersPerReplset 1}}" min="0" max="3">
+                <button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button>
+              </div>
             </div>
             {{if eq $p "docker"}}
             <div class="form-group">
-              <label>Base Port</label>
+              <label>Base Port <span class="field-tip" data-tip="Starting port number for data nodes. Auto-assigned to avoid collisions between replica sets.">ⓘ</span></label>
               <input type="number" name="replset_port[]"
                      value="{{intDefault .Config.ReplsetPort 27017}}"
                      placeholder="27017" min="1024" max="65000"
                      title="Starting port for data nodes. Auto-assigned to avoid collisions.">
-              <small>Auto-assigned; change only if needed.</small>
             </div>
             {{end}}
           </div>
@@ -948,20 +961,19 @@
       <button type="button" class="btn btn-outline btn-sm"
               id="pmm-toggle"
               onclick="togglePmmSettings()"
-              {{if not (boolDefault .Config.EnablePmm true)}}style="display:none"{{end}}
+              {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}
               >{{if $pmmCustomized}}▲ Collapse{{else}}▼ Customize{{end}}</button>
     </div>
     <!-- Deploy PMM checkbox always visible, outside the collapsible body -->
     <div class="form-row" style="margin-bottom:0.5rem">
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" id="enable_pmm" name="enable_pmm"
-                      {{if boolDefault .Config.EnablePmm true}}checked{{end}}>
-          Deploy PMM monitoring server</label>
-        <small>Uncheck to skip the PMM server for this environment.</small>
+                      {{if boolDefault .Config.EnablePmm false}}checked{{end}}>
+          Deploy PMM monitoring server <span class="field-tip" data-tip="Deploy a dedicated PMM monitoring server alongside MongoDB nodes.">ⓘ</span></label>
       </div>
     </div>
     <div id="pmm-cloud-body" {{if not $pmmCustomized}}style="display:none"{{end}}>
-    <div id="pmm-cloud-settings" {{if not (boolDefault .Config.EnablePmm true)}}style="display:none"{{end}}>
+    <div id="pmm-cloud-settings" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
     {{if eq $p "chaos"}}
     <div class="form-row">
       <div class="form-group">
@@ -1055,20 +1067,19 @@
       <button type="button" class="btn btn-outline btn-sm"
               id="minio-details-toggle"
               onclick="toggleMinioDetails(this)"
-              {{if not (boolDefault .Config.EnableMinio true)}}style="display:none"{{end}}
+              {{if not (boolDefault .Config.EnableMinio false)}}style="display:none"{{end}}
               >{{if $minioDetailsConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
     </div>
     <!-- Enable Minio checkbox always visible, outside the collapsible body -->
     <div class="form-row" style="margin-bottom:0.5rem">
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" id="enable_minio" name="enable_minio" value="true"
-                      {{if boolDefault .Config.EnableMinio true}}checked{{end}}>
-          Deploy Minio backup storage VM</label>
-        <small>Uncheck to skip the Minio VM for this environment.</small>
+                      {{if boolDefault .Config.EnableMinio false}}checked{{end}}>
+          Deploy Minio backup storage VM <span class="field-tip" data-tip="Deploy a dedicated Minio S3-compatible storage VM for backups.">ⓘ</span></label>
       </div>
     </div>
     <p class="hint">Optional: deploy a dedicated VM running <a href="https://min.io" target="_blank">Minio</a> for S3-compatible backup storage, provisioned via Ansible.</p>
-    <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio true)}}style="display:none"{{end}}>
+    <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio false)}}style="display:none"{{end}}>
       <div id="minio-details-body" {{if not $minioDetailsConfigured}}style="display:none"{{end}}>
         <span class="subsection-title">VM Details</span>
         <div class="form-row">
@@ -1287,19 +1298,19 @@
     <div class="section-header">
       <h2>Credentials</h2>
       <button type="button" class="btn btn-outline btn-sm" id="credentials-toggle"
-              onclick="toggleCredentials(this)">{{if $credConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+              onclick="toggleCredentials(this)">▼ Customize</button>
     </div>
     <p class="hint">Usernames and passwords passed to Ansible and Terraform. Values here populate <code>group_vars</code> or <code>--extra-vars</code>.</p>
-    <div id="credentials-body" {{if not $credConfigured}}style="display:none"{{end}}>
+    <div id="credentials-body" style="display:none">
       <div class="credentials-list">
         <div class="form-row">
           <div class="form-group">
-            <label for="cred_mongo_admin_user">MongoDB Root User</label>
+            <label for="cred_mongo_admin_user">MongoDB Root User <span class="field-tip" data-tip="MongoDB admin username passed to Ansible as mongo_admin_user.">ⓘ</span></label>
             <input type="text" id="cred_mongo_admin_user" name="cred_mongo_admin_user"
                    value="{{index .Config.AnsibleVars "mongo_admin_user"}}" placeholder="root">
           </div>
           <div class="form-group">
-            <label for="cred_mongo_admin_password">MongoDB Root Password</label>
+            <label for="cred_mongo_admin_password">MongoDB Root Password <span class="field-tip" data-tip="MongoDB admin password passed to Ansible as mongo_admin_password. Leave blank to use the default.">ⓘ</span></label>
             <input type="password" id="cred_mongo_admin_password" name="cred_mongo_admin_password"
                    value="{{index .Config.AnsibleVars "mongo_admin_password"}}" placeholder="percona"
                    autocomplete="new-password">
@@ -1393,6 +1404,15 @@
 </form>
 
 <script>
+function stepNumber(btn, delta) {
+  const input = btn.closest('.number-stepper').querySelector('input[type="number"]');
+  if (!input) return;
+  const min = input.min !== '' ? parseInt(input.min, 10) : -Infinity;
+  const max = input.max !== '' ? parseInt(input.max, 10) : Infinity;
+  const cur = parseInt(input.value, 10);
+  input.value = Math.min(max, Math.max(min, (isNaN(cur) ? 0 : cur) + delta));
+}
+
 const PLATFORM        = {{json .Platform}};
 const PSMDB_IMAGES    = {{json .PSMDBImages}};
 const PBM_IMAGES      = {{json .PBMImages}};
@@ -1903,18 +1923,13 @@ function addCluster() {
     </div>
     <div class="customize-body" style="display:none">
       <div class="form-row">
-        <div class="form-group"><label>Env Tag</label>
+        <div class="form-group"><label>Env Tag <span class="field-tip" data-tip="Tag applied to resources in this cluster (e.g. test, prod).">ⓘ</span></label>
           <input type="text" name="cluster_env_tag[]" value="test"></div>
-        <div class="form-group"><label>Config Servers</label>
-          <input type="number" name="cluster_configsvr_count[]" value="3" min="1" max="7"></div>
-        <div class="form-group"><label>Shards</label>
-          <input type="number" name="cluster_shard_count[]" value="2" min="1" max="10"></div>
-        <div class="form-group"><label>Replicas / Shard</label>
-          <input type="number" name="cluster_shardsvr_replicas[]" value="2" min="1" max="7"></div>
-        <div class="form-group"><label>Arbiters / Shard</label>
-          <input type="number" name="cluster_arbiters_per_replset[]" value="1" min="0" max="3"></div>
-        <div class="form-group"><label>Mongos Routers</label>
-          <input type="number" name="cluster_mongos_count[]" value="2" min="1" max="10"></div>
+        <div class="form-group"><label>Config Servers <span class="field-tip" data-tip="Number of config server replica set members (CSRS). Use an odd number, typically 3.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="cluster_configsvr_count[]" value="3" min="1" max="7"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
+        <div class="form-group"><label>Shards <span class="field-tip" data-tip="Number of shards in this cluster.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="cluster_shard_count[]" value="2" min="1" max="10"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
+        <div class="form-group"><label>Replicas / Shard <span class="field-tip" data-tip="Number of data-bearing replica set members per shard.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="cluster_shardsvr_replicas[]" value="2" min="1" max="7"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
+        <div class="form-group"><label>Arbiters / Shard <span class="field-tip" data-tip="Number of arbiters per shard replica set. Use 0 for none.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="cluster_arbiters_per_replset[]" value="1" min="0" max="3"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
+        <div class="form-group"><label>Mongos Routers <span class="field-tip" data-tip="Number of mongos query router instances.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="cluster_mongos_count[]" value="2" min="1" max="10"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
       </div>
       ${dockerRows}${computeRows}
     </div>`;
@@ -1942,12 +1957,10 @@ function addReplset() {
     </div>
     <div class="customize-body" style="display:none">
       <div class="form-row">
-        <div class="form-group"><label>Env Tag</label>
+        <div class="form-group"><label>Env Tag <span class="field-tip" data-tip="Tag applied to resources in this cluster (e.g. test, prod).">ⓘ</span></label>
           <input type="text" name="replset_env_tag[]" value="test"></div>
-        <div class="form-group"><label>Data Nodes</label>
-          <input type="number" name="replset_data_nodes[]" value="2" min="1" max="7"></div>
-        <div class="form-group"><label>Arbiters</label>
-          <input type="number" name="replset_arbiters[]" value="1" min="0" max="3"></div>
+        <div class="form-group"><label>Data Nodes <span class="field-tip" data-tip="Number of data-bearing replica set members.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="replset_data_nodes[]" value="2" min="1" max="7"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
+        <div class="form-group"><label>Arbiters <span class="field-tip" data-tip="Number of arbiters in this replica set. Use 0 for none.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="replset_arbiters[]" value="1" min="0" max="3"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
         ${PLATFORM === 'docker' ? `<div class="form-group"><label>Base Port</label>
           <input type="number" name="replset_port[]" value="${randomPort}" placeholder="auto" min="1024" max="65000"
                  title="Auto-assigned random port to avoid collisions with other replica sets.">

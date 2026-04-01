@@ -11,48 +11,48 @@ type ChaosFirewallRule struct {
 
 // ClusterConfig maps to the Terraform "clusters" map object type.
 type ClusterConfig struct {
-	EnvTag            string `json:"env_tag"`
-	ConfigsvrCount    int    `json:"configsvr_count"`
-	ShardCount        int    `json:"shard_count"`
-	ShardsvrReplicas  int    `json:"shardsvr_replicas"`
-	ArbitersPerReplset *int  `json:"arbiters_per_replset,omitempty"`
-	MongosCount       int    `json:"mongos_count"`
+	EnvTag             string `json:"env_tag"`
+	ConfigsvrCount     int    `json:"configsvr_count"`
+	ShardCount         int    `json:"shard_count"`
+	ShardsvrReplicas   int    `json:"shardsvr_replicas"`
+	ArbitersPerReplset *int   `json:"arbiters_per_replset,omitempty"`
+	MongosCount        int    `json:"mongos_count"`
 	// Docker-only
-	PsmdbImage     string `json:"psmdb_image,omitempty"`
-	PbmImage       string `json:"pbm_image,omitempty"`
-	PmmClientImage string `json:"pmm_client_image,omitempty"`
-	EnablePmm      bool   `json:"enable_pmm,omitempty"`
-	EnablePbm      bool   `json:"enable_pbm,omitempty"`
-	BindToLocalhost bool  `json:"bind_to_localhost,omitempty"`
+	PsmdbImage      string `json:"psmdb_image,omitempty"`
+	PbmImage        string `json:"pbm_image,omitempty"`
+	PmmClientImage  string `json:"pmm_client_image,omitempty"`
+	EnablePmm       bool   `json:"enable_pmm,omitempty"`
+	EnablePbm       bool   `json:"enable_pbm,omitempty"`
+	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
 }
 
 // ReplsetConfig maps to the Terraform "replsets" map object type.
 type ReplsetConfig struct {
-	EnvTag             string `json:"env_tag"`
-	DataNodesPerReplset int   `json:"data_nodes_per_replset"`
-	ArbitersPerReplset  *int  `json:"arbiters_per_replset,omitempty"`
+	EnvTag              string `json:"env_tag"`
+	DataNodesPerReplset int    `json:"data_nodes_per_replset"`
+	ArbitersPerReplset  *int   `json:"arbiters_per_replset,omitempty"`
 	// Docker-only port assignment: starting port for data nodes and arbiters.
 	// Auto-assigned on save to avoid collisions between multiple replica sets.
-	ReplsetPort    int    `json:"replset_port,omitempty"`
-	ArbiterPort    int    `json:"arbiter_port,omitempty"`
+	ReplsetPort int `json:"replset_port,omitempty"`
+	ArbiterPort int `json:"arbiter_port,omitempty"`
 	// Docker-only
-	PsmdbImage     string `json:"psmdb_image,omitempty"`
-	PbmImage       string `json:"pbm_image,omitempty"`
-	PmmClientImage string `json:"pmm_client_image,omitempty"`
-	EnablePmm      bool   `json:"enable_pmm,omitempty"`
-	EnablePbm      bool   `json:"enable_pbm,omitempty"`
-	BindToLocalhost bool  `json:"bind_to_localhost,omitempty"`
+	PsmdbImage      string `json:"psmdb_image,omitempty"`
+	PbmImage        string `json:"pbm_image,omitempty"`
+	PmmClientImage  string `json:"pmm_client_image,omitempty"`
+	EnablePmm       bool   `json:"enable_pmm,omitempty"`
+	EnablePbm       bool   `json:"enable_pbm,omitempty"`
+	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
 }
 
 // PmmServerConfig maps to the Docker pmm_servers map object type.
 type PmmServerConfig struct {
-	EnvTag         string `json:"env_tag"`
-	PmmServerImage string `json:"pmm_server_image,omitempty"`
-	PmmPort        int    `json:"pmm_port,omitempty"`
-	PmmExternalPort int   `json:"pmm_external_port,omitempty"`
-	PmmServerUser  string `json:"pmm_server_user,omitempty"`
-	PmmServerPwd   string `json:"pmm_server_pwd,omitempty"`
-	BindToLocalhost bool  `json:"bind_to_localhost,omitempty"`
+	EnvTag          string `json:"env_tag"`
+	PmmServerImage  string `json:"pmm_server_image,omitempty"`
+	PmmPort         int    `json:"pmm_port,omitempty"`
+	PmmExternalPort int    `json:"pmm_external_port,omitempty"`
+	PmmServerUser   string `json:"pmm_server_user,omitempty"`
+	PmmServerPwd    string `json:"pmm_server_pwd,omitempty"`
+	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
 }
 
 // MinioServerConfig maps to the Docker minio_servers map object type.
@@ -82,10 +82,10 @@ type LdapServerConfig struct {
 type Config struct {
 	// General
 	Prefix       string `json:"prefix"`
-	MongoRelease  string `json:"mongo_release,omitempty"`
-	MongoVersion  string `json:"mongo_version,omitempty"`
-	PbmRelease    string `json:"pbm_release,omitempty"`
-	PbmVersion    string `json:"pbm_version,omitempty"`
+	MongoRelease string `json:"mongo_release,omitempty"`
+	MongoVersion string `json:"mongo_version,omitempty"`
+	PbmRelease   string `json:"pbm_release,omitempty"`
+	PbmVersion   string `json:"pbm_version,omitempty"`
 
 	// Cloud credentials / settings
 	ProjectID        string `json:"project_id,omitempty"`
@@ -107,12 +107,12 @@ type Config struct {
 	SSHUsers map[string]string `json:"ssh_users,omitempty"`
 
 	// PMM (cloud)
-	EnablePmm    *bool  `json:"enable_pmm,omitempty"`
-	PmmType      string `json:"pmm_type,omitempty"`
-	PmmVolumeSize int   `json:"pmm_volume_size,omitempty"`
-	PmmPort      int    `json:"pmm_port,omitempty"`
-	PmmImage     string `json:"pmm_image,omitempty"`
-	PmmDiskType  string `json:"pmm_disk_type,omitempty"`
+	EnablePmm     *bool  `json:"enable_pmm,omitempty"`
+	PmmType       string `json:"pmm_type,omitempty"`
+	PmmVolumeSize int    `json:"pmm_volume_size,omitempty"`
+	PmmPort       int    `json:"pmm_port,omitempty"`
+	PmmImage      string `json:"pmm_image,omitempty"`
+	PmmDiskType   string `json:"pmm_disk_type,omitempty"`
 
 	// Backup
 	DefaultBucketName string `json:"default_bucket_name,omitempty"`
@@ -122,50 +122,50 @@ type Config struct {
 	MachineImage string `json:"machine_image,omitempty"`
 
 	// CHAOS-specific settings
-	ChaosApiToken    string `json:"chaos_api_token,omitempty"`
-	EnableMinio      *bool  `json:"enable_minio,omitempty"`
-	DeleteAfterDays  int    `json:"delete_after_days,omitempty"`
-	OsImage          string `json:"os_image,omitempty"`
+	ChaosApiToken   string `json:"chaos_api_token,omitempty"`
+	EnableMinio     *bool  `json:"enable_minio,omitempty"`
+	DeleteAfterDays int    `json:"delete_after_days,omitempty"`
+	OsImage         string `json:"os_image,omitempty"`
 	// FirewallRules replaces the old SourceRanges single string for CHAOS.
 	// Each entry is an independent ingress rule with its own CIDR and port.
-	FirewallRules    []ChaosFirewallRule `json:"firewall_rules,omitempty"`
-	ShardsvrCpuCores int    `json:"shardsvr_cpu_cores,omitempty"`
-	ShardsvrMemoryGb int    `json:"shardsvr_memory_gb,omitempty"`
-	ConfigsvrCpuCores int   `json:"configsvr_cpu_cores,omitempty"`
-	ConfigsvrMemoryGb int   `json:"configsvr_memory_gb,omitempty"`
-	MongosCpuCores   int    `json:"mongos_cpu_cores,omitempty"`
-	MongosMemoryGb   int    `json:"mongos_memory_gb,omitempty"`
-	ArbiterCpuCores  int    `json:"arbiter_cpu_cores,omitempty"`
-	ArbiterMemoryGb  int    `json:"arbiter_memory_gb,omitempty"`
-	ReplsetSvrCpuCores int  `json:"replsetsvr_cpu_cores,omitempty"`
-	ReplsetSvrMemoryGb int  `json:"replsetsvr_memory_gb,omitempty"`
-	MinioCpuCores    int    `json:"minio_cpu_cores,omitempty"`
-	MinioMemoryGb    int    `json:"minio_memory_gb,omitempty"`
-	MinioVolumeSize  int    `json:"minio_volume_size,omitempty"`
-	MinioPort        int    `json:"minio_port,omitempty"`
-	MinioConsolePort int    `json:"minio_console_port,omitempty"`
-	MinioRootUser    string `json:"minio_root_user,omitempty"`
-	MinioRootPassword string `json:"minio_root_password,omitempty"`
-	PmmCpuCores      int    `json:"pmm_cpu_cores,omitempty"`
-	PmmMemoryGb      int    `json:"pmm_memory_gb,omitempty"`
+	FirewallRules      []ChaosFirewallRule `json:"firewall_rules,omitempty"`
+	ShardsvrCpuCores   int                 `json:"shardsvr_cpu_cores,omitempty"`
+	ShardsvrMemoryGb   int                 `json:"shardsvr_memory_gb,omitempty"`
+	ConfigsvrCpuCores  int                 `json:"configsvr_cpu_cores,omitempty"`
+	ConfigsvrMemoryGb  int                 `json:"configsvr_memory_gb,omitempty"`
+	MongosCpuCores     int                 `json:"mongos_cpu_cores,omitempty"`
+	MongosMemoryGb     int                 `json:"mongos_memory_gb,omitempty"`
+	ArbiterCpuCores    int                 `json:"arbiter_cpu_cores,omitempty"`
+	ArbiterMemoryGb    int                 `json:"arbiter_memory_gb,omitempty"`
+	ReplsetSvrCpuCores int                 `json:"replsetsvr_cpu_cores,omitempty"`
+	ReplsetSvrMemoryGb int                 `json:"replsetsvr_memory_gb,omitempty"`
+	MinioCpuCores      int                 `json:"minio_cpu_cores,omitempty"`
+	MinioMemoryGb      int                 `json:"minio_memory_gb,omitempty"`
+	MinioVolumeSize    int                 `json:"minio_volume_size,omitempty"`
+	MinioPort          int                 `json:"minio_port,omitempty"`
+	MinioConsolePort   int                 `json:"minio_console_port,omitempty"`
+	MinioRootUser      string              `json:"minio_root_user,omitempty"`
+	MinioRootPassword  string              `json:"minio_root_password,omitempty"`
+	PmmCpuCores        int                 `json:"pmm_cpu_cores,omitempty"`
+	PmmMemoryGb        int                 `json:"pmm_memory_gb,omitempty"`
 
 	// Per-component instance types and disk sizes (cloud platforms only).
-	ShardsvrType        string `json:"shardsvr_type,omitempty"`
-	ShardsvrVolumeSize  int    `json:"shardsvr_volume_size,omitempty"`
-	ConfigsvrType       string `json:"configsvr_type,omitempty"`
-	ConfigsvrVolumeSize int    `json:"configsvr_volume_size,omitempty"`
-	MongosType          string `json:"mongos_type,omitempty"`
-	ArbiterType         string `json:"arbiter_type,omitempty"`
-	ReplsetSvrType      string `json:"replsetsvr_type,omitempty"`
-	ReplsetSvrVolumeSize int   `json:"replsetsvr_volume_size,omitempty"`
-	DataDiskType        string `json:"data_disk_type,omitempty"`
+	ShardsvrType         string `json:"shardsvr_type,omitempty"`
+	ShardsvrVolumeSize   int    `json:"shardsvr_volume_size,omitempty"`
+	ConfigsvrType        string `json:"configsvr_type,omitempty"`
+	ConfigsvrVolumeSize  int    `json:"configsvr_volume_size,omitempty"`
+	MongosType           string `json:"mongos_type,omitempty"`
+	ArbiterType          string `json:"arbiter_type,omitempty"`
+	ReplsetSvrType       string `json:"replsetsvr_type,omitempty"`
+	ReplsetSvrVolumeSize int    `json:"replsetsvr_volume_size,omitempty"`
+	DataDiskType         string `json:"data_disk_type,omitempty"`
 
 	// Docker networking
 	NetworkName string `json:"network_name,omitempty"`
 
 	// Topology
-	Clusters map[string]ClusterConfig  `json:"clusters"`
-	Replsets map[string]ReplsetConfig  `json:"replsets"`
+	Clusters map[string]ClusterConfig `json:"clusters"`
+	Replsets map[string]ReplsetConfig `json:"replsets"`
 
 	// Docker-specific service servers
 	PmmServers   map[string]PmmServerConfig   `json:"pmm_servers,omitempty"`
@@ -186,17 +186,17 @@ type HistoryEvent struct {
 
 // Environment is one record in the state file.
 type Environment struct {
-	Platform  string            `json:"platform"`
-	Config    Config            `json:"config"`
-	Status    string            `json:"status"`
-	CreatedAt string            `json:"created_at"`
-	UpdatedAt string            `json:"updated_at"`
-	LastJobID string            `json:"last_job_id,omitempty"`
-	History   []HistoryEvent    `json:"history,omitempty"`
+	Platform  string         `json:"platform"`
+	Config    Config         `json:"config"`
+	Status    string         `json:"status"`
+	CreatedAt string         `json:"created_at"`
+	UpdatedAt string         `json:"updated_at"`
+	LastJobID string         `json:"last_job_id,omitempty"`
+	History   []HistoryEvent `json:"history,omitempty"`
 	// HostIPs caches the last-known IP address for each Docker container so
 	// that the UI can continue to display addresses even when containers are
 	// stopped (and docker inspect returns an empty IP).
-	HostIPs   map[string]string `json:"host_ips,omitempty"`
+	HostIPs map[string]string `json:"host_ips,omitempty"`
 }
 
 // ─── Named pair helpers (sorted map iteration for templates) ──────────────────
@@ -304,15 +304,15 @@ type NewEnvData struct {
 }
 
 type ConfigureData struct {
-	Platform        string
-	EnvID           string
-	Config          Config
-	OSUser          string // current OS user, used as SSH user default
-	PSMDBVersions   []string
+	Platform      string
+	EnvID         string
+	Config        Config
+	OSUser        string // current OS user, used as SSH user default
+	PSMDBVersions []string
 	// PBMVersions holds a flat sorted-descending list of all available PBM package
 	// versions (e.g. ["2.7.0", "2.6.1", "2.6.0", ...]). PBM uses a single Percona
 	// repository so there is no per-major-version grouping.
-	PBMVersions     []string
+	PBMVersions []string
 	// PSMDBMinorVersions maps major release key → sorted minor versions
 	// e.g. {"psmdb-70": ["7.0.12", "7.0.11", ...]}
 	PSMDBMinorVersions map[string][]string
@@ -338,11 +338,11 @@ type EnvironmentData struct {
 
 // HostInfo describes a single running host or container.
 type HostInfo struct {
-	Name        string `json:"name"`
-	IP          string `json:"ip"`
-	ConnectCmd  string `json:"connect_cmd"`
-	Role        string `json:"role"`
-	Group       string `json:"group"`
+	Name       string `json:"name"`
+	IP         string `json:"ip"`
+	ConnectCmd string `json:"connect_cmd"`
+	Role       string `json:"role"`
+	Group      string `json:"group"`
 }
 
 // ServiceURL describes an HTTP service (PMM, Minio console) with an openable URL.
@@ -370,15 +370,15 @@ type CloudImage struct {
 
 // PrereqTool describes a single prerequisite tool and whether it is installed.
 type PrereqTool struct {
-Name        string `json:"name"`
-Installed   bool   `json:"installed"`
-InstallDoc  string `json:"install_doc"`   // short URL / reference
-InstallCmds []string `json:"install_cmds"` // copy-pasteable shell commands
+	Name        string   `json:"name"`
+	Installed   bool     `json:"installed"`
+	InstallDoc  string   `json:"install_doc"`  // short URL / reference
+	InstallCmds []string `json:"install_cmds"` // copy-pasteable shell commands
 }
 
 // PrereqResult is the JSON response from GET /api/prerequisites/{platform}.
 type PrereqResult struct {
-Platform string       `json:"platform"`
-OK       bool         `json:"ok"` // true when all tools are installed
-Tools    []PrereqTool `json:"tools"`
+	Platform string       `json:"platform"`
+	OK       bool         `json:"ok"` // true when all tools are installed
+	Tools    []PrereqTool `json:"tools"`
 }

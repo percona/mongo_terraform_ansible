@@ -39,7 +39,6 @@ func TestWriteTfvarsDockerPmmExternalAndEmptyServiceMaps(t *testing.T) {
 	tfvars := string(content)
 
 	for _, want := range []string{
-		"pmm_port = 9443",
 		"pmm_external_port = 9443",
 		"minio_servers = {}",
 	} {

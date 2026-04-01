@@ -418,7 +418,10 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 	if env.Platform == "docker" {
 		host := "localhost"
 		for svcName, svc := range env.Config.PmmServers {
-			port := svc.PmmPort
+			port := svc.PmmExternalPort
+			if port == 0 {
+				port = svc.PmmPort
+			}
 			if port == 0 {
 				port = 8443
 			}
@@ -535,5 +538,4 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 	}
 	return urls
 }
-
 

@@ -928,7 +928,7 @@
             </div>
             <div class="form-group">
               <label>PMM Port <span class="field-tip" data-tip="Host port exposed for the PMM Server HTTPS interface (default: 8443).">ⓘ</span></label>
-              <input type="number" name="pmm_server_port[]" value="{{intDefault .Config.PmmPort 8443}}" placeholder="8443">
+              <input type="number" name="pmm_server_port[]" value="{{if .Config.PmmExternalPort}}{{.Config.PmmExternalPort}}{{else}}{{intDefault .Config.PmmPort 8443}}{{end}}" placeholder="8443">
             </div>
           </div>
           <div class="form-row">
@@ -2352,6 +2352,49 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(() => {}); // silently ignore if offline
 });
 
+function dockerReplsetPorts(replset) {
+  const basePort = Number(replset.replset_port) || 0;
+  if (basePort <= 0) return [];
+  const dataNodes = Math.max(0, Number(replset.data_nodes_per_replset) || 2);
+  const arbiters = Math.max(0, Number(replset.arbiters_per_replset) || 0);
+  const ports = [];
+  for (let i = 0; i < dataNodes; i++) ports.push(basePort + i);
+  for (let i = 0; i < arbiters; i++) ports.push(basePort + dataNodes + i);
+  return ports;
+}
+
+function validateDockerPortConflicts(config) {
+  const portUsers = new Map();
+  const addPortUser = (port, label) => {
+    const numPort = Number(port) || 0;
+    if (numPort <= 0) return;
+    if (!portUsers.has(numPort)) portUsers.set(numPort, []);
+    portUsers.get(numPort).push(label);
+  };
+
+  Object.entries(config.replsets || {}).forEach(([name, replset]) => {
+    dockerReplsetPorts(replset).forEach(port => addPortUser(port, `replica set ${name}`));
+  });
+  Object.entries(config.pmm_servers || {}).forEach(([name, server]) => {
+    addPortUser(server.pmm_external_port || server.pmm_port, `PMM server ${name}`);
+  });
+  Object.entries(config.minio_servers || {}).forEach(([name, server]) => {
+    addPortUser(server.minio_port, `MinIO API ${name}`);
+    addPortUser(server.minio_console_port, `MinIO console ${name}`);
+  });
+  Object.entries(config.ldap_servers || {}).forEach(([name, server]) => {
+    addPortUser(server.ldap_port, `LDAP server ${name}`);
+  });
+
+  const conflicts = [...portUsers.entries()]
+    .filter(([, users]) => users.length > 1)
+    .sort((a, b) => a[0] - b[0])
+    .map(([port, users]) => `port ${port} is used by ${users.sort().join(' and ')}`);
+
+  if (conflicts.length === 0) return null;
+  return `Docker port conflicts detected: ${conflicts.join('; ')}`;
+}
+
 document.getElementById('config-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target;
@@ -2582,6 +2625,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
         env_tag: 'test',
         pmm_server_image: `percona/pmm-server:${pImages[i] || 'latest'}`,
         pmm_port: parseInt(pPorts[i]) || 8443,
+        pmm_external_port: parseInt(pPorts[i]) || 8443,
         // pmm_server_user/pwd not set here – they use the Terraform defaults
         bind_to_localhost: pBind.some((v,idx) => idx === i && v === '1'),
       };
@@ -2638,6 +2682,14 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 
   const envId = fd.get('env_id') || document.querySelector('[data-env-id]').dataset.envId || '';
   const payload = { env_id: envId || undefined, platform: PLATFORM, config };
+
+  if (PLATFORM === 'docker') {
+    const portError = validateDockerPortConflicts(config);
+    if (portError) {
+      alert(portError);
+      return;
+    }
+  }
 
   const submitBtn = form.querySelector('[type=submit]');
   submitBtn.disabled = true;

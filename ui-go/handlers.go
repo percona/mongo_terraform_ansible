@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+const dockerReplsetPortStep = 20
+
 // cleanupDockerModuleArtifacts removes files and directories that Terraform
 // created inside the docker module directories (modules/mongodb_replset and
 // modules/mongodb_cluster) for the given environment. These include:
@@ -277,6 +279,10 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	// that don't yet have a port assigned, to prevent collisions.
 	if payload.Platform == "docker" {
 		assignDockerReplsetPorts(&payload.Config)
+		if err := validateDockerPortConflicts(payload.Config); err != nil {
+			jsonError(w, 400, err.Error())
+			return
+		}
 	}
 
 	state, _ := loadState()
@@ -944,29 +950,155 @@ func jobLogHandler(w http.ResponseWriter, r *http.Request) {
 // arbiters). Existing non-zero port assignments are preserved; only zero-valued
 // ones receive a new assignment starting above the current maximum.
 func assignDockerReplsetPorts(cfg *Config) {
-if len(cfg.Replsets) == 0 {
-return
+	if len(cfg.Replsets) == 0 {
+		return
+	}
+
+	occupied := make(map[int]struct{})
+	maxPort := 27017 - dockerReplsetPortStep
+
+	for _, nr := range sortedReplsets(cfg.Replsets) {
+		rs := nr.Config
+		if rs.ReplsetPort > maxPort {
+			maxPort = rs.ReplsetPort
+		}
+		if rs.ReplsetPort == 0 {
+			continue
+		}
+		for _, port := range dockerReplsetPorts(rs) {
+			occupied[port] = struct{}{}
+		}
+	}
+
+	for _, svc := range cfg.PmmServers {
+		port := svc.PmmExternalPort
+		if port == 0 {
+			port = svc.PmmPort
+		}
+		if port != 0 {
+			occupied[port] = struct{}{}
+		}
+	}
+	for _, svc := range cfg.MinioServers {
+		if svc.MinioPort != 0 {
+			occupied[svc.MinioPort] = struct{}{}
+		}
+		if svc.MinioConsolePort != 0 {
+			occupied[svc.MinioConsolePort] = struct{}{}
+		}
+	}
+	for _, svc := range cfg.LdapServers {
+		if svc.LdapPort != 0 {
+			occupied[svc.LdapPort] = struct{}{}
+		}
+	}
+
+	nextPort := maxPort + dockerReplsetPortStep
+	if nextPort < 27017 {
+		nextPort = 27017
+	}
+	for _, nr := range sortedReplsets(cfg.Replsets) {
+		rs := cfg.Replsets[nr.Name]
+		if rs.ReplsetPort == 0 {
+			for !dockerReplsetPortRangeFree(nextPort, rs, occupied) {
+				nextPort += dockerReplsetPortStep
+			}
+			rs.ReplsetPort = nextPort
+			rs.ArbiterPort = nextPort
+			for _, port := range dockerReplsetPorts(rs) {
+				occupied[port] = struct{}{}
+			}
+			nextPort += dockerReplsetPortStep
+		} else if rs.ArbiterPort == 0 {
+			rs.ArbiterPort = rs.ReplsetPort
+		}
+		cfg.Replsets[nr.Name] = rs
+	}
 }
-// Find the highest already-assigned port.
-maxPort := 27017 - 20
-for _, nr := range sortedReplsets(cfg.Replsets) {
-if nr.Config.ReplsetPort > maxPort {
-maxPort = nr.Config.ReplsetPort
+
+func dockerReplsetPortRangeFree(startPort int, rs ReplsetConfig, occupied map[int]struct{}) bool {
+	candidate := rs
+	candidate.ReplsetPort = startPort
+	candidate.ArbiterPort = startPort
+	for _, port := range dockerReplsetPorts(candidate) {
+		if _, exists := occupied[port]; exists {
+			return false
+		}
+	}
+	return true
 }
+
+func dockerReplsetPorts(rs ReplsetConfig) []int {
+	if rs.ReplsetPort == 0 {
+		return nil
+	}
+
+	arbiterBase := rs.ArbiterPort
+	if arbiterBase == 0 {
+		arbiterBase = rs.ReplsetPort
+	}
+	dataNodes := rs.DataNodesPerReplset
+	if dataNodes <= 0 {
+		dataNodes = 2
+	}
+	arbiters := 0
+	if rs.ArbitersPerReplset != nil {
+		arbiters = *rs.ArbitersPerReplset
+	}
+	if arbiters < 0 {
+		arbiters = 0
+	}
+
+	ports := make([]int, 0, dataNodes+arbiters)
+	for i := 0; i < dataNodes; i++ {
+		ports = append(ports, rs.ReplsetPort+i)
+	}
+	for i := 0; i < arbiters; i++ {
+		ports = append(ports, arbiterBase+dataNodes+i)
+	}
+	return ports
 }
-nextPort := maxPort + 20
-if nextPort < 27017 {
-nextPort = 27017
-}
-for _, nr := range sortedReplsets(cfg.Replsets) {
-rs := cfg.Replsets[nr.Name]
-if rs.ReplsetPort == 0 {
-rs.ReplsetPort = nextPort
-rs.ArbiterPort = nextPort
-nextPort += 20
-} else if rs.ArbiterPort == 0 {
-rs.ArbiterPort = rs.ReplsetPort
-}
-cfg.Replsets[nr.Name] = rs
-}
+
+func validateDockerPortConflicts(cfg Config) error {
+	portUsers := make(map[int][]string)
+	addPortUser := func(port int, user string) {
+		if port <= 0 {
+			return
+		}
+		portUsers[port] = append(portUsers[port], user)
+	}
+
+	for _, nr := range sortedReplsets(cfg.Replsets) {
+		for _, port := range dockerReplsetPorts(nr.Config) {
+			addPortUser(port, fmt.Sprintf("replica set %s", nr.Name))
+		}
+	}
+	for _, ns := range sortedPmmServers(cfg.PmmServers) {
+		port := ns.Config.PmmExternalPort
+		if port == 0 {
+			port = ns.Config.PmmPort
+		}
+		addPortUser(port, fmt.Sprintf("PMM server %s", ns.Name))
+	}
+	for _, ns := range sortedMinioServers(cfg.MinioServers) {
+		addPortUser(ns.Config.MinioPort, fmt.Sprintf("MinIO API %s", ns.Name))
+		addPortUser(ns.Config.MinioConsolePort, fmt.Sprintf("MinIO console %s", ns.Name))
+	}
+	for _, ns := range sortedLdapServers(cfg.LdapServers) {
+		addPortUser(ns.Config.LdapPort, fmt.Sprintf("LDAP server %s", ns.Name))
+	}
+
+	var conflicts []string
+	for port, users := range portUsers {
+		if len(users) < 2 {
+			continue
+		}
+		sort.Strings(users)
+		conflicts = append(conflicts, fmt.Sprintf("port %d is used by %s", port, strings.Join(users, " and ")))
+	}
+	if len(conflicts) == 0 {
+		return nil
+	}
+	sort.Strings(conflicts)
+	return fmt.Errorf("docker port conflicts detected: %s", strings.Join(conflicts, "; "))
 }

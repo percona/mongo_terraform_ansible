@@ -363,8 +363,10 @@ func writeTfvars(envID, platform string, cfg Config) error {
 
 	// ── Docker service blocks ─────────────────────────────────────────────────
 	if platform == "docker" {
-		if len(cfg.PmmServers) > 0 {
-			write("")
+		write("")
+		if len(cfg.PmmServers) == 0 {
+			write("pmm_servers = {}")
+		} else {
 			write("pmm_servers = {")
 			for _, ns := range sortedPmmServers(cfg.PmmServers) {
 				n, s := ns.Name, ns.Config
@@ -375,6 +377,13 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				}
 				if s.PmmPort != 0 {
 					write(fmt.Sprintf("    pmm_port = %s", formatHCLVal(s.PmmPort)))
+				}
+				externalPort := s.PmmExternalPort
+				if externalPort == 0 {
+					externalPort = s.PmmPort
+				}
+				if externalPort != 0 {
+					write(fmt.Sprintf("    pmm_external_port = %s", formatHCLVal(externalPort)))
 				}
 				if s.PmmServerUser != "" {
 					write(fmt.Sprintf("    pmm_server_user = %s", formatHCLVal(s.PmmServerUser)))
@@ -388,8 +397,10 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			write("}")
 		}
 
-		if len(cfg.MinioServers) > 0 {
-			write("")
+		write("")
+		if len(cfg.MinioServers) == 0 {
+			write("minio_servers = {}")
+		} else {
 			write("minio_servers = {")
 			for _, ns := range sortedMinioServers(cfg.MinioServers) {
 				n, s := ns.Name, ns.Config

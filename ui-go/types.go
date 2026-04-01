@@ -49,6 +49,7 @@ type PmmServerConfig struct {
 	EnvTag         string `json:"env_tag"`
 	PmmServerImage string `json:"pmm_server_image,omitempty"`
 	PmmPort        int    `json:"pmm_port,omitempty"`
+	PmmExternalPort int   `json:"pmm_external_port,omitempty"`
 	PmmServerUser  string `json:"pmm_server_user,omitempty"`
 	PmmServerPwd   string `json:"pmm_server_pwd,omitempty"`
 	BindToLocalhost bool  `json:"bind_to_localhost,omitempty"`

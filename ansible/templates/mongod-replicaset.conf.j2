@@ -1,3 +1,5 @@
+{% set replset_group = hostvars[inventory_hostname].group_names | difference(['replsets', 'shards']) | first %}
+{% set replset_name = replset_group if cluster is defined and cluster == replset_group else (cluster ~ '-' ~ replset_group if cluster is defined else replset_group) %}
 # mongod.conf - Shard Server
 
 # for documentation of all options, see:
@@ -37,7 +39,7 @@ processManagement:
 # network interfaces
 net:
   port: {{ mongo_port }}
-  bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
+  bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}
 {% if use_tls %}
   tls:
     mode: requireTLS
@@ -78,4 +80,4 @@ setParameter:
 {% endif %}
 
 replication:
-  replSetName: {% if cluster is defined %}{{ cluster }}-{% endif %}{{ hostvars[inventory_hostname].group_names | difference(['replsets', 'shards']) | first }}
+  replSetName: {{ replset_name }}

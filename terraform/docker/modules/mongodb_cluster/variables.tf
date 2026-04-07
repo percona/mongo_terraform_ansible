@@ -202,6 +202,12 @@ variable "enable_pbm" {
   default     = false
 }
 
+variable "enable_ycsb" {
+  type        = bool
+  description = "Create the YCSB collection and sharding metadata"
+  default     = false
+}
+
 variable "pbm_container_suffix" {
   default     = "pbm-agent"
   description = "Suffix for PBM agent containers. Will be appended to each cluster component"

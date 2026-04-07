@@ -131,6 +131,27 @@ variable "enable_pmm" {
   description = "Deploy a PMM monitoring server. Set to false to skip PMM entirely."
 }
 
+variable "enable_ycsb" {
+  type        = bool
+  default     = false
+  description = "Deploy a dedicated YCSB workload generator instance."
+}
+
+variable "default_ycsb_host" {
+  description = "Base YCSB host name"
+  type        = string
+  default     = "ycsb"
+}
+
+locals {
+  ycsb_host = "${var.prefix}-${var.default_ycsb_host}"
+}
+
+variable "ycsb_type" {
+  default     = "e2-medium"
+  description = "GCP machine type of the YCSB server"
+}
+
 #############
 # Backup
 #############

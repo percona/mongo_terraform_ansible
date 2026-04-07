@@ -31,7 +31,7 @@
         allow_downgrade: true
       when:
         - pmm_client_version is defined and pmm_client_version != ''
-        - ansible_os_family == 'Debian'
+        - ansible_facts['os_family'] == 'Debian'
 
     - name: Install pmm-client packages from repository (specific version – RedHat)
       yum:
@@ -39,7 +39,7 @@
         state: present
       when:
         - pmm_client_version is defined and pmm_client_version != ''
-        - ansible_os_family == 'RedHat'
+        - ansible_facts['os_family'] == 'RedHat'
 
     - name: Disable Percona telemetry
       systemd:
@@ -61,7 +61,7 @@
         state: started
 
     - name: Point pmm-agent to the PMM server
-      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].ansible_fqdn }}:{{ pmm_external_port }} --server-insecure-tls --force
+      shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].ansible_facts['fqdn'] }}:{{ pmm_external_port }} --server-insecure-tls --force
       register: pmm_config_result
       retries: 3
       delay: 1
@@ -74,7 +74,7 @@
         {% if cluster is defined %}
         --cluster {{ cluster }}
         {% endif %}
-        --host={{ ansible_fqdn }}
+        --host={{ ansible_facts['fqdn'] }}
         --port={{ mongo_port }}
         --tls-skip-verify
         {% if arbiter is not defined %}

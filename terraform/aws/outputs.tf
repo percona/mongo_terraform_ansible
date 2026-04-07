@@ -23,16 +23,18 @@ resource "local_file" "AnsibleInventoryCluster" {
     number_of_shards     = each.value.number_of_shards
     arbiters_per_replset = range(each.value.arbiters_per_replset)
 
-    my_ssh_user  = var.my_ssh_user
-    hostname_pmm = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
-    ip_pmm       = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
-    bucket       = aws_s3_bucket.mongo_backups.bucket
-    region       = aws_s3_bucket.mongo_backups.region
-    endpointUrl  = local.storage_endpoint
-    cluster      = each.value.cluster
-    env_tag      = each.value.env_tag
-    enable_audit = each.value.enable_audit
-    audit_filter = each.value.audit_filter
+    my_ssh_user   = var.my_ssh_user
+    hostname_pmm  = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
+    ip_pmm        = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
+    hostname_ycsb = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
+    ip_ycsb       = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
+    bucket        = aws_s3_bucket.mongo_backups.bucket
+    region        = aws_s3_bucket.mongo_backups.region
+    endpointUrl   = local.storage_endpoint
+    cluster       = each.value.cluster
+    env_tag       = each.value.env_tag
+    enable_audit  = each.value.enable_audit
+    audit_filter  = each.value.audit_filter
 
     access_key         = aws_iam_access_key.mongo_backup_access_key.id
     secret_access_key  = aws_iam_access_key.mongo_backup_access_key.secret
@@ -68,6 +70,8 @@ resource "local_file" "SSHConfigCluster" {
     ssh_gateway_name     = var.ssh_gateway_name
     hostname_pmm         = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
     public_ip_pmm        = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
+    hostname_ycsb        = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
+    public_ip_ycsb       = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
     pmm_port             = var.pmm_port
   })
 
@@ -92,11 +96,13 @@ resource "local_file" "AnsibleInventoryRS" {
     enable_audit = each.value.enable_audit
     audit_filter = each.value.audit_filter
 
-    region       = aws_s3_bucket.mongo_backups.region
-    hostname_pmm = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
-    ip_pmm       = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
-    bucket       = aws_s3_bucket.mongo_backups.bucket
-    endpointUrl  = local.storage_endpoint
+    region        = aws_s3_bucket.mongo_backups.region
+    hostname_pmm  = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
+    ip_pmm        = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
+    hostname_ycsb = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
+    ip_ycsb       = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
+    bucket        = aws_s3_bucket.mongo_backups.bucket
+    endpointUrl   = local.storage_endpoint
 
     access_key         = aws_iam_access_key.mongo_backup_access_key.id
     secret_access_key  = aws_iam_access_key.mongo_backup_access_key.secret
@@ -126,6 +132,8 @@ resource "local_file" "SSHConfigRS" {
     ssh_gateway_name       = var.ssh_gateway_name
     hostname_pmm           = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
     public_ip_pmm          = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
+    hostname_ycsb          = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
+    public_ip_ycsb         = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
     pmm_port               = var.pmm_port
   })
 

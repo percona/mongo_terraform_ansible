@@ -7,7 +7,7 @@ resource "null_resource" "initiate_cfg_replset" {
     command = <<-EOT
       docker exec -i ${docker_container.cfg[0].name} mongosh --port ${var.configsvr_port} --eval '
         rs.initiate({
-          "_id": "${lookup({for label in docker_container.cfg[0].labels : label.label => label.value}, "replsetName", null)}",
+          "_id": "${lookup({ for label in docker_container.cfg[0].labels : label.label => label.value }, "replsetName", null)}",
           "configsvr": true,
           "members": [
             { "_id": 0, "host": "${docker_container.cfg[0].name}:${var.configsvr_port}", "priority": 2 },
@@ -134,7 +134,7 @@ resource "null_resource" "initiate_shard_replset" {
     command = <<-EOT
       docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh --port ${var.shardsvr_port} --eval '
         rs.initiate({
-          _id: "${lookup({for label in docker_container.shard[each.key * var.shardsvr_replicas].labels : label.label => label.value}, "replsetName", null)}",
+          _id: "${lookup({ for label in docker_container.shard[each.key * var.shardsvr_replicas].labels : label.label => label.value }, "replsetName", null)}",
           members: [
             { _id: 0, host: "${docker_container.shard[each.key * var.shardsvr_replicas].name}:${var.shardsvr_port}", priority: 2 },
             ${join(",", [for i in range(1, var.shardsvr_replicas) : "{ _id: ${i}, host: \"${docker_container.shard[each.key * var.shardsvr_replicas + i].name}:${var.shardsvr_port}\" }"])}
@@ -150,7 +150,7 @@ resource "null_resource" "initiate_shard_replset" {
 resource "null_resource" "check_primary" {
   depends_on = [null_resource.initiate_shard_replset]
 
-  for_each = toset([for i in range(var.shard_count) : tostring(i)]) 
+  for_each = toset([for i in range(var.shard_count) : tostring(i)])
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -183,7 +183,7 @@ resource "null_resource" "check_primary" {
 resource "null_resource" "create_users" {
   depends_on = [null_resource.check_primary]
 
-  for_each = toset([for i in range(var.shard_count) : tostring(i)]) 
+  for_each = toset([for i in range(var.shard_count) : tostring(i)])
 
   # Create the root user on the shards
   provisioner "local-exec" {
@@ -198,7 +198,7 @@ resource "null_resource" "create_users" {
         });
       '        
     EOT
-  }  
+  }
 
   # Create user for PBM on the shards
   provisioner "local-exec" {
@@ -224,7 +224,7 @@ resource "null_resource" "create_users" {
         });
       '
     EOT
-  }  
+  }
 
   # Create user for PMM on the shards
   provisioner "local-exec" {
@@ -261,7 +261,7 @@ resource "null_resource" "create_users" {
         });
       '
     EOT
-  }  
+  }
 }
 
 # Set the global write concern to 1. This is needed when using arbiters
@@ -296,7 +296,7 @@ resource "null_resource" "add_shards" {
   provisioner "local-exec" {
     command = <<-EOT
       docker exec -i ${docker_container.mongos[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval '
-        ${join(";", [for i in range(var.shard_count) : "sh.addShard(\"${lookup({for label in docker_container.shard[i * var.shardsvr_replicas].labels : label.label => label.value}, "replsetName", null)}/${docker_container.shard[i * var.shardsvr_replicas].name}:${var.shardsvr_port}\")"])};
+        ${join(";", [for i in range(var.shard_count) : "sh.addShard(\"${lookup({ for label in docker_container.shard[i * var.shardsvr_replicas].labels : label.label => label.value }, "replsetName", null)}/${docker_container.shard[i * var.shardsvr_replicas].name}:${var.shardsvr_port}\")"])};
       '
     EOT
   }
@@ -323,6 +323,7 @@ resource "null_resource" "configure_pbm" {
 
 # Create the YCSB collection
 resource "null_resource" "create_ycsb_collection" {
+  count = var.enable_ycsb ? 1 : 0
   depends_on = [
     null_resource.add_shards
   ]

@@ -32,6 +32,8 @@ resource "local_file" "AnsibleInventoryCluster" {
 
       hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
       ip_pmm             = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
+      hostname_ycsb      = var.enable_ycsb ? local.ycsb_host : ""
+      ip_ycsb            = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
       bucket             = google_storage_bucket.mongo-backups.name
       access_key         = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key  = google_storage_hmac_key.mongo-backup-service-account.secret
@@ -67,6 +69,8 @@ resource "local_file" "SSHConfigCluster" {
     ssh_gateway_name     = var.ssh_gateway_name
     hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm        = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
+    hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
+    public_ip_ycsb       = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
     pmm_port             = var.pmm_port
   })
 
@@ -93,6 +97,8 @@ resource "local_file" "AnsibleInventoryRS" {
       audit_filter       = each.value.audit_filter
       hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
       ip_pmm             = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
+      hostname_ycsb      = var.enable_ycsb ? local.ycsb_host : ""
+      ip_ycsb            = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
       bucket             = google_storage_bucket.mongo-backups.name
       access_key         = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key  = google_storage_hmac_key.mongo-backup-service-account.secret
@@ -123,6 +129,8 @@ resource "local_file" "SSHConfigRS" {
     port_to_forward        = var.port_to_forward
     hostname_pmm           = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm          = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
+    hostname_ycsb          = var.enable_ycsb ? local.ycsb_host : ""
+    public_ip_ycsb         = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
     pmm_port               = var.pmm_port
   })
 

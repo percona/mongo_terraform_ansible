@@ -251,6 +251,12 @@ variable "ldap_servers" {
 # YCSB
 #############
 
+variable "enable_ycsb" {
+  type        = bool
+  default     = false
+  description = "Deploy a dedicated YCSB container for workload generation."
+}
+
 variable "ycsb_container_suffix" {
   default     = "ycsb"
   description = "Suffix for YCSB container"

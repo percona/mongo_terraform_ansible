@@ -3,9 +3,10 @@
   hosts: pmm
   tags: pmm_server
   become: true
-  vars_files:
-    - "vars/{{ ansible_os_family }}.yml"  
   tasks:
+    - name: Load OS-specific variables
+      include_vars: "vars/{{ ansible_facts['os_family'] }}.yml"
+
     - name: Create PMM directory
       file:
         path: "{{ pmm_dir }}"
@@ -38,7 +39,7 @@
 
         - name: Add Docker repository
           apt_repository:
-            repo: "deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            repo: "deb https://download.docker.com/linux/ubuntu {{ ansible_facts['distribution_release'] }} stable"
             filename: docker
             state: present
 
@@ -49,7 +50,7 @@
             update_cache: true
           with_items: "{{ docker_packages }}"
 
-      when: ansible_os_family == 'Debian'
+      when: ansible_facts['os_family'] == 'Debian'
 
     - name: Install Docker on RedHat
       block:
@@ -68,7 +69,7 @@
             state: present
           with_items: "{{ docker_packages }}"
 
-      when: ansible_os_family == 'RedHat'
+      when: ansible_facts['os_family'] == 'RedHat'
 
     - name: Start Docker
       service:

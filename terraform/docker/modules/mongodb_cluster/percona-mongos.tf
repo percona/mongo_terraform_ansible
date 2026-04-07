@@ -59,7 +59,7 @@ resource "docker_container" "mongos" {
   }
   wait       = true
   restart    = "no"
-  depends_on = [docker_container.init_keyfile]
+  depends_on = [null_resource.init_keyfile]
 
   lifecycle {
     replace_triggered_by = [docker_image.psmdb]

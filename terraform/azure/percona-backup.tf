@@ -5,7 +5,7 @@ resource "azurerm_storage_account" "mongo_backups" {
   location                 = var.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  depends_on = [time_sleep.wait_after_rg]
+  depends_on               = [time_sleep.wait_after_rg]
 }
 
 # Management Policy to delete old backups
@@ -17,8 +17,8 @@ resource "azurerm_storage_management_policy" "mongo_backup_policy" {
     enabled = true
 
     filters {
-      blob_types    = ["blockBlob"]
-      prefix_match  = [""] # Empty string means all blobs
+      blob_types   = ["blockBlob"]
+      prefix_match = [""] # Empty string means all blobs
     }
 
     actions {
@@ -38,7 +38,7 @@ resource "azurerm_storage_container" "mongo_backups_container" {
 
 # Output Storage Access Keys
 output "access_key" {
-  value = azurerm_storage_account.mongo_backups.primary_access_key
+  value     = azurerm_storage_account.mongo_backups.primary_access_key
   sensitive = true
 }
 

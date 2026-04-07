@@ -5,7 +5,7 @@ resource "azurerm_public_ip" "pmm" {
   location            = var.location
   resource_group_name = local.resource_group_name
   allocation_method   = "Dynamic"
-  depends_on = [time_sleep.wait_after_rg]
+  depends_on          = [time_sleep.wait_after_rg]
 }
 
 # PMM NIC
@@ -65,8 +65,8 @@ resource "azurerm_network_security_group" "pmm_nsg" {
     destination_port_range     = "22"
     source_address_prefix      = var.source_ranges
     destination_address_prefix = "*"
-  }    
- 
+  }
+
   depends_on = [time_sleep.wait_after_rg]
 }
 

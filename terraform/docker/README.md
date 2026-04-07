@@ -228,7 +228,7 @@ docker exec -it cl01-pbm-cli pbm status
 
 ## Simulating a workload with YCSB
 
-- To be able to run test workloads, a YCSB container is created as part of the stack. 
+- When `enable_ycsb = true`, a dedicated YCSB container is created as part of the stack.
 - For sharded clusters, a sharded `ycsb.usertable` collection is automatically created with `{_id: hashed }` as the shard key. 
 
 - To run a YCSB workload:
@@ -236,7 +236,7 @@ docker exec -it cl01-pbm-cli pbm status
   1. Start a shell session inside the YCSB container
 
      ```
-     docker exec -it ycsb /bin/bash
+     docker exec -it <prefix>-ycsb /bin/bash
      ```
 
   2. Perform initial data load against one of the mongos containers, using the correct credentials and port number.

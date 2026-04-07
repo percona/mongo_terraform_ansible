@@ -7,7 +7,7 @@ resource "null_resource" "initiate_replset" {
     command = <<-EOT
       docker exec -i ${docker_container.rs[0].name} mongosh --port ${docker_container.rs[0].ports[0].internal} --eval '
         rs.initiate({
-          "_id": "${lookup({for label in docker_container.rs[0].labels : label.label => label.value}, "replsetName", null)}",
+          "_id": "${lookup({ for label in docker_container.rs[0].labels : label.label => label.value }, "replsetName", null)}",
           "members": [
             { "_id": 0, "host": "${docker_container.rs[0].name}:${var.replset_port}", "priority": 2 },
             ${join(",", [for i in range(1, var.data_nodes_per_replset) : "{ _id: ${i}, host: \"${docker_container.rs[i].name}:${docker_container.rs[i].ports[0].internal}\" }"])}

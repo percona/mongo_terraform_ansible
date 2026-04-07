@@ -130,12 +130,12 @@ var funcMap = template.FuncMap{
 	// Docker environment (checked across all replsets, then clusters).
 	"dockerPbmImage": func(cfg Config) string {
 		for _, rc := range cfg.Replsets {
-			if rc.PbmImage != "" {
+			if rc.EnablePbm && rc.PbmImage != "" {
 				return rc.PbmImage
 			}
 		}
 		for _, cc := range cfg.Clusters {
-			if cc.PbmImage != "" {
+			if cc.EnablePbm && cc.PbmImage != "" {
 				return cc.PbmImage
 			}
 		}
@@ -343,9 +343,12 @@ func main() {
 	mux.HandleFunc("GET /api/environment/{env_id}/tfvars", getTfvarsHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/inventory", getInventoryHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/hosts", getHostsHandler)
+	mux.HandleFunc("GET /api/environment/{env_id}/chaos/reachability", chaosReachabilityHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/history", envHistoryHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/status", envStatusHandler)
 	mux.HandleFunc("POST /api/environment/{env_id}/action", environmentActionHandler)
+	mux.HandleFunc("POST /api/environment/{env_id}/ycsb", environmentYCSBActionHandler)
+	mux.HandleFunc("GET /api/environment/{env_id}/ycsb/status", environmentYCSBStatusHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/status", jobStatusHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/stream", jobStreamHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/log", jobLogHandler)

@@ -1,15 +1,15 @@
 resource "aws_instance" "mongos" {
-  count               = var.mongos_count
-  ami                 = lookup(var.image, var.region)
-  instance_type       = var.mongos_type
-  subnet_id           = data.aws_subnet.details[count.index % var.subnet_count].id
-  key_name            = var.my_key_pair
+  count         = var.mongos_count
+  ami           = lookup(var.image, var.region)
+  instance_type = var.mongos_type
+  subnet_id     = data.aws_subnet.details[count.index % var.subnet_count].id
+  key_name      = var.my_key_pair
   tags = {
-    Name = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
-    ansible-group  = "mongos"
+    Name          = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+    ansible-group = "mongos"
   }
   vpc_security_group_ids = [aws_security_group.mongodb_mongos_sg.id]
-  user_data = <<-EOT
+  user_data              = <<-EOT
     #!/bin/bash
     # Set the hostname
     hostnamectl set-hostname "${var.cluster_name}-${var.mongos_tag}0${count.index}"
@@ -25,7 +25,7 @@ resource "aws_security_group" "mongodb_mongos_sg" {
   vpc_id      = data.aws_vpc.vpc-network.id
 
   tags = {
-    Name        = "${var.cluster_name}-${var.mongos_tag}-sg"
+    Name = "${var.cluster_name}-${var.mongos_tag}-sg"
   }
 }
 
@@ -36,7 +36,7 @@ resource "aws_security_group_rule" "mongodb-mongos-ingress" {
   to_port           = each.value
   protocol          = "tcp"
   security_group_id = aws_security_group.mongodb_mongos_sg.id
-  cidr_blocks       = [var.subnet_cidr]  
+  cidr_blocks       = [var.subnet_cidr]
 }
 
 # Ingress rule (SSH from anywhere)
@@ -53,11 +53,11 @@ resource "aws_security_group_rule" "mongodb-mongos-ssh_inbound" {
 # Ingress rule for ICMP (ping) traffic
 resource "aws_security_group_rule" "mongodb-mongos-icmp-ingress" {
   type              = "ingress"
-  from_port         = 8     # Type 8 for echo request (ping)
+  from_port         = 8 # Type 8 for echo request (ping)
   to_port           = 0
   protocol          = "icmp"
   security_group_id = aws_security_group.mongodb_mongos_sg.id
-  cidr_blocks       = ["0.0.0.0/0"]  # Allow from any IP address; adjust based on your needs
+  cidr_blocks       = ["0.0.0.0/0"] # Allow from any IP address; adjust based on your needs
 }
 
 # Egress rule allowing all traffic
@@ -67,8 +67,8 @@ resource "aws_security_group_rule" "mongodb-mongos-egress" {
   to_port           = 0
   protocol          = "-1"
   security_group_id = aws_security_group.mongodb_mongos_sg.id
-  cidr_blocks       = ["0.0.0.0/0"]  # Allow all outbound IPv4 traffic
-  ipv6_cidr_blocks  = ["::/0"]       # Allow all outbound IPv6 traffic
+  cidr_blocks       = ["0.0.0.0/0"] # Allow all outbound IPv4 traffic
+  ipv6_cidr_blocks  = ["::/0"]      # Allow all outbound IPv6 traffic
 }
 
 resource "aws_route53_record" "mongos_dns_record" {

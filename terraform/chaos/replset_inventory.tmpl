@@ -14,19 +14,30 @@ ${hostname_arbiters[arb_index]} ansible_host=${ip_arbiters[arb_index]} arbiter=T
 ${hostname_pmm} ansible_host=${ip_pmm}
 
 %{ endif ~}
+%{ if hostname_ycsb != "" ~}
+[ycsb]
+${hostname_ycsb} ansible_host=${ip_ycsb}
+
+%{ endif ~}
+%{ if minio_ip != "" ~}
 [minio]
 ${minio_hostname} ansible_host=${minio_ip}
 
+%{ endif ~}
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
 bucket=${bucket}
 region=us-east-1
+%{ if minio_ip != "" ~}
 endpointUrl=http://${minio_ip}:${minio_port}
+%{ endif ~}
 cluster=${rs_name}
 env_tag=${env_tag}
+%{ if minio_ip != "" ~}
 access_key_id=${access_key}
 secret_access_key=${secret_access_key}
 storage_provider=minio
+%{ endif ~}
 %{ if mongo_release != "" ~}
 mongo_release=${mongo_release}
 %{ endif ~}

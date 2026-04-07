@@ -113,6 +113,73 @@ func TestWriteTfvarsCloudPmmClientVersion(t *testing.T) {
 	}
 }
 
+func TestWriteTfvarsIncludesEnableYcsbForAllPlatforms(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	platforms := []string{"docker", "gcp", "aws", "azure", "chaos"}
+	for _, platform := range platforms {
+		cfg := Config{
+			EnableYcsb: true,
+			Clusters: map[string]ClusterConfig{
+				"cl01": {EnvTag: "test"},
+			},
+		}
+
+		if err := writeTfvars("enable-ycsb-"+platform, platform, cfg); err != nil {
+			t.Fatalf("platform %s: writeTfvars failed: %v", platform, err)
+		}
+
+		content, err := os.ReadFile(tfvarsPath("enable-ycsb-"+platform, platform))
+		if err != nil {
+			t.Fatalf("platform %s: read tfvars failed: %v", platform, err)
+		}
+		if !strings.Contains(string(content), "enable_ycsb = true") {
+			t.Fatalf("platform %s: expected enable_ycsb in tfvars:\n%s", platform, string(content))
+		}
+	}
+}
+
+func TestWriteTfvarsDockerYcsbSettings(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{
+		EnableYcsb:          true,
+		YcsbImage:           "custom/ycsb:dev",
+		YcsbOsImage:         "rockylinux:9",
+		YcsbContainerSuffix: "bench",
+		Clusters: map[string]ClusterConfig{
+			"cl01": {EnvTag: "test"},
+		},
+	}
+
+	if err := writeTfvars("docker-ycsb-settings", "docker", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tfvarsPath("docker-ycsb-settings", "docker"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	tfvars := string(content)
+
+	for _, want := range []string{
+		"enable_ycsb = true",
+		`ycsb_image = "custom/ycsb:dev"`,
+		`ycsb_os_image = "rockylinux:9"`,
+		`ycsb_container_suffix = "bench"`,
+	} {
+		if !strings.Contains(tfvars, want) {
+			t.Fatalf("expected %q in tfvars:\n%s", want, tfvars)
+		}
+	}
+}
+
 func TestAssignDockerReplsetPortsAvoidsServicePorts(t *testing.T) {
 	cfg := &Config{
 		Replsets: map[string]ReplsetConfig{

@@ -17,7 +17,7 @@ resource "chaos_instance" "minio" {
       - mkdir -p /data/minio
   CLOUDINIT
 
-  firewall_rules = concat(
+  firewall_rules = toset(concat(
     var.firewall_rules,
     length(var.firewall_rules) == 0 && var.source_ranges != "" ? [
       {
@@ -35,19 +35,19 @@ resource "chaos_instance" "minio" {
     ] : [],
     [
       {
-        source   = "10.30.50.0/24"
+        source   = "10.30.0.0/16"
         port     = tostring(var.minio_port)
         protocol = "tcp"
         comment  = "Allow Minio API access from subnet"
       },
       {
-        source   = "10.30.50.0/24"
+        source   = "10.30.0.0/16"
         port     = tostring(var.minio_console_port)
         protocol = "tcp"
         comment  = "Allow Minio console access from subnet"
       },
     ]
-  )
+  ))
 }
 
 output "minio_access_key" {

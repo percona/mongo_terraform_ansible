@@ -133,7 +133,7 @@
     <table>
       <thead>
         <tr><th>Name</th><th>Env</th><th>Cfg Svrs</th><th>Shards</th>
-            <th>Replicas/Shard</th><th>Arbiters/Shard</th><th>Mongos</th></tr>
+            <th>Replicas/Shard</th><th>Arbiters/Shard</th><th>Mongos</th>{{if .YcsbEnabled}}<th>Load Generation</th>{{end}}<th>Connect</th></tr>
       </thead>
       <tbody>
         {{range .SortedClusters}}
@@ -145,6 +145,18 @@
           <td>{{intDefault .Config.ShardsvrReplicas 2}}</td>
           <td>{{intPtrDefault .Config.ArbitersPerReplset 1}}</td>
           <td>{{intDefault .Config.MongosCount 2}}</td>
+          {{if $.YcsbEnabled}}
+          <td>
+            <div class="action-buttons ycsb-actions" data-ycsb-kind="cluster" data-ycsb-target="{{.Name}}" style="gap:.35rem; flex-wrap:wrap">
+              <button class="btn btn-outline btn-xs ycsb-load-btn" onclick="runYcsbAction('cluster', {{json .Name}}, 'load')" title="{{if $.YcsbAvailable}}Perform the initial YCSB data load for this cluster{{else}}Provision or start the environment before using YCSB{{end}}" {{if not $.YcsbAvailable}}disabled{{end}}>Load Data</button>
+              <button class="btn btn-outline btn-xs ycsb-start-btn" onclick="runYcsbAction('cluster', {{json .Name}}, 'start')" title="{{if $.YcsbAvailable}}Start YCSB workload generation for this cluster{{else}}Provision or start the environment before using YCSB{{end}}" {{if not $.YcsbAvailable}}disabled{{end}}>Start Load</button>
+              <button class="btn btn-outline btn-xs ycsb-stop-btn" onclick="runYcsbAction('cluster', {{json .Name}}, 'stop')" title="Stop the running YCSB workload for this cluster" disabled>Stop Load</button>
+            </div>
+          </td>
+          {{end}}
+          <td>
+            <button class="btn btn-outline btn-xs mongo-conn-btn" data-mongo-kind="cluster" data-mongo-name="{{.Name}}" onclick="openConnectionStringModalFromButton(this)" disabled title="Connection string not available yet">Connect</button>
+          </td>
         </tr>
         {{end}}
       </tbody>
@@ -156,7 +168,7 @@
   <h3>Standalone Replica Sets</h3>
   <div class="table-wrapper">
     <table>
-      <thead><tr><th>Name</th><th>Env</th><th>Data Nodes</th><th>Arbiters</th></tr></thead>
+      <thead><tr><th>Name</th><th>Env</th><th>Data Nodes</th><th>Arbiters</th>{{if .YcsbEnabled}}<th>Load Generation</th>{{end}}<th>Connect</th></tr></thead>
       <tbody>
         {{range .SortedReplsets}}
         <tr>
@@ -164,17 +176,24 @@
           <td>{{strDefault .Config.EnvTag "test"}}</td>
           <td>{{intDefault .Config.DataNodesPerReplset 2}}</td>
           <td>{{intPtrDefault .Config.ArbitersPerReplset 1}}</td>
+          {{if $.YcsbEnabled}}
+          <td>
+            <div class="action-buttons ycsb-actions" data-ycsb-kind="replset" data-ycsb-target="{{.Name}}" style="gap:.35rem; flex-wrap:wrap">
+              <button class="btn btn-outline btn-xs ycsb-load-btn" onclick="runYcsbAction('replset', {{json .Name}}, 'load')" title="{{if $.YcsbAvailable}}Perform the initial YCSB data load for this replica set{{else}}Provision or start the environment before using YCSB{{end}}" {{if not $.YcsbAvailable}}disabled{{end}}>Load Data</button>
+              <button class="btn btn-outline btn-xs ycsb-start-btn" onclick="runYcsbAction('replset', {{json .Name}}, 'start')" title="{{if $.YcsbAvailable}}Start YCSB workload generation for this replica set{{else}}Provision or start the environment before using YCSB{{end}}" {{if not $.YcsbAvailable}}disabled{{end}}>Start Load</button>
+              <button class="btn btn-outline btn-xs ycsb-stop-btn" onclick="runYcsbAction('replset', {{json .Name}}, 'stop')" title="Stop the running YCSB workload for this replica set" disabled>Stop Load</button>
+            </div>
+          </td>
+          {{end}}
+          <td>
+            <button class="btn btn-outline btn-xs mongo-conn-btn" data-mongo-kind="replset" data-mongo-name="{{.Name}}" onclick="openConnectionStringModalFromButton(this)" disabled title="Connection string not available yet">Connect</button>
+          </td>
         </tr>
         {{end}}
       </tbody>
     </table>
   </div>
   {{end}}
-
-  <div id="mongo-connections-summary" style="display:none">
-    <h3>MongoDB Connection Strings</h3>
-    <div id="mongo-connections-content"></div>
-  </div>
 </div>
 
 <!-- Hosts & Connections (loaded dynamically) -->
@@ -195,7 +214,19 @@
       <h2>📋 Last Job Output</h2>
       <span id="logs-job-status" class="badge"></span>
     </div>
-    <pre class="tfvars-pre" id="logs-content">Loading…</pre>
+    <div class="terminal-wrapper modal-terminal-wrapper" id="logs-terminal-wrapper">
+      <div class="terminal" id="logs-terminal"></div>
+      <div class="terminal-sidebar">
+        <button class="terminal-nav-btn" onclick="logsTermNavTop()" title="Jump to top">⏫</button>
+        <button class="terminal-nav-btn" onclick="logsTermNavUp()" title="Scroll up">▲</button>
+        <input type="range" id="logs-terminal-slider" class="terminal-slider"
+               min="0" max="100" value="0" step="1"
+               title="Drag to navigate"
+               oninput="logsTermSliderInput(this.value)">
+        <button class="terminal-nav-btn" onclick="logsTermNavDown()" title="Scroll down">▼</button>
+        <button class="terminal-nav-btn" onclick="logsTermNavBottom()" title="Jump to bottom">⏬</button>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeLogsModal()">Close</button>
     </div>
@@ -289,11 +320,30 @@
   </div>
 </div>
 
+<!-- Connection string modal -->
+<div class="modal-backdrop" id="connection-string-modal" style="display:none" onclick="closeConnectionStringModal(event)">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2 id="connection-string-modal-title">Connect</h2>
+    </div>
+    <div class="connect-command-panel">
+      <div class="copy-cmd-row copy-cmd-row-wrap">
+        <code class="copy-cmd-text copy-cmd-text-wrap" id="connection-string-text">Loading…</code>
+        <button class="btn btn-outline btn-xs copy-btn" id="connection-string-copy" title="Copy to clipboard">Copy to clipboard</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeConnectionStringModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const ENV_ID   = {{json .EnvID}};
 const PLATFORM = {{json .Env.Platform}};
 let activeEventSource = null;
 let currentJobId = null;
+const CHAOS_GUARDED_ACTIONS = new Set(['deploy', 'stop', 'restart', 'destroy']);
 
 function confirmDestroy() { document.getElementById('destroy-modal').style.display = 'flex'; }
 function closeDestroyModal() { document.getElementById('destroy-modal').style.display = 'none'; }
@@ -407,23 +457,22 @@ function closeInventoryModal(evt) {
 
 async function showLastLogs() {
   const modal   = document.getElementById('logs-modal');
-  const pre     = document.getElementById('logs-content');
   const badge   = document.getElementById('logs-job-status');
-  pre.textContent = 'Loading…';
+  renderLogsTerminal('Loading…');
   badge.textContent = '';
   badge.className = 'badge';
   modal.style.display = 'flex';
   try {
     const jobId = {{if .Env.LastJobID}}{{json .Env.LastJobID}}{{else}}null{{end}};
-    if (!jobId) { pre.textContent = 'No previous job found.'; return; }
+    if (!jobId) { renderLogsTerminal('No previous job found.'); return; }
     const data = await apiFetch(`/api/job/${jobId}/log`);
-    pre.textContent = data.log || '(empty)';
+    renderLogsTerminal(data.log || '(empty)');
     if (data.status) {
       badge.textContent = data.status;
       badge.className = 'badge ' + getStatusBadgeClass(data.status);
     }
   } catch (err) {
-    pre.textContent = 'Error: ' + err.message;
+    renderLogsTerminal('Error: ' + err.message);
   }
 }
 
@@ -533,10 +582,73 @@ function termNavDown() {
   termUpdateSlider();
 }
 
+function clearLogsTerminal() {
+  const term = document.getElementById('logs-terminal');
+  if (term) term.innerHTML = '';
+}
+
+function renderLogsTerminal(text) {
+  const term = document.getElementById('logs-terminal');
+  if (!term) return;
+  clearLogsTerminal();
+  const line = document.createElement('div');
+  line.className = 'terminal-line';
+  line.textContent = text;
+  term.appendChild(line);
+  term.scrollTop = 0;
+  logsTermUpdateSlider();
+}
+
+function logsTermUpdateSlider() {
+  const term = document.getElementById('logs-terminal');
+  const slider = document.getElementById('logs-terminal-slider');
+  if (!slider || !term) return;
+  const scrollable = term.scrollHeight - term.clientHeight;
+  if (scrollable <= 0) { slider.value = 0; return; }
+  slider.value = Math.round((term.scrollTop / scrollable) * 100);
+}
+
+function logsTermSliderInput(val) {
+  const term = document.getElementById('logs-terminal');
+  if (!term) return;
+  const scrollable = term.scrollHeight - term.clientHeight;
+  term.scrollTop = (Number(val) / 100) * scrollable;
+}
+
+function logsTermNavTop() {
+  const term = document.getElementById('logs-terminal');
+  if (!term) return;
+  term.scrollTop = 0;
+  logsTermUpdateSlider();
+}
+
+function logsTermNavBottom() {
+  const term = document.getElementById('logs-terminal');
+  if (!term) return;
+  term.scrollTop = term.scrollHeight;
+  logsTermUpdateSlider();
+}
+
+function logsTermNavUp() {
+  const term = document.getElementById('logs-terminal');
+  if (!term) return;
+  term.scrollTop -= Math.floor(term.clientHeight * 0.6);
+  logsTermUpdateSlider();
+}
+
+function logsTermNavDown() {
+  const term = document.getElementById('logs-terminal');
+  if (!term) return;
+  term.scrollTop += Math.floor(term.clientHeight * 0.6);
+  logsTermUpdateSlider();
+}
+
 // Register scroll listener so the slider tracks manual scrolling.
 document.addEventListener('DOMContentLoaded', () => {
   const term = document.getElementById('terminal');
   if (term) term.addEventListener('scroll', termUpdateSlider);
+  const logsTerm = document.getElementById('logs-terminal');
+  if (logsTerm) logsTerm.addEventListener('scroll', logsTermUpdateSlider);
 });
 
 function appendToTerminal(text) {
@@ -588,6 +700,7 @@ function setProgressLabel(action) {
   const labels = {
     deploy: 'Deploying', provision: 'Provisioning', configure: 'Installing',
     restart: 'Restarting', stop: 'Stopping', reset: 'Resetting', destroy: 'Destroying',
+    ycsb_load: 'Loading YCSB data', ycsb_start: 'Starting YCSB load', ycsb_stop: 'Stopping YCSB load',
   };
   lbl.textContent = action ? `${labels[action] || ('Running: ' + action)}…` : 'Running…';
 }
@@ -708,6 +821,41 @@ async function refreshEnvStatus() {
   } catch (_) { /* ignore – status bar keeps the last known value */ }
 }
 
+function setYcsbButtonState(kind, target, running) {
+  const selector = `.ycsb-actions[data-ycsb-kind="${CSS.escape(kind)}"][data-ycsb-target="${CSS.escape(target)}"]`;
+  const container = document.querySelector(selector);
+  if (!container) return;
+  const loadBtn = container.querySelector('.ycsb-load-btn');
+  const startBtn = container.querySelector('.ycsb-start-btn');
+  const stopBtn = container.querySelector('.ycsb-stop-btn');
+  if (loadBtn) {
+    loadBtn.disabled = !!running;
+  }
+  if (startBtn) {
+    startBtn.disabled = !!running;
+    startBtn.textContent = running ? 'Load Running' : 'Start Load';
+    startBtn.classList.toggle('btn-secondary', !!running);
+  }
+  if (stopBtn) {
+    stopBtn.disabled = !running;
+  }
+}
+
+async function refreshYcsbStatus() {
+  try {
+    const data = await apiFetch(`/api/environment/${ENV_ID}/ycsb/status`);
+    const running = data.running || {};
+    document.querySelectorAll('.ycsb-actions').forEach(container => {
+      const kind = container.dataset.ycsbKind;
+      const target = container.dataset.ycsbTarget;
+      const key = `${kind}:${target}`;
+      setYcsbButtonState(kind, target, !!running[key]);
+    });
+  } catch (_) {
+    // Leave the current button state as-is if the status probe fails.
+  }
+}
+
 // Current status tracked client-side so we can gate confirmations.
 let currentStatus = {{json .Env.Status}};
 
@@ -715,6 +863,10 @@ let currentStatus = {{json .Env.Status}};
 const CONFIRM_ACTIONS = new Set(['deploy', 'provision', 'configure']);
 
 async function runAction(action) {
+  if (PLATFORM === 'chaos' && CHAOS_GUARDED_ACTIONS.has(action)) {
+    const reachable = await verifyChaosReachability();
+    if (!reachable) return;
+  }
   // For potentially destructive re-run actions on a running environment, ask
   // for confirmation before proceeding.
   if (CONFIRM_ACTIONS.has(action) && currentStatus === 'running') {
@@ -724,6 +876,16 @@ async function runAction(action) {
     return;
   }
   executeAction(action);
+}
+
+async function verifyChaosReachability() {
+  try {
+    await apiFetch(`/api/environment/${ENV_ID}/chaos/reachability`);
+    return true;
+  } catch (err) {
+    alert(err.message || 'CHAOS API is unreachable from this UI host. Connect to Percona VPN and try again.');
+    return false;
+  }
 }
 
 async function executeAction(action) {
@@ -775,6 +937,61 @@ async function executeAction(action) {
   }
 }
 
+async function runYcsbAction(kind, target, action) {
+  if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
+  const progressAction = `ycsb_${action}`;
+  showTerminalSection(progressAction);
+  clearTerminal();
+  setButtonsDisabled(true);
+  appendToTerminal(`▶ Running YCSB ${action} for ${kind} ${target}…`);
+  setJobBadge('running');
+  if (action === 'start') setYcsbButtonState(kind, target, true);
+  if (action === 'stop') setYcsbButtonState(kind, target, false);
+
+  try {
+    const resp = await fetch(`/api/environment/${ENV_ID}/ycsb`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind, target, action }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      appendToTerminal(`Error: ${data.error || 'Unknown error'}`);
+      setButtonsDisabled(false);
+      hideProgressIndicator();
+      return;
+    }
+    setStatus(data.status);
+
+    const es = new EventSource(`/api/job/${data.job_id}/stream`);
+    activeEventSource = es;
+    currentJobId = data.job_id;
+    es.addEventListener('message', ev => appendToTerminal(JSON.parse(ev.data)));
+    es.addEventListener('done', ev => {
+      const s = JSON.parse(ev.data);
+      setJobBadge(s);
+      appendToTerminal(`\n✔ Job finished: ${s}`);
+      es.close(); activeEventSource = null; setButtonsDisabled(false);
+      hideProgressIndicator();
+      refreshEnvStatus();
+      refreshYcsbStatus();
+      loadHosts();
+    });
+    es.onerror = () => {
+      appendToTerminal('\n⚠ Stream connection lost.');
+      es.close(); activeEventSource = null; setButtonsDisabled(false);
+      hideProgressIndicator();
+      refreshEnvStatus();
+      refreshYcsbStatus();
+    };
+  } catch (err) {
+    appendToTerminal(`Network error: ${err.message}`);
+    setButtonsDisabled(false);
+    hideProgressIndicator();
+    refreshYcsbStatus();
+  }
+}
+
 async function cancelJob() {
   if (!currentJobId) return;
   const btn = document.getElementById('btn-cancel-job');
@@ -813,10 +1030,12 @@ async function cancelJob() {
   } else {
     // Job already completed before page load – refresh status bar to reflect final state.
     refreshEnvStatus();
+    refreshYcsbStatus();
     loadHosts();
   }
   {{else}}
   // No job history yet but environment may already have hosts.
+  refreshYcsbStatus();
   loadHosts();
   {{end}}
 })();
@@ -853,35 +1072,25 @@ function updateServiceURLButtons(serviceUrls) {
   if (row) row.style.display = '';
 }
 
-function renderMongoConnections(mongoConns) {
-  const section = document.getElementById('mongo-connections-summary');
-  const content = document.getElementById('mongo-connections-content');
-  if (!section || !content) return;
+function updateMongoConnectionButtons(mongoConns) {
+  const buttons = document.querySelectorAll('.mongo-conn-btn');
+  if (!buttons.length) return;
 
-  if (!mongoConns || mongoConns.length === 0) {
-    section.style.display = 'none';
-    content.innerHTML = '';
-    return;
-  }
-
-  let html = '';
-  mongoConns.forEach(c => {
-    const typeLabel = c.type === 'cluster' ? 'Sharded Cluster' : 'Replica Set';
-    function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-    const displayConn = (c.conn_user && c.conn_pass)
-      ? c.conn_string.replace(new RegExp(escapeRegex(c.conn_pass), 'g'), '••••••')
-      : c.conn_string;
-    html += `<div class="conn-string-row">
-      <span class="conn-string-label">${escHtml(typeLabel)}: <strong>${escHtml(c.name)}</strong></span>
-      <div class="copy-cmd-row copy-cmd-row-wrap">
-        <code class="copy-cmd-text copy-cmd-text-wrap">${escHtml(displayConn)}</code>
-        <button class="btn btn-outline btn-xs copy-btn" data-copy="${escAttr(c.conn_string)}" onclick="copyText(this.dataset.copy, this)" title="Copy connection string (with real password)">📋</button>
-      </div>
-    </div>`;
+  buttons.forEach(btn => {
+    delete btn.dataset.connectionString;
+    btn.disabled = true;
+    btn.title = 'Connection string not available yet';
   });
 
-  content.innerHTML = html;
-  section.style.display = '';
+  (mongoConns || []).forEach(conn => {
+    const btn = Array.from(buttons).find(candidate =>
+      candidate.dataset.mongoKind === conn.type && candidate.dataset.mongoName === conn.name
+    );
+    if (!btn) return;
+    btn.dataset.connectionString = conn.conn_string || '';
+    btn.disabled = !conn.conn_string;
+    btn.title = conn.conn_string ? 'Open connection string' : 'Connection string not available yet';
+  });
 }
 
 function openConnectModal(name, command) {
@@ -901,6 +1110,24 @@ function closeConnectModal(event) {
   document.getElementById('connect-modal').style.display = 'none';
 }
 
+function openConnectionStringModal(name, connectionString) {
+  const quotedString = `'${connectionString}'`;
+  document.getElementById('connection-string-modal-title').textContent = `Connect: ${name}`;
+  document.getElementById('connection-string-text').textContent = quotedString;
+  const copyBtn = document.getElementById('connection-string-copy');
+  copyBtn.onclick = () => copyText(quotedString, copyBtn);
+  document.getElementById('connection-string-modal').style.display = 'flex';
+}
+
+function openConnectionStringModalFromButton(btn) {
+  openConnectionStringModal(btn.dataset.mongoName || btn.dataset.name || 'Connect', btn.dataset.connectionString || '');
+}
+
+function closeConnectionStringModal(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('connection-string-modal').style.display = 'none';
+}
+
 function renderHosts(data) {
   const section = document.getElementById('hosts-section');
   const content = document.getElementById('hosts-content');
@@ -908,7 +1135,7 @@ function renderHosts(data) {
   const mongoConns = data.mongo_conns || [];
 
   updateServiceURLButtons(data.service_urls || []);
-  renderMongoConnections(mongoConns);
+  updateMongoConnectionButtons(mongoConns);
 
   if (!hosts.length) {
     const msg = data.message || 'No host information available yet. Run Deploy first.';

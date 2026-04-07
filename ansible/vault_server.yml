@@ -3,9 +3,10 @@
   hosts: pmm
   tags: vault
   become: true
-  vars_files:
-    - "vars/{{ ansible_os_family }}.yml"    
   tasks:
+    - name: Load OS-specific variables
+      include_vars: "vars/{{ ansible_facts['os_family'] }}.yml"
+
     - name: Install Vault on Ubuntu
       block:
 
@@ -22,7 +23,7 @@
 
         - name: Add Vault repository
           apt_repository:
-            repo: "deb https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+            repo: "deb https://apt.releases.hashicorp.com {{ ansible_facts['distribution_release'] }} main"
 
             filename: docker
             state: present
@@ -34,7 +35,7 @@
             update_cache: true
           with_items: "{{ vault_packages }}"
 
-      when: ansible_os_family == 'Debian'
+      when: ansible_facts['os_family'] == 'Debian'
 
     - name: Install Vault on RedHat
       block:
@@ -53,7 +54,7 @@
             state: present
           with_items: "{{ vault_packages }}"
 
-      when: ansible_os_family == 'RedHat'
+      when: ansible_facts['os_family'] == 'RedHat'
 
     - name: Prepare config file for Vault
       template:

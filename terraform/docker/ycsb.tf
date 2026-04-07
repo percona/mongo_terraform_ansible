@@ -2,27 +2,32 @@ locals {
   ycsb_dockerfile_content = templatefile("${path.module}/ycsb.Dockerfile.tmpl", {
     ycsb_os_image = var.ycsb_os_image
   })
+  ycsb_dockerfile_name = replace(var.ycsb_image, "/", "-")
 }
 
 # Write YCSB Dockerfile to disk
 resource "local_file" "ycsb_dockerfile_content" {
-  filename = "${path.module}/${var.ycsb_image}.Dockerfile"
+  count    = var.enable_ycsb ? 1 : 0
+  filename = "${path.module}/${local.ycsb_dockerfile_name}.Dockerfile"
   content  = local.ycsb_dockerfile_content
 }
 
 # Get base OS image
 data "docker_registry_image" "ycsb" {
-  name = var.ycsb_os_image
+  count = var.enable_ycsb ? 1 : 0
+  name  = var.ycsb_os_image
 }
 
 resource "docker_image" "ycsb_os" {
+  count         = var.enable_ycsb ? 1 : 0
   name          = var.ycsb_os_image
-  pull_triggers = [data.docker_registry_image.ycsb.sha256_digest]
+  pull_triggers = [data.docker_registry_image.ycsb[0].sha256_digest]
   keep_locally  = true
 }
 
 # Build YCSB Docker image
 resource "docker_image" "ycsb" {
+  count = var.enable_ycsb ? 1 : 0
   depends_on = [
     docker_image.ycsb_os
   ]
@@ -30,14 +35,15 @@ resource "docker_image" "ycsb" {
   keep_locally = true
   build {
     context    = path.module
-    dockerfile = "${var.ycsb_image}.Dockerfile"
+    dockerfile = "${local.ycsb_dockerfile_name}.Dockerfile"
   }
 }
 
 # Create YCSB container
 resource "docker_container" "ycsb" {
+  count        = var.enable_ycsb ? 1 : 0
   name         = "${local.name_prefix}${var.ycsb_container_suffix}"
-  image        = docker_image.ycsb.image_id
+  image        = docker_image.ycsb[0].image_id
   command      = ["sleep", "infinity"]
   network_mode = "bridge"
   networks_advanced {

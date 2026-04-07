@@ -1,15 +1,13 @@
+{% set replset_group = (group_names | difference(['replsets', 'shards']))[0] %}
+{% set replset_name = replset_group if cluster is defined and cluster == replset_group else (cluster ~ '-' ~ replset_group if cluster is defined else replset_group) %}
 rs.initiate(
   {
-    {% if cluster is defined %}
-    _id: "{{ cluster }}-{{ (group_names | difference(['replsets','shards']))[0] }}",
-    {% else %}
-    _id: "{{ (group_names | difference(['replsets', 'shards']))[0] }}",
-    {% endif %}
+    _id: "{{ replset_name }}",
     members: [
       {% for h in groups[ group_names[0] ] %}
       { 
         _id : {{ loop.index }}, 
-        host : "{{ hostvars[h].ansible_fqdn  }}:{{ mongo_port }}",
+        host : "{{ hostvars[h].ansible_facts['fqdn'] }}:{{ mongo_port }}",
         {% if hostvars[h].arbiter | default(false) %}
         arbiterOnly: true
         {% else %}

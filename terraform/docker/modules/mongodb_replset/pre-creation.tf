@@ -3,25 +3,26 @@ resource "docker_volume" "keyfile_volume" {
   name = "${var.rs_name}-shared_keyfile"
 }
 
-resource "docker_container" "init_keyfile" {
-  name         = "${var.rs_name}-init_keyfile_container"
-  image        = docker_image.base_os.image_id
-  network_mode = "bridge"
-  command = [
-    "sh",
-    "-c",
-    "echo '${var.keyfile_contents}' > /mnt/${var.keyfile_name} && chmod 600 /mnt/${var.keyfile_name} && chown ${var.uid} /mnt/${var.keyfile_name}"
-  ]
-  mounts {
-    target = "/mnt"
-    source = docker_volume.keyfile_volume.name
-    type   = "volume"
+resource "null_resource" "init_keyfile" {
+  triggers = {
+    volume_name           = docker_volume.keyfile_volume.name
+    base_os_image_id      = docker_image.base_os.image_id
+    keyfile_name          = var.keyfile_name
+    keyfile_contents_hash = sha256(var.keyfile_contents)
+    keyfile_owner_uid     = tostring(var.uid)
   }
-  user     = "root"
-  must_run = false
-  #rm = true
 
-  lifecycle {
-    replace_triggered_by = [docker_image.base_os]
+  provisioner "local-exec" {
+    command = <<-EOT
+      docker run --rm \
+        -e KEYFILE_CONTENTS \
+        -v ${docker_volume.keyfile_volume.name}:/mnt \
+        ${docker_image.base_os.image_id} \
+        sh -c 'printf "%s" "$KEYFILE_CONTENTS" > /mnt/${var.keyfile_name} && chmod 600 /mnt/${var.keyfile_name} && chown ${var.uid} /mnt/${var.keyfile_name}'
+    EOT
+
+    environment = {
+      KEYFILE_CONTENTS = var.keyfile_contents
+    }
   }
 }

@@ -3,8 +3,8 @@ data "aws_availability_zones" "available" {
 }
 
 resource "aws_vpc" "vpc-network" {
-  cidr_block = var.subnet_cidr
-  enable_dns_support = true
+  cidr_block           = var.subnet_cidr
+  enable_dns_support   = true
   enable_dns_hostnames = true
   tags = {
     Name = local.vpc
@@ -12,14 +12,14 @@ resource "aws_vpc" "vpc-network" {
 }
 
 resource "aws_subnet" "vpc-subnet" {
-  vpc_id            = aws_vpc.vpc-network.id
-  cidr_block        = cidrsubnet(var.subnet_cidr, 8, count.index)
-  availability_zone = data.aws_availability_zones.available.names[count.index]  
+  vpc_id                  = aws_vpc.vpc-network.id
+  cidr_block              = cidrsubnet(var.subnet_cidr, 8, count.index)
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
   map_public_ip_on_launch = true
-  count = var.subnet_count
+  count                   = var.subnet_count
   tags = {
-    Name = "${local.vpc}-subnet-${count.index}"
-    AvailabilityZone = data.aws_availability_zones.available.names[count.index]    
+    Name             = "${local.vpc}-subnet-${count.index}"
+    AvailabilityZone = data.aws_availability_zones.available.names[count.index]
   }
 }
 
@@ -33,11 +33,11 @@ resource "aws_internet_gateway" "vpc-igw" {
 resource "aws_route_table" "public_route_table" {
   vpc_id = aws_vpc.vpc-network.id
   route {
-    cidr_block = "0.0.0.0/0"  # Route to the Internet
+    cidr_block = "0.0.0.0/0" # Route to the Internet
     gateway_id = aws_internet_gateway.vpc-igw.id
   }
   tags = {
-    Name           = "${local.vpc}-PublicRouteTable"
+    Name = "${local.vpc}-PublicRouteTable"
   }
 }
 
@@ -51,7 +51,7 @@ resource "aws_route_table_association" "public_subnet_association" {
 resource "aws_route53_zone" "private_zone" {
   name = local.vpc
   vpc {
-    vpc_id = aws_vpc.vpc-network.id 
+    vpc_id = aws_vpc.vpc-network.id
   }
 }
 

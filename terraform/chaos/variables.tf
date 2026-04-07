@@ -119,6 +119,37 @@ variable "enable_pmm" {
   description = "Deploy a PMM monitoring server. Set to false to skip PMM entirely."
 }
 
+variable "enable_ycsb" {
+  type        = bool
+  default     = false
+  description = "Deploy a dedicated YCSB workload generator VM."
+}
+
+variable "default_ycsb_host" {
+  description = "Base YCSB host name"
+  type        = string
+  default     = "ycsb"
+}
+
+locals {
+  ycsb_host = "${var.prefix}-${var.default_ycsb_host}"
+}
+
+variable "ycsb_cpu_cores" {
+  default     = 2
+  description = "Number of CPU cores for the YCSB instance"
+}
+
+variable "ycsb_memory_gb" {
+  default     = 4
+  description = "Memory in GB for the YCSB instance"
+}
+
+variable "ycsb_volume_size" {
+  default     = 20
+  description = "Root disk size in GB for the YCSB instance"
+}
+
 #############
 # Backup (Minio)
 #############

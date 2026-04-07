@@ -13,13 +13,13 @@
       shell: openssl genrsa -out /etc/ssl/mongodb-test-ca.key 4096
 
     - name: Generate the CA crt file
-      shell: openssl req -new -x509 -days 1826 -key /etc/ssl/mongodb-test-ca.key -out /etc/ssl/mongodb-test-ca.crt -config /etc/ssl/openssl-test-ca.cnf -subj "/C=US/ST=California/L=San Francisco/O=MyOrganization/OU=MyDepartment/CN={{ ansible_fqdn }}"
+      shell: openssl req -new -x509 -days 1826 -key /etc/ssl/mongodb-test-ca.key -out /etc/ssl/mongodb-test-ca.crt -config /etc/ssl/openssl-test-ca.cnf -subj "/C=US/ST=California/L=San Francisco/O=MyOrganization/OU=MyDepartment/CN={{ ansible_facts['fqdn'] }}"
 
     - name: Generate the key file for the intermediate certificate
       shell: openssl genrsa -out /etc/ssl/mongodb-test-ia.key 4096
 
     - name: Generate the CSR for the intermediate certificate
-      shell: openssl req -new -key /etc/ssl/mongodb-test-ia.key -out /etc/ssl/mongodb-test-ia.csr -config /etc/ssl/openssl-test-ca.cnf -subj "/C=US/ST=California/L=San Francisco/O=MyOrganization/OU=MyDepartment/CN={{ ansible_fqdn }}"
+      shell: openssl req -new -key /etc/ssl/mongodb-test-ia.key -out /etc/ssl/mongodb-test-ia.csr -config /etc/ssl/openssl-test-ca.cnf -subj "/C=US/ST=California/L=San Francisco/O=MyOrganization/OU=MyDepartment/CN={{ ansible_facts['fqdn'] }}"
 
     - name: Generate the the intermediate certificate
       shell: openssl x509 -sha256 -req -days 730 -in /etc/ssl/mongodb-test-ia.csr -CA /etc/ssl/mongodb-test-ca.crt -CAkey /etc/ssl/mongodb-test-ca.key -set_serial 01 -out /etc/ssl/mongodb-test-ia.crt -extfile /etc/ssl/openssl-test-ca.cnf -extensions v3_ca
@@ -35,23 +35,23 @@
     - name: Copy server openssl configuration file
       template:
         src: openssl-test-server.cnf.j2
-        dest: /etc/ssl/openssl-test-server-{{ ansible_hostname }}.cnf
+        dest: /etc/ssl/openssl-test-server-{{ ansible_facts['hostname'] }}.cnf
       delegate_to: "{{ groups['pmm'][0] }}"
 
     - name: Generate the key file for the server
-      shell: openssl genrsa -out /etc/ssl/mongodb-{{ ansible_hostname }}.key 4096
+      shell: openssl genrsa -out /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.key 4096
       delegate_to: "{{ groups['pmm'][0] }}"
 
     - name: Generate the CSR for the server
-      shell: openssl req -new -key /etc/ssl/mongodb-{{ ansible_hostname }}.key -out /etc/ssl/mongodb-{{ ansible_hostname }}.csr -config /etc/ssl/openssl-test-server-{{ ansible_hostname }}.cnf -subj "/C=US/ST=California/L=San Francisco/O=MyOrganization/OU=MyDepartment/CN={{ ansible_fqdn }}"
+      shell: openssl req -new -key /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.key -out /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.csr -config /etc/ssl/openssl-test-server-{{ ansible_facts['hostname'] }}.cnf -subj "/C=US/ST=California/L=San Francisco/O=MyOrganization/OU=MyDepartment/CN={{ ansible_facts['fqdn'] }}"
       delegate_to: "{{ groups['pmm'][0] }}"
 
     - name: Generate the server certificate
-      shell: openssl x509 -sha256 -req -days 365 -in /etc/ssl/mongodb-{{ ansible_hostname }}.csr -CA /etc/ssl/mongodb-test-ia.crt -CAkey /etc/ssl/mongodb-test-ia.key -CAcreateserial -out /etc/ssl/mongodb-{{ ansible_hostname }}.crt -extfile /etc/ssl/openssl-test-server-{{ ansible_hostname }}.cnf -extensions v3_req
+      shell: openssl x509 -sha256 -req -days 365 -in /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.csr -CA /etc/ssl/mongodb-test-ia.crt -CAkey /etc/ssl/mongodb-test-ia.key -CAcreateserial -out /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.crt -extfile /etc/ssl/openssl-test-server-{{ ansible_facts['hostname'] }}.cnf -extensions v3_req
       delegate_to: "{{ groups['pmm'][0] }}"
 
     - name: Generate the server PEM file
-      shell: cat /etc/ssl/mongodb-{{ ansible_hostname }}.crt /etc/ssl/mongodb-{{ ansible_hostname }}.key > /etc/ssl/mongodb-{{ ansible_hostname }}.pem
+      shell: cat /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.crt /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.key > /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.pem
       delegate_to: "{{ groups['pmm'][0] }}"
 
 - name: Prepare client certificates
@@ -65,16 +65,16 @@
         dest: /etc/ssl/openssl-test-client.cnf
 
     - name: Generate the  key file for the client
-      shell: openssl genrsa -out /etc/ssl/mongodb-{{ ansible_hostname }}.key 4096
+      shell: openssl genrsa -out /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.key 4096
 
     - name: Generate the CSR for the client
-      shell: openssl req -new -key /etc/ssl/mongodb-{{ ansible_hostname }}.key -out /etc/ssl/mongodb-{{ ansible_hostname }}.csr -config /etc/ssl/openssl-test-client.cnf -subj "/C=US/ST=California/L=San Francisco/O=MyOrganization/OU=MyDepartment/CN={{ ansible_fqdn }}"
+      shell: openssl req -new -key /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.key -out /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.csr -config /etc/ssl/openssl-test-client.cnf -subj "/C=US/ST=California/L=San Francisco/O=MyOrganization/OU=MyDepartment/CN={{ ansible_facts['fqdn'] }}"
 
     - name: Generate the client certificate
-      shell: openssl x509 -sha256 -req -days 365 -in /etc/ssl/mongodb-{{ ansible_hostname }}.csr -CA /etc/ssl/mongodb-test-ia.crt -CAkey /etc/ssl/mongodb-test-ia.key -CAcreateserial -out /etc/ssl/mongodb-{{ ansible_hostname }}.crt -extfile /etc/ssl/openssl-test-client.cnf -extensions v3_req
+      shell: openssl x509 -sha256 -req -days 365 -in /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.csr -CA /etc/ssl/mongodb-test-ia.crt -CAkey /etc/ssl/mongodb-test-ia.key -CAcreateserial -out /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.crt -extfile /etc/ssl/openssl-test-client.cnf -extensions v3_req
 
     - name: Generate the client PEM file
-      shell: cat /etc/ssl/mongodb-{{ ansible_hostname }}.crt /etc/ssl/mongodb-{{ ansible_hostname }}.key > /etc/ssl/mongodb-{{ ansible_hostname }}.pem
+      shell: cat /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.crt /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.key > /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.pem
 
 - name: Copy certificates
   hosts: cfg:shards:replsets:mongos
@@ -91,8 +91,8 @@
 
     - name: Fetch the server PEM files 
       fetch:
-        src: /etc/ssl/mongodb-{{ ansible_hostname }}.pem
-        dest: /tmp/mongodb-{{ ansible_hostname }}.pem
+        src: /etc/ssl/mongodb-{{ ansible_facts['hostname'] }}.pem
+        dest: /tmp/mongodb-{{ ansible_facts['hostname'] }}.pem
         flat: yes
       delegate_to: "{{ groups['pmm'][0] }}"            
 
@@ -103,5 +103,5 @@
 
     - name: Copy server PEM file to each server
       copy:
-        src: /tmp/mongodb-{{ ansible_hostname }}.pem
+        src: /tmp/mongodb-{{ ansible_facts['hostname'] }}.pem
         dest: "{{ certificateKeyFile }}"

@@ -8,20 +8,20 @@ resource "google_compute_disk" "pmm_disk" {
 
 resource "google_compute_instance" "pmm" {
   count        = var.enable_pmm ? 1 : 0
-  name         = "${local.pmm_host}"
+  name         = local.pmm_host
   machine_type = var.pmm_type
   zone         = data.google_compute_zones.available.names[0]
   tags         = ["${local.pmm_host}"]
   boot_disk {
     initialize_params {
-    image = var.image
+      image = var.image
     }
-  }   
+  }
   attached_disk {
     source = google_compute_disk.pmm_disk[0].name
-  }     
+  }
   network_interface {
-    network = google_compute_network.vpc-network.id
+    network    = google_compute_network.vpc-network.id
     subnetwork = google_compute_subnetwork.vpc-subnet.id
     access_config {}
   }
@@ -29,8 +29,8 @@ resource "google_compute_instance" "pmm" {
     ssh-keys = join("\n", [for user, key_path in var.gce_ssh_users : "${user}:${file(key_path)}"])
   }
   scheduling {
-    preemptible = false
-    automatic_restart = true 
+    preemptible        = false
+    automatic_restart  = true
     provisioning_model = "STANDARD"
   }
   metadata_startup_script = <<EOT
@@ -63,6 +63,6 @@ resource "google_compute_firewall" "percona-pmm-firewall" {
   target_tags   = ["${local.pmm_host}"]
   allow {
     protocol = "tcp"
-    ports = [ var.pmm_port ]
+    ports    = [var.pmm_port]
   }
 }

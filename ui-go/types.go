@@ -85,12 +85,16 @@ type LdapServerConfig struct {
 // Config holds all user-configurable settings for an environment.
 type Config struct {
 	// General
-	Prefix           string `json:"prefix"`
-	MongoRelease     string `json:"mongo_release,omitempty"`
-	MongoVersion     string `json:"mongo_version,omitempty"`
-	PbmRelease       string `json:"pbm_release,omitempty"`
-	PbmVersion       string `json:"pbm_version,omitempty"`
-	PmmClientVersion string `json:"pmm_client_version,omitempty"`
+	Prefix              string `json:"prefix"`
+	MongoRelease        string `json:"mongo_release,omitempty"`
+	MongoVersion        string `json:"mongo_version,omitempty"`
+	PbmRelease          string `json:"pbm_release,omitempty"`
+	PbmVersion          string `json:"pbm_version,omitempty"`
+	PmmClientVersion    string `json:"pmm_client_version,omitempty"`
+	EnableYcsb          bool   `json:"enable_ycsb,omitempty"`
+	YcsbImage           string `json:"ycsb_image,omitempty"`
+	YcsbOsImage         string `json:"ycsb_os_image,omitempty"`
+	YcsbContainerSuffix string `json:"ycsb_container_suffix,omitempty"`
 
 	// Cloud credentials / settings
 	ProjectID        string `json:"project_id,omitempty"`
@@ -343,6 +347,8 @@ type EnvironmentData struct {
 	SortedClusters []NamedCluster
 	SortedReplsets []NamedReplset
 	ServiceURLs    []ServiceURL
+	YcsbEnabled    bool
+	YcsbAvailable  bool
 }
 
 // HostInfo describes a single running host or container.

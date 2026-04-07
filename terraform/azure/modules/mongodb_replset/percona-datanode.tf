@@ -47,7 +47,7 @@ resource "azurerm_network_security_group" "replset_nsg" {
     destination_port_range     = "22"
     source_address_prefix      = var.source_ranges
     destination_address_prefix = "*"
-  }      
+  }
 }
 
 # Managed data-disk for every data-bearing member
@@ -84,11 +84,11 @@ resource "azurerm_linux_virtual_machine" "replset" {
   resource_group_name = var.resource_group_name
   size                = var.replsetsvr_type
   admin_username      = var.my_ssh_user
-  
-  tags = { 
+
+  tags = {
     ansible-group = var.replset_tag,
-    environment = var.env_tag
-  }  
+    environment   = var.env_tag
+  }
 
   network_interface_ids = [
     azurerm_network_interface.replset[count.index].id

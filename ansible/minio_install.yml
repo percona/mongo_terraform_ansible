@@ -86,14 +86,14 @@
     - name: Wait for Minio to be ready
       wait_for:
         port: "{{ minio_service_port }}"
-        host: "{{ ansible_default_ipv4.address }}"
+        host: "{{ ansible_facts['default_ipv4']['address'] }}"
         delay: 5
         timeout: 60
 
     - name: Configure mc alias for local Minio
       command: >
         {{ minio_mc_binary }} alias set local
-        http://{{ ansible_default_ipv4.address }}:{{ minio_service_port }}
+        http://{{ ansible_facts['default_ipv4']['address'] }}:{{ minio_service_port }}
         {{ minio_access_key }} {{ minio_secret_key }}
       changed_when: false
 

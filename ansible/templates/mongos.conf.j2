@@ -27,7 +27,7 @@ processManagement:
 # network interfaces
 net:
   port: {{ mongo_port }}
-  bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
+  bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}
 {% if use_tls %}
   tls:
     mode: requireTLS
@@ -52,4 +52,4 @@ setParameter:
 {% endif %}
 
 sharding:
-  configDB: {{ cluster }}-cfg/{% for h in groups[ 'cfg' ] %}{{ hostvars[h].ansible_fqdn  }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}
+  configDB: {{ cluster }}-cfg/{% for h in groups[ 'cfg' ] %}{{ hostvars[h].ansible_facts['fqdn'] }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}

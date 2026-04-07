@@ -18,9 +18,9 @@ subjectAltName = @alt_names
 
 
 [ alt_names ]
-DNS.1 = {{ ansible_fqdn }}        ##TODO: Enter the DNS names. The DNS names should match the server names.
+DNS.1 = {{ ansible_facts['fqdn'] }}        ##TODO: Enter the DNS names. The DNS names should match the server names.
 DNS.2 = {{ inventory_hostname }}  ##TODO: Enter the DNS names. The DNS names should match the server names.
-IP.1 = {{ ansible_default_ipv4.address }}         ##TODO: Enter the IP address.
+IP.1 = {{ ansible_facts['default_ipv4']['address'] }}         ##TODO: Enter the IP address.
 #IP.2 =                                           ##TODO: Enter the IP address.
 
 

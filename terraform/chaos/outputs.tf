@@ -32,6 +32,8 @@ resource "local_file" "AnsibleInventoryCluster" {
 
       hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
       ip_pmm             = var.enable_pmm ? chaos_instance.pmm[0].ip_address : ""
+      hostname_ycsb      = var.enable_ycsb ? local.ycsb_host : ""
+      ip_ycsb            = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
       bucket             = local.bucket_name
       minio_hostname     = local.minio_host
       minio_ip           = var.enable_minio ? chaos_instance.minio[0].ip_address : ""
@@ -70,6 +72,8 @@ resource "local_file" "SSHConfigCluster" {
     ssh_gateway_name     = var.ssh_gateway_name
     hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm        = var.enable_pmm ? chaos_instance.pmm[0].ip_address : ""
+    hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
+    public_ip_ycsb       = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
     pmm_port             = var.pmm_port
   })
 
@@ -96,6 +100,8 @@ resource "local_file" "AnsibleInventoryRS" {
       audit_filter       = each.value.audit_filter
       hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
       ip_pmm             = var.enable_pmm ? chaos_instance.pmm[0].ip_address : ""
+      hostname_ycsb      = var.enable_ycsb ? local.ycsb_host : ""
+      ip_ycsb            = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
       bucket             = local.bucket_name
       minio_hostname     = local.minio_host
       minio_ip           = var.enable_minio ? chaos_instance.minio[0].ip_address : ""
@@ -129,6 +135,8 @@ resource "local_file" "SSHConfigRS" {
     port_to_forward        = var.port_to_forward
     hostname_pmm           = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm          = var.enable_pmm ? chaos_instance.pmm[0].ip_address : ""
+    hostname_ycsb          = var.enable_ycsb ? local.ycsb_host : ""
+    public_ip_ycsb         = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
     pmm_port               = var.pmm_port
   })
 

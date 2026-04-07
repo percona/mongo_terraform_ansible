@@ -47,7 +47,7 @@ resource "azurerm_network_security_group" "mongodb_shard_nsg" {
     destination_port_range     = "22"
     source_address_prefix      = var.source_ranges
     destination_address_prefix = "*"
-  }      
+  }
 }
 
 # Data disks for each shard node
@@ -84,11 +84,11 @@ resource "azurerm_linux_virtual_machine" "shard" {
   resource_group_name = var.resource_group_name
   size                = var.shardsvr_type
   admin_username      = var.my_ssh_user
-  tags = { 
-    ansible-group = floor(count.index / var.shardsvr_replicas ),
+  tags = {
+    ansible-group = floor(count.index / var.shardsvr_replicas),
     ansible-index = count.index % var.shardsvr_replicas,
-    environment = var.env_tag
-  }  
+    environment   = var.env_tag
+  }
 
   network_interface_ids = [
     azurerm_network_interface.shard[count.index].id

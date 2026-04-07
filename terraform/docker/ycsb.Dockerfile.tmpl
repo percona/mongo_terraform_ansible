@@ -1,4 +1,5 @@
 FROM ${ ycsb_os_image }
 
-RUN /bin/microdnf install -y python2 java-1.8.0-openjdk curl tar gzip && ln -s /usr/bin/python2 /usr/bin/python 
+RUN /bin/microdnf install -y python3 java-1.8.0-openjdk curl tar gzip && ln -s /usr/bin/python3 /usr/bin/python
 RUN curl -O --location https://github.com/brianfrankcooper/YCSB/releases/download/0.17.0/ycsb-mongodb-binding-0.17.0.tar.gz && tar xfvz ycsb-mongodb-binding-0.17.0.tar.gz && mv ycsb-mongodb-binding-0.17.0 ycsb
+RUN curl -L https://raw.githubusercontent.com/brianfrankcooper/YCSB/master/bin/ycsb -o /ycsb/bin/ycsb && chmod 755 /ycsb/bin/ycsb

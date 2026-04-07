@@ -1355,6 +1355,36 @@
   </section>
   {{end}}
 
+  <section class="form-section">
+    <div class="section-header">
+      <h2>Workload Generator</h2>
+      <label class="toggle-label">
+        <input type="checkbox" id="enable_ycsb" name="enable_ycsb" value="true"
+               {{if .Config.EnableYcsb}}checked{{end}}
+               {{if eq $p "docker"}}onchange="toggleDockerYcsbSection(this)"{{end}}>
+        Include YCSB <span class="field-tip" data-tip="Creates a dedicated YCSB workload generator for this environment. Available for Docker and all VM-based deployment types.">ⓘ</span>
+      </label>
+    </div>
+    {{if eq $p "docker"}}
+    <div id="ycsb-docker-body" style="{{if .Config.EnableYcsb}}{{else}}display:none{{end}}">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="ycsb_image">YCSB Image <span class="field-tip" data-tip="Local Docker image name built for the YCSB workload container.">ⓘ</span></label>
+          <input type="text" id="ycsb_image" name="ycsb_image" value="{{strDefault .Config.YcsbImage "percona/ycsb"}}" placeholder="percona/ycsb">
+        </div>
+        <div class="form-group">
+          <label for="ycsb_os_image">Base OS Image <span class="field-tip" data-tip="Base container image used when building the YCSB Docker image.">ⓘ</span></label>
+          <input type="text" id="ycsb_os_image" name="ycsb_os_image" value="{{strDefault .Config.YcsbOsImage "redhat/ubi8-minimal"}}" placeholder="redhat/ubi8-minimal">
+        </div>
+        <div class="form-group">
+          <label for="ycsb_container_suffix">Container Name <span class="field-tip" data-tip="Suffix appended to the environment prefix for the YCSB container name.">ⓘ</span></label>
+          <input type="text" id="ycsb_container_suffix" name="ycsb_container_suffix" value="{{strDefault .Config.YcsbContainerSuffix "ycsb"}}" placeholder="ycsb">
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </section>
+
   <!-- ──────────── Credentials ──────────── -->
   <section class="form-section">
     {{$credConfigured := or (index .Config.AnsibleVars "mongo_admin_user") (index .Config.AnsibleVars "mongo_admin_password") (index .Config.AnsibleVars "pbm_agent_user") (index .Config.AnsibleVars "pbmpwd") .SortedPmmServers .SortedMinio .SortedLdap}}
@@ -1714,6 +1744,15 @@ function toggleCredentials(btn) {
   const hidden = body.style.display === 'none';
   body.style.display = hidden ? '' : 'none';
   btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
+}
+
+function toggleDockerYcsbSection(checkbox) {
+  const body = document.getElementById('ycsb-docker-body');
+  if (!body) return;
+  body.style.display = checkbox.checked ? '' : 'none';
+  body.querySelectorAll('input,select,textarea').forEach(field => {
+    field.disabled = !checkbox.checked;
+  });
 }
 
 // Toggle a nearby image-selector group element when a PMM/PBM checkbox changes.
@@ -2507,6 +2546,7 @@ document.addEventListener('DOMContentLoaded', () => {
     syncDockerMinioDependencies(document.getElementById('enable-minio-docker')?.checked);
     syncDockerPmmServerToggle();
     syncDockerMinioServerToggle();
+    toggleDockerYcsbSection(document.getElementById('enable_ycsb'));
   }
 
   // Async version refresh — updates global JS constants and repopulates selects.
@@ -2660,8 +2700,17 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     const customVal = (fd.get('pmm_image_custom') || '').trim();
     config.pmm_image = customVal;
   }
-  config.use_spot_instances = fd.has('use_spot_instances');
-  if (PLATFORM !== 'docker') {
+	config.use_spot_instances = fd.has('use_spot_instances');
+	config.enable_ycsb = fd.has('enable_ycsb');
+	if (PLATFORM === 'docker') {
+	  const ycsbImage = (fd.get('ycsb_image') || '').trim();
+	  const ycsbOsImage = (fd.get('ycsb_os_image') || '').trim();
+	  const ycsbContainerSuffix = (fd.get('ycsb_container_suffix') || '').trim();
+	  if (ycsbImage) config.ycsb_image = ycsbImage;
+	  if (ycsbOsImage) config.ycsb_os_image = ycsbOsImage;
+	  if (ycsbContainerSuffix) config.ycsb_container_suffix = ycsbContainerSuffix;
+	}
+	if (PLATFORM !== 'docker') {
     // enable_pmm is a tri-state *bool on the server: only send false when the
     // user explicitly unchecked it; when checked send true so it's stored.
     config.enable_pmm = fd.has('enable_pmm');
@@ -2760,11 +2809,11 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       const psmdbImage = getBlockImageValue(block, 'cluster_psmdb_image[]', 'percona/percona-server-mongodb');
       const pbmImage = getBlockImageValue(block, 'cluster_pbm_image[]', 'percona/percona-backup-mongodb');
       const pmmClientImage = getBlockImageValue(block, 'cluster_pmm_client_image[]', 'percona/pmm-client');
-      if (psmdbImage) c.psmdb_image = psmdbImage;
-      if (pbmImage) c.pbm_image = pbmImage;
-      if (pmmClientImage) c.pmm_client_image = pmmClientImage;
       c.enable_pmm = getBlockChecked(block, 'cluster_enable_pmm[]');
       c.enable_pbm = getBlockChecked(block, 'cluster_enable_pbm[]');
+      if (psmdbImage) c.psmdb_image = psmdbImage;
+      if (c.enable_pbm && pbmImage) c.pbm_image = pbmImage;
+      if (c.enable_pmm && pmmClientImage) c.pmm_client_image = pmmClientImage;
       c.bind_to_localhost = getBlockChecked(block, 'cluster_bind_to_localhost[]');
     }
     config.clusters[name] = c;
@@ -2789,11 +2838,11 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       const psmdbImage = getBlockImageValue(block, 'replset_psmdb_image[]', 'percona/percona-server-mongodb');
       const pbmImage = getBlockImageValue(block, 'replset_pbm_image[]', 'percona/percona-backup-mongodb');
       const pmmClientImage = getBlockImageValue(block, 'replset_pmm_client_image[]', 'percona/pmm-client');
-      if (psmdbImage) r.psmdb_image = psmdbImage;
-      if (pbmImage) r.pbm_image = pbmImage;
-      if (pmmClientImage) r.pmm_client_image = pmmClientImage;
       r.enable_pmm = getBlockChecked(block, 'replset_enable_pmm[]');
       r.enable_pbm = getBlockChecked(block, 'replset_enable_pbm[]');
+      if (psmdbImage) r.psmdb_image = psmdbImage;
+      if (r.enable_pbm && pbmImage) r.pbm_image = pbmImage;
+      if (r.enable_pmm && pmmClientImage) r.pmm_client_image = pmmClientImage;
       r.bind_to_localhost = getBlockChecked(block, 'replset_bind_to_localhost[]');
     }
     config.replsets[name] = r;

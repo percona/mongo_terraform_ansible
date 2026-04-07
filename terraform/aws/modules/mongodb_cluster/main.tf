@@ -11,7 +11,7 @@ terraform {
 data "aws_vpc" "vpc-network" {
   filter {
     name   = "tag:Name"
-    values = [var.vpc]  
+    values = [var.vpc]
   }
 }
 
@@ -31,6 +31,6 @@ data "aws_subnet" "details" {
 
 # Get the existing DNS zone
 data "aws_route53_zone" "private_zone" {
-  name = var.vpc  
+  name         = var.vpc
   private_zone = true
 }

@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/user"
@@ -65,6 +67,38 @@ func cleanupModuleResourceFiles(moduleDir, resourceName string) {
 			}
 		}
 	}
+}
+
+func chaosAPIReachabilityError() string {
+	return "CHAOS API is unreachable from this UI host. Connect to Percona VPN and try again."
+}
+
+func chaosAPIProbeURL() string {
+	if v := strings.TrimSpace(os.Getenv("CHAOS_API_PROBE_URL")); v != "" {
+		return v
+	}
+	return "https://chaos.percona.com"
+}
+
+func canReachChaosAPI() error {
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest(http.MethodHead, chaosAPIProbeURL(), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		var dnsErr *net.DNSError
+		if errors.As(err, &dnsErr) {
+			return dnsErr
+		}
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 500 {
+		return fmt.Errorf("unexpected CHAOS API probe status %d", resp.StatusCode)
+	}
+	return nil
 }
 
 // GET /
@@ -171,7 +205,337 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		SortedClusters: sortedClusters(env.Config.Clusters),
 		SortedReplsets: sortedReplsets(env.Config.Replsets),
 		ServiceURLs:    configServiceURLs(envID, env),
+		YcsbEnabled:    env.Config.EnableYcsb,
+		YcsbAvailable:  env.Status == "provisioned" || env.Status == "running" || env.Status == "stopped",
 	})
+}
+
+type ycsbActionRequest struct {
+	Target string `json:"target"`
+	Kind   string `json:"kind"`
+	Action string `json:"action"`
+}
+
+type ycsbStatusResponse struct {
+	Running map[string]bool `json:"running"`
+}
+
+func ycsbDockerContainerName(envID string, env *Environment) string {
+	prefix := strDefault(env.Config.Prefix, envID)
+	if prefix == "" {
+		prefix = envID
+	}
+	return prefix + "-ycsb"
+}
+
+func ycsbCloudHost(envID string, env *Environment) string {
+	tfDir := filepath.Join(terraformDir, env.Platform)
+	filePrefix := strDefault(env.Config.Prefix, envID)
+	var names []string
+	for name := range env.Config.Clusters {
+		names = append(names, name)
+	}
+	for name := range env.Config.Replsets {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		p := filepath.Join(tfDir, filePrefix+"_inventory_"+name)
+		content, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		for _, h := range parseInventoryHosts(string(content), name, strDefault(env.Config.MySSHUser, "ec2-user")) {
+			if h.Role == "ycsb" {
+				return h.Name
+			}
+		}
+	}
+	return ""
+}
+
+func ycsbDockerMongoURL(envID string, env *Environment, kind, target string) (string, error) {
+	user, pass := mongoAdminCredentials(env)
+	if kind == "cluster" {
+		cfg, ok := env.Config.Clusters[target]
+		if !ok {
+			return "", fmt.Errorf("unknown cluster %q", target)
+		}
+		prefix := strDefault(env.Config.Prefix, envID)
+		if prefix == "" {
+			prefix = envID
+		}
+		mongosPort := 27017
+		if cfg.MongosCount == 0 {
+			cfg.MongosCount = 2
+		}
+		return fmt.Sprintf("mongodb://%s:%s@%s-%s-mongos00:%d/?authSource=admin",
+			urlQueryEscape(user), urlQueryEscape(pass), prefix, target, mongosPort), nil
+	}
+	if kind == "replset" {
+		cfg, ok := env.Config.Replsets[target]
+		if !ok {
+			return "", fmt.Errorf("unknown replica set %q", target)
+		}
+		memberCount := cfg.DataNodesPerReplset
+		if memberCount == 0 {
+			memberCount = 2
+		}
+		basePort := cfg.ReplsetPort
+		if basePort == 0 {
+			basePort = 27017
+		}
+		var members []string
+		for i := 0; i < memberCount; i++ {
+			members = append(members, fmt.Sprintf("%s-svr%d:%d", target, i, basePort+i))
+		}
+		prefix := strDefault(env.Config.Prefix, envID)
+		if prefix != "" {
+			for i, member := range members {
+				members[i] = prefix + "-" + member
+			}
+		}
+		replsetName := target
+		if prefix != "" {
+			replsetName = prefix + "-" + target
+		}
+		return fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=%s&authSource=admin",
+			urlQueryEscape(user), urlQueryEscape(pass), strings.Join(members, ","), replsetName), nil
+	}
+	return "", fmt.Errorf("unknown target kind %q", kind)
+}
+
+func ycsbCloudMongoURL(envID string, env *Environment, kind, target string) (string, error) {
+	hosts, _, _ := collectCloudHosts(envID, env)
+	user, pass := mongoAdminCredentials(env)
+	if kind == "cluster" {
+		mongosHosts := hostsWithRole(hosts, target, "mongos")
+		if len(mongosHosts) == 0 {
+			return "", fmt.Errorf("no mongos hosts found for cluster %q", target)
+		}
+		return fmt.Sprintf("mongodb://%s:%s@%s/?authSource=admin",
+			urlQueryEscape(user), urlQueryEscape(pass), mongosHosts[0].Name+":27017"), nil
+	}
+	if kind == "replset" {
+		rsHosts := hostsWithRole(hosts, target, "mongod")
+		if len(rsHosts) == 0 {
+			return "", fmt.Errorf("no mongod hosts found for replica set %q", target)
+		}
+		var members []string
+		for _, h := range rsHosts {
+			members = append(members, h.Name+":27017")
+		}
+		return fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=%s&authSource=admin",
+			urlQueryEscape(user), urlQueryEscape(pass), strings.Join(members, ","), cloudReplsetName(env, target)), nil
+	}
+	return "", fmt.Errorf("unknown target kind %q", kind)
+}
+
+func ycsbStartCommand(mongoURL string) string {
+	return fmt.Sprintf("nohup /opt/ycsb/bin/ycsb run mongodb -s -P /opt/ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url=%s > /tmp/ycsb-run.log 2>&1 < /dev/null & echo $! > /tmp/ycsb-run.pid && tail -n 20 /tmp/ycsb-run.log || true", shellQuote(mongoURL))
+}
+
+func ycsbCloudInstallPath() string {
+	return "/opt/ycsb/bin/ycsb"
+}
+
+func ycsbDockerInstallPath() string {
+	return "/ycsb/bin/ycsb"
+}
+
+func ycsbActionShell(envID string, env *Environment, req ycsbActionRequest) (string, error) {
+	if !env.Config.EnableYcsb {
+		return "", fmt.Errorf("YCSB is not enabled for this environment")
+	}
+	if req.Kind != "cluster" && req.Kind != "replset" {
+		return "", fmt.Errorf("invalid target kind %q", req.Kind)
+	}
+	if req.Action != "load" && req.Action != "start" && req.Action != "stop" {
+		return "", fmt.Errorf("invalid YCSB action %q", req.Action)
+	}
+	if req.Target == "" {
+		return "", fmt.Errorf("target is required")
+	}
+
+	var mongoURL string
+	var err error
+	if env.Platform == "docker" {
+		mongoURL, err = ycsbDockerMongoURL(envID, env, req.Kind, req.Target)
+	} else {
+		mongoURL, err = ycsbCloudMongoURL(envID, env, req.Kind, req.Target)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	if env.Platform == "docker" {
+		container := shellQuote(ycsbDockerContainerName(envID, env))
+		binary := ycsbDockerInstallPath()
+		var inner string
+		switch req.Action {
+		case "load":
+			inner = fmt.Sprintf("%s load mongodb -P /ycsb/workloads/workloada -p mongodb.url=%s", binary, shellQuote(mongoURL))
+		case "start":
+			inner = fmt.Sprintf("if [ -f /tmp/ycsb-run.pid ] && kill -0 \"$(cat /tmp/ycsb-run.pid)\" 2>/dev/null; then echo 'YCSB workload is already running'; exit 1; fi; nohup %s run mongodb -s -P /ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url=%s > /tmp/ycsb-run.log 2>&1 < /dev/null & echo $! > /tmp/ycsb-run.pid; echo 'YCSB workload started'; sleep 1; tail -n 20 /tmp/ycsb-run.log || true", binary, shellQuote(mongoURL))
+		case "stop":
+			inner = "if [ -f /tmp/ycsb-run.pid ] && kill -0 \"$(cat /tmp/ycsb-run.pid)\" 2>/dev/null; then kill \"$(cat /tmp/ycsb-run.pid)\" && rm -f /tmp/ycsb-run.pid && echo 'YCSB workload stopped'; else pkill -f '/ycsb/bin/ycsb run mongodb' >/dev/null 2>&1 && echo 'YCSB workload stopped' || { echo 'No running YCSB workload found'; exit 1; }; fi"
+		}
+		return fmt.Sprintf("docker exec %s sh -lc %s", container, shellQuote(inner)), nil
+	}
+
+	host := ycsbCloudHost(envID, env)
+	if host == "" {
+		return "", fmt.Errorf("YCSB host not found. Run Provision or Deploy first")
+	}
+	binary := ycsbCloudInstallPath()
+	var remote string
+	switch req.Action {
+	case "load":
+		remote = fmt.Sprintf("%s load mongodb -P /opt/ycsb/workloads/workloada -p mongodb.url=%s", binary, shellQuote(mongoURL))
+	case "start":
+		remote = fmt.Sprintf("if [ -f /tmp/ycsb-run.pid ] && kill -0 \"$(cat /tmp/ycsb-run.pid)\" 2>/dev/null; then echo 'YCSB workload is already running'; exit 1; fi; nohup %s run mongodb -s -P /opt/ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url=%s > /tmp/ycsb-run.log 2>&1 < /dev/null & echo $! > /tmp/ycsb-run.pid; echo 'YCSB workload started'; sleep 1; tail -n 20 /tmp/ycsb-run.log || true", binary, shellQuote(mongoURL))
+	case "stop":
+		remote = "if [ -f /tmp/ycsb-run.pid ] && kill -0 \"$(cat /tmp/ycsb-run.pid)\" 2>/dev/null; then kill \"$(cat /tmp/ycsb-run.pid)\" && rm -f /tmp/ycsb-run.pid && echo 'YCSB workload stopped'; else pkill -f '/opt/ycsb/bin/ycsb run mongodb' >/dev/null 2>&1 && echo 'YCSB workload stopped' || { echo 'No running YCSB workload found'; exit 1; }; fi"
+	}
+	return fmt.Sprintf("ssh %s %s", shellQuote(host), shellQuote(remote)), nil
+}
+
+func ycsbStatusShell(envID string, env *Environment) (string, error) {
+	if !env.Config.EnableYcsb {
+		return "", fmt.Errorf("YCSB is not enabled for this environment")
+	}
+	check := `if [ -f /tmp/ycsb-run.pid ] && kill -0 "$(cat /tmp/ycsb-run.pid)" 2>/dev/null; then printf '{"running":true}\n'; else printf '{"running":false}\n'; fi`
+	if env.Platform == "docker" {
+		return fmt.Sprintf("docker exec %s sh -lc %s", shellQuote(ycsbDockerContainerName(envID, env)), shellQuote(check)), nil
+	}
+	host := ycsbCloudHost(envID, env)
+	if host == "" {
+		return "", fmt.Errorf("YCSB host not found. Run Provision or Deploy first")
+	}
+	return fmt.Sprintf("ssh %s %s", shellQuote(host), shellQuote(check)), nil
+}
+
+func ycsbRunningTargetKey(kind, target string) string {
+	return kind + ":" + target
+}
+
+func ycsbStatus(envID string, env *Environment) ycsbStatusResponse {
+	resp := ycsbStatusResponse{Running: map[string]bool{}}
+	if !env.Config.EnableYcsb {
+		return resp
+	}
+	shellCmd, err := ycsbStatusShell(envID, env)
+	if err != nil {
+		return resp
+	}
+	out, err := execOutput("bash", "-c", shellCmd)
+	if err != nil {
+		return resp
+	}
+	var payload struct {
+		Running bool `json:"running"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &payload); err != nil {
+		return resp
+	}
+	for name := range env.Config.Clusters {
+		resp.Running[ycsbRunningTargetKey("cluster", name)] = payload.Running
+	}
+	for name := range env.Config.Replsets {
+		resp.Running[ycsbRunningTargetKey("replset", name)] = payload.Running
+	}
+	return resp
+}
+
+func urlQueryEscape(s string) string {
+	replacer := strings.NewReplacer(
+		"%", "%25",
+		":", "%3A",
+		"/", "%2F",
+		"?", "%3F",
+		"#", "%23",
+		"[", "%5B",
+		"]", "%5D",
+		"@", "%40",
+	)
+	return replacer.Replace(s)
+}
+
+// POST /api/environment/{env_id}/ycsb
+func environmentYCSBActionHandler(w http.ResponseWriter, r *http.Request) {
+	envID := r.PathValue("env_id")
+	if !envIDRe.MatchString(envID) {
+		jsonError(w, 400, "invalid environment ID")
+		return
+	}
+	state, _ := loadState()
+	env, ok := state[envID]
+	if !ok {
+		jsonError(w, 404, "environment not found")
+		return
+	}
+	var body ycsbActionRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, 400, "invalid JSON")
+		return
+	}
+	shellCmd, err := ycsbActionShell(envID, env, body)
+	if err != nil {
+		jsonError(w, 400, err.Error())
+		return
+	}
+	tfDir := filepath.Join(terraformDir, env.Platform)
+	actionName := "ycsb_" + body.Action + "_" + body.Kind + "_" + body.Target
+	startedAtTime := time.Now()
+	startedAt := startedAtTime.UTC().Format(time.RFC3339)
+	onComplete := func(status string) {
+		durationSecs := int64(time.Since(startedAtTime).Seconds())
+		st, _ := loadState()
+		e, exists := st[envID]
+		if !exists {
+			return
+		}
+		outcomeStatus := "success"
+		if status != "success" {
+			outcomeStatus = "failed"
+		}
+		e.History = append(e.History, HistoryEvent{
+			Action:       actionName,
+			StartedAt:    startedAt,
+			Status:       outcomeStatus,
+			DurationSecs: durationSecs,
+		})
+		if status == "success" {
+			e.Status = "running"
+		} else {
+			e.Status = actionName + "_failed"
+		}
+		e.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+		st[envID] = e
+		saveState(st)
+	}
+	jobID := startJob([]string{"bash", "-c", shellCmd}, tfDir, nil, onComplete)
+	env.Status = actionName + "_in_progress"
+	env.LastJobID = jobID
+	state[envID] = env
+	saveState(state)
+	writeJSON(w, 200, map[string]string{"job_id": jobID, "status": env.Status})
+}
+
+// GET /api/environment/{env_id}/ycsb/status
+func environmentYCSBStatusHandler(w http.ResponseWriter, r *http.Request) {
+	envID := r.PathValue("env_id")
+	if !envIDRe.MatchString(envID) {
+		jsonError(w, 400, "invalid environment ID")
+		return
+	}
+	state, _ := loadState()
+	env, ok := state[envID]
+	if !ok {
+		jsonError(w, 404, "environment not found")
+		return
+	}
+	writeJSON(w, 200, ycsbStatus(envID, env))
 }
 
 // GET /api/versions
@@ -543,6 +907,17 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	tfDir := filepath.Join(terraformDir, platform)
 	varfile := tfvarsPath(envID, platform)
 
+	if platform == "chaos" {
+		switch action {
+		case "deploy", "stop", "restart", "destroy":
+			if err := canReachChaosAPI(); err != nil {
+				slog.Warn("chaos api unreachable", "env", envID, "action", action, "err", err)
+				jsonError(w, http.StatusBadGateway, chaosAPIReachabilityError())
+				return
+			}
+		}
+	}
+
 	if _, err := os.Stat(varfile); os.IsNotExist(err) {
 		if wErr := writeTfvars(envID, platform, env.Config); wErr != nil {
 			jsonError(w, 500, "tfvars not found and could not be regenerated: "+wErr.Error())
@@ -606,7 +981,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 					`printf "Waiting for SSH on %%s (up to 10 min)…\n" %[1]s; `+
 						`_ssh_ready=false; `+
 						`for _n in $(seq 1 20); do `+
-						`ansible -i %[1]s all -m ping --timeout=10 -o 2>&1 && { _ssh_ready=true; break; }; `+
+						`ansible -i %[1]s all -m ping --timeout=10 2>&1 && { _ssh_ready=true; break; }; `+
 						`printf "  attempt %%s/20 – not ready yet, retrying in 10s…\n" "$_n"; `+
 						`[ "$_n" -lt 20 ] && sleep 10; done; `+
 						`$_ssh_ready || { printf "ERROR: timed out waiting for SSH (%%s)\n" %[1]s; exit 1; }; `,
@@ -825,14 +1200,16 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		saveState(st)
 	}
 
-	jobID := startJob(cmd, tfDir, func() map[string]string {
-		// For CHAOS environments, pass the API token via an environment variable so
-		// it is never written to the tfvars file on disk.
-		if platform == "chaos" && env.Config.ChaosApiToken != "" {
-			return map[string]string{"CHAOS_API_TOKEN": env.Config.ChaosApiToken}
-		}
-		return nil
-	}(), onComplete)
+	extraEnv := map[string]string{
+		"ANSIBLE_CONFIG": filepath.Join(ansibleDir, "ansible.cfg"),
+	}
+	// For CHAOS environments, pass the API token via an environment variable so
+	// it is never written to the tfvars file on disk.
+	if platform == "chaos" && env.Config.ChaosApiToken != "" {
+		extraEnv["CHAOS_API_TOKEN"] = env.Config.ChaosApiToken
+	}
+
+	jobID := startJob(cmd, tfDir, extraEnv, onComplete)
 
 	env.Status = action + "_in_progress"
 	env.LastJobID = jobID
@@ -841,6 +1218,29 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("action dispatched", "action", action, "env", envID, "platform", platform, "job", jobID)
 	writeJSON(w, 200, map[string]string{"job_id": jobID, "status": env.Status})
+}
+
+// GET /api/environment/{env_id}/chaos/reachability
+func chaosReachabilityHandler(w http.ResponseWriter, r *http.Request) {
+	envID := r.PathValue("env_id")
+	state, _ := loadState()
+	env, ok := state[envID]
+	if !ok {
+		jsonError(w, 404, "environment not found")
+		return
+	}
+	if env.Platform != "chaos" {
+		jsonError(w, 400, "reachability check is only available for chaos environments")
+		return
+	}
+	if err := canReachChaosAPI(); err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]interface{}{
+			"reachable": false,
+			"error":     chaosAPIReachabilityError(),
+		})
+		return
+	}
+	writeJSON(w, 200, map[string]bool{"reachable": true})
 }
 
 // GET /api/environment/{env_id}/history

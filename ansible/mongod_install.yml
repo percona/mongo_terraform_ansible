@@ -22,7 +22,7 @@
         allow_downgrade: true
       when:
         - mongo_version is defined and mongo_version != ''
-        - ansible_os_family == 'Debian'
+        - ansible_facts['os_family'] == 'Debian'
 
     - name: Install mongod packages from repository (specific version – RedHat)
       yum:
@@ -30,7 +30,7 @@
         state: present
       when:
         - mongo_version is defined and mongo_version != ''
-        - ansible_os_family == 'RedHat'
+        - ansible_facts['os_family'] == 'RedHat'
 
     - name: Disable Percona telemetry
       systemd:
@@ -123,6 +123,7 @@
             dest: ./vault.crt
             flat: yes
           delegate_to: "{{ groups['pmm'][0] }}"
+          when: groups['pmm'] | default([]) | length > 0          
           run_once: true
 
         - name: Copy vault certificate to MongoDB hosts
@@ -140,7 +141,7 @@
             src: /tmp/mongo_token.txt
             dest: ./mongo_token.txt
             flat: yes
-          delegate_to: "{{ groups['pmm'][0] }}"
+          delegate_to: "{{ (groups['pmm'] | default([]))[0] }}"
           run_once: true
 
         - name: Copy token file to MongoDB hosts
@@ -240,7 +241,7 @@
         -u {{ mongo_admin_user }}
         -p {{ mongo_admin_password }}
         --port {{ mongo_port }}
-        --host {{ ansible_fqdn }}
+        --host {{ ansible_facts['fqdn'] }}
         < /tmp/createUsers.js
       no_log: true
       when: mongodb_primary | default(false)
@@ -253,5 +254,5 @@
           -u {{ mongo_admin_user }}
           -p {{ mongo_admin_password }}
           --port {{ mongo_port }}
-          --host {{ ansible_fqdn }}'
+          --host {{ ansible_facts['fqdn'] }}'
         state: present

@@ -6,6 +6,6 @@ terraform {
     }
     vault = {
       source = "hashicorp/vault"
-    }    
+    }
   }
 }

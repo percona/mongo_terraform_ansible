@@ -533,12 +533,13 @@ tr:last-child td { border-bottom: none; }
   padding: 1rem;
   height: 380px;
   overflow-y: auto;
+  overflow-x: auto;
   font-family: var(--mono);
   font-size: 0.8rem;
   color: #c5d0e4;
   scroll-behavior: smooth;
 }
-.terminal-line { white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+.terminal-line { white-space: pre; line-height: 1.5; min-width: max-content; }
 
 /* Sidebar navigation panel next to the terminal */
 .terminal-sidebar {
@@ -637,6 +638,14 @@ tr:last-child td { border-bottom: none; }
   margin-bottom: 0.8rem;
 }
 .modal-header h2 { margin: 0; }
+.modal-terminal-wrapper {
+  margin-bottom: 1rem;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.modal-terminal-wrapper .terminal {
+  max-height: 60vh;
+}
 .tfvars-filename {
   font-family: var(--mono);
   font-size: 0.78rem;

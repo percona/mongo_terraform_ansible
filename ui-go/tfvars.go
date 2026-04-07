@@ -137,6 +137,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		writeOptStr("pbm_release", cfg.PbmRelease)
 		writeOptStr("pbm_version", cfg.PbmVersion)
 		writeOptStr("pmm_client_version", cfg.PmmClientVersion)
+		writeVar("enable_ycsb", cfg.EnableYcsb)
 
 		if platform == "chaos" {
 			// CHAOS-specific vars
@@ -175,16 +176,19 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			writeOptInt("pmm_cpu_cores", cfg.PmmCpuCores)
 			writeOptInt("pmm_memory_gb", cfg.PmmMemoryGb)
 			// Minio
+			enableMinio := cfg.EnableMinio != nil && *cfg.EnableMinio
 			if cfg.EnableMinio != nil {
 				writeVar("enable_minio", *cfg.EnableMinio)
 			}
-			writeOptStr("minio_root_user", cfg.MinioRootUser)
-			writeOptStr("minio_root_password", cfg.MinioRootPassword)
-			writeOptInt("minio_port", cfg.MinioPort)
-			writeOptInt("minio_console_port", cfg.MinioConsolePort)
-			writeOptInt("minio_cpu_cores", cfg.MinioCpuCores)
-			writeOptInt("minio_memory_gb", cfg.MinioMemoryGb)
-			writeOptInt("minio_volume_size", cfg.MinioVolumeSize)
+			if enableMinio {
+				writeOptStr("minio_root_user", cfg.MinioRootUser)
+				writeOptStr("minio_root_password", cfg.MinioRootPassword)
+				writeOptInt("minio_port", cfg.MinioPort)
+				writeOptInt("minio_console_port", cfg.MinioConsolePort)
+				writeOptInt("minio_cpu_cores", cfg.MinioCpuCores)
+				writeOptInt("minio_memory_gb", cfg.MinioMemoryGb)
+				writeOptInt("minio_volume_size", cfg.MinioVolumeSize)
+			}
 			// Backup
 			writeOptStr("default_bucket_name", cfg.DefaultBucketName)
 			writeOptInt("backup_retention", cfg.BackupRetention)
@@ -271,6 +275,10 @@ func writeTfvars(envID, platform string, cfg Config) error {
 	} else {
 		// Docker-only
 		writeOptStr("network_name", cfg.NetworkName)
+		writeVar("enable_ycsb", cfg.EnableYcsb)
+		writeOptStr("ycsb_image", cfg.YcsbImage)
+		writeOptStr("ycsb_os_image", cfg.YcsbOsImage)
+		writeOptStr("ycsb_container_suffix", cfg.YcsbContainerSuffix)
 	}
 
 	// ── Docker credential helpers ─────────────────────────────────────────────

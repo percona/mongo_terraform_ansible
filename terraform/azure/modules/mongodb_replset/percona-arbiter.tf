@@ -1,7 +1,7 @@
 # Public IP
 resource "azurerm_public_ip" "arbiter" {
   count               = var.arbiters_per_replset
-  name                ="${var.rs_name}-${var.arbiter_tag}${count.index}-nic-public-ip"
+  name                = "${var.rs_name}-${var.arbiter_tag}${count.index}-nic-public-ip"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Dynamic"
@@ -47,7 +47,7 @@ resource "azurerm_network_security_group" "mongodb_arbiter_nsg" {
     destination_port_range     = "22"
     source_address_prefix      = var.source_ranges
     destination_address_prefix = "*"
-  }      
+  }
 }
 
 # NIC for arbiter nodes
@@ -73,10 +73,10 @@ resource "azurerm_linux_virtual_machine" "arbiter" {
   resource_group_name = var.resource_group_name
   size                = var.arbiter_type
   admin_username      = var.my_ssh_user
-  tags = { 
+  tags = {
     ansible-group = var.replset_tag,
-    environment = var.env_tag
-  }  
+    environment   = var.env_tag
+  }
 
   network_interface_ids = [
     azurerm_network_interface.arbiter[count.index].id

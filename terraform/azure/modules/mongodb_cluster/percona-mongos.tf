@@ -47,7 +47,7 @@ resource "azurerm_network_security_group" "mongodb_mongos_nsg" {
     destination_port_range     = "22"
     source_address_prefix      = var.source_ranges
     destination_address_prefix = "*"
-  }      
+  }
 }
 
 # NICs for mongos nodes
@@ -74,9 +74,9 @@ resource "azurerm_linux_virtual_machine" "mongos" {
   resource_group_name = var.resource_group_name
   size                = var.mongos_type
   admin_username      = var.my_ssh_user
-  tags = { 
+  tags = {
     ansible-group = "mongos",
-    environment = var.env_tag
+    environment   = var.env_tag
   }
 
   network_interface_ids = [
@@ -100,8 +100,8 @@ resource "azurerm_linux_virtual_machine" "mongos" {
     storage_account_type = "Standard_LRS"
   }
 
-  priority               = var.use_spot_instances ? "Spot" : "Regular"
-  eviction_policy        = var.use_spot_instances ? "Deallocate" : null
+  priority                   = var.use_spot_instances ? "Spot" : "Regular"
+  eviction_policy            = var.use_spot_instances ? "Deallocate" : null
   allow_extension_operations = true
 
   custom_data = base64encode(<<EOT

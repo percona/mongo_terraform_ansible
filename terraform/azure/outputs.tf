@@ -33,6 +33,8 @@ resource "local_file" "AnsibleInventoryCluster" {
       location           = each.value.location
       hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
       ip_pmm             = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
+      hostname_ycsb      = var.enable_ycsb ? local.ycsb_host : ""
+      ip_ycsb            = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
       bucket             = azurerm_storage_container.mongo_backups_container.name
       endpointUrl        = local.storage_endpoint
       key                = azurerm_storage_account.mongo_backups.primary_access_key
@@ -69,6 +71,8 @@ resource "local_file" "SSHConfigCluster" {
     ssh_gateway_name     = var.ssh_gateway_name
     hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm        = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
+    hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
+    public_ip_ycsb       = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
     pmm_port             = var.pmm_port
   })
 
@@ -96,6 +100,8 @@ resource "local_file" "AnsibleInventoryRS" {
       location           = each.value.location
       hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
       ip_pmm             = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
+      hostname_ycsb      = var.enable_ycsb ? local.ycsb_host : ""
+      ip_ycsb            = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
       bucket             = azurerm_storage_container.mongo_backups_container.name
       endpointUrl        = local.storage_endpoint
       key                = azurerm_storage_account.mongo_backups.primary_access_key
@@ -127,6 +133,8 @@ resource "local_file" "SSHConfigRS" {
     port_to_forward        = var.port_to_forward
     hostname_pmm           = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm          = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
+    hostname_ycsb          = var.enable_ycsb ? local.ycsb_host : ""
+    public_ip_ycsb         = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
     pmm_port               = var.pmm_port
   })
 

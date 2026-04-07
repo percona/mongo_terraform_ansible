@@ -1,7 +1,7 @@
 # Public IP
 resource "azurerm_public_ip" "cfg" {
   count               = var.configsvr_count
-  name                ="${var.cluster_name}-${var.configsvr_tag}0${count.index}-nic-public-ip"
+  name                = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-nic-public-ip"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Dynamic"
@@ -58,7 +58,7 @@ resource "azurerm_network_security_group" "mongodb_cfgsvr_nsg" {
     destination_port_range     = "22"
     source_address_prefix      = var.source_ranges
     destination_address_prefix = "*"
-  }      
+  }
 }
 
 # Create configsvr VM instances
@@ -73,10 +73,10 @@ resource "azurerm_linux_virtual_machine" "cfg" {
   network_interface_ids = [
     azurerm_network_interface.cfg[count.index].id
   ]
-  tags = { 
+  tags = {
     ansible-group = "cfg",
-    environment = var.env_tag
-  }  
+    environment   = var.env_tag
+  }
 
   admin_ssh_key {
     username   = var.my_ssh_user

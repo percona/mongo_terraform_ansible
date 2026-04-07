@@ -16,7 +16,7 @@ variable "vault_port" {
 }
 
 variable "vault_token" {
-  default = "root"
+  default   = "root"
   sensitive = true
 }
 

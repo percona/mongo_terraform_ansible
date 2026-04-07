@@ -68,7 +68,7 @@
           -u {{ mongo_admin_user }}
           -p {{ mongo_admin_password }}
           --port {{ mongo_port }}
-          --host {{ ansible_fqdn }}'
+          --host {{ ansible_facts['fqdn'] }}'
         state: present
 
     - name: Set up shared mongo keyfile 

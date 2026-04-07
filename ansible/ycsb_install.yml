@@ -1,0 +1,78 @@
+---
+- name: Install YCSB workload generator
+  hosts: ycsb
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Define Java runtime package for the current OS family
+      set_fact:
+        ycsb_java_package: "{{ 'default-jre-headless' if ansible_facts['os_family'] == 'Debian' else 'java-17-openjdk' }}"
+        ycsb_python_package: "{{ 'python-is-python3' if ansible_facts['os_family'] == 'Debian' else 'python3' }}"
+
+    - name: Refresh APT package metadata from scratch
+      shell: |
+        rm -rf /var/lib/apt/lists/*
+        apt-get update
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install Java runtime and tools on Debian/Ubuntu
+      apt:
+        name:
+          - curl
+          - tar
+          - gzip
+          - "{{ ycsb_python_package }}"
+          - "{{ ycsb_java_package }}"
+        state: present
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install Java runtime and tools on non-Debian systems
+      package:
+        name:
+          - curl
+          - tar
+          - gzip
+          - "{{ ycsb_python_package }}"
+          - "{{ ycsb_java_package }}"
+        state: present
+      when: ansible_facts['os_family'] != 'Debian'
+
+    - name: Ensure python command is available on non-Debian systems
+      file:
+        src: /usr/bin/python3
+        dest: /usr/bin/python
+        state: link
+      when: ansible_facts['os_family'] != 'Debian'
+
+    - name: Check whether YCSB is already installed
+      stat:
+        path: /opt/ycsb/bin/ycsb
+      register: ycsb_binary
+
+    - name: Install YCSB release
+      shell: |
+        curl -L https://github.com/brianfrankcooper/YCSB/releases/download/0.17.0/ycsb-mongodb-binding-0.17.0.tar.gz -o /tmp/ycsb-mongodb-binding-0.17.0.tar.gz
+        tar -xzf /tmp/ycsb-mongodb-binding-0.17.0.tar.gz -C /opt
+        rm -rf /opt/ycsb
+        mv /opt/ycsb-mongodb-binding-0.17.0 /opt/ycsb
+      args:
+        creates: /opt/ycsb/bin/ycsb
+      when: not ycsb_binary.stat.exists
+
+    - name: Patch YCSB launcher for Python 3 compatibility
+      get_url:
+        url: https://raw.githubusercontent.com/brianfrankcooper/YCSB/master/bin/ycsb
+        dest: /opt/ycsb/bin/ycsb
+        mode: "0755"
+
+    - name: Ensure YCSB profile is available for interactive shells
+      copy:
+        dest: /etc/profile.d/ycsb.sh
+        mode: "0644"
+        content: |
+          export YCSB_HOME=/opt/ycsb
+          export PATH=$PATH:/opt/ycsb/bin
+
+    - name: Verify YCSB installation
+      command: /opt/ycsb/bin/ycsb --help
+      changed_when: false

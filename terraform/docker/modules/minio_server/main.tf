@@ -6,6 +6,6 @@ terraform {
     }
     minio = {
       source = "aminueza/minio"
-    }    
+    }
   }
 }

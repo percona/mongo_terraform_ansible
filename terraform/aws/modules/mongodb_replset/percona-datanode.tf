@@ -1,25 +1,25 @@
 resource "aws_ebs_volume" "replset_disk" {
-  count              = var.data_nodes_per_replset
-  availability_zone  = data.aws_subnet.details[count.index % var.subnet_count].availability_zone
-  size               = var.replsetsvr_volume_size
-  type               = var.data_disk_type
+  count             = var.data_nodes_per_replset
+  availability_zone = data.aws_subnet.details[count.index % var.subnet_count].availability_zone
+  size              = var.replsetsvr_volume_size
+  type              = var.data_disk_type
   tags = {
     Name = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-data"
   }
 }
 
 resource "aws_instance" "replset" {
-  count               = var.data_nodes_per_replset
-  ami                 = lookup(var.image, var.region)
-  instance_type       = var.replsetsvr_type
-  subnet_id           = data.aws_subnet.details[count.index % var.subnet_count].id
-  key_name            = var.my_key_pair
-    tags = {
-    Name = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
-    ansible-group  = var.replset_tag
+  count         = var.data_nodes_per_replset
+  ami           = lookup(var.image, var.region)
+  instance_type = var.replsetsvr_type
+  subnet_id     = data.aws_subnet.details[count.index % var.subnet_count].id
+  key_name      = var.my_key_pair
+  tags = {
+    Name          = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
+    ansible-group = var.replset_tag
   }
   vpc_security_group_ids = [aws_security_group.replsetsvr_sg.id]
-  user_data = <<-EOT
+  user_data              = <<-EOT
     #!/bin/bash
     # Set the hostname
     hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
@@ -48,10 +48,10 @@ resource "aws_instance" "replset" {
 }
 
 resource "aws_volume_attachment" "replset_volume_attachment" {
-  count        = var.data_nodes_per_replset
-  device_name  = "/dev/sdf" # Placeholder, not used for NVMe but required by Terraform
-  volume_id    = aws_ebs_volume.replset_disk[count.index].id
-  instance_id  = aws_instance.replset[count.index].id
+  count       = var.data_nodes_per_replset
+  device_name = "/dev/sdf" # Placeholder, not used for NVMe but required by Terraform
+  volume_id   = aws_ebs_volume.replset_disk[count.index].id
+  instance_id = aws_instance.replset[count.index].id
 }
 
 resource "aws_security_group" "replsetsvr_sg" {
@@ -59,7 +59,7 @@ resource "aws_security_group" "replsetsvr_sg" {
   description = "Allow traffic to MongoDB replset instances"
   vpc_id      = data.aws_vpc.vpc-network.id
   tags = {
-    Name      = "${var.rs_name}-${var.replset_tag}-sg"
+    Name = "${var.rs_name}-${var.replset_tag}-sg"
   }
 }
 
@@ -70,7 +70,7 @@ resource "aws_security_group_rule" "mongodb-replset-ingress" {
   to_port           = each.value
   protocol          = "tcp"
   security_group_id = aws_security_group.replsetsvr_sg.id
-  cidr_blocks       = [var.subnet_cidr]  
+  cidr_blocks       = [var.subnet_cidr]
 }
 
 # Ingress rule (SSH from anywhere)
@@ -87,11 +87,11 @@ resource "aws_security_group_rule" "mongodb-replset-ssh_inbound" {
 # Ingress rule for ICMP (ping) traffic
 resource "aws_security_group_rule" "mongodb-replset-icmp-ingress" {
   type              = "ingress"
-  from_port         = 8     # Type 8 for echo request (ping)
+  from_port         = 8 # Type 8 for echo request (ping)
   to_port           = 0
   protocol          = "icmp"
   security_group_id = aws_security_group.replsetsvr_sg.id
-  cidr_blocks       = ["0.0.0.0/0"]  # Allow from any IP address; adjust based on your needs
+  cidr_blocks       = ["0.0.0.0/0"] # Allow from any IP address; adjust based on your needs
 }
 
 # Egress rule allowing all traffic
@@ -101,8 +101,8 @@ resource "aws_security_group_rule" "mongodb-replset-egress" {
   to_port           = 0
   protocol          = "-1"
   security_group_id = aws_security_group.replsetsvr_sg.id
-  cidr_blocks       = ["0.0.0.0/0"]  # Allow all outbound IPv4 traffic
-  ipv6_cidr_blocks  = ["::/0"]       # Allow all outbound IPv6 traffic
+  cidr_blocks       = ["0.0.0.0/0"] # Allow all outbound IPv4 traffic
+  ipv6_cidr_blocks  = ["::/0"]      # Allow all outbound IPv6 traffic
 }
 
 resource "aws_route53_record" "replsetsvr_dns_record" {

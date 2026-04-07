@@ -1,12 +1,12 @@
 resource "google_storage_bucket" "mongo-backups" {
-  name          = local.bucket_name
-  location      = var.region
-  force_destroy = true
+  name                        = local.bucket_name
+  location                    = var.region
+  force_destroy               = true
   uniform_bucket_level_access = true
 
   lifecycle_rule {
     condition {
-      age = "${var.backup_retention}"
+      age = var.backup_retention
     }
     action {
       type = "Delete"
@@ -25,10 +25,10 @@ resource "google_storage_hmac_key" "mongo-backup-service-account" {
 
 resource "google_storage_bucket_iam_binding" "binding" {
   bucket = local.bucket_name
-  role = "roles/storage.admin"
-    members = [
-      "serviceAccount:${google_service_account.mongo-backup-service-account.email}",
-    ]
+  role   = "roles/storage.admin"
+  members = [
+    "serviceAccount:${google_service_account.mongo-backup-service-account.email}",
+  ]
 }
 
 output "access_key" {

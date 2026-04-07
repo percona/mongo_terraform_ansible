@@ -5,15 +5,15 @@ data "google_compute_zones" "available" {
 
 # Set your desired VPC
 resource "google_compute_network" "vpc-network" {
-  name = local.vpc
+  name                    = local.vpc
   auto_create_subnetworks = false
 }
 
 resource "google_compute_subnetwork" "vpc-subnet" {
-  name = "${var.subnet_name}"
+  name          = var.subnet_name
   ip_cidr_range = var.subnet_cidr
-  region = var.region
-  network = google_compute_network.vpc-network.id
+  region        = var.region
+  network       = google_compute_network.vpc-network.id
 }
 
 resource "google_compute_firewall" "internal" {
@@ -34,7 +34,7 @@ resource "google_compute_firewall" "internal" {
     protocol = "icmp"
   }
 
-  source_ranges = [ var.subnet_cidr ] 
+  source_ranges = [var.subnet_cidr]
   direction     = "INGRESS"
   priority      = 65534
 }
@@ -47,7 +47,7 @@ resource "google_compute_firewall" "icmp" {
     protocol = "icmp"
   }
 
-  source_ranges = [ "0.0.0.0/0" ] 
+  source_ranges = ["0.0.0.0/0"]
   direction     = "INGRESS"
   priority      = 65534
 }
@@ -61,7 +61,7 @@ resource "google_compute_firewall" "ssh" {
     ports    = ["22"]
   }
 
-  source_ranges = [ var.source_ranges ]
+  source_ranges = [var.source_ranges]
   direction     = "INGRESS"
   priority      = 65534
 }

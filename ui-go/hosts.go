@@ -118,6 +118,8 @@ func guessDockerRole(name, prefix string) string {
 		return "minio"
 	case strings.HasPrefix(base, "ldap"):
 		return "ldap"
+	case strings.HasPrefix(base, "ycsb"):
+		return "ycsb"
 	default:
 		return "service"
 	}
@@ -133,6 +135,8 @@ func guessDockerGroup(name, prefix string) string {
 		return "PMM Clients"
 	case "pbm-agent", "pbm-cli":
 		return "PBM"
+	case "ycsb":
+		return "YCSB"
 	}
 	base := strings.TrimPrefix(name, prefix+"-")
 	parts := strings.Split(base, "-")
@@ -209,6 +213,11 @@ func buildDockerMongoConns(envID string, env *Environment) []MongoConnInfo {
 		})
 	}
 	return conns
+}
+
+func cloudReplsetName(env *Environment, group string) string {
+	_ = env
+	return group
 }
 
 // dockerContainerHostPort returns the first external host port bound for the
@@ -305,7 +314,7 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 					members = append(members, h.IP+":27017")
 				}
 				connStr := fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=%s&authSource=admin",
-					url.QueryEscape(user), encodedPass, strings.Join(members, ","), name)
+					url.QueryEscape(user), encodedPass, strings.Join(members, ","), cloudReplsetName(env, name))
 				mongoConns = append(mongoConns, MongoConnInfo{
 					Name:       name,
 					Type:       "replset",
@@ -376,6 +385,8 @@ func parseInventoryHosts(content, group, sshUser string) []HostInfo {
 			role = "pmm"
 		case strings.Contains(sec, "minio"):
 			role = "minio"
+		case strings.Contains(sec, "ycsb"):
+			role = "ycsb"
 		}
 		// Service hosts (minio, pmm) get their own logical group so they appear in
 		// a separate subsection rather than inside the replica-set/cluster group.
@@ -385,6 +396,8 @@ func parseInventoryHosts(content, group, sshUser string) []HostInfo {
 			hostGroup = "Minio"
 		case "pmm":
 			hostGroup = "PMM"
+		case "ycsb":
+			hostGroup = "YCSB"
 		}
 		sshCmd := fmt.Sprintf("ssh %s@%s", sshUser, ip)
 		hosts = append(hosts, HostInfo{
@@ -443,8 +456,8 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 			})
 		}
 	} else if env.Platform == "chaos" {
-		// CHAOS: Minio console access URL is derived from inventory files.
-		// We look for the minio host in the inventory files.
+		// CHAOS service URLs should point at the real instance addresses rather
+		// than localhost SSH forwards, so derive them from the inventory files.
 		tfDir := filepath.Join(terraformDir, "chaos")
 		var names []string
 		for name := range env.Config.Clusters {
@@ -456,6 +469,8 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 		sort.Strings(names)
 		minioHost := ""
 		minioIP := ""
+		pmmHost := ""
+		pmmIP := ""
 		filePrefix2 := strDefault(env.Config.Prefix, envID)
 		for _, name := range names {
 			p := filepath.Join(tfDir, filePrefix2+"_inventory_"+name)
@@ -463,16 +478,23 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 			if err != nil {
 				continue
 			}
-			// Find the minio group and its host
 			inMinio := false
+			inPmm := false
 			for _, line := range strings.Split(string(content), "\n") {
 				line = strings.TrimSpace(line)
 				if line == "[minio]" {
 					inMinio = true
+					inPmm = false
+					continue
+				}
+				if line == "[pmm]" {
+					inPmm = true
+					inMinio = false
 					continue
 				}
 				if strings.HasPrefix(line, "[") {
 					inMinio = false
+					inPmm = false
 					continue
 				}
 				if inMinio && line != "" {
@@ -483,10 +505,18 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 							minioIP = strings.TrimPrefix(kv, "ansible_host=")
 						}
 					}
-					break
+				}
+				if inPmm && line != "" {
+					parts := strings.Fields(line)
+					pmmHost = parts[0]
+					for _, kv := range parts[1:] {
+						if strings.HasPrefix(kv, "ansible_host=") {
+							pmmIP = strings.TrimPrefix(kv, "ansible_host=")
+						}
+					}
 				}
 			}
-			if minioHost != "" {
+			if (minioHost != "" || minioIP != "") && (pmmHost != "" || pmmIP != "") {
 				break
 			}
 		}
@@ -505,17 +535,22 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 				URL:   fmt.Sprintf("http://%s:%d", host, consolePort),
 			})
 		}
-		// PMM URL for CHAOS (via SSH port forward like other cloud platforms)
 		if v := env.Config.EnablePmm; v != nil && *v {
-			portStr := env.Config.PortToForward
-			if portStr == "" {
-				portStr = "23443"
+			host := pmmIP
+			if host == "" {
+				host = pmmHost
 			}
-			urls = append(urls, ServiceURL{
-				Name:  "pmm",
-				Label: "PMM",
-				URL:   fmt.Sprintf("https://127.0.0.1:%s", portStr),
-			})
+			if host != "" {
+				port := env.Config.PmmPort
+				if port == 0 {
+					port = 8443
+				}
+				urls = append(urls, ServiceURL{
+					Name:  "pmm",
+					Label: "PMM",
+					URL:   fmt.Sprintf("https://%s:%d", host, port),
+				})
+			}
 		}
 	} else {
 		// Cloud deployments: PMM port is restricted to the internal subnet by the

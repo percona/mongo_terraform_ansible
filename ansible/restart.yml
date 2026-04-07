@@ -40,13 +40,14 @@
   hosts: replsets
   become: true
   vars:
-    replset_group: "{{ (group_names | difference(['replsets']))[0] }}"
+    replset_group: "{{ (group_names | difference(['replsets', 'shards']))[0] }}"
+    replset_name: "{{ replset_group if cluster is defined and cluster == replset_group else (cluster ~ '-' ~ replset_group if cluster is defined else replset_group) }}"
 
   tasks:
     - block:
         - name: generate PBM_MONGODB_URI
           set_fact:
-            mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[replset_group] %}{{ h }}:{{ mongo_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={% if cluster is defined %}{{ cluster }}-{{ replset_group }}{% else %}{{ replset_group }}{% endif %}&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
+            mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[replset_group] %}{{ h }}:{{ mongo_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ replset_name }}&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
 
         - name: Resync pbm storage
           shell: pbm config --force-resync --mongodb-uri '{{ mongodb_uri }}'

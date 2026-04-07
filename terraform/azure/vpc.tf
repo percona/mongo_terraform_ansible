@@ -5,7 +5,7 @@ resource "azurerm_resource_group" "main" {
 }
 
 resource "time_sleep" "wait_after_rg" {
-  depends_on = [azurerm_resource_group.main]
+  depends_on      = [azurerm_resource_group.main]
   create_duration = "10s"
 }
 
@@ -15,7 +15,7 @@ resource "azurerm_virtual_network" "vnet" {
   address_space       = [var.subnet_cidr]
   location            = var.location
   resource_group_name = local.resource_group_name
-  depends_on = [time_sleep.wait_after_rg]
+  depends_on          = [time_sleep.wait_after_rg]
 }
 
 # Subnet
@@ -24,7 +24,7 @@ resource "azurerm_subnet" "subnet" {
   resource_group_name  = local.resource_group_name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [var.subnet_cidr]
-  depends_on = [time_sleep.wait_after_rg]
+  depends_on           = [time_sleep.wait_after_rg]
 }
 
 # Network Security Group (NSG)

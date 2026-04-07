@@ -44,8 +44,8 @@
         <td>{{len .Env.Config.Clusters}}</td>
         <td>{{len .Env.Config.Replsets}}</td>
         <td class="env-nowrap"><small>{{if eq .Env.Platform "docker"}}{{imageTag (dockerPsmdbImage .Env.Config)}}{{else}}{{strDefault .Env.Config.MongoRelease "psmdb-80"}}{{end}}</small></td>
-        <td class="env-nowrap"><small>{{if eq .Env.Platform "docker"}}{{imageTag (dockerPbmImage .Env.Config)}}{{else if .Env.Config.PbmVersion}}{{.Env.Config.PbmVersion}}{{else if .Env.Config.PbmRelease}}{{.Env.Config.PbmRelease}}{{else if or .Env.Config.DefaultBucketName .Env.Config.BackupRetention}}latest{{else}}—{{end}}</small></td>
-        <td class="env-nowrap"><small>{{if eq .Env.Platform "docker"}}{{imageTag (dockerPmmImage .Env.Config)}}{{else if .Env.Config.PmmImage}}{{imageTag .Env.Config.PmmImage}}{{else if boolDefault .Env.Config.EnablePmm false}}latest{{else}}—{{end}}</small></td>
+        <td class="env-nowrap"><small>{{if eq .Env.Platform "docker"}}{{imageTag (dockerPbmImage .Env.Config)}}{{else if .Env.Config.PbmVersion}}{{.Env.Config.PbmVersion}}{{else if .Env.Config.PbmRelease}}{{.Env.Config.PbmRelease}}{{else}}—{{end}}</small></td>
+        <td class="env-nowrap"><small>{{if eq .Env.Platform "docker"}}{{imageTag (dockerPmmImage .Env.Config)}}{{else if boolDefault .Env.Config.EnablePmm false}}{{if .Env.Config.PmmImage}}{{imageTag .Env.Config.PmmImage}}{{else}}latest{{end}}{{else}}—{{end}}</small></td>
         <td>
           {{if eq .Env.Platform "docker"}}Local Machine{{else if eq .Env.Platform "chaos"}}Percona Cloud{{else if .Env.Config.Region}}{{.Env.Config.Region}}{{else if .Env.Config.Location}}{{.Env.Config.Location}}{{else}}<span class="text-muted">—</span>{{end}}
         </td>

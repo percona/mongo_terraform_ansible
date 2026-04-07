@@ -1,7 +1,7 @@
 # Public IP
 resource "azurerm_public_ip" "arbiter" {
   count               = var.shard_count * var.arbiters_per_replset
-  name                ="${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}-nic-public-ip"
+  name                = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}-nic-public-ip"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Dynamic"
@@ -39,9 +39,9 @@ resource "azurerm_linux_virtual_machine" "arbiter" {
   disable_password_authentication = true
 
   tags = {
-    ansible-group  = floor(count.index / var.arbiters_per_replset)
-    ansible-index  = count.index % var.arbiters_per_replset
-    environment    = var.env_tag
+    ansible-group = floor(count.index / var.arbiters_per_replset)
+    ansible-index = count.index % var.arbiters_per_replset
+    environment   = var.env_tag
   }
 
   custom_data = base64encode(<<EOT
@@ -105,7 +105,7 @@ resource "azurerm_network_security_group" "arbiter" {
     destination_port_range     = "22"
     source_address_prefix      = var.source_ranges
     destination_address_prefix = "*"
-  }      
+  }
 }
 
 resource "azurerm_network_interface_security_group_association" "arbiter" {

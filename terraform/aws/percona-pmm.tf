@@ -13,17 +13,17 @@ locals {
 }
 
 resource "aws_instance" "pmm" {
-  count                       = var.enable_pmm ? 1 : 0
-  ami                         = lookup(var.image, var.region)
-  instance_type               = var.pmm_type
-  availability_zone           = aws_subnet.vpc-subnet[0].availability_zone
-  key_name                    = aws_key_pair.my_key_pair.key_name
-  subnet_id                   = aws_subnet.vpc-subnet[0].id
+  count             = var.enable_pmm ? 1 : 0
+  ami               = lookup(var.image, var.region)
+  instance_type     = var.pmm_type
+  availability_zone = aws_subnet.vpc-subnet[0].availability_zone
+  key_name          = aws_key_pair.my_key_pair.key_name
+  subnet_id         = aws_subnet.vpc-subnet[0].id
   tags = {
     Name = "${local.pmm_host}"
-  }  
-  vpc_security_group_ids = [ aws_security_group.mongodb_pmm_sg[0].id ]
-  user_data = <<-EOT
+  }
+  vpc_security_group_ids = [aws_security_group.mongodb_pmm_sg[0].id]
+  user_data              = <<-EOT
     #!/bin/bash
     # Set the hostname
     hostnamectl set-hostname "${local.pmm_host}"
@@ -49,14 +49,14 @@ resource "aws_instance" "pmm" {
     UUID=$(blkid -s UUID -o value "$DEVICE")
     echo "UUID=$UUID /var/lib/docker xfs defaults,noatime,nofail 0 2" >> /etc/fstab    
   EOT
-  monitoring = true
+  monitoring             = true
 }
 
 resource "aws_volume_attachment" "pmm_volume_attachment" {
-  count        = var.enable_pmm ? 1 : 0
-  device_name  = "/dev/sdf" # Placeholder, not used for NVMe but required by Terraform
-  volume_id    = aws_ebs_volume.pmm_disk[0].id
-  instance_id  = aws_instance.pmm[0].id
+  count       = var.enable_pmm ? 1 : 0
+  device_name = "/dev/sdf" # Placeholder, not used for NVMe but required by Terraform
+  volume_id   = aws_ebs_volume.pmm_disk[0].id
+  instance_id = aws_instance.pmm[0].id
 }
 
 # Network
@@ -67,7 +67,7 @@ resource "aws_security_group" "mongodb_pmm_sg" {
   vpc_id      = aws_vpc.vpc-network.id
 
   tags = {
-    Name        = "${local.pmm_host}-sg"
+    Name = "${local.pmm_host}-sg"
   }
 }
 
@@ -97,11 +97,11 @@ resource "aws_security_group_rule" "mongodb-pmm-ssh_inbound" {
 resource "aws_security_group_rule" "mongodb-pmm-icmp-ingress" {
   count             = var.enable_pmm ? 1 : 0
   type              = "ingress"
-  from_port         = 8     # Type 8 for echo request (ping)
+  from_port         = 8 # Type 8 for echo request (ping)
   to_port           = 0
   protocol          = "icmp"
   security_group_id = aws_security_group.mongodb_pmm_sg[0].id
-  cidr_blocks       = ["0.0.0.0/0"]  # Allow from any IP address; adjust based on your needs
+  cidr_blocks       = ["0.0.0.0/0"] # Allow from any IP address; adjust based on your needs
 }
 
 # Egress rule allowing all traffic
@@ -112,15 +112,15 @@ resource "aws_security_group_rule" "mongodb-pmm-egress" {
   to_port           = 0
   protocol          = "-1"
   security_group_id = aws_security_group.mongodb_pmm_sg[0].id
-  cidr_blocks       = ["0.0.0.0/0"]  # Allow all outbound IPv4 traffic
-  ipv6_cidr_blocks  = ["::/0"]       # Allow all outbound IPv6 traffic
+  cidr_blocks       = ["0.0.0.0/0"] # Allow all outbound IPv4 traffic
+  ipv6_cidr_blocks  = ["::/0"]      # Allow all outbound IPv6 traffic
 }
 
 # DNS
 resource "aws_route53_record" "pmm_dns_record" {
   count   = var.enable_pmm ? 1 : 0
   zone_id = aws_route53_zone.private_zone.zone_id
-  name    = "${local.pmm_host}"
+  name    = local.pmm_host
   type    = "A"
   ttl     = "300"
   records = [aws_instance.pmm[0].private_ip]

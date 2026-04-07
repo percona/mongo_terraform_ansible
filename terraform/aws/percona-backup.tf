@@ -11,8 +11,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "mongo_backups_lifecycle" {
   bucket = aws_s3_bucket.mongo_backups.id
 
   rule {
-    id      = "BackupLifecycleRule"
-    status  = "Enabled"
+    id     = "BackupLifecycleRule"
+    status = "Enabled"
 
     expiration {
       days = var.backup_retention
@@ -48,8 +48,8 @@ resource "aws_iam_role" "mongo_backup_service_role" {
 
 # Attach the S3 access policy to the IAM role
 resource "aws_iam_role_policy" "mongo_backup_policy" {
-  name   = "${local.bucket_name}-policy"
-  role   = aws_iam_role.mongo_backup_service_role.id
+  name = "${local.bucket_name}-policy"
+  role = aws_iam_role.mongo_backup_service_role.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -77,8 +77,8 @@ resource "aws_iam_user" "mongo_backup_service_account" {
 
 # Attach an access policy to the IAM user
 resource "aws_iam_user_policy" "mongo_backup_user_policy" {
-  name   = "${local.bucket_name}-user-policy"
-  user   = aws_iam_user.mongo_backup_service_account.name
+  name = "${local.bucket_name}-user-policy"
+  user = aws_iam_user.mongo_backup_service_account.name
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

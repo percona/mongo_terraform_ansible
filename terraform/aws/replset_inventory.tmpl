@@ -14,6 +14,11 @@ ${hostname_arbiters[arb_index]} ansible_host=${ip_arbiters[arb_index]} arbiter=T
 ${hostname_pmm} ansible_host=${ip_pmm}
 
 %{ endif ~}
+%{ if hostname_ycsb != "" ~}
+[ycsb]
+${hostname_ycsb} ansible_host=${ip_ycsb}
+
+%{ endif ~}
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
 bucket=${bucket}

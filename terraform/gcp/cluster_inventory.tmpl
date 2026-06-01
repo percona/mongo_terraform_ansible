@@ -36,6 +36,7 @@ ${hostname_ycsb} ansible_host=${ip_ycsb}
 %{ endif ~}
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
+ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 bucket=${bucket}
 cluster=${cluster}
 env_tag=${env_tag}

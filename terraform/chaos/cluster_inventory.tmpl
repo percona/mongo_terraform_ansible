@@ -41,6 +41,7 @@ ${minio_hostname} ansible_host=${minio_ip}
 %{ endif ~}
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
+ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 bucket=${bucket}
 region=us-east-1
 %{ if minio_ip != "" ~}

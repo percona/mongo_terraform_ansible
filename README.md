@@ -29,6 +29,16 @@ Install the tools that match your target platform:
 
 You will also need provider credentials or login configured in your shell before running Terraform.
 
+### Quickstart for Mac
+
+```
+git clone https://github.com/percona/mongo_terraform_ansible.git
+brew tap hashicorp/tap
+brew install hashicorp/tap/terraform
+brew install go
+brew install ansible
+```
+
 ## Web UI (Recommended)
 
 A zero-dependency web frontend (written in Go) is available in [`ui-go/`](./ui-go/README.md).

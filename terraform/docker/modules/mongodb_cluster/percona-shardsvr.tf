@@ -1,12 +1,55 @@
+locals {
+  shard_members = {
+    for member in flatten([
+      for shard_index in range(var.shard_count) : [
+        for replica_index in range(var.shardsvr_replicas) : {
+          key           = "shard${shard_index}svr${replica_index}"
+          shard_index   = shard_index
+          replica_index = replica_index
+        }
+      ]
+    ]) : member.key => member
+  }
+
+  shard_member_keys = flatten([
+    for shard_index in range(var.shard_count) : [
+      for replica_index in range(var.shardsvr_replicas) : "shard${shard_index}svr${replica_index}"
+    ]
+  ])
+
+  cfg_members        = { for cfg_index in range(var.configsvr_count) : "cfg${cfg_index}" => cfg_index }
+  cfg_member_keys    = [for cfg_index in range(var.configsvr_count) : "cfg${cfg_index}"]
+  mongos_members     = { for mongos_index in range(var.mongos_count) : "mongos${mongos_index}" => mongos_index }
+  mongos_member_keys = [for mongos_index in range(var.mongos_count) : "mongos${mongos_index}"]
+
+  arbiter_members = {
+    for member in flatten([
+      for shard_index in range(var.shard_count) : [
+        for arbiter_index in range(var.arbiters_per_replset) : {
+          key           = "shard${shard_index}arb${arbiter_index}"
+          shard_index   = shard_index
+          arbiter_index = arbiter_index
+        }
+      ]
+    ]) : member.key => member
+  }
+
+  arbiter_member_keys = flatten([
+    for shard_index in range(var.shard_count) : [
+      for arbiter_index in range(var.arbiters_per_replset) : "shard${shard_index}arb${arbiter_index}"
+    ]
+  ])
+}
+
 resource "docker_volume" "shard_volume" {
-  count = var.shard_count * var.shardsvr_replicas
-  name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-data"
+  for_each = local.shard_members
+  name     = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}-data"
 }
 
 resource "docker_container" "shard" {
-  count      = var.shard_count * var.shardsvr_replicas
-  name       = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
-  hostname   = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
+  for_each   = local.shard_members
+  name       = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}"
+  hostname   = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}"
   domainname = var.domain_name
   image      = docker_image.psmdb.image_id
   mounts {
@@ -17,7 +60,7 @@ resource "docker_container" "shard" {
   }
   command = concat([
     "mongod",
-    "--replSet", "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}",
+    "--replSet", "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}",
     "--bind_ip_all",
     "--port", "${var.shardsvr_port}",
     "--shardsvr",
@@ -51,7 +94,7 @@ resource "docker_container" "shard" {
   }
   labels {
     label = "replsetName"
-    value = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}"
+    value = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}"
   }
   labels {
     label = "environment"
@@ -64,7 +107,7 @@ resource "docker_container" "shard" {
   mounts {
     type   = "volume"
     target = "/data/db"
-    source = docker_volume.shard_volume[count.index].name
+    source = docker_volume.shard_volume[each.key].name
   }
   healthcheck {
     test         = ["CMD-SHELL", "mongosh --port ${var.shardsvr_port} --eval 'db.runCommand({ ping: 1 })'"]

@@ -354,9 +354,9 @@ function openRerunModal(action, labelText) {
   pendingAction = action;
   document.getElementById('rerun-modal-text').textContent = labelText;
   document.getElementById('rerun-confirm-btn').onclick = () => {
+    const actionToRun = pendingAction;
     closeRerunModal();
-    executeAction(pendingAction);
-    pendingAction = null;
+    executeAction(actionToRun);
   };
   document.getElementById('rerun-modal').style.display = 'flex';
 }

@@ -1,18 +1,18 @@
 resource "aws_instance" "mongos" {
-  count         = var.mongos_count
+  for_each      = local.mongos_members
   ami           = lookup(var.image, var.region)
   instance_type = var.mongos_type
-  subnet_id     = data.aws_subnet.details[count.index % var.subnet_count].id
+  subnet_id     = data.aws_subnet.details[each.value % var.subnet_count].id
   key_name      = var.my_key_pair
   tags = {
-    Name          = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+    Name          = "${var.cluster_name}-${var.mongos_tag}0${each.value}"
     ansible-group = "mongos"
   }
   vpc_security_group_ids = [aws_security_group.mongodb_mongos_sg.id]
   user_data              = <<-EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+    hostnamectl set-hostname "${var.cluster_name}-${var.mongos_tag}0${each.value}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname) localhost" > /etc/hosts    
@@ -72,10 +72,10 @@ resource "aws_security_group_rule" "mongodb-mongos-egress" {
 }
 
 resource "aws_route53_record" "mongos_dns_record" {
-  count   = var.mongos_count
-  zone_id = data.aws_route53_zone.private_zone.zone_id
-  name    = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
-  type    = "A"
-  ttl     = "300"
-  records = [aws_instance.mongos[count.index].private_ip]
+  for_each = local.mongos_members
+  zone_id  = data.aws_route53_zone.private_zone.zone_id
+  name     = "${var.cluster_name}-${var.mongos_tag}0${each.value}"
+  type     = "A"
+  ttl      = "300"
+  records  = [aws_instance.mongos[each.key].private_ip]
 }

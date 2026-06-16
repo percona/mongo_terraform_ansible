@@ -1,27 +1,27 @@
 # Public IP
 resource "azurerm_public_ip" "arbiter" {
-  count               = var.shard_count * var.arbiters_per_replset
-  name                = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}-nic-public-ip"
+  for_each            = local.arbiter_members
+  name                = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}-nic-public-ip"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Dynamic"
 }
 
 resource "azurerm_linux_virtual_machine" "arbiter" {
-  count               = var.shard_count * var.arbiters_per_replset
-  name                = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+  for_each            = local.arbiter_members
+  name                = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}"
   location            = var.location
   resource_group_name = var.resource_group_name
   size                = var.arbiter_type
   admin_username      = var.my_ssh_user
   network_interface_ids = [
-    azurerm_network_interface.arbiter[count.index].id,
+    azurerm_network_interface.arbiter[each.key].id,
   ]
 
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
-    name                 = "${var.cluster_name}-arbiter-disk-${count.index}"
+    name                 = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}-os-disk"
   }
 
   source_image_reference {
@@ -39,22 +39,22 @@ resource "azurerm_linux_virtual_machine" "arbiter" {
   disable_password_authentication = true
 
   tags = {
-    ansible-group = floor(count.index / var.arbiters_per_replset)
-    ansible-index = count.index % var.arbiters_per_replset
+    ansible-group = tostring(each.value.shard_index)
+    ansible-index = tostring(each.value.arbiter_index)
     environment   = var.env_tag
   }
 
   custom_data = base64encode(<<EOT
     #!/bin/bash
-    hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+    hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}"
     echo "127.0.0.1 $(hostname) localhost" > /etc/hosts
   EOT
   )
 }
 
 resource "azurerm_network_interface" "arbiter" {
-  count               = var.shard_count * var.arbiters_per_replset
-  name                = "${var.cluster_name}-arbiter-nic-${count.index}"
+  for_each            = local.arbiter_members
+  name                = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}-nic"
   location            = var.location
   resource_group_name = var.resource_group_name
 
@@ -62,7 +62,7 @@ resource "azurerm_network_interface" "arbiter" {
     name                          = "internal"
     subnet_id                     = var.subnet
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.arbiter[count.index].id
+    public_ip_address_id          = azurerm_public_ip.arbiter[each.key].id
   }
 }
 
@@ -109,7 +109,7 @@ resource "azurerm_network_security_group" "arbiter" {
 }
 
 resource "azurerm_network_interface_security_group_association" "arbiter" {
-  count                     = var.shard_count * var.arbiters_per_replset
-  network_interface_id      = azurerm_network_interface.arbiter[count.index].id
+  for_each                  = local.arbiter_members
+  network_interface_id      = azurerm_network_interface.arbiter[each.key].id
   network_security_group_id = azurerm_network_security_group.arbiter.id
 }

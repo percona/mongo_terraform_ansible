@@ -1,22 +1,22 @@
 output "hostname_replsets" {
-  value = google_compute_instance.replset[*].name
+  value = [for key in local.replset_member_keys : google_compute_instance.replset[key].name]
 }
 
 output "ip_replsets" {
-  value = google_compute_instance.replset[*].network_interface[0].access_config[0].nat_ip
+  value = [for key in local.replset_member_keys : google_compute_instance.replset[key].network_interface[0].access_config[0].nat_ip]
 }
 
 output "ansible_group_replsets" {
-  value = [for i in google_compute_instance.replset : i.labels["ansible-group"]]
+  value = [for key in local.replset_member_keys : google_compute_instance.replset[key].labels["ansible-group"]]
 }
 
 # Arbiters
 output "hostname_arbiters" {
-  value = google_compute_instance.arbiter[*].name
+  value = [for key in local.arbiter_member_keys : google_compute_instance.arbiter[key].name]
 }
 
 output "ip_arbiters" {
-  value = google_compute_instance.arbiter[*].network_interface[0].access_config[0].nat_ip
+  value = [for key in local.arbiter_member_keys : google_compute_instance.arbiter[key].network_interface[0].access_config[0].nat_ip]
 }
 
 output "region" {
@@ -24,7 +24,7 @@ output "region" {
 }
 
 output "ansible_group_arbiters" {
-  value = [for i in google_compute_instance.arbiter : i.labels["ansible-group"]]
+  value = [for key in local.arbiter_member_keys : google_compute_instance.arbiter[key].labels["ansible-group"]]
 }
 
 output "data_node_count" {

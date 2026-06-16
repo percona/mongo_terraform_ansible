@@ -1,13 +1,13 @@
 # Create Docker containers for MongoDB mongos
 resource "docker_container" "mongos" {
-  count      = var.mongos_count
-  name       = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
-  hostname   = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+  for_each   = local.mongos_members
+  name       = "${var.cluster_name}-${var.mongos_tag}0${each.value}"
+  hostname   = "${var.cluster_name}-${var.mongos_tag}0${each.value}"
   domainname = var.domain_name
   image      = docker_image.psmdb.image_id
   command = concat([
     "mongos",
-    "--configdb", "${lookup({ for label in docker_container.cfg[0].labels : label.label => label.value }, "replsetName", null)}/${join(",", [for i in range(var.configsvr_count) : "${docker_container.cfg[i].name}:${var.configsvr_port}"])}",
+    "--configdb", "${lookup({ for label in docker_container.cfg[local.cfg_member_keys[0]].labels : label.label => label.value }, "replsetName", null)}/${join(",", [for key in local.cfg_member_keys : "${docker_container.cfg[key].name}:${var.configsvr_port}"])}",
     "--bind_ip_all",
     "--port", "${var.mongos_port}",
     "--keyFile", "${var.keyfile_path}/${var.keyfile_name}",

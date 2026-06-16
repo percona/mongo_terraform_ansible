@@ -98,6 +98,11 @@ variable "arbiter_port" {
   default     = "27017"
 }
 
+variable "arbiter_base_port" {
+  description = "Stable starting port of the arbiter servers. Unlike arbiter_port + data_nodes_per_replset, this does not change when the replica set is expanded."
+  default     = "27117"
+}
+
 #############
 # PMM
 #############

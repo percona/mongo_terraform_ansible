@@ -5,13 +5,13 @@ resource "null_resource" "initiate_cfg_replset" {
   # Run rs.initiate()
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.cfg[0].name} mongosh --port ${var.configsvr_port} --eval '
+      docker exec -i ${docker_container.cfg[local.cfg_member_keys[0]].name} mongosh --port ${var.configsvr_port} --eval '
         rs.initiate({
-          "_id": "${lookup({ for label in docker_container.cfg[0].labels : label.label => label.value }, "replsetName", null)}",
+          "_id": "${lookup({ for label in docker_container.cfg[local.cfg_member_keys[0]].labels : label.label => label.value }, "replsetName", null)}",
           "configsvr": true,
           "members": [
-            { "_id": 0, "host": "${docker_container.cfg[0].name}:${var.configsvr_port}", "priority": 2 },
-            ${join(",", [for i in range(1, var.configsvr_count) : "{ _id: ${i}, host: \"${docker_container.cfg[i].name}:${var.configsvr_port}\" }"])}
+            { "_id": 0, "host": "${docker_container.cfg[local.cfg_member_keys[0]].name}:${var.configsvr_port}", "priority": 2 },
+            ${join(",", [for i in range(1, var.configsvr_count) : "{ _id: ${i}, host: \"${docker_container.cfg[local.cfg_member_keys[i]].name}:${var.configsvr_port}\" }"])}
           ]
         });
       '
@@ -25,7 +25,7 @@ resource "null_resource" "initiate_cfg_replset" {
       success=false
       while [ $retries -gt 0 ]; do
         # Check the replica set status and look for a primary
-        primary=$(docker exec -i ${docker_container.cfg[0].name} mongosh --port ${var.configsvr_port} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
+        primary=$(docker exec -i ${docker_container.cfg[local.cfg_member_keys[0]].name} mongosh --port ${var.configsvr_port} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
         
         if test "$primary" = "true"; then
           echo "Primary has been elected in config server replica set"
@@ -48,7 +48,7 @@ resource "null_resource" "initiate_cfg_replset" {
   # Create root user on the config servers
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.cfg[0].name} mongosh admin --port ${var.configsvr_port} --eval '
+      docker exec -i ${docker_container.cfg[local.cfg_member_keys[0]].name} mongosh admin --port ${var.configsvr_port} --eval '
         db.createUser({
           "user": "${var.mongodb_root_user}",
           "pwd": "${var.mongodb_root_password}",
@@ -63,7 +63,7 @@ resource "null_resource" "initiate_cfg_replset" {
   # Create user for PBM on config servers
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.cfg[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.configsvr_port} --eval '
+      docker exec -i ${docker_container.cfg[local.cfg_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.configsvr_port} --eval '
         db.createRole({
           "role": "pbmAnyAction",
           "privileges": [
@@ -89,7 +89,7 @@ resource "null_resource" "initiate_cfg_replset" {
   # Create user for PMM on config servers
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.cfg[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.configsvr_port} --eval '
+      docker exec -i ${docker_container.cfg[local.cfg_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.configsvr_port} --eval '
         db.createRole({
           role: "pmmMonitor",
           privileges: [{
@@ -132,13 +132,13 @@ resource "null_resource" "initiate_shard_replset" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh --port ${var.shardsvr_port} --eval '
+      docker exec -i ${docker_container.shard["shard${each.key}svr0"].name} mongosh --port ${var.shardsvr_port} --eval '
         rs.initiate({
-          _id: "${lookup({ for label in docker_container.shard[each.key * var.shardsvr_replicas].labels : label.label => label.value }, "replsetName", null)}",
+          _id: "${lookup({ for label in docker_container.shard["shard${each.key}svr0"].labels : label.label => label.value }, "replsetName", null)}",
           members: [
-            { _id: 0, host: "${docker_container.shard[each.key * var.shardsvr_replicas].name}:${var.shardsvr_port}", priority: 2 },
-            ${join(",", [for i in range(1, var.shardsvr_replicas) : "{ _id: ${i}, host: \"${docker_container.shard[each.key * var.shardsvr_replicas + i].name}:${var.shardsvr_port}\" }"])}
-            ${join(",", [for i in range(var.arbiters_per_replset) : ",{ _id: ${var.shardsvr_replicas + i}, host: \"${docker_container.arbiter[each.key * var.arbiters_per_replset + i].name}:${var.shardsvr_port}\", arbiterOnly: true }"])}
+            { _id: 0, host: "${docker_container.shard["shard${each.key}svr0"].name}:${var.shardsvr_port}", priority: 2 },
+            ${join(",", [for i in range(1, var.shardsvr_replicas) : "{ _id: ${i}, host: \"${docker_container.shard["shard${each.key}svr${i}"].name}:${var.shardsvr_port}\" }"])}
+            ${join(",", [for i in range(var.arbiters_per_replset) : ",{ _id: ${var.shardsvr_replicas + i}, host: \"${docker_container.arbiter["shard${each.key}arb${i}"].name}:${var.shardsvr_port}\", arbiterOnly: true }"])}
           ]
         });
       '
@@ -158,7 +158,7 @@ resource "null_resource" "check_primary" {
       success=false
       while [ $retries -gt 0 ]; do
         # Check the replica set status and look for a primary for the shard
-        primary=$(docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh --port ${var.shardsvr_port} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
+        primary=$(docker exec -i ${docker_container.shard["shard${each.key}svr0"].name} mongosh --port ${var.shardsvr_port} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
         
         if test "$primary" = "true"; then
           echo "Primary has been elected in shard ${each.key}"
@@ -188,7 +188,7 @@ resource "null_resource" "create_users" {
   # Create the root user on the shards
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin --port ${var.shardsvr_port} --eval '
+      docker exec -i ${docker_container.shard["shard${each.key}svr0"].name} mongosh admin --port ${var.shardsvr_port} --eval '
         db.createUser({
           "user": "${var.mongodb_root_user}",
           "pwd": "${var.mongodb_root_password}",
@@ -203,7 +203,7 @@ resource "null_resource" "create_users" {
   # Create user for PBM on the shards
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.shardsvr_port} --eval '
+      docker exec -i ${docker_container.shard["shard${each.key}svr0"].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.shardsvr_port} --eval '
         db.createRole({
           "role": "pbmAnyAction",
           "privileges": [
@@ -229,7 +229,7 @@ resource "null_resource" "create_users" {
   # Create user for PMM on the shards
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.shard[each.key * var.shardsvr_replicas].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.shardsvr_port} --eval '
+      docker exec -i ${docker_container.shard["shard${each.key}svr0"].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.shardsvr_port} --eval '
         db.createRole({
           "role": "pmmMonitor",
           "privileges": [{
@@ -274,7 +274,7 @@ resource "null_resource" "change_default_write_concern" {
   ]
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.mongos[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval '
+      docker exec -i ${docker_container.mongos[local.mongos_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval '
         db.adminCommand({
           "setDefaultRWConcern" : 1,
           "defaultWriteConcern" : { "w" : 1 },
@@ -285,8 +285,18 @@ resource "null_resource" "change_default_write_concern" {
   }
 }
 
-# Add the shards to the cluster
-resource "null_resource" "add_shards" {
+# Add the shards to the cluster. This is keyed per shard so increasing
+# shard_count registers only the newly-created shard.
+resource "null_resource" "add_shard" {
+  for_each = toset([for i in range(var.shard_count) : tostring(i)])
+
+  triggers = {
+    mongos_id        = docker_container.mongos[local.mongos_member_keys[0]].id
+    shard_primary_id = docker_container.shard["shard${each.key}svr0"].id
+    shard_name       = lookup({ for label in docker_container.shard["shard${each.key}svr0"].labels : label.label => label.value }, "replsetName", "")
+    shard_host       = "${docker_container.shard["shard${each.key}svr0"].name}:${var.shardsvr_port}"
+  }
+
   depends_on = [
     docker_container.mongos,
     null_resource.initiate_cfg_replset,
@@ -295,8 +305,14 @@ resource "null_resource" "add_shards" {
   ]
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.mongos[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval '
-        ${join(";", [for i in range(var.shard_count) : "sh.addShard(\"${lookup({ for label in docker_container.shard[i * var.shardsvr_replicas].labels : label.label => label.value }, "replsetName", null)}/${docker_container.shard[i * var.shardsvr_replicas].name}:${var.shardsvr_port}\")"])};
+      docker exec -i ${docker_container.mongos[local.mongos_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval '
+        const shardName = "${self.triggers.shard_name}";
+        const shardConn = shardName + "/${self.triggers.shard_host}";
+        if (!db.adminCommand({ listShards: 1 }).shards.some(s => s._id === shardName)) {
+          sh.addShard(shardConn);
+        } else {
+          print("Shard " + shardName + " is already registered, skipping.");
+        }
       '
     EOT
   }
@@ -307,7 +323,7 @@ resource "null_resource" "configure_pbm" {
   count = var.enable_pbm ? 1 : 0
 
   depends_on = [
-    null_resource.add_shards,
+    null_resource.add_shard,
     docker_container.cfg,
     docker_container.shard,
     docker_container.pbm_shard,
@@ -316,7 +332,7 @@ resource "null_resource" "configure_pbm" {
   provisioner "local-exec" {
     command = <<-EOT
       sleep 5
-      cat ${path.module}/pbm-storage.conf.${var.cluster_name} | docker exec -i ${docker_container.pbm_cfg[0].name} pbm config --file=-
+      cat ${path.module}/pbm-storage.conf.${var.cluster_name} | docker exec -i ${docker_container.pbm_cfg[local.cfg_member_keys[0]].name} pbm config --file=-
     EOT
   }
 }
@@ -325,11 +341,11 @@ resource "null_resource" "configure_pbm" {
 resource "null_resource" "create_ycsb_collection" {
   count = var.enable_ycsb ? 1 : 0
   depends_on = [
-    null_resource.add_shards
+    null_resource.add_shard
   ]
   provisioner "local-exec" {
     command = <<-EOT
-      docker exec -i ${docker_container.mongos[0].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval 'sh.enableSharding("ycsb"); sh.shardCollection("ycsb.usertable", { "_id" : "hashed" }, false, { numInitialChunks : 100 });'
+      docker exec -i ${docker_container.mongos[local.mongos_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --eval 'sh.enableSharding("ycsb"); sh.shardCollection("ycsb.usertable", { "_id" : "hashed" }, false, { numInitialChunks : 100 });'
     EOT
   }
 }

@@ -78,6 +78,7 @@ variable "replsets" {
     arbiters_per_replset   = optional(number, 1)      # Number of arbiters for the replica set
     replset_port           = optional(number, 27017)  # Starting port for the replica set
     arbiter_port           = optional(number, 27017)  # Starting port for the replica set arbiters
+    arbiter_base_port      = optional(number, 27117)  # Stable starting port for arbiters; does not change when data node count changes
     psmdb_image            = optional(string, "percona/percona-server-mongodb:latest")
     mongodb_root_password  = optional(string, "percona")
     domain_name            = optional(string, "") # DNS domain name

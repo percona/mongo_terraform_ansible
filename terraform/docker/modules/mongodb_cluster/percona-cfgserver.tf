@@ -1,11 +1,12 @@
 resource "docker_volume" "cfg_volume" {
-  name  = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-data"
-  count = var.configsvr_count
+  for_each = local.cfg_members
+  name     = "${var.cluster_name}-${var.configsvr_tag}0${each.value}-data"
 }
 
 resource "docker_container" "cfg" {
-  name       = "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
-  hostname   = "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
+  for_each   = local.cfg_members
+  name       = "${var.cluster_name}-${var.configsvr_tag}0${each.value}"
+  hostname   = "${var.cluster_name}-${var.configsvr_tag}0${each.value}"
   domainname = var.domain_name
   image      = docker_image.psmdb.image_id
   mounts {
@@ -14,7 +15,6 @@ resource "docker_container" "cfg" {
     type      = "volume"
     read_only = true
   }
-  count = var.configsvr_count
   command = concat([
     "mongod",
     "--replSet", "${var.cluster_name}-${var.configsvr_tag}",
@@ -61,7 +61,7 @@ resource "docker_container" "cfg" {
   mounts {
     type   = "volume"
     target = "/data/db"
-    source = docker_volume.cfg_volume[count.index].name
+    source = docker_volume.cfg_volume[each.key].name
   }
   network_mode = "bridge"
   networks_advanced {

@@ -1,16 +1,23 @@
+locals {
+  replset_members     = { for member_index in range(var.data_nodes_per_replset) : "svr${member_index}" => member_index }
+  replset_member_keys = [for member_index in range(var.data_nodes_per_replset) : "svr${member_index}"]
+  arbiter_members     = { for arbiter_index in range(var.arbiters_per_replset) : "arb${arbiter_index}" => arbiter_index }
+  arbiter_member_keys = [for arbiter_index in range(var.arbiters_per_replset) : "arb${arbiter_index}"]
+}
+
 resource "google_compute_disk" "replset_disk" {
-  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-data"
-  type  = var.data_disk_type
-  size  = var.replsetsvr_volume_size
-  zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)]
-  count = var.data_nodes_per_replset
+  for_each = local.replset_members
+  name     = "${var.rs_name}-${var.replset_tag}${each.value}-data"
+  type     = var.data_disk_type
+  size     = var.replsetsvr_volume_size
+  zone     = data.google_compute_zones.available.names[each.value % length(data.google_compute_zones.available.names)]
 }
 
 resource "google_compute_instance" "replset" {
-  name         = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
+  for_each     = local.replset_members
+  name         = "${var.rs_name}-${var.replset_tag}${each.value}"
   machine_type = var.replsetsvr_type
-  zone         = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)]
-  count        = var.data_nodes_per_replset
+  zone         = data.google_compute_zones.available.names[each.value % length(data.google_compute_zones.available.names)]
   tags         = ["${var.rs_name}-${var.replset_tag}"]
   labels = {
     ansible-group = var.replset_tag,
@@ -22,7 +29,7 @@ resource "google_compute_instance" "replset" {
     }
   }
   attached_disk {
-    source = element(google_compute_disk.replset_disk.*.self_link, count.index)
+    source = google_compute_disk.replset_disk[each.key].self_link
   }
   network_interface {
     network    = var.vpc
@@ -40,7 +47,7 @@ resource "google_compute_instance" "replset" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "$${var.rs_name}-${var.replset_tag}0${count.index}"
+    hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}${each.value}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname) localhost" > /etc/hosts    

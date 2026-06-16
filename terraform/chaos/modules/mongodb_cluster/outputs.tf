@@ -1,25 +1,25 @@
 output "hostname_shards" {
-  value = chaos_instance.shard[*].name
+  value = [for key in local.shard_member_keys : chaos_instance.shard[key].name]
 }
 
 output "ip_shards" {
-  value = chaos_instance.shard[*].ip_address
+  value = [for key in local.shard_member_keys : chaos_instance.shard[key].ip_address]
 }
 
 output "ansible_group_shards" {
-  value = [for i in range(var.shard_count * var.shardsvr_replicas) : tostring(floor(i / var.shardsvr_replicas))]
+  value = [for key in local.shard_member_keys : tostring(local.shard_members[key].shard_index)]
 }
 
 output "ansible_group_index" {
-  value = [for i in range(var.shard_count * var.shardsvr_replicas) : tostring(i % var.shardsvr_replicas)]
+  value = [for key in local.shard_member_keys : tostring(local.shard_members[key].replica_index)]
 }
 
 output "hostname_cfg" {
-  value = chaos_instance.cfg[*].name
+  value = [for key in local.cfg_member_keys : chaos_instance.cfg[key].name]
 }
 
 output "ip_cfg" {
-  value = chaos_instance.cfg[*].ip_address
+  value = [for key in local.cfg_member_keys : chaos_instance.cfg[key].ip_address]
 }
 
 output "ansible_group_cfg" {
@@ -27,11 +27,11 @@ output "ansible_group_cfg" {
 }
 
 output "hostname_mongos" {
-  value = chaos_instance.mongos[*].name
+  value = [for key in local.mongos_member_keys : chaos_instance.mongos[key].name]
 }
 
 output "ip_mongos" {
-  value = chaos_instance.mongos[*].ip_address
+  value = [for key in local.mongos_member_keys : chaos_instance.mongos[key].ip_address]
 }
 
 output "ansible_group_mongos" {
@@ -39,19 +39,19 @@ output "ansible_group_mongos" {
 }
 
 output "hostname_arbiters" {
-  value = chaos_instance.arbiter[*].name
+  value = [for key in local.arbiter_member_keys : chaos_instance.arbiter[key].name]
 }
 
 output "ip_arbiters" {
-  value = chaos_instance.arbiter[*].ip_address
+  value = [for key in local.arbiter_member_keys : chaos_instance.arbiter[key].ip_address]
 }
 
 output "ansible_group_arbiters" {
-  value = [for i in range(var.shard_count * var.arbiters_per_replset) : tostring(floor(i / var.arbiters_per_replset))]
+  value = [for key in local.arbiter_member_keys : tostring(local.arbiter_members[key].shard_index)]
 }
 
 output "ansible_group_arb_index" {
-  value = [for i in range(var.shard_count * var.arbiters_per_replset) : tostring(i % var.arbiters_per_replset)]
+  value = [for key in local.arbiter_member_keys : tostring(local.arbiter_members[key].arbiter_index)]
 }
 
 output "number_of_shards" {

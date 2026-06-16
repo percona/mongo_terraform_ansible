@@ -843,6 +843,25 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	existing := state[payload.EnvID]
+	if existing != nil {
+		var baseline *Config
+		if existing.LastAppliedConfig != nil {
+			baseline = existing.LastAppliedConfig
+		} else if existing.Status != "" && existing.Status != "configured" && existing.Status != "deleted" {
+			// Backward-compatible guard for environments created before
+			// LastAppliedConfig existed. If any action has materialized the
+			// environment, treat the currently saved config as the topology that
+			// cannot be mutated with unsupported operations.
+			baseline = &existing.Config
+		}
+		if baseline != nil {
+			_, unsupported := analyseTopologyChange(*baseline, payload.Config)
+			if len(unsupported) > 0 {
+				jsonError(w, 400, "unsupported topology change: "+strings.Join(unsupported, "; "))
+				return
+			}
+		}
+	}
 	if payload.Platform == "chaos" && existing != nil && existing.Config.ChaosApiTokenPath != payload.Config.ChaosApiTokenPath {
 		removeManagedChaosTokenFile(existing.Config.ChaosApiTokenPath)
 	}
@@ -861,6 +880,9 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if existing != nil {
 		env.LastJobID = existing.LastJobID
+		env.LastAppliedConfig = existing.LastAppliedConfig
+		env.HostIPs = existing.HostIPs
+		env.History = existing.History
 	}
 	state[payload.EnvID] = env
 	if err := saveState(state); err != nil {
@@ -1091,6 +1113,10 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	action := body.Action
+	if strings.TrimSpace(action) == "" {
+		jsonError(w, 400, "missing action")
+		return
+	}
 	platform := env.Platform
 	tfDir := filepath.Join(terraformDir, platform)
 	varfile := tfvarsPath(envID, platform)
@@ -1127,12 +1153,15 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	// overwrite each other's files (e.g. "myenv_inventory_cl01").
 	filePrefix := strDefault(env.Config.Prefix, envID)
 
-	cloudAnsibleCmd := func(playbookPath string, waitForSSH bool) string {
+	cloudAnsibleCmdFor := func(playbookPath string, waitForSSH bool, names []string, extraVars map[string]string) string {
 		effectiveVars := make(map[string]string)
 		// Note: mongo_release, mongo_version, pbm_release, pbm_version are now written
 		// into the inventory [all:vars] section via Terraform variables, so they are
 		// not included here in --extra-vars.
 		for k, v := range env.Config.AnsibleVars {
+			effectiveVars[k] = v
+		}
+		for k, v := range extraVars {
 			effectiveVars[k] = v
 		}
 
@@ -1158,7 +1187,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var b strings.Builder
-		for _, name := range invNames {
+		for _, name := range names {
 			inv := shellQuote(filePrefix + "_inventory_" + name)
 			b.WriteString(fmt.Sprintf(
 				`{ [ -f %[1]s ] || { printf "ERROR: inventory file %%s not found\n" %[1]s; exit 1; }; `,
@@ -1187,6 +1216,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			return `printf "WARNING: no clusters or replica sets configured – nothing to run\n"`
 		}
 		return s
+	}
+	cloudAnsibleCmd := func(playbookPath string, waitForSSH bool) string {
+		return cloudAnsibleCmdFor(playbookPath, waitForSSH, invNames, nil)
 	}
 
 	sshConfigInjectShell := func() string {
@@ -1244,6 +1276,14 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	backendPathArg := shellQuote("path=" + envStateFile)
 
 	var cmd []string
+	configAtStart := cloneConfig(env.Config)
+	appliedConfig := env.LastAppliedConfig
+	if appliedConfig == nil && (env.Status == "running" || env.Status == "deploy_success") {
+		// Backward-compatible fallback for state files created before
+		// LastAppliedConfig existed. Treat the current saved config as applied so
+		// unchanged redeploys do not look like first deploys.
+		appliedConfig = cloneConfig(env.Config)
+	}
 	switch action {
 	case "deploy":
 		shellCmd := fmt.Sprintf(
@@ -1252,8 +1292,60 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			shellQuote(varfile),
 		)
 		if platform != "docker" {
-			shellCmd += sshConfigInjectShell()
-			shellCmd += " && " + cloudAnsibleCmd(filepath.Join(ansibleDir, "main.yml"), true)
+			if appliedConfig != nil {
+				plan, unsupported := analyseTopologyChange(*appliedConfig, env.Config)
+				if len(unsupported) > 0 {
+					jsonError(w, 400, "unsupported topology change: "+strings.Join(unsupported, "; "))
+					return
+				}
+				if plan.hasChanges() {
+					shellCmd += sshConfigInjectShell()
+					var ansibleSteps []string
+					for _, name := range plan.NewClusters {
+						ansibleSteps = append(ansibleSteps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "main.yml"), true, []string{name}, nil))
+					}
+					for _, name := range plan.NewReplsets {
+						ansibleSteps = append(ansibleSteps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "main.yml"), true, []string{name}, nil))
+					}
+					clusterNames := make([]string, 0, len(plan.AddedShards))
+					for name := range plan.AddedShards {
+						clusterNames = append(clusterNames, name)
+					}
+					sort.Strings(clusterNames)
+					for _, name := range clusterNames {
+						for _, shardIndex := range plan.AddedShards[name] {
+							ansibleSteps = append(ansibleSteps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "add_shard.yml"), true, []string{name}, map[string]string{
+								"new_shard_group": fmt.Sprintf("shard%d", shardIndex),
+							}))
+						}
+					}
+					replsetNames := make([]string, 0, len(plan.AddedReplsetNodes))
+					for name := range plan.AddedReplsetNodes {
+						replsetNames = append(replsetNames, name)
+					}
+					sort.Strings(replsetNames)
+					for _, name := range replsetNames {
+						ansibleSteps = append(ansibleSteps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "add_replset_member.yml"), true, []string{name}, map[string]string{
+							"target_replset": name,
+						}))
+					}
+					if len(ansibleSteps) > 0 {
+						shellCmd += " && " + strings.Join(ansibleSteps, " && ")
+					}
+				} else {
+					shellCmd += sshConfigInjectShell()
+					shellCmd += " && " + cloudAnsibleCmd(filepath.Join(ansibleDir, "main.yml"), true)
+				}
+			} else {
+				shellCmd += sshConfigInjectShell()
+				shellCmd += " && " + cloudAnsibleCmd(filepath.Join(ansibleDir, "main.yml"), true)
+			}
+		} else if appliedConfig != nil {
+			_, unsupported := analyseTopologyChange(*appliedConfig, env.Config)
+			if len(unsupported) > 0 {
+				jsonError(w, 400, "unsupported topology change: "+strings.Join(unsupported, "; "))
+				return
+			}
 		}
 		cmd = []string{"bash", "-c", shellCmd}
 
@@ -1261,6 +1353,17 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		if platform == "docker" {
 			jsonError(w, 400, "provision action is not applicable to Docker environments")
 			return
+		}
+		if appliedConfig != nil {
+			plan, unsupported := analyseTopologyChange(*appliedConfig, env.Config)
+			if len(unsupported) > 0 {
+				jsonError(w, 400, "unsupported topology change: "+strings.Join(unsupported, "; "))
+				return
+			}
+			if plan.hasChanges() {
+				jsonError(w, 400, "topology expansion must be run with Deploy so Terraform is followed by the required Ansible scale-out playbook")
+				return
+			}
 		}
 		shellCmd := fmt.Sprintf(
 			"terraform init -reconfigure -input=false -backend-config=%s && terraform apply -auto-approve -input=false -var-file=%s",
@@ -1376,6 +1479,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				e.Status = "provisioned"
 			case "deploy", "configure":
 				e.Status = "running"
+				if action == "deploy" {
+					e.LastAppliedConfig = cloneConfig(*configAtStart)
+				}
 			default:
 				e.Status = action + "_success"
 			}
@@ -1618,12 +1724,18 @@ func assignDockerReplsetPorts(cfg *Config) {
 			}
 			rs.ReplsetPort = nextPort
 			rs.ArbiterPort = nextPort
+			rs.ArbiterBasePort = nextPort + 10
 			for _, port := range dockerReplsetPorts(rs) {
 				occupied[port] = struct{}{}
 			}
 			nextPort += dockerReplsetPortStep
 		} else if rs.ArbiterPort == 0 {
 			rs.ArbiterPort = rs.ReplsetPort
+			if rs.ArbiterBasePort == 0 {
+				rs.ArbiterBasePort = rs.ReplsetPort + 10
+			}
+		} else if rs.ArbiterBasePort == 0 {
+			rs.ArbiterBasePort = rs.ArbiterPort + intDefault(rs.DataNodesPerReplset, 2)
 		}
 		cfg.Replsets[nr.Name] = rs
 	}
@@ -1633,6 +1745,7 @@ func dockerReplsetPortRangeFree(startPort int, rs ReplsetConfig, occupied map[in
 	candidate := rs
 	candidate.ReplsetPort = startPort
 	candidate.ArbiterPort = startPort
+	candidate.ArbiterBasePort = startPort + 10
 	for _, port := range dockerReplsetPorts(candidate) {
 		if _, exists := occupied[port]; exists {
 			return false
@@ -1646,13 +1759,16 @@ func dockerReplsetPorts(rs ReplsetConfig) []int {
 		return nil
 	}
 
-	arbiterBase := rs.ArbiterPort
-	if arbiterBase == 0 {
-		arbiterBase = rs.ReplsetPort
-	}
 	dataNodes := rs.DataNodesPerReplset
 	if dataNodes <= 0 {
 		dataNodes = 2
+	}
+	arbiterBase := rs.ArbiterBasePort
+	if arbiterBase == 0 && rs.ArbiterPort != 0 {
+		arbiterBase = rs.ArbiterPort + dataNodes
+	}
+	if arbiterBase == 0 {
+		arbiterBase = rs.ReplsetPort + 10
 	}
 	arbiters := 0
 	if rs.ArbitersPerReplset != nil {
@@ -1667,7 +1783,7 @@ func dockerReplsetPorts(rs ReplsetConfig) []int {
 		ports = append(ports, rs.ReplsetPort+i)
 	}
 	for i := 0; i < arbiters; i++ {
-		ports = append(ports, arbiterBase+dataNodes+i)
+		ports = append(ports, arbiterBase+i)
 	}
 	return ports
 }

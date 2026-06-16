@@ -24,7 +24,7 @@ func TestWriteTfvarsDockerPmmExternalAndEmptyServiceMaps(t *testing.T) {
 			"cl01": {EnvTag: "test"},
 		},
 		Replsets: map[string]ReplsetConfig{
-			"rs01": {EnvTag: "test", DataNodesPerReplset: 1, ArbitersPerReplset: intPtr(0), ReplsetPort: 27017, ArbiterPort: 27017},
+			"rs01": {EnvTag: "test", DataNodesPerReplset: 1, ArbitersPerReplset: intPtr(0), ReplsetPort: 27017, ArbiterPort: 27017, ArbiterBasePort: 27027},
 		},
 		PmmServers: map[string]PmmServerConfig{
 			"pmm-server": {EnvTag: "test", PmmExternalPort: 9443},
@@ -44,6 +44,7 @@ func TestWriteTfvarsDockerPmmExternalAndEmptyServiceMaps(t *testing.T) {
 	for _, want := range []string{
 		"pmm_port = 8443",
 		"pmm_external_port = 9443",
+		"arbiter_base_port = 27027",
 		"minio_servers = {}",
 	} {
 		if !strings.Contains(tfvars, want) {
@@ -195,6 +196,24 @@ func TestAssignDockerReplsetPortsAvoidsServicePorts(t *testing.T) {
 	rs := cfg.Replsets["rs01"]
 	if rs.ReplsetPort != 27037 {
 		t.Fatalf("expected replset port 27037 to avoid PMM port 27017, got %d", rs.ReplsetPort)
+	}
+	if rs.ArbiterBasePort != 27047 {
+		t.Fatalf("expected arbiter base port 27047, got %d", rs.ArbiterBasePort)
+	}
+}
+
+func TestAssignDockerReplsetPortsDerivesLegacyArbiterBasePort(t *testing.T) {
+	cfg := &Config{
+		Replsets: map[string]ReplsetConfig{
+			"rs01": {DataNodesPerReplset: 2, ArbitersPerReplset: intPtr(1), ReplsetPort: 27017, ArbiterPort: 27017},
+		},
+	}
+
+	assignDockerReplsetPorts(cfg)
+
+	rs := cfg.Replsets["rs01"]
+	if rs.ArbiterBasePort != 27019 {
+		t.Fatalf("expected legacy arbiter base port 27019, got %d", rs.ArbiterBasePort)
 	}
 }
 

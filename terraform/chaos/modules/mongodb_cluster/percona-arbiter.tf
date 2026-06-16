@@ -1,18 +1,18 @@
 resource "chaos_instance" "arbiter" {
-  count             = var.shard_count * var.arbiters_per_replset
-  name              = "${var.prefix}-${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+  for_each          = local.arbiter_members
+  name              = "${var.prefix}-${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}"
   os                = var.os_image
   cpu_cores         = var.arbiter_cpu_cores
   memory            = var.arbiter_memory_gb
   disk              = 20
   ssh_user          = var.my_ssh_user
-  description       = "${var.prefix}-${var.cluster_name} – MongoDB shard0${floor(count.index / var.arbiters_per_replset)} arbiter ${count.index % var.arbiters_per_replset}"
+  description       = "${var.prefix}-${var.cluster_name} – MongoDB shard0${each.value.shard_index} arbiter ${each.value.arbiter_index}"
   delete_after_days = var.delete_after_days
 
   user_data = <<-CLOUDINIT
     #cloud-config
     runcmd:
-      - hostnamectl set-hostname "${var.prefix}-${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+      - hostnamectl set-hostname "${var.prefix}-${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}"
       - echo "127.0.0.1 $(hostname) localhost" > /etc/hosts
   CLOUDINIT
 

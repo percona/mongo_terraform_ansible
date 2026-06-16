@@ -1,7 +1,7 @@
 # Public IP
 resource "azurerm_public_ip" "arbiter" {
-  count               = var.arbiters_per_replset
-  name                = "${var.rs_name}-${var.arbiter_tag}${count.index}-nic-public-ip"
+  for_each            = local.arbiter_members
+  name                = "${var.rs_name}-${var.arbiter_tag}${each.value}-nic-public-ip"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Dynamic"
@@ -52,8 +52,8 @@ resource "azurerm_network_security_group" "mongodb_arbiter_nsg" {
 
 # NIC for arbiter nodes
 resource "azurerm_network_interface" "arbiter" {
-  count               = var.arbiters_per_replset
-  name                = "${var.rs_name}-${var.arbiter_tag}${count.index}-nic"
+  for_each            = local.arbiter_members
+  name                = "${var.rs_name}-${var.arbiter_tag}${each.value}-nic"
   location            = var.location
   resource_group_name = var.resource_group_name
 
@@ -61,14 +61,14 @@ resource "azurerm_network_interface" "arbiter" {
     name                          = "internal"
     subnet_id                     = var.subnet
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.arbiter[count.index].id
+    public_ip_address_id          = azurerm_public_ip.arbiter[each.key].id
   }
 }
 
 # Arbiter VMs
 resource "azurerm_linux_virtual_machine" "arbiter" {
-  count               = var.arbiters_per_replset
-  name                = "${var.rs_name}-${var.arbiter_tag}${count.index}"
+  for_each            = local.arbiter_members
+  name                = "${var.rs_name}-${var.arbiter_tag}${each.value}"
   location            = var.location
   resource_group_name = var.resource_group_name
   size                = var.arbiter_type
@@ -79,7 +79,7 @@ resource "azurerm_linux_virtual_machine" "arbiter" {
   }
 
   network_interface_ids = [
-    azurerm_network_interface.arbiter[count.index].id
+    azurerm_network_interface.arbiter[each.key].id
   ]
 
   admin_ssh_key {
@@ -104,7 +104,7 @@ resource "azurerm_linux_virtual_machine" "arbiter" {
 
   custom_data = base64encode(<<EOT
 #!/bin/bash
-hostnamectl set-hostname "${var.rs_name}-${var.arbiter_tag}${count.index}"
+hostnamectl set-hostname "${var.rs_name}-${var.arbiter_tag}${each.value}"
 echo "127.0.0.1 $(hostname) localhost" > /etc/hosts
 EOT
   )

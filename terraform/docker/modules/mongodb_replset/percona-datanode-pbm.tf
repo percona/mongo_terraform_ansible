@@ -1,16 +1,16 @@
 resource "docker_container" "pbm_rs" {
-  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-${var.pbm_container_suffix}"
-  count = var.enable_pbm ? var.data_nodes_per_replset : 0
-  image = docker_image.pbm_mongod_rs.image_id
-  user  = var.uid
+  for_each = var.enable_pbm ? local.replset_members : {}
+  name     = "${var.rs_name}-${var.replset_tag}${each.value.member_index}-${var.pbm_container_suffix}"
+  image    = docker_image.pbm_mongod_rs.image_id
+  user     = var.uid
   command = [
     "pbm-agent"
   ]
-  env = ["PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.rs[count.index].name}:${var.replset_port + count.index}"]
+  env = ["PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.rs[each.key].name}:${var.replset_port + each.value.member_index}"]
   mounts {
     type   = "volume"
     target = "/data/db"
-    source = docker_volume.rs_volume[count.index].name
+    source = docker_volume.rs_volume[each.key].name
   }
   network_mode = "bridge"
   networks_advanced {

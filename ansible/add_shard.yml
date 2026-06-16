@@ -193,12 +193,12 @@
       changed_when: false
       when: mongodb_primary | default(false)
 
-    - name: Create MongoDB root user when missing
+    - name: Create MongoDB root user
       shell: >
         mongosh admin {{ mongo_tls_flags }}
         --port {{ mongo_port }}
         --host 127.0.0.1
-        --eval 'if (!db.getUser("{{ mongo_admin_user }}")) db.createUser({user:"{{ mongo_admin_user }}",pwd:"{{ mongo_admin_password }}",roles:["root"]})'
+        --eval 'db.createUser({user:"{{ mongo_admin_user }}",pwd:"{{ mongo_admin_password }}",roles:["root"]})'
       no_log: true
       when: mongodb_primary | default(false)
 
@@ -256,4 +256,7 @@
           }
         '
       delegate_to: "{{ groups.mongos | first }}"
+      register: result
+      changed_when: >
+        "already registered, skipping." not in result.stdout     
       when: mongodb_primary is defined and mongodb_primary

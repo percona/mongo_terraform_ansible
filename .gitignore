@@ -1,6 +1,7 @@
 **/.terraform/*
 **/.terraform**
 *tfstate*
+ui-go/secrets/
 *inventory
 *.pub
 ssh_config

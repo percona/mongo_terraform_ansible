@@ -1,8 +1,8 @@
 resource "google_compute_instance" "arbiter" {
-  name         = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}"
+  for_each     = local.arbiter_members
+  name         = "${var.rs_name}-${var.arbiter_tag}${each.value}"
   machine_type = var.arbiter_type
-  zone         = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names) % var.arbiters_per_replset]
-  count        = var.arbiters_per_replset
+  zone         = data.google_compute_zones.available.names[each.value % length(data.google_compute_zones.available.names)]
   tags         = ["${var.rs_name}-${var.arbiter_tag}"]
   labels = {
     ansible-group = var.replset_tag,
@@ -29,7 +29,7 @@ resource "google_compute_instance" "arbiter" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}"
+    hostnamectl set-hostname "${var.rs_name}-${var.arbiter_tag}${each.value}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname) localhost" > /etc/hosts    

@@ -143,10 +143,17 @@ The generated inventories may include `enable_audit` and `audit_filter` values f
 ansible-playbook main.yml -i inventory
 ```
 
-* Add a new shard (e.g. shard3) to an existing cluster:
+* Add a new shard (e.g. `shard3`) to an existing cluster after Terraform has provisioned the new shard hosts:
 ```
-ansible-playbook main.yml -i inventory --limit shard3
+ansible-playbook add_shard.yml -i inventory --extra-vars "new_shard_group=shard3"
 ```
+
+* Add newly provisioned data-bearing members to an existing standalone replica set:
+```
+ansible-playbook add_replset_member.yml -i inventory --extra-vars "target_replset=rs01"
+```
+
+Topology changes currently supported by these scale-out playbooks are additive only. Do not use them to remove members, remove shards, change config server count, change replicas per shard, or change arbiter counts.
 
 * Deploy only base MongoDB, don't configure PMM or PBM
 ```

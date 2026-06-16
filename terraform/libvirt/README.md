@@ -115,6 +115,7 @@ Edit `variables.tf` to customize your deployment:
 
 - This module provisions only virtual machines and base access. It does not run the Ansible MongoDB deployment automatically.
 - After the VMs are reachable, use the playbooks in [`../../ansible`](../../ansible) if you want the full MongoDB software stack installed.
+- Topology expansion automation in this repository targets AWS, GCP, Azure, CHAOS, and Docker. For Libvirt, provision any additional VMs manually and then run the appropriate Ansible playbook (`add_shard.yml` or `add_replset_member.yml`) with an inventory that includes the new hosts.
 
 ## Shutdown VMs
 
@@ -129,4 +130,3 @@ tofu apply -var 'vm_condition_poweron=false'
 ## Credits
 
 This project makes extensive use of the excellent [terraform-provider-libvirt](https://github.com/dmacvicar/terraform-provider-libvirt). Special thanks to the maintainers for allowing us to manage KVM/Libvirt resources with Terraform.
-

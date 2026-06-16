@@ -1,8 +1,8 @@
 resource "google_compute_instance" "mongos" {
-  name         = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+  for_each     = local.mongos_members
+  name         = "${var.cluster_name}-${var.mongos_tag}0${each.value}"
   machine_type = var.mongos_type
-  zone         = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)]
-  count        = var.mongos_count
+  zone         = data.google_compute_zones.available.names[each.value % length(data.google_compute_zones.available.names)]
   tags         = ["${var.cluster_name}-${var.mongos_tag}"]
   labels = {
     ansible-group = "mongos",
@@ -29,7 +29,7 @@ resource "google_compute_instance" "mongos" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+    hostnamectl set-hostname "${var.cluster_name}-${var.mongos_tag}0${each.value}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname) localhost" > /etc/hosts    

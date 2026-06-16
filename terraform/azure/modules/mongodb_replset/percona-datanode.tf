@@ -1,7 +1,14 @@
+locals {
+  replset_members     = { for member_index in range(var.data_nodes_per_replset) : "svr${member_index}" => member_index }
+  replset_member_keys = [for member_index in range(var.data_nodes_per_replset) : "svr${member_index}"]
+  arbiter_members     = { for arbiter_index in range(var.arbiters_per_replset) : "arb${arbiter_index}" => arbiter_index }
+  arbiter_member_keys = [for arbiter_index in range(var.arbiters_per_replset) : "arb${arbiter_index}"]
+}
+
 # Public IP
 resource "azurerm_public_ip" "replset" {
-  count               = var.data_nodes_per_replset
-  name                = "${var.rs_name}-${var.replset_tag}${count.index}-nic-public-ip"
+  for_each            = local.replset_members
+  name                = "${var.rs_name}-${var.replset_tag}${each.value}-nic-public-ip"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Dynamic"
@@ -52,8 +59,8 @@ resource "azurerm_network_security_group" "replset_nsg" {
 
 # Managed data-disk for every data-bearing member
 resource "azurerm_managed_disk" "replset_disk" {
-  count                = var.data_nodes_per_replset
-  name                 = "${var.rs_name}-${var.replset_tag}${count.index}-data"
+  for_each             = local.replset_members
+  name                 = "${var.rs_name}-${var.replset_tag}${each.value}-data"
   location             = var.location
   resource_group_name  = var.resource_group_name
   storage_account_type = var.data_disk_type
@@ -63,8 +70,8 @@ resource "azurerm_managed_disk" "replset_disk" {
 
 # Network-interface for every member
 resource "azurerm_network_interface" "replset" {
-  count               = var.data_nodes_per_replset
-  name                = "${var.rs_name}-${var.replset_tag}${count.index}-nic"
+  for_each            = local.replset_members
+  name                = "${var.rs_name}-${var.replset_tag}${each.value}-nic"
   location            = var.location
   resource_group_name = var.resource_group_name
 
@@ -72,14 +79,14 @@ resource "azurerm_network_interface" "replset" {
     name                          = "internal"
     subnet_id                     = var.subnet
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.replset[count.index].id
+    public_ip_address_id          = azurerm_public_ip.replset[each.key].id
   }
 }
 
 # VM for every replica-set member
 resource "azurerm_linux_virtual_machine" "replset" {
-  count               = var.data_nodes_per_replset
-  name                = "${var.rs_name}-${var.replset_tag}${count.index}"
+  for_each            = local.replset_members
+  name                = "${var.rs_name}-${var.replset_tag}${each.value}"
   location            = var.location
   resource_group_name = var.resource_group_name
   size                = var.replsetsvr_type
@@ -91,7 +98,7 @@ resource "azurerm_linux_virtual_machine" "replset" {
   }
 
   network_interface_ids = [
-    azurerm_network_interface.replset[count.index].id
+    azurerm_network_interface.replset[each.key].id
   ]
 
   admin_ssh_key {
@@ -118,7 +125,7 @@ resource "azurerm_linux_virtual_machine" "replset" {
 #!/bin/bash
 
 # Set the hostname
-hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}${count.index}"
+hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}${each.value}"
 echo "127.0.0.1 $(hostname) localhost" > /etc/hosts
 
 # Wait for the disk to appear
@@ -142,9 +149,9 @@ EOT
 
 # Attach each managed disk to its VM
 resource "azurerm_virtual_machine_data_disk_attachment" "replset_attach" {
-  count              = var.data_nodes_per_replset
-  managed_disk_id    = azurerm_managed_disk.replset_disk[count.index].id
-  virtual_machine_id = azurerm_linux_virtual_machine.replset[count.index].id
+  for_each           = local.replset_members
+  managed_disk_id    = azurerm_managed_disk.replset_disk[each.key].id
+  virtual_machine_id = azurerm_linux_virtual_machine.replset[each.key].id
   lun                = 0
   caching            = "ReadWrite"
 }

@@ -1,16 +1,16 @@
 resource "google_compute_disk" "cfg_disk" {
-  name  = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-data"
-  type  = var.data_disk_type
-  size  = var.configsvr_volume_size
-  zone  = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)]
-  count = var.configsvr_count
+  for_each = local.cfg_members
+  name     = "${var.cluster_name}-${var.configsvr_tag}0${each.value}-data"
+  type     = var.data_disk_type
+  size     = var.configsvr_volume_size
+  zone     = data.google_compute_zones.available.names[each.value % length(data.google_compute_zones.available.names)]
 }
 
 resource "google_compute_instance" "cfg" {
-  name         = "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
+  for_each     = local.cfg_members
+  name         = "${var.cluster_name}-${var.configsvr_tag}0${each.value}"
   machine_type = var.configsvr_type
-  zone         = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)]
-  count        = var.configsvr_count
+  zone         = data.google_compute_zones.available.names[each.value % length(data.google_compute_zones.available.names)]
   tags         = ["${var.cluster_name}-${var.configsvr_tag}"]
   labels = {
     ansible-group = "cfg",
@@ -22,7 +22,7 @@ resource "google_compute_instance" "cfg" {
     }
   }
   attached_disk {
-    source = element(google_compute_disk.cfg_disk.*.self_link, count.index)
+    source = google_compute_disk.cfg_disk[each.key].self_link
   }
   network_interface {
     network    = var.vpc
@@ -40,7 +40,7 @@ resource "google_compute_instance" "cfg" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
+    hostnamectl set-hostname "${var.cluster_name}-${var.configsvr_tag}0${each.value}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname) localhost" > /etc/hosts    

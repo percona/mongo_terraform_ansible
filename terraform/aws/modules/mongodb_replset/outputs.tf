@@ -1,22 +1,22 @@
 output "hostname_replsets" {
-  value = aws_instance.replset[*].tags["Name"]
+  value = [for key in local.replset_member_keys : aws_instance.replset[key].tags["Name"]]
 }
 
 output "ip_replsets" {
-  value = aws_instance.replset[*].public_ip
+  value = [for key in local.replset_member_keys : aws_instance.replset[key].public_ip]
 }
 
 output "ansible_group_replsets" {
-  value = aws_instance.replset[*].tags["ansible-group"]
+  value = [for key in local.replset_member_keys : aws_instance.replset[key].tags["ansible-group"]]
 }
 
 # Arbiters
 output "hostname_arbiters" {
-  value = aws_instance.arbiter[*].tags["Name"]
+  value = [for key in local.arbiter_member_keys : aws_instance.arbiter[key].tags["Name"]]
 }
 
 output "ip_arbiters" {
-  value = aws_instance.arbiter[*].public_ip
+  value = [for key in local.arbiter_member_keys : aws_instance.arbiter[key].public_ip]
 }
 
 output "region" {
@@ -24,7 +24,7 @@ output "region" {
 }
 
 output "ansible_group_arbiters" {
-  value = aws_instance.arbiter[*].tags["ansible-group"]
+  value = [for key in local.arbiter_member_keys : aws_instance.arbiter[key].tags["ansible-group"]]
 }
 
 output "data_node_count" {

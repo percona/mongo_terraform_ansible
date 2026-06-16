@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -110,6 +111,16 @@ var funcMap = template.FuncMap{
 			return image[idx+1:]
 		}
 		return image
+	},
+	"formatDate": func(value string) string {
+		if value == "" {
+			return "—"
+		}
+		parsed, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return value
+		}
+		return parsed.UTC().Format("2006-01-02 15:04 UTC")
 	},
 	// dockerPsmdbImage returns the first PSMDB container image configured for a
 	// Docker environment (checked across all replsets, then clusters).

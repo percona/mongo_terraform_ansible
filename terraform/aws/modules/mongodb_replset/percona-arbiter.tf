@@ -1,12 +1,12 @@
 resource "aws_instance" "arbiter" {
-  count = var.arbiters_per_replset
+  for_each = local.arbiter_members
   tags = {
-    Name          = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}"
+    Name          = "${var.rs_name}-${var.arbiter_tag}${each.value}"
     ansible-group = var.replset_tag
     environment   = var.env_tag
   }
   instance_type               = var.arbiter_type
-  subnet_id                   = data.aws_subnet.details[(var.data_nodes_per_replset + count.index) % var.subnet_count].id
+  subnet_id                   = data.aws_subnet.details[(var.data_nodes_per_replset + each.value) % var.subnet_count].id
   ami                         = lookup(var.image, var.region)
   associate_public_ip_address = true
   key_name                    = var.my_key_pair
@@ -14,7 +14,7 @@ resource "aws_instance" "arbiter" {
   user_data                   = <<-EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}"
+    hostnamectl set-hostname "${var.rs_name}-${var.arbiter_tag}${each.value}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname) localhost" > /etc/hosts    
@@ -75,10 +75,10 @@ resource "aws_security_group_rule" "mongodb-arbiter-egress" {
 }
 
 resource "aws_route53_record" "arbiter_dns_record" {
-  count   = var.arbiters_per_replset
-  zone_id = data.aws_route53_zone.private_zone.zone_id
-  name    = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}"
-  type    = "A"
-  ttl     = "300"
-  records = [aws_instance.arbiter[count.index].private_ip]
+  for_each = local.arbiter_members
+  zone_id  = data.aws_route53_zone.private_zone.zone_id
+  name     = "${var.rs_name}-${var.arbiter_tag}${each.value}"
+  type     = "A"
+  ttl      = "300"
+  records  = [aws_instance.arbiter[each.key].private_ip]
 }

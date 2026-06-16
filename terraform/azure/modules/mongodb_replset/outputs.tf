@@ -1,26 +1,26 @@
 output "hostname_replsets" {
-  value = azurerm_linux_virtual_machine.replset[*].name
+  value = [for key in local.replset_member_keys : azurerm_linux_virtual_machine.replset[key].name]
 }
 
 output "ip_replsets" {
-  value = [for vm in azurerm_linux_virtual_machine.replset : vm.public_ip_address]
+  value = [for key in local.replset_member_keys : azurerm_linux_virtual_machine.replset[key].public_ip_address]
 }
 
 output "ansible_group_replsets" {
-  value = [for vm in azurerm_linux_virtual_machine.replset : vm.tags["ansible-group"]]
+  value = [for key in local.replset_member_keys : azurerm_linux_virtual_machine.replset[key].tags["ansible-group"]]
 }
 
 # Arbiters
 output "hostname_arbiters" {
-  value = azurerm_linux_virtual_machine.arbiter[*].name
+  value = [for key in local.arbiter_member_keys : azurerm_linux_virtual_machine.arbiter[key].name]
 }
 
 output "ip_arbiters" {
-  value = [for vm in azurerm_linux_virtual_machine.arbiter : vm.public_ip_address]
+  value = [for key in local.arbiter_member_keys : azurerm_linux_virtual_machine.arbiter[key].public_ip_address]
 }
 
 output "ansible_group_arbiters" {
-  value = [for vm in azurerm_linux_virtual_machine.arbiter : vm.tags["ansible-group"]]
+  value = [for key in local.arbiter_member_keys : azurerm_linux_virtual_machine.arbiter[key].tags["ansible-group"]]
 }
 
 output "location" {

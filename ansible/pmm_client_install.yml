@@ -3,10 +3,13 @@
   hosts: pmm
   gather_facts: yes
   tags: monitoring
+  vars:
+    pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
   tasks:
     - name: Dummy task to force fact gathering
       debug:
         msg: "Facts collected for PMM server"
+      when: pmm_enabled | bool
 
 - name: Install PMM client
   hosts: cfg:shards:replsets:mongos
@@ -14,15 +17,20 @@
   tags: install,monitoring
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
+  vars:
+    pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
   tasks:
     - name: Enable PMM client repository
       shell: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
+      when: pmm_enabled | bool
 
     - name: Install pmm-client package from repository (latest)
       package:
         name: "{{ pmm_client_package }}"
         state: present
-      when: pmm_client_version is not defined or pmm_client_version == ''
+      when:
+        - pmm_enabled | bool
+        - pmm_client_version is not defined or pmm_client_version == ''
 
     - name: Install pmm-client packages from repository (specific version – Debian/Ubuntu)
       apt:
@@ -30,6 +38,7 @@
         state: present
         allow_downgrade: true
       when:
+        - pmm_enabled | bool
         - pmm_client_version is defined and pmm_client_version != ''
         - ansible_facts['os_family'] == 'Debian'
 
@@ -38,6 +47,7 @@
         name: "{{ pmm_client_package | map('regex_replace', '^pmm-client$', 'pmm-client-' ~ pmm_client_version) | list }}"
         state: present
       when:
+        - pmm_enabled | bool
         - pmm_client_version is defined and pmm_client_version != ''
         - ansible_facts['os_family'] == 'RedHat'
 
@@ -48,24 +58,30 @@
         state: stopped
         daemon_reload: yes
       ignore_errors: true
-      when: disable_telemetry | bool
+      when:
+        - pmm_enabled | bool
+        - disable_telemetry | bool
 
 - name: Configure monitoring with PMM
   hosts: cfg:shards:replsets:mongos
   become: true
   tags: monitoring
+  vars:
+    pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
   tasks:
     - name: Ensure pmm-agent is started
       service:
         name: pmm-agent
         state: started
+      when: pmm_enabled | bool
 
     - name: Point pmm-agent to the PMM server
       shell: pmm-admin config --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].ansible_facts['fqdn'] }}:{{ pmm_external_port }} --server-insecure-tls --force
       register: pmm_config_result
       retries: 3
       delay: 1
-      until: pmm_config_result.rc == 0      
+      until: pmm_config_result.rc == 0
+      when: pmm_enabled | bool
 
     - name: Add MongoDB metrics collector
       shell: >
@@ -84,3 +100,4 @@
         {% endif %}
         --enable-all-collectors
         {% endif %}
+      when: pmm_enabled | bool

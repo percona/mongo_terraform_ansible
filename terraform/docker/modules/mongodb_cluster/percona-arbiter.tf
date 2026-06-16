@@ -1,12 +1,12 @@
 resource "docker_volume" "arb_volume" {
-  count = var.shard_count * var.arbiters_per_replset
-  name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}-data"
+  for_each = local.arbiter_members
+  name     = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}-data"
 }
 
 resource "docker_container" "arbiter" {
-  count      = var.shard_count * var.arbiters_per_replset
-  name       = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
-  hostname   = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+  for_each   = local.arbiter_members
+  name       = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}"
+  hostname   = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}"
   domainname = var.domain_name
   image      = docker_image.psmdb.image_id
   mounts {
@@ -18,7 +18,7 @@ resource "docker_container" "arbiter" {
   command = concat(
     [
       "mongod",
-      "--replSet", "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}",
+      "--replSet", "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}",
       "--bind_ip_all",
       "--port", "${var.arbiter_port}",
       "--shardsvr",
@@ -39,7 +39,7 @@ resource "docker_container" "arbiter" {
   user = var.uid
   labels {
     label = "replsetName"
-    value = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}"
+    value = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}"
   }
   labels {
     label = "environment"
@@ -52,7 +52,7 @@ resource "docker_container" "arbiter" {
   mounts {
     type   = "volume"
     target = "/data/db"
-    source = docker_volume.arb_volume[count.index].name
+    source = docker_volume.arb_volume[each.key].name
   }
   healthcheck {
     test         = ["CMD-SHELL", "mongosh --port ${var.arbiter_port} --eval 'db.runCommand({ ping: 1 })'"]

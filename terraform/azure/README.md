@@ -75,3 +75,22 @@ ssh my-cluster-name-mongodb-cfg01
 - `ssh_users`: map of SSH usernames to public key files
 - `my_ssh_user`: local SSH username used when generating `ssh_config`
 - `enable_audit` and `audit_filter`: optional per-cluster or per-replset PSMDB audit settings inside `clusters` or `replsets`
+
+## Expanding Existing Deployments
+
+Supported scale-out changes are additive only:
+
+- Increase `shard_count` to add shards to an existing sharded cluster.
+- Increase `data_nodes_per_replset` to add data-bearing members to an existing standalone replica set.
+
+After editing variables, run `terraform apply` to create the new instances and regenerate inventory files. Then run the matching Ansible playbook from the repository root:
+
+```bash
+ansible-playbook -i terraform/azure/<prefix>_inventory_<cluster> ansible/add_shard.yml \
+  --extra-vars "new_shard_group=shard<N>"
+
+ansible-playbook -i terraform/azure/<prefix>_inventory_<rs> ansible/add_replset_member.yml \
+  --extra-vars "target_replset=<rs>"
+```
+
+Reducing topology size, changing `configsvr_count`, changing `shardsvr_replicas`, and changing arbiter counts are not implemented.

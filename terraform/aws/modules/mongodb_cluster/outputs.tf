@@ -1,47 +1,47 @@
 output "hostname_shards" {
-  value = aws_instance.shard[*].tags["Name"]
+  value = [for key in local.shard_member_keys : aws_instance.shard[key].tags["Name"]]
 }
 
 output "ip_shards" {
-  value = aws_instance.shard[*].public_ip
+  value = [for key in local.shard_member_keys : aws_instance.shard[key].public_ip]
 }
 
 output "ansible_group_shards" {
-  value = aws_instance.shard[*].tags["ansible-group"]
+  value = [for key in local.shard_member_keys : aws_instance.shard[key].tags["ansible-group"]]
 }
 
 output "hostname_cfg" {
-  value = aws_instance.cfg[*].tags["Name"]
+  value = [for key in local.cfg_member_keys : aws_instance.cfg[key].tags["Name"]]
 }
 
 output "ip_cfg" {
-  value = aws_instance.cfg[*].public_ip
+  value = [for key in local.cfg_member_keys : aws_instance.cfg[key].public_ip]
 }
 
 output "ansible_group_cfg" {
-  value = aws_instance.cfg[*].tags["ansible-group"]
+  value = [for key in local.cfg_member_keys : aws_instance.cfg[key].tags["ansible-group"]]
 }
 
 # Mongos
 output "hostname_mongos" {
-  value = aws_instance.mongos[*].tags["Name"]
+  value = [for key in local.mongos_member_keys : aws_instance.mongos[key].tags["Name"]]
 }
 
 output "ip_mongos" {
-  value = aws_instance.mongos[*].public_ip
+  value = [for key in local.mongos_member_keys : aws_instance.mongos[key].public_ip]
 }
 
 output "ansible_group_mongos" {
-  value = aws_instance.mongos[*].tags["ansible-group"]
+  value = [for key in local.mongos_member_keys : aws_instance.mongos[key].tags["ansible-group"]]
 }
 
 # Arbiters
 output "hostname_arbiters" {
-  value = aws_instance.arbiter[*].tags["Name"]
+  value = [for key in local.arbiter_member_keys : aws_instance.arbiter[key].tags["Name"]]
 }
 
 output "ip_arbiters" {
-  value = aws_instance.arbiter[*].public_ip
+  value = [for key in local.arbiter_member_keys : aws_instance.arbiter[key].public_ip]
 }
 
 output "region" {
@@ -49,15 +49,15 @@ output "region" {
 }
 
 output "ansible_group_index" {
-  value = aws_instance.shard[*].tags["ansible-index"]
+  value = [for key in local.shard_member_keys : aws_instance.shard[key].tags["ansible-index"]]
 }
 
 output "ansible_group_arb_index" {
-  value = aws_instance.arbiter[*].tags["ansible-index"]
+  value = [for key in local.arbiter_member_keys : aws_instance.arbiter[key].tags["ansible-index"]]
 }
 
 output "ansible_group_arbiters" {
-  value = aws_instance.arbiter[*].tags["ansible-group"]
+  value = [for key in local.arbiter_member_keys : aws_instance.arbiter[key].tags["ansible-group"]]
 }
 
 output "number_of_shards" {

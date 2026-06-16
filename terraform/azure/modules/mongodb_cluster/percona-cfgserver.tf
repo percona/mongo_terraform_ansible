@@ -1,7 +1,7 @@
 # Public IP
 resource "azurerm_public_ip" "cfg" {
-  count               = var.configsvr_count
-  name                = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-nic-public-ip"
+  for_each            = local.cfg_members
+  name                = "${var.cluster_name}-${var.configsvr_tag}0${each.value}-nic-public-ip"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Dynamic"
@@ -9,8 +9,8 @@ resource "azurerm_public_ip" "cfg" {
 
 # Create managed data disks for config servers
 resource "azurerm_managed_disk" "cfg_disk" {
-  count                = var.configsvr_count
-  name                 = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-data"
+  for_each             = local.cfg_members
+  name                 = "${var.cluster_name}-${var.configsvr_tag}0${each.value}-data"
   location             = var.location
   resource_group_name  = var.resource_group_name
   storage_account_type = var.data_disk_type
@@ -63,15 +63,15 @@ resource "azurerm_network_security_group" "mongodb_cfgsvr_nsg" {
 
 # Create configsvr VM instances
 resource "azurerm_linux_virtual_machine" "cfg" {
-  count               = var.configsvr_count
-  name                = "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
+  for_each            = local.cfg_members
+  name                = "${var.cluster_name}-${var.configsvr_tag}0${each.value}"
   location            = var.location
   resource_group_name = var.resource_group_name
   size                = var.configsvr_type
   admin_username      = var.my_ssh_user
 
   network_interface_ids = [
-    azurerm_network_interface.cfg[count.index].id
+    azurerm_network_interface.cfg[each.key].id
   ]
   tags = {
     ansible-group = "cfg",
@@ -97,7 +97,7 @@ resource "azurerm_linux_virtual_machine" "cfg" {
 
   custom_data = base64encode(<<EOT
 #!/bin/bash
-hostnamectl set-hostname "${var.cluster_name}-${var.configsvr_tag}0${count.index}"
+hostnamectl set-hostname "${var.cluster_name}-${var.configsvr_tag}0${each.value}"
 echo "127.0.0.1 $(hostname) localhost" > /etc/hosts
 
 # Wait for the disk to appear
@@ -121,8 +121,8 @@ EOT
 
 # Create NICs for configsvr
 resource "azurerm_network_interface" "cfg" {
-  count               = var.configsvr_count
-  name                = "${var.cluster_name}-${var.configsvr_tag}0${count.index}-nic"
+  for_each            = local.cfg_members
+  name                = "${var.cluster_name}-${var.configsvr_tag}0${each.value}-nic"
   location            = var.location
   resource_group_name = var.resource_group_name
 
@@ -130,15 +130,15 @@ resource "azurerm_network_interface" "cfg" {
     name                          = "internal"
     subnet_id                     = var.subnet
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.cfg[count.index].id
+    public_ip_address_id          = azurerm_public_ip.cfg[each.key].id
   }
 }
 
 # Attach disk to VM
 resource "azurerm_virtual_machine_data_disk_attachment" "cfg_attach" {
-  count              = var.configsvr_count
-  managed_disk_id    = azurerm_managed_disk.cfg_disk[count.index].id
-  virtual_machine_id = azurerm_linux_virtual_machine.cfg[count.index].id
+  for_each           = local.cfg_members
+  managed_disk_id    = azurerm_managed_disk.cfg_disk[each.key].id
+  virtual_machine_id = azurerm_linux_virtual_machine.cfg[each.key].id
   lun                = 0
   caching            = "ReadWrite"
 }

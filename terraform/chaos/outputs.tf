@@ -27,6 +27,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       my_ssh_user  = var.my_ssh_user
       cluster      = each.value.cluster
       env_tag      = each.value.env_tag
+      enable_pmm   = var.enable_pmm
       enable_audit = each.value.enable_audit
       audit_filter = each.value.audit_filter
 
@@ -96,6 +97,7 @@ resource "local_file" "AnsibleInventoryRS" {
       my_ssh_user        = var.my_ssh_user
       rs_name            = each.value.rs_name
       env_tag            = each.value.env_tag
+      enable_pmm         = var.enable_pmm
       enable_audit       = each.value.enable_audit
       audit_filter       = each.value.audit_filter
       hostname_pmm       = var.enable_pmm ? local.pmm_host : ""

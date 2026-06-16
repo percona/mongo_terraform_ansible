@@ -1,16 +1,16 @@
 resource "docker_container" "pbm_shard" {
-  name  = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-${var.pbm_container_suffix}"
-  count = var.enable_pbm ? var.shard_count * var.shardsvr_replicas : 0
-  image = docker_image.pbm_mongod.image_id
-  user  = var.uid
+  for_each = var.enable_pbm ? local.shard_members : {}
+  name     = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}-${var.pbm_container_suffix}"
+  image    = docker_image.pbm_mongod.image_id
+  user     = var.uid
   command = [
     "pbm-agent"
   ]
-  env = ["PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.shard[count.index].name}:${var.shardsvr_port}"]
+  env = ["PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.shard[each.key].name}:${var.shardsvr_port}"]
   mounts {
     type   = "volume"
     target = "/data/db"
-    source = docker_volume.shard_volume[count.index].name
+    source = docker_volume.shard_volume[each.key].name
   }
   network_mode = "bridge"
   networks_advanced {

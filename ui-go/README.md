@@ -170,6 +170,8 @@ stateDiagram-v2
    directory and records the environment in `environments.json`.
 4. **Deploy** – runs `terraform init && terraform apply` (and Ansible for cloud platforms)
    in a background goroutine. Output is streamed live via Server-Sent Events.
+   If an existing environment's topology changed, the UI compares the saved desired
+   topology with the last successful deploy before running Terraform.
 5. **Stop / Restart** – for Docker environments, uses `docker stop` / `docker restart`
    filtered by the environment prefix; for cloud environments, runs the Ansible
    `stop.yml` / `restart.yml` playbooks.
@@ -179,8 +181,33 @@ stateDiagram-v2
    every host or container with its IP address, a copy-pasteable connect command
    (`ssh user@host` or `docker exec -it <name> bash`), MongoDB connection strings for
    every replica set and cluster, and clickable **Open** buttons for PMM and MinIO
-   Console URLs.  All PMM-related containers (server, Grafana renderer, Watchtower,
-   and per-node PMM client sidecars) are grouped together under a single **PMM** section.
+    Console URLs.  All PMM-related containers (server, Grafana renderer, Watchtower,
+    and per-node PMM client sidecars) are grouped together under a single **PMM** section.
+
+## Topology Expansion
+
+The UI supports additive topology changes for deployed environments:
+
+- Increase `shard_count` to add shards to an existing sharded cluster.
+- Increase `data_nodes_per_replset` to add data-bearing members to an existing standalone replica set.
+- Add a new sharded cluster or standalone replica set to an existing environment.
+
+For cloud platforms, Deploy runs `terraform apply` first, then runs the matching Ansible scale-out playbook:
+
+- `ansible/add_shard.yml` for each newly added shard.
+- `ansible/add_replset_member.yml` for each expanded standalone replica set.
+- `ansible/main.yml` for entirely new clusters or replica sets.
+
+For Docker, Deploy runs Terraform only; the Docker Terraform modules run the supported MongoDB topology changes through their `null_resource` provisioners.
+
+The UI refuses unsupported changes before Terraform runs:
+
+- Reducing `shard_count` or `data_nodes_per_replset`.
+- Changing `configsvr_count` after deployment.
+- Changing `shardsvr_replicas` on existing shards.
+- Changing `arbiters_per_replset` on existing sharded clusters or standalone replica sets.
+
+Use **Deploy** for topology expansion. **Provision** is intentionally refused for topology expansion because it would only create infrastructure and would not run the required MongoDB reconfiguration playbook.
 
 ## File structure
 

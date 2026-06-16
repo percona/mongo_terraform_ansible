@@ -212,6 +212,39 @@ If no errors, proceed to the next section.
 
 - You do not need to run Ansible for Docker-based deployments.
 
+## Expanding Existing Docker Topologies
+
+Supported Docker scale-out changes are handled by Terraform during `terraform apply`:
+
+- Increase `shard_count` to add one or more shards to a sharded cluster.
+- Increase `data_nodes_per_replset` to add data-bearing members to a standalone replica set.
+- Add a new sharded cluster or standalone replica set to the `.tfvars` file.
+
+Example: add a third shard to `cl01`:
+
+```hcl
+clusters = {
+  cl01 = {
+    shard_count = 3
+  }
+}
+```
+
+Then apply:
+
+```bash
+terraform apply -var-file="example.tfvars"
+```
+
+Unsupported topology changes are not implemented:
+
+- Reducing `shard_count` or `data_nodes_per_replset`.
+- Changing `configsvr_count` after deployment.
+- Changing `shardsvr_replicas` on existing shards.
+- Changing `arbiters_per_replset` on existing clusters or replica sets.
+
+If using the Go UI, unsupported changes are blocked before Terraform runs.
+
 ## Audit Plugin
 
 Both `clusters` and `replsets` support:

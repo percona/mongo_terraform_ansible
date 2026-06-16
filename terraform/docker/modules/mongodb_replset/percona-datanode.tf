@@ -1,12 +1,30 @@
+locals {
+  replset_members = {
+    for member_index in range(var.data_nodes_per_replset) : "svr${member_index}" => {
+      member_index = member_index
+    }
+  }
+
+  replset_member_keys = [for member_index in range(var.data_nodes_per_replset) : "svr${member_index}"]
+
+  arbiter_members = {
+    for arbiter_index in range(var.arbiters_per_replset) : "arb${arbiter_index}" => {
+      arbiter_index = arbiter_index
+    }
+  }
+
+  arbiter_member_keys = [for arbiter_index in range(var.arbiters_per_replset) : "arb${arbiter_index}"]
+}
+
 resource "docker_volume" "rs_volume" {
-  count = var.data_nodes_per_replset
-  name  = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-data"
+  for_each = local.replset_members
+  name     = "${var.rs_name}-${var.replset_tag}${each.value.member_index}-data"
 }
 
 resource "docker_container" "rs" {
-  count      = var.data_nodes_per_replset
-  name       = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}${var.domain_name != "" ? ".${var.domain_name}" : ""}"
-  hostname   = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
+  for_each   = local.replset_members
+  name       = "${var.rs_name}-${var.replset_tag}${each.value.member_index}${var.domain_name != "" ? ".${var.domain_name}" : ""}"
+  hostname   = "${var.rs_name}-${var.replset_tag}${each.value.member_index}"
   domainname = var.domain_name
   image      = docker_image.psmdb.image_id
   mounts {
@@ -20,7 +38,7 @@ resource "docker_container" "rs" {
       "mongod",
       "--replSet", "${var.rs_name}",
       "--bind_ip_all",
-      "--port", "${var.replset_port + count.index}",
+      "--port", "${var.replset_port + each.value.member_index}",
       "--oplogSize", "200",
       "--wiredTigerCacheSizeGB", "0.25",
       "--keyFile", "${var.keyfile_path}/${var.keyfile_name}",
@@ -46,8 +64,8 @@ resource "docker_container" "rs" {
   )
   user = var.uid
   ports {
-    internal = var.replset_port + count.index
-    external = var.replset_port + count.index
+    internal = var.replset_port + each.value.member_index
+    external = var.replset_port + each.value.member_index
     ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
   }
   labels {
@@ -65,10 +83,10 @@ resource "docker_container" "rs" {
   mounts {
     type   = "volume"
     target = "/data/db"
-    source = docker_volume.rs_volume[count.index].name
+    source = docker_volume.rs_volume[each.key].name
   }
   healthcheck {
-    test         = ["CMD-SHELL", "mongosh --port ${var.replset_port + count.index} --eval 'db.runCommand({ ping: 1 })'"]
+    test         = ["CMD-SHELL", "mongosh --port ${var.replset_port + each.value.member_index} --eval 'db.runCommand({ ping: 1 })'"]
     interval     = "10s"
     timeout      = "10s"
     retries      = 5

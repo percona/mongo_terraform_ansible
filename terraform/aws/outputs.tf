@@ -1,3 +1,11 @@
+locals {
+  pmm_client_inventory_repos = {
+    release      = "pmm3-client"
+    testing      = "pmm3-client testing"
+    experimental = "pmm3-client experimental"
+  }
+}
+
 resource "local_file" "AnsibleInventoryCluster" {
   for_each = module.mongodb_clusters
 
@@ -39,11 +47,14 @@ resource "local_file" "AnsibleInventoryCluster" {
 
     access_key         = aws_iam_access_key.mongo_backup_access_key.id
     secret_access_key  = aws_iam_access_key.mongo_backup_access_key.secret
-    mongo_release      = var.mongo_release
-    mongo_version      = var.mongo_version
+    mongo_release      = each.value.mongo_release != "" ? each.value.mongo_release : var.mongo_release
+    mongo_version      = each.value.mongo_version != "" ? each.value.mongo_version : var.mongo_version
+    mongo_repo         = each.value.mongo_repo != "" ? each.value.mongo_repo : var.mongo_repo
     pbm_release        = var.pbm_release
-    pbm_version        = var.pbm_version
-    pmm_client_version = var.pmm_client_version
+    pbm_version        = each.value.pbm_version != "" ? each.value.pbm_version : var.pbm_version
+    pbm_repo           = each.value.pbm_repo != "" ? each.value.pbm_repo : var.pbm_repo
+    pmm_client_version = each.value.pmm_client_version != "" ? each.value.pmm_client_version : var.pmm_client_version
+    pmm_client_repo    = lookup(local.pmm_client_inventory_repos, each.value.pmm_client_repo != "" ? each.value.pmm_client_repo : var.pmm_client_repo, each.value.pmm_client_repo != "" ? each.value.pmm_client_repo : var.pmm_client_repo)
   })
 
   filename = "${var.prefix}_inventory_${each.key}"
@@ -108,11 +119,14 @@ resource "local_file" "AnsibleInventoryRS" {
 
     access_key         = aws_iam_access_key.mongo_backup_access_key.id
     secret_access_key  = aws_iam_access_key.mongo_backup_access_key.secret
-    mongo_release      = var.mongo_release
-    mongo_version      = var.mongo_version
+    mongo_release      = each.value.mongo_release != "" ? each.value.mongo_release : var.mongo_release
+    mongo_version      = each.value.mongo_version != "" ? each.value.mongo_version : var.mongo_version
+    mongo_repo         = each.value.mongo_repo != "" ? each.value.mongo_repo : var.mongo_repo
     pbm_release        = var.pbm_release
-    pbm_version        = var.pbm_version
-    pmm_client_version = var.pmm_client_version
+    pbm_version        = each.value.pbm_version != "" ? each.value.pbm_version : var.pbm_version
+    pbm_repo           = each.value.pbm_repo != "" ? each.value.pbm_repo : var.pbm_repo
+    pmm_client_version = each.value.pmm_client_version != "" ? each.value.pmm_client_version : var.pmm_client_version
+    pmm_client_repo    = lookup(local.pmm_client_inventory_repos, each.value.pmm_client_repo != "" ? each.value.pmm_client_repo : var.pmm_client_repo, each.value.pmm_client_repo != "" ? each.value.pmm_client_repo : var.pmm_client_repo)
   })
 
   filename = "${var.prefix}_inventory_${each.key}"

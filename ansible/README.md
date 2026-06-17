@@ -165,6 +165,22 @@ ansible-playbook main.yml -i inventory --skip-tags monitoring,backup
 ansible-playbook main.yml -i inventory --tags backup
 ```
 
+## YCSB Workloads
+
+If the inventory contains a `ycsb` host, `main.yml` installs YCSB through `ycsb_install.yml`. Use it to generate test load against a deployed cluster or replica set.
+
+Example initial load:
+
+```
+/opt/ycsb/bin/ycsb load mongodb -P /opt/ycsb/workloads/workloada -p mongodb.url="mongodb://root:percona@<mongos-or-replset-host>:27017/"
+```
+
+Example workload run:
+
+```
+/opt/ycsb/bin/ycsb run mongodb -s -P /opt/ycsb/workloads/workloada -p operationcount=1500000 -threads 4 -p mongodb.url="mongodb://root:percona@<mongos-or-replset-host>:27017/"
+```
+
 
 ## TLS-enabled Setup
 

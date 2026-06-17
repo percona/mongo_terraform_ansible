@@ -95,6 +95,17 @@
         <input type="checkbox" name="platform" value="chaos">
         <span>CHAOS</span>
       </label>
+      <div class="form-group form-group-full" id="chaos-token-settings-row" style="display:none">
+        <label for="settings_chaos_api_token_path">CHAOS API Token File</label>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <input type="text" id="settings_chaos_api_token_path"
+                 value="{{.Settings.ChaosApiTokenPath}}"
+                 placeholder="Uploaded token path" style="flex:1" readonly>
+          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('chaos_token_file_input').click()">Browse...</button>
+          <input type="file" id="chaos_token_file_input" style="display:none" onchange="uploadChaosTokenFile(this)">
+        </div>
+        <small id="chaos_token_upload_status" class="text-muted">Select a token file to upload. It will be stored under ui-go/secrets/chaos/ and ignored by git.</small>
+      </div>
       <label class="settings-checkbox">
         <input type="checkbox" name="platform" value="docker">
         <span>Docker</span>
@@ -113,6 +124,7 @@ function openPlatformSettings() {
   document.querySelectorAll('#platform-settings-form input[name="platform"]').forEach(input => {
     input.checked = !!settings[input.value];
   });
+  updateChaosTokenSettingsVisibility();
   document.getElementById('platform-settings-modal').style.display = 'flex';
 }
 
@@ -120,13 +132,49 @@ function closePlatformSettings() {
   document.getElementById('platform-settings-modal').style.display = 'none';
 }
 
-function savePlatformSettingsFromForm() {
+function updateChaosTokenSettingsVisibility() {
+  const chaosCheckbox = document.querySelector('#platform-settings-form input[name="platform"][value="chaos"]');
+  const row = document.getElementById('chaos-token-settings-row');
+  if (row) row.style.display = chaosCheckbox && chaosCheckbox.checked ? '' : 'none';
+}
+
+document.querySelector('#platform-settings-form input[name="platform"][value="chaos"]')
+  ?.addEventListener('change', updateChaosTokenSettingsVisibility);
+
+async function uploadChaosTokenFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('chaos_token_upload_status');
+  const body = new FormData();
+  body.append('chaos_token_file', file);
+  if (status) status.textContent = 'Uploading token file...';
+  try {
+    const resp = await fetch('/api/upload-chaos-token', { method: 'POST', body });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Upload failed');
+    document.getElementById('settings_chaos_api_token_path').value = data.path || '';
+    if (status) status.textContent = `Uploaded ${data.filename || 'token file'} to ${data.path}`;
+  } catch (err) {
+    if (status) status.textContent = 'Upload failed.';
+    alert('Could not upload CHAOS token file: ' + err.message);
+  } finally {
+    input.value = '';
+  }
+}
+
+async function savePlatformSettingsFromForm() {
   const settings = { ...DEFAULT_PLATFORM_SETTINGS };
   document.querySelectorAll('#platform-settings-form input[name="platform"]').forEach(input => {
     settings[input.value] = input.checked;
   });
   savePlatformSettings(settings);
-  closePlatformSettings();
+  const chaosTokenPath = document.getElementById('settings_chaos_api_token_path').value.trim();
+  try {
+    await apiFetch('/api/settings', 'POST', { chaos_api_token_path: chaosTokenPath });
+    closePlatformSettings();
+  } catch (err) {
+    alert('Error saving settings: ' + err.message);
+  }
 }
 </script>
 {{end}}

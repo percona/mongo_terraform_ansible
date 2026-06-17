@@ -10,6 +10,7 @@
 
 - name: Install mongos routers
   hosts: mongos
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: mongos
 
@@ -26,9 +27,6 @@
       {% endif %}
 
   tasks:    
-    - name: Enable specific MongoDB version
-      shell: "/usr/bin/percona-release enable {{ mongo_release }}"
-
     - name: Install mongos packages from repository
       package:
         name: "{{ mongos_packages }}"
@@ -80,6 +78,7 @@
         group: root
         mode: 0600
       when: not use_tls | bool
+      notify: restart mongos
 
     - name: Copy mongos.conf
       template:
@@ -88,6 +87,7 @@
         owner: root
         group: root
         mode: 0644
+      notify: restart mongos
 
     - name: Setup logrotate conf for mongos
       template:
@@ -100,6 +100,9 @@
         src: templates/mongos.service.j2
         dest: /usr/lib/systemd/system/mongos.service
         mode: 0644
+      notify:
+        - reload systemd
+        - restart mongos
 
     - name: Set SELinux to disabled until reboot
       command: /usr/sbin/setenforce 0
@@ -113,9 +116,21 @@
         line: 'SELINUX=disabled'
       when: ansible_facts['selinux'] is defined and ansible_facts['selinux']['config_file'] is defined
 
-    - name: Start the mongos router service
+    - name: Apply pending mongos handlers
+      meta: flush_handlers
+
+    - name: Ensure the mongos router service is started
+      systemd:
+        name: mongos
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: restart mongos
       systemd:
         name: mongos
         state: restarted
-        enabled: yes
-        daemon_reload: yes

@@ -1,8 +1,11 @@
 ---
 - name: Prepare nodes
-  tags: os_conf
+  tags: os_conf,install,backup,monitoring
   hosts: cfg:shards:replsets:mongos
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
+  vars:
+    pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
@@ -20,6 +23,7 @@
               - lsb-release 
             state: present
             update_cache: yes
+            cache_valid_time: 3600
 
         - name: Download percona-release package
           ansible.builtin.get_url:
@@ -31,10 +35,6 @@
           ansible.builtin.apt:
             deb: /tmp/percona-release_latest.deb
             state: present
-
-        - name: Update apt package cache
-          ansible.builtin.apt:
-            update_cache: yes
 
       when: ansible_facts['os_family'] == 'Debian'
 
@@ -52,3 +52,20 @@
             state: present    
 
       when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Enable MongoDB repository
+      command: "/usr/bin/percona-release enable {{ mongo_release }} {{ mongo_repo | default('release') }}"
+
+    - name: Enable PBM repository
+      command: "/usr/bin/percona-release enable pbm {{ pbm_repo | default('release') }}"
+      when: "'cfg' in group_names or 'shards' in group_names or 'replsets' in group_names"
+
+    - name: Enable PMM client repository
+      command: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
+      when: pmm_enabled | bool
+
+    - name: Refresh apt package cache after repository setup
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'

@@ -25,37 +25,29 @@ func chaosTokenSecretsDir() string {
 	return filepath.Join(baseDir, "secrets", "chaos")
 }
 
-func chaosTokenSecretPath(envID string) string {
-	return filepath.Join(chaosTokenSecretsDir(), envID+".token")
+func chaosTokenUploadPath() string {
+	return filepath.Join(chaosTokenSecretsDir(), "chaos_api.token")
 }
 
-func removeManagedChaosTokenFile(path string) {
+func isManagedChaosTokenFile(path string) bool {
 	trimmedPath := strings.TrimSpace(path)
 	if trimmedPath == "" {
-		return
+		return false
 	}
 	cleanedPath := filepath.Clean(trimmedPath)
 	managedDir := filepath.Clean(chaosTokenSecretsDir())
 	if cleanedPath == managedDir || !strings.HasPrefix(cleanedPath, managedDir+string(os.PathSeparator)) {
-		return
+		return false
 	}
-	_ = os.Remove(cleanedPath)
+	return true
 }
 
-func migrateLegacyChaosToken(envID string, cfg *Config) error {
-	if cfg == nil || strings.TrimSpace(cfg.LegacyChaosAPIToken) == "" || strings.TrimSpace(cfg.ChaosApiTokenPath) != "" {
-		return nil
+func removeManagedChaosTokenFile(path string) {
+	if !isManagedChaosTokenFile(path) {
+		return
 	}
-	if err := os.MkdirAll(chaosTokenSecretsDir(), 0700); err != nil {
-		return err
-	}
-	secretPath := chaosTokenSecretPath(envID)
-	if err := os.WriteFile(secretPath, []byte(strings.TrimSpace(cfg.LegacyChaosAPIToken)+"\n"), 0600); err != nil {
-		return err
-	}
-	cfg.ChaosApiTokenPath = secretPath
-	cfg.LegacyChaosAPIToken = ""
-	return nil
+	cleanedPath := filepath.Clean(strings.TrimSpace(path))
+	_ = os.Remove(cleanedPath)
 }
 
 func loadChaosTokenFromPath(path string) (string, error) {
@@ -74,19 +66,37 @@ func loadChaosTokenFromPath(path string) (string, error) {
 	return token, nil
 }
 
-func migrateLegacyChaosTokensInState(state map[string]*Environment) error {
+func configuredChaosTokenPath(env *Environment) (string, error) {
+	settings, err := loadAppSettings()
+	if err != nil {
+		return "", err
+	}
+	if settings.ChaosApiTokenPath != "" {
+		return settings.ChaosApiTokenPath, nil
+	}
+	if env != nil && !isManagedChaosTokenFile(env.Config.ChaosApiTokenPath) {
+		return strings.TrimSpace(env.Config.ChaosApiTokenPath), nil
+	}
+	return "", nil
+}
+
+func dropStoredChaosTokensInState(state map[string]*Environment) error {
 	changed := false
-	for envID, env := range state {
+	settings, _ := loadAppSettings()
+	settingsPath := filepath.Clean(strings.TrimSpace(settings.ChaosApiTokenPath))
+	for _, env := range state {
 		if env == nil || env.Platform != "chaos" {
 			continue
 		}
-		beforePath := env.Config.ChaosApiTokenPath
-		beforeToken := env.Config.LegacyChaosAPIToken
-		if err := migrateLegacyChaosToken(envID, &env.Config); err != nil {
-			return err
+		if strings.TrimSpace(env.Config.LegacyChaosAPIToken) != "" {
+			env.Config.LegacyChaosAPIToken = ""
+			changed = true
 		}
-		if env.Config.ChaosApiTokenPath != beforePath || env.Config.LegacyChaosAPIToken != beforeToken {
-			state[envID] = env
+		if isManagedChaosTokenFile(env.Config.ChaosApiTokenPath) {
+			if filepath.Clean(strings.TrimSpace(env.Config.ChaosApiTokenPath)) != settingsPath {
+				removeManagedChaosTokenFile(env.Config.ChaosApiTokenPath)
+			}
+			env.Config.ChaosApiTokenPath = ""
 			changed = true
 		}
 	}
@@ -189,8 +199,13 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "State error: "+err.Error(), 500)
 		return
 	}
-	if err := migrateLegacyChaosTokensInState(state); err != nil {
+	if err := dropStoredChaosTokensInState(state); err != nil {
 		http.Error(w, "State error: "+err.Error(), 500)
+		return
+	}
+	settings, err := loadAppSettings()
+	if err != nil {
+		http.Error(w, "Settings error: "+err.Error(), 500)
 		return
 	}
 	ids := make([]string, 0, len(state))
@@ -206,7 +221,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			hasDeleted = true
 		}
 	}
-	renderPage(w, "index", IndexData{Environments: entries, HasDeleted: hasDeleted})
+	renderPage(w, "index", IndexData{Environments: entries, HasDeleted: hasDeleted, Settings: settings})
 }
 
 // GET /new
@@ -227,7 +242,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 	dockerDefaultMinioPort := 9000
 	dockerDefaultMinioConsolePort := 9001
 	state, _ := loadState()
-	if err := migrateLegacyChaosTokensInState(state); err != nil {
+	if err := dropStoredChaosTokensInState(state); err != nil {
 		http.Error(w, "State error: "+err.Error(), 500)
 		return
 	}
@@ -235,6 +250,9 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		if env, ok := state[envID]; ok {
 			cfg = env.Config
 		}
+	}
+	if platform == "chaos" && envID == "" {
+		cfg.DeleteAfterDays = 7
 	}
 	if platform == "docker" {
 		occupied := dockerOccupiedServicePorts(state, envID)
@@ -279,7 +297,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 func environmentHandler(w http.ResponseWriter, r *http.Request) {
 	envID := r.PathValue("env_id")
 	state, _ := loadState()
-	if err := migrateLegacyChaosTokensInState(state); err != nil {
+	if err := dropStoredChaosTokensInState(state); err != nil {
 		http.Error(w, "State error: "+err.Error(), 500)
 		return
 	}
@@ -662,6 +680,62 @@ func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GET /api/package-versions?product=psmdb&channel=release&os_image=Ubuntu%2022.04
+func apiPackageVersionsHandler(w http.ResponseWriter, r *http.Request) {
+	product := strings.TrimSpace(r.URL.Query().Get("product"))
+	channel := normalizedRepoChannel(r.URL.Query().Get("channel"))
+	osImage := strings.TrimSpace(r.URL.Query().Get("os_image"))
+
+	switch product {
+	case "psmdb":
+		minorVersions := getPSMDBMinorVersionsByMajorFor(channel, osImage)
+		majorVersions := make([]string, 0, len(minorVersions))
+		for _, release := range getPSMDBVersions() {
+			if len(minorVersions[release]) > 0 {
+				majorVersions = append(majorVersions, release)
+			}
+		}
+		writeJSON(w, 200, map[string]interface{}{
+			"major_versions": majorVersions,
+			"minor_versions": minorVersions,
+		})
+	case "pbm":
+		writeJSON(w, 200, map[string]interface{}{"versions": getPBMVersionsFor(channel, osImage)})
+	case "pmm_client":
+		writeJSON(w, 200, map[string]interface{}{"versions": getPMMClientVersionsFor(channel, osImage)})
+	default:
+		jsonError(w, 400, "product must be one of: psmdb, pbm, pmm_client")
+	}
+}
+
+// GET /api/docker-tags?namespace=percona&repo=pmm-client
+func apiDockerTagsHandler(w http.ResponseWriter, r *http.Request) {
+	namespace := strings.Trim(strings.TrimSpace(r.URL.Query().Get("namespace")), "/")
+	repo := strings.TrimSpace(r.URL.Query().Get("repo"))
+	if namespace == "" || repo == "" {
+		jsonError(w, 400, "namespace and repo are required")
+		return
+	}
+	if strings.Contains(namespace, " ") || strings.Contains(repo, " ") || strings.Contains(repo, "/") {
+		jsonError(w, 400, "invalid namespace or repo")
+		return
+	}
+	tags := getDockerHubTags(namespace, repo, 50)
+	if len(tags) == 0 {
+		switch repo {
+		case "percona-server-mongodb":
+			tags = defaultPSMDBImages
+		case "percona-backup-mongodb":
+			tags = defaultPBMImages
+		case "pmm-client":
+			tags = defaultPMMClientImages
+		case "pmm-server":
+			tags = defaultPMMServerImages
+		}
+	}
+	writeJSON(w, 200, map[string]interface{}{"tags": tags})
+}
+
 // GET /api/regions/{platform}
 func apiRegionsHandler(w http.ResponseWriter, r *http.Request) {
 	platform := r.PathValue("platform")
@@ -718,7 +792,32 @@ func apiUploadSSHKeyHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]string{"path": name})
 }
 
-// POST /api/upload-chaos-token
+func apiSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		settings, err := loadAppSettings()
+		if err != nil {
+			jsonError(w, 500, "settings load failed: "+err.Error())
+			return
+		}
+		writeJSON(w, 200, settings)
+	case http.MethodPost:
+		var settings AppSettings
+		if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
+			jsonError(w, 400, "invalid JSON: "+err.Error())
+			return
+		}
+		settings.ChaosApiTokenPath = strings.TrimSpace(settings.ChaosApiTokenPath)
+		if err := saveAppSettings(settings); err != nil {
+			jsonError(w, 500, "settings save failed: "+err.Error())
+			return
+		}
+		writeJSON(w, 200, settings)
+	default:
+		jsonError(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
 func apiUploadChaosTokenHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
 		jsonError(w, 400, "failed to parse upload: "+err.Error())
@@ -730,15 +829,6 @@ func apiUploadChaosTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-
-	envID := r.FormValue("env_id")
-	if envID == "" {
-		envID = secureID(4)
-	}
-	if !envIDRe.MatchString(envID) {
-		jsonError(w, 400, "invalid env_id")
-		return
-	}
 
 	data, err := io.ReadAll(file)
 	if err != nil {
@@ -754,14 +844,23 @@ func apiUploadChaosTokenHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 500, "cannot create secrets dir: "+err.Error())
 		return
 	}
-	secretPath := chaosTokenSecretPath(envID)
-	if err := os.WriteFile(secretPath, []byte(token+"\n"), 0600); err != nil {
+	storedPath := chaosTokenUploadPath()
+	if err := os.WriteFile(storedPath, []byte(token+"\n"), 0600); err != nil {
 		jsonError(w, 500, "write failed: "+err.Error())
 		return
 	}
+	settings, err := loadAppSettings()
+	if err != nil {
+		jsonError(w, 500, "settings load failed: "+err.Error())
+		return
+	}
+	settings.ChaosApiTokenPath = storedPath
+	if err := saveAppSettings(settings); err != nil {
+		jsonError(w, 500, "settings save failed: "+err.Error())
+		return
+	}
 	writeJSON(w, 200, map[string]string{
-		"env_id":   envID,
-		"path":     secretPath,
+		"path":     storedPath,
 		"filename": filepath.Base(header.Filename),
 	})
 }
@@ -792,35 +891,20 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 400, "invalid JSON: "+err.Error())
 		return
 	}
+	payload.EnvID = strings.TrimSpace(payload.EnvID)
 	if payload.EnvID == "" {
 		payload.EnvID = secureID(4)
 	}
-	if !envIDRe.MatchString(payload.EnvID) {
-		jsonError(w, 400, "invalid env_id: use letters, digits, hyphens and underscores (max 40 chars)")
+	if !envNameRe.MatchString(payload.EnvID) {
+		jsonError(w, 400, "invalid env_id: use lowercase letters and digits only (max 16 chars)")
 		return
 	}
 	if !validPlatform(payload.Platform) {
 		jsonError(w, 400, "invalid platform")
 		return
 	}
-	if payload.Platform == "chaos" {
-		payload.Config.LegacyChaosAPIToken = ""
-		payload.Config.ChaosApiTokenPath = strings.TrimSpace(payload.Config.ChaosApiTokenPath)
-		if payload.Config.ChaosApiTokenPath == "" {
-			jsonError(w, 400, "chaos_api_token_path is required")
-			return
-		}
-		if _, err := loadChaosTokenFromPath(payload.Config.ChaosApiTokenPath); err != nil {
-			jsonError(w, 400, "failed to read CHAOS token file: "+err.Error())
-			return
-		}
-	}
-
-	// Default the prefix to the environment name for all platforms so resources
-	// are namespaced consistently. Users can override this in the form.
-	if payload.Config.Prefix == "" {
-		payload.Config.Prefix = payload.EnvID
-	}
+	// Resource names use the environment name as their prefix.
+	payload.Config.Prefix = payload.EnvID
 
 	// For Docker deployments, auto-assign unique port ranges to replica sets
 	// that don't yet have a port assigned, to prevent collisions.
@@ -829,7 +913,7 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 500, "state load failed: "+err.Error())
 		return
 	}
-	if err := migrateLegacyChaosTokensInState(state); err != nil {
+	if err := dropStoredChaosTokensInState(state); err != nil {
 		jsonError(w, 500, "state load failed: "+err.Error())
 		return
 	}
@@ -843,6 +927,31 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	existing := state[payload.EnvID]
+	if payload.Platform == "chaos" {
+		payload.Config.LegacyChaosAPIToken = ""
+		payload.Config.ChaosApiTokenPath = strings.TrimSpace(payload.Config.ChaosApiTokenPath)
+		settings, err := loadAppSettings()
+		if err != nil {
+			jsonError(w, 500, "settings load failed: "+err.Error())
+			return
+		}
+		tokenPath := settings.ChaosApiTokenPath
+		if tokenPath != "" {
+			payload.Config.ChaosApiTokenPath = ""
+		} else {
+			if payload.Config.ChaosApiTokenPath == "" && existing != nil {
+				payload.Config.ChaosApiTokenPath = strings.TrimSpace(existing.Config.ChaosApiTokenPath)
+			}
+			if isManagedChaosTokenFile(payload.Config.ChaosApiTokenPath) {
+				payload.Config.ChaosApiTokenPath = ""
+			}
+			tokenPath = payload.Config.ChaosApiTokenPath
+		}
+		if tokenPath == "" {
+			jsonError(w, 400, "CHAOS API token file path is required in Settings")
+			return
+		}
+	}
 	if existing != nil {
 		var baseline *Config
 		if existing.LastAppliedConfig != nil {
@@ -966,7 +1075,7 @@ func getTfvarsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	state, _ := loadState()
-	if err := migrateLegacyChaosTokensInState(state); err != nil {
+	if err := dropStoredChaosTokensInState(state); err != nil {
 		jsonError(w, 500, "state error: "+err.Error())
 		return
 	}
@@ -1155,9 +1264,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	cloudAnsibleCmdFor := func(playbookPath string, waitForSSH bool, names []string, extraVars map[string]string) string {
 		effectiveVars := make(map[string]string)
-		// Note: mongo_release, mongo_version, pbm_release, pbm_version are now written
-		// into the inventory [all:vars] section via Terraform variables, so they are
-		// not included here in --extra-vars.
+		// Package source/version variables are written into each generated inventory.
+		// Do not pass them as --extra-vars; extra-vars would override per-resource
+		// inventory values and break mixed-version environments.
 		for k, v := range env.Config.AnsibleVars {
 			effectiveVars[k] = v
 		}
@@ -1274,6 +1383,10 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	// can be operated concurrently.
 	envStateFile := envID + ".tfstate" // relative to tfDir (the CWD for terraform)
 	backendPathArg := shellQuote("path=" + envStateFile)
+	terraformApplyFlags := "-auto-approve -input=false"
+	if platform == "chaos" {
+		terraformApplyFlags += " -parallelism=1"
+	}
 
 	var cmd []string
 	configAtStart := cloneConfig(env.Config)
@@ -1287,8 +1400,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	switch action {
 	case "deploy":
 		shellCmd := fmt.Sprintf(
-			"terraform init -reconfigure -input=false -backend-config=%s && terraform apply -auto-approve -input=false -var-file=%s",
+			"terraform init -reconfigure -input=false -backend-config=%s && terraform apply %s -var-file=%s",
 			backendPathArg,
+			terraformApplyFlags,
 			shellQuote(varfile),
 		)
 		if platform != "docker" {
@@ -1366,8 +1480,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		shellCmd := fmt.Sprintf(
-			"terraform init -reconfigure -input=false -backend-config=%s && terraform apply -auto-approve -input=false -var-file=%s",
+			"terraform init -reconfigure -input=false -backend-config=%s && terraform apply %s -var-file=%s",
 			backendPathArg,
+			terraformApplyFlags,
 			shellQuote(varfile),
 		)
 		shellCmd += sshConfigInjectShell()
@@ -1500,7 +1615,16 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	// For CHAOS environments, pass the API token via an environment variable so
 	// it is never written to the tfvars file on disk.
 	if platform == "chaos" {
-		token, err := loadChaosTokenFromPath(env.Config.ChaosApiTokenPath)
+		tokenPath, err := configuredChaosTokenPath(env)
+		if err != nil {
+			jsonError(w, 500, "settings load failed: "+err.Error())
+			return
+		}
+		if tokenPath == "" {
+			jsonError(w, 400, "CHAOS API token file path is required in Settings")
+			return
+		}
+		token, err := loadChaosTokenFromPath(tokenPath)
 		if err != nil {
 			jsonError(w, 500, "failed to read CHAOS token file: "+err.Error())
 			return

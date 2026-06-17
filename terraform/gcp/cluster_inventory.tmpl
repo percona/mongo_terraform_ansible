@@ -50,14 +50,23 @@ mongo_release=${mongo_release}
 %{ if mongo_version != "" ~}
 mongo_version=${mongo_version}
 %{ endif ~}
+%{ if mongo_repo != "" ~}
+mongo_repo=${mongo_repo}
+%{ endif ~}
 %{ if pbm_release != "" ~}
 pbm_release=${pbm_release}
 %{ endif ~}
 %{ if pbm_version != "" ~}
 pbm_version=${pbm_version}
 %{ endif ~}
+%{ if pbm_repo != "" ~}
+pbm_repo=${pbm_repo}
+%{ endif ~}
 %{ if pmm_client_version != "" ~}
 pmm_client_version=${pmm_client_version}
+%{ endif ~}
+%{ if pmm_client_repo != "" ~}
+pmm_client_repo=${pmm_client_repo}
 %{ endif ~}
 enable_audit=${enable_audit}
 %{ if audit_filter != "" ~}

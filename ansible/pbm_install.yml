@@ -1,14 +1,12 @@
 ---
 - name: Install PBM client
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: install,backup
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: Enable PBM repository
-      shell: "/usr/bin/percona-release enable pbm release"
-
     - name: Install pbm packages from repository (latest)
       package:
         name: "{{ pbm_package }}"
@@ -43,6 +41,7 @@
 
 - name: Figure out backup URI for replica sets
   hosts: replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: backup
   become: true
   vars:
@@ -55,6 +54,7 @@
 
 - name: Figure out backup URI for sharded cluster
   hosts: shards:cfg
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: backup
   become: true
   tasks:
@@ -64,6 +64,7 @@
 
 - name: Configure PBM agent and CLI
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: backup
   become: true
   tasks:
@@ -81,12 +82,17 @@
         src: templates/pbm-agent.j2
         dest: "{{ pbm_env_file }}"
       when: arbiter is not defined
+      notify: restart pbm-agent
 
-    - name: Start PBM agent
+    - name: Ensure PBM agent is started
       service:
         name: pbm-agent
-        state: restarted
+        state: started
+        enabled: yes
       when: arbiter is not defined
+
+    - name: Apply pending PBM agent restarts
+      meta: flush_handlers
 
     - name: Prepare storage details file for PBM
       template:
@@ -94,8 +100,15 @@
         dest: "{{ pbm_config_path }}"
       when: arbiter is not defined
 
+  handlers:
+    - name: restart pbm-agent
+      service:
+        name: pbm-agent
+        state: restarted
+
 - name: Configure NFS clients if needed
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: backup
   become: true
   tasks:
@@ -105,6 +118,7 @@
 
 - name: Configure backup process
   hosts: cfg:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: backup
   tasks:

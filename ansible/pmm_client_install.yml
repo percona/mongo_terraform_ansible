@@ -1,7 +1,7 @@
 ---
 - name: Gather facts from the PMM server
   hosts: pmm
-  gather_facts: yes
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: monitoring
   vars:
     pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
@@ -13,6 +13,7 @@
 
 - name: Install PMM client
   hosts: cfg:shards:replsets:mongos
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: install,monitoring
   environment:
@@ -20,10 +21,6 @@
   vars:
     pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
   tasks:
-    - name: Enable PMM client repository
-      shell: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
-      when: pmm_enabled | bool
-
     - name: Install pmm-client package from repository (latest)
       package:
         name: "{{ pmm_client_package }}"
@@ -64,6 +61,7 @@
 
 - name: Configure monitoring with PMM
   hosts: cfg:shards:replsets:mongos
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: true
   tags: monitoring
   vars:

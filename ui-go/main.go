@@ -52,6 +52,7 @@ var (
 	terraformDir string
 	ansibleDir   string
 	stateFile    string
+	settingsFile string
 	jobsDir      string
 	tmplDir      string
 	staticDir    string
@@ -99,7 +100,13 @@ var funcMap = template.FuncMap{
 		if stored == "" {
 			return tag == "latest"
 		}
-		return stored == prefix+":"+tag || stored == tag
+		if stored == prefix+":"+tag || stored == tag {
+			return true
+		}
+		if slash := strings.LastIndex(prefix, "/"); slash >= 0 {
+			return strings.HasSuffix(stored, "/"+prefix[slash+1:]+":"+tag)
+		}
+		return false
 	},
 	// Extract the version tag from a Docker image string (the part after the last
 	// colon).  Returns "—" for an empty input.
@@ -111,6 +118,22 @@ var funcMap = template.FuncMap{
 			return image[idx+1:]
 		}
 		return image
+	},
+	"imageNamespace": func(image, def string) string {
+		if image == "" {
+			return def
+		}
+		withoutTag := image
+		if idx := strings.LastIndex(withoutTag, ":"); idx >= 0 && idx > strings.LastIndex(withoutTag, "/") {
+			withoutTag = withoutTag[:idx]
+		}
+		if idx := strings.LastIndex(withoutTag, "/"); idx >= 0 {
+			return withoutTag[:idx]
+		}
+		return def
+	},
+	"namespaceCustom": func(ns string) bool {
+		return ns != "" && ns != "percona" && ns != "perconalab"
 	},
 	"formatDate": func(value string) string {
 		if value == "" {
@@ -321,6 +344,7 @@ func main() {
 	terraformDir = filepath.Join(baseDir, "..", "terraform")
 	ansibleDir = filepath.Join(baseDir, "..", "ansible")
 	stateFile = filepath.Join(baseDir, "environments.json")
+	settingsFile = filepath.Join(baseDir, "settings.json")
 	jobsDir = filepath.Join(baseDir, "jobs")
 	tmplDir = filepath.Join(baseDir, "templates")
 	staticDir = filepath.Join(baseDir, "static")
@@ -344,9 +368,13 @@ func main() {
 
 	// API
 	mux.HandleFunc("GET /api/versions", apiVersionsHandler)
+	mux.HandleFunc("GET /api/package-versions", apiPackageVersionsHandler)
+	mux.HandleFunc("GET /api/docker-tags", apiDockerTagsHandler)
 	mux.HandleFunc("GET /api/regions/{platform}", apiRegionsHandler)
 	mux.HandleFunc("GET /api/images/{platform}", apiImagesHandler)
 	mux.HandleFunc("GET /api/prerequisites/{platform}", apiPrerequisitesHandler)
+	mux.HandleFunc("GET /api/settings", apiSettingsHandler)
+	mux.HandleFunc("POST /api/settings", apiSettingsHandler)
 	mux.HandleFunc("POST /api/upload-ssh-key/{platform}", apiUploadSSHKeyHandler)
 	mux.HandleFunc("POST /api/upload-chaos-token", apiUploadChaosTokenHandler)
 	mux.HandleFunc("POST /api/environment", saveEnvironmentHandler)

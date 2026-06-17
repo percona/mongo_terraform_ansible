@@ -1,12 +1,14 @@
 **/.terraform/*
 **/.terraform**
 *tfstate*
+# UI-managed secrets, including uploaded CHAOS API tokens
 ui-go/secrets/
 *inventory
 *.pub
 ssh_config
 .DS_Store
 *.tfvars
+.ansible_facts_cache/
 
 # Web UI runtime artifacts
 ui/environments.json

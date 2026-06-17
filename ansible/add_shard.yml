@@ -60,7 +60,7 @@
       when: ansible_facts['os_family'] == 'RedHat'
 
     - name: Enable the specific MongoDB version
-      shell: "/usr/bin/percona-release enable {{ mongo_release }}"
+      shell: "/usr/bin/percona-release enable {{ mongo_release }} {{ mongo_repo | default('release') }}"
 
     - name: Install mongod packages from repository (latest)
       package:

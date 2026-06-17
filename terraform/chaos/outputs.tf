@@ -1,3 +1,11 @@
+locals {
+  pmm_client_inventory_repos = {
+    release      = "pmm3-client"
+    testing      = "pmm3-client testing"
+    experimental = "pmm3-client experimental"
+  }
+}
+
 resource "local_file" "AnsibleInventoryCluster" {
   for_each = module.mongodb_clusters
 
@@ -41,11 +49,14 @@ resource "local_file" "AnsibleInventoryCluster" {
       minio_port         = var.minio_port
       access_key         = var.minio_root_user
       secret_access_key  = var.minio_root_password
-      mongo_release      = var.mongo_release
-      mongo_version      = var.mongo_version
+      mongo_release      = var.clusters[each.key].mongo_release != "" ? var.clusters[each.key].mongo_release : var.mongo_release
+      mongo_version      = var.clusters[each.key].mongo_version != "" ? var.clusters[each.key].mongo_version : var.mongo_version
+      mongo_repo         = var.clusters[each.key].mongo_repo != "" ? var.clusters[each.key].mongo_repo : var.mongo_repo
       pbm_release        = var.pbm_release
-      pbm_version        = var.pbm_version
-      pmm_client_version = var.pmm_client_version
+      pbm_version        = var.clusters[each.key].pbm_version != "" ? var.clusters[each.key].pbm_version : var.pbm_version
+      pbm_repo           = var.clusters[each.key].pbm_repo != "" ? var.clusters[each.key].pbm_repo : var.pbm_repo
+      pmm_client_version = var.clusters[each.key].pmm_client_version != "" ? var.clusters[each.key].pmm_client_version : var.pmm_client_version
+      pmm_client_repo    = lookup(local.pmm_client_inventory_repos, var.clusters[each.key].pmm_client_repo != "" ? var.clusters[each.key].pmm_client_repo : var.pmm_client_repo, var.clusters[each.key].pmm_client_repo != "" ? var.clusters[each.key].pmm_client_repo : var.pmm_client_repo)
     }
   )
 
@@ -110,11 +121,14 @@ resource "local_file" "AnsibleInventoryRS" {
       minio_port         = var.minio_port
       access_key         = var.minio_root_user
       secret_access_key  = var.minio_root_password
-      mongo_release      = var.mongo_release
-      mongo_version      = var.mongo_version
+      mongo_release      = var.replsets[each.key].mongo_release != "" ? var.replsets[each.key].mongo_release : var.mongo_release
+      mongo_version      = var.replsets[each.key].mongo_version != "" ? var.replsets[each.key].mongo_version : var.mongo_version
+      mongo_repo         = var.replsets[each.key].mongo_repo != "" ? var.replsets[each.key].mongo_repo : var.mongo_repo
       pbm_release        = var.pbm_release
-      pbm_version        = var.pbm_version
-      pmm_client_version = var.pmm_client_version
+      pbm_version        = var.replsets[each.key].pbm_version != "" ? var.replsets[each.key].pbm_version : var.pbm_version
+      pbm_repo           = var.replsets[each.key].pbm_repo != "" ? var.replsets[each.key].pbm_repo : var.pbm_repo
+      pmm_client_version = var.replsets[each.key].pmm_client_version != "" ? var.replsets[each.key].pmm_client_version : var.pmm_client_version
+      pmm_client_repo    = lookup(local.pmm_client_inventory_repos, var.replsets[each.key].pmm_client_repo != "" ? var.replsets[each.key].pmm_client_repo : var.pmm_client_repo, var.replsets[each.key].pmm_client_repo != "" ? var.replsets[each.key].pmm_client_repo : var.pmm_client_repo)
     }
   )
 

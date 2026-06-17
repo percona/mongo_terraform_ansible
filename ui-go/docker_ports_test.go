@@ -53,6 +53,49 @@ func TestWriteTfvarsDockerPmmExternalAndEmptyServiceMaps(t *testing.T) {
 	}
 }
 
+func TestWriteTfvarsDockerPerComponentImageNamespaces(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{
+		Clusters: map[string]ClusterConfig{
+			"cl01": {
+				EnvTag:         "test",
+				PsmdbImage:     "perconalab/percona-server-mongodb:latest",
+				PbmImage:       "percona/percona-backup-mongodb:latest",
+				PmmClientImage: "perconalab/pmm-client:latest",
+				EnablePbm:      true,
+				EnablePmm:      true,
+			},
+		},
+		PmmServers: map[string]PmmServerConfig{
+			"pmm-server": {PmmServerImage: "perconalab/pmm-server:latest"},
+		},
+	}
+
+	if err := writeTfvars("docker-image-namespace", "docker", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tfvarsPath("docker-image-namespace", "docker"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	tfvars := string(content)
+	for _, want := range []string{
+		`psmdb_image = "perconalab/percona-server-mongodb:latest"`,
+		`pbm_image = "percona/percona-backup-mongodb:latest"`,
+		`pmm_client_image = "perconalab/pmm-client:latest"`,
+		`pmm_server_image = "perconalab/pmm-server:latest"`,
+	} {
+		if !strings.Contains(tfvars, want) {
+			t.Fatalf("expected %q in tfvars:\n%s", want, tfvars)
+		}
+	}
+}
+
 func TestWriteTfvarsDockerEmptyPmmServersMap(t *testing.T) {
 	dir := t.TempDir()
 	origTerraformDir := terraformDir
@@ -92,10 +135,8 @@ func TestWriteTfvarsCloudPmmClientVersion(t *testing.T) {
 	t.Cleanup(func() { terraformDir = origTerraformDir })
 
 	cfg := Config{
-		MongoRelease:     "psmdb-80",
-		PmmClientVersion: "3.4.0",
 		Clusters: map[string]ClusterConfig{
-			"cl01": {EnvTag: "test"},
+			"cl01": {EnvTag: "test", PmmClientVersion: "3.4.0"},
 		},
 	}
 
@@ -111,6 +152,115 @@ func TestWriteTfvarsCloudPmmClientVersion(t *testing.T) {
 
 	if !strings.Contains(tfvars, "pmm_client_version = \"3.4.0\"") {
 		t.Fatalf("expected pmm_client_version in tfvars:\n%s", tfvars)
+	}
+}
+
+func TestWriteTfvarsCloudPackageOverrides(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{
+		Clusters: map[string]ClusterConfig{
+			"cl01": {
+				EnvTag:           "test",
+				MongoRelease:     "psmdb-70",
+				MongoVersion:     "7.0.18",
+				MongoRepo:        "testing",
+				PbmVersion:       "2.7.0",
+				PbmRepo:          "experimental",
+				PmmClientVersion: "3.3.0",
+				PmmClientRepo:    "testing",
+			},
+		},
+		Replsets: map[string]ReplsetConfig{
+			"rs01": {
+				EnvTag:        "test",
+				MongoRelease:  "psmdb-60",
+				MongoRepo:     "experimental",
+				PbmRepo:       "testing",
+				PmmClientRepo: "experimental",
+			},
+		},
+	}
+
+	if err := writeTfvars("cloud-package-overrides", "gcp", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tfvarsPath("cloud-package-overrides", "gcp"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	tfvars := string(content)
+
+	for _, want := range []string{
+		`"cl01" = {`,
+		`mongo_release = "psmdb-70"`,
+		`mongo_version = "7.0.18"`,
+		`mongo_repo = "testing"`,
+		`pbm_version = "2.7.0"`,
+		`pbm_repo = "experimental"`,
+		`pmm_client_version = "3.3.0"`,
+		`pmm_client_repo = "testing"`,
+		`"rs01" = {`,
+		`mongo_release = "psmdb-60"`,
+		`mongo_repo = "experimental"`,
+		`pbm_repo = "testing"`,
+		`pmm_client_repo = "experimental"`,
+	} {
+		if !strings.Contains(tfvars, want) {
+			t.Fatalf("expected %q in tfvars:\n%s", want, tfvars)
+		}
+	}
+
+	for _, unwanted := range []string{
+		`mongo_version = "8.0.4"`,
+		`pmm_client_version = "3.4.0"`,
+	} {
+		if strings.Contains(tfvars, unwanted) {
+			t.Fatalf("did not expect top-level %q in tfvars:\n%s", unwanted, tfvars)
+		}
+	}
+}
+
+func TestWriteTfvarsChaosOsImageAndNeverDelete(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{
+		DeleteAfterDays: 0,
+		Clusters: map[string]ClusterConfig{
+			"cl01": {EnvTag: "test", OsImage: "Rocky Linux 9"},
+		},
+		Replsets: map[string]ReplsetConfig{
+			"rs01": {EnvTag: "test", OsImage: "Ubuntu 22.04"},
+		},
+	}
+
+	if err := writeTfvars("chaos-os-never", "chaos", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tfvarsPath("chaos-os-never", "chaos"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	tfvars := string(content)
+
+	for _, want := range []string{
+		`os_image = "Rocky Linux 9"`,
+		`os_image = "Ubuntu 22.04"`,
+	} {
+		if !strings.Contains(tfvars, want) {
+			t.Fatalf("expected %q in tfvars:\n%s", want, tfvars)
+		}
+	}
+	if strings.Contains(tfvars, "delete_after_days") {
+		t.Fatalf("did not expect delete_after_days when Never is selected:\n%s", tfvars)
 	}
 }
 
@@ -276,11 +426,11 @@ func TestSaveEnvironmentHandlerDetectsRunningDockerEnvironmentPortConflicts(t *t
 	})
 
 	existing := map[string]*Environment{
-		"env-running": {
+		"envrunning": {
 			Platform: "docker",
 			Status:   "running",
 			Config: Config{
-				Prefix: "env-running",
+				Prefix: "envrunning",
 				Replsets: map[string]ReplsetConfig{
 					"rs01": {DataNodesPerReplset: 2, ArbitersPerReplset: intPtr(1), ReplsetPort: 27017, ArbiterPort: 27017},
 				},
@@ -298,10 +448,10 @@ func TestSaveEnvironmentHandlerDetectsRunningDockerEnvironmentPortConflicts(t *t
 	}
 
 	payload := map[string]interface{}{
-		"env_id":   "env-new",
+		"env_id":   "envnew",
 		"platform": "docker",
 		"config": Config{
-			Prefix: "env-new",
+			Prefix: "envnew",
 			Replsets: map[string]ReplsetConfig{
 				"rs01": {DataNodesPerReplset: 2, ArbitersPerReplset: intPtr(1), ReplsetPort: 27017, ArbiterPort: 27017},
 			},
@@ -340,7 +490,7 @@ func TestSaveEnvironmentHandlerDetectsRunningDockerEnvironmentPortConflicts(t *t
 	if !strings.Contains(resp.Error, "this environment replica set") {
 		t.Fatalf("expected conflict response to mention this environment, got %s", resp.Error)
 	}
-	if !strings.Contains(resp.Error, "environment env-running replica set") {
+	if !strings.Contains(resp.Error, "environment envrunning replica set") {
 		t.Fatalf("expected conflict response to mention running environment, got %s", resp.Error)
 	}
 
@@ -348,7 +498,7 @@ func TestSaveEnvironmentHandlerDetectsRunningDockerEnvironmentPortConflicts(t *t
 	if err != nil {
 		t.Fatalf("loadState failed: %v", err)
 	}
-	if _, exists := state["env-new"]; exists {
+	if _, exists := state["envnew"]; exists {
 		t.Fatal("conflicting environment should not be saved")
 	}
 }

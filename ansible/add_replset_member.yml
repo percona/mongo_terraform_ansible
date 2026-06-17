@@ -91,7 +91,7 @@
         - not arbiter | default(false)
 
     - name: Enable the specific MongoDB version
-      shell: "/usr/bin/percona-release enable {{ mongo_release }}"
+      shell: "/usr/bin/percona-release enable {{ mongo_release }} {{ mongo_repo | default('release') }}"
       when:
         - replset_member_to_add | bool
         - not arbiter | default(false)

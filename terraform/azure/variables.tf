@@ -24,6 +24,13 @@ variable "clusters" {
     bind_to_localhost    = optional(bool, false)
     enable_audit         = optional(bool, false)
     audit_filter         = optional(string, "")
+    mongo_release        = optional(string, "")
+    mongo_version        = optional(string, "")
+    mongo_repo           = optional(string, "")
+    pbm_version          = optional(string, "")
+    pbm_repo             = optional(string, "")
+    pmm_client_version   = optional(string, "")
+    pmm_client_repo      = optional(string, "")
   }))
   default = {
     ig-cl01 = {
@@ -41,6 +48,13 @@ variable "replsets" {
     bind_to_localhost      = optional(bool, false)
     enable_audit           = optional(bool, false)
     audit_filter           = optional(string, "")
+    mongo_release          = optional(string, "")
+    mongo_version          = optional(string, "")
+    mongo_repo             = optional(string, "")
+    pbm_version            = optional(string, "")
+    pbm_repo               = optional(string, "")
+    pmm_client_version     = optional(string, "")
+    pmm_client_repo        = optional(string, "")
   }))
   default = {
     #     ig-rs01 = {
@@ -296,6 +310,12 @@ variable "mongo_version" {
   description = "Specific MongoDB version to install (e.g. 8.0.4). Empty string installs the latest available."
 }
 
+variable "mongo_repo" {
+  type        = string
+  default     = ""
+  description = "Percona repository channel for MongoDB packages (release, testing, experimental). Empty string uses group_vars default."
+}
+
 variable "pbm_release" {
   type        = string
   default     = ""
@@ -308,8 +328,20 @@ variable "pbm_version" {
   description = "Specific PBM version to install (e.g. 2.4.0). Empty string installs the latest available."
 }
 
+variable "pbm_repo" {
+  type        = string
+  default     = ""
+  description = "Percona repository channel for PBM packages (release, testing, experimental). Empty string uses group_vars default."
+}
+
 variable "pmm_client_version" {
   type        = string
   default     = ""
   description = "Specific PMM client version to install (e.g. 3.4.0). Empty string installs the latest available."
+}
+
+variable "pmm_client_repo" {
+  type        = string
+  default     = ""
+  description = "Percona repository channel for PMM client packages (release, testing, experimental). Empty string uses group_vars default."
 }

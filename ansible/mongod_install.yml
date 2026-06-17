@@ -1,14 +1,12 @@
 ---
 - name: Install MongoDB
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: install
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: Enable the specific MongoDB version
-      shell: "/usr/bin/percona-release enable {{ mongo_release }}"
-
     - name: Install mongod packages from repository (latest)
       package:
         name: "{{ mongod_packages }}"
@@ -43,6 +41,7 @@
 
 - name: Prepare the configuration
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: bootstrap_rs
   
   vars:
@@ -64,6 +63,7 @@
         group: root
         mode: 0600
       when: not use_tls | bool
+      notify: restart mongod
 
     - name: Copy mongod.conf 
       become: yes
@@ -73,6 +73,7 @@
         owner: root
         group: root
         mode: 0644
+      notify: restart mongod
 
     - name: Create the MongoDB directories
       become: yes
@@ -103,6 +104,7 @@
         group: root
         mode: 0600
       when: keyfile_encryption | bool
+      notify: restart mongod
 
     - name: Copy Vault crt and mongo token file to all servers
       block:
@@ -133,6 +135,7 @@
             owner: mongod
             group: mongod
             mode: '0400'
+          notify: restart mongod
 
         - name: Fetch the mongo token file from Vault server to control machine
           become: yes
@@ -151,14 +154,19 @@
             owner: mongod
             group: mongod
             mode: '0400'
+          notify: restart mongod
 
       when: vault_encryption | bool
 
-    - name: Start mongod on replica set member
+    - name: Ensure mongod is started
       become: yes
       service:
         name: mongod
-        state: restarted
+        state: started
+        enabled: yes
+
+    - name: Apply pending mongod restarts
+      meta: flush_handlers
 
     - name: Prepare the init command for replica set
       template:
@@ -197,8 +205,16 @@
       changed_when: false
       when: mongodb_primary | default(false)
 
+  handlers:
+    - name: restart mongod
+      become: yes
+      service:
+        name: mongod
+        state: restarted
+
 - name: Create the local users & logrotate
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: os_conf
 

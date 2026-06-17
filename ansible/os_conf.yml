@@ -1,6 +1,7 @@
 ---
 - name: Prepare OS configuration
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: os_conf
   become : yes
   strategy: free

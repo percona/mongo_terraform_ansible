@@ -17,6 +17,15 @@ type ClusterConfig struct {
 	ShardsvrReplicas   int    `json:"shardsvr_replicas"`
 	ArbitersPerReplset *int   `json:"arbiters_per_replset,omitempty"`
 	MongosCount        int    `json:"mongos_count"`
+	// Non-Docker package source overrides. Empty values inherit Config defaults.
+	MongoRelease     string `json:"mongo_release,omitempty"`
+	MongoVersion     string `json:"mongo_version,omitempty"`
+	MongoRepo        string `json:"mongo_repo,omitempty"`
+	PbmVersion       string `json:"pbm_version,omitempty"`
+	PbmRepo          string `json:"pbm_repo,omitempty"`
+	PmmClientVersion string `json:"pmm_client_version,omitempty"`
+	PmmClientRepo    string `json:"pmm_client_repo,omitempty"`
+	OsImage          string `json:"os_image,omitempty"`
 	// Docker-only
 	PsmdbImage      string `json:"psmdb_image,omitempty"`
 	PbmImage        string `json:"pbm_image,omitempty"`
@@ -33,6 +42,15 @@ type ReplsetConfig struct {
 	EnvTag              string `json:"env_tag"`
 	DataNodesPerReplset int    `json:"data_nodes_per_replset"`
 	ArbitersPerReplset  *int   `json:"arbiters_per_replset,omitempty"`
+	// Non-Docker package source overrides. Empty values inherit Config defaults.
+	MongoRelease     string `json:"mongo_release,omitempty"`
+	MongoVersion     string `json:"mongo_version,omitempty"`
+	MongoRepo        string `json:"mongo_repo,omitempty"`
+	PbmVersion       string `json:"pbm_version,omitempty"`
+	PbmRepo          string `json:"pbm_repo,omitempty"`
+	PmmClientVersion string `json:"pmm_client_version,omitempty"`
+	PmmClientRepo    string `json:"pmm_client_repo,omitempty"`
+	OsImage          string `json:"os_image,omitempty"`
 	// Docker-only port assignment: starting port for data nodes and arbiters.
 	// Auto-assigned on save to avoid collisions between multiple replica sets.
 	ReplsetPort     int `json:"replset_port,omitempty"`
@@ -89,9 +107,12 @@ type Config struct {
 	Prefix              string `json:"prefix"`
 	MongoRelease        string `json:"mongo_release,omitempty"`
 	MongoVersion        string `json:"mongo_version,omitempty"`
+	MongoRepo           string `json:"mongo_repo,omitempty"`
 	PbmRelease          string `json:"pbm_release,omitempty"`
 	PbmVersion          string `json:"pbm_version,omitempty"`
+	PbmRepo             string `json:"pbm_repo,omitempty"`
 	PmmClientVersion    string `json:"pmm_client_version,omitempty"`
+	PmmClientRepo       string `json:"pmm_client_repo,omitempty"`
 	EnableYcsb          bool   `json:"enable_ycsb,omitempty"`
 	YcsbImage           string `json:"ycsb_image,omitempty"`
 	YcsbOsImage         string `json:"ycsb_os_image,omitempty"`
@@ -309,9 +330,14 @@ type EnvEntry struct {
 	Env *Environment
 }
 
+type AppSettings struct {
+	ChaosApiTokenPath string `json:"chaos_api_token_path,omitempty"`
+}
+
 type IndexData struct {
 	Environments []EnvEntry
 	HasDeleted   bool
+	Settings     AppSettings
 }
 
 type NewEnvData struct {

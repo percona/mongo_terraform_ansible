@@ -208,18 +208,65 @@ func semverGreater(a, b string) bool {
 // The distro "jammy" (Ubuntu 22.04 LTS) is used because Percona supports it well
 // and its version strings match those in other distributions.
 func fetchPerconaAPTPackageVersions(repoName, packageName string) []string {
-	cacheKey := "percona_apt:" + repoName + ":" + packageName
+	return fetchPerconaAPTPackageVersionsFor(repoName, "main", "jammy", packageName)
+}
+
+func fetchPerconaAPTPackageVersionsFor(repoName, component, distro, packageName string) []string {
+	if component == "" {
+		component = "main"
+	}
+	if distro == "" {
+		distro = "jammy"
+	}
+	cacheKey := "percona_apt:" + repoName + ":" + component + ":" + distro + ":" + packageName
 	if v, ok := cacheGet(cacheKey); ok {
 		return v.([]string)
 	}
 
-	baseURL := "https://repo.percona.com/" + repoName + "/apt/dists/jammy/main/binary-amd64/"
+	baseURL := "https://repo.percona.com/" + repoName + "/apt/dists/" + distro + "/" + component + "/binary-amd64/"
 	versions := readAPTPackages(baseURL+"Packages.gz", true, packageName)
 	if len(versions) == 0 {
 		versions = readAPTPackages(baseURL+"Packages", false, packageName)
 	}
 
-	slog.Info("fetched Percona APT package versions", "repo", repoName, "package", packageName, "count", len(versions))
+	slog.Info("fetched Percona APT package versions", "repo", repoName, "component", component, "distro", distro, "package", packageName, "count", len(versions))
+	cacheSet(cacheKey, versions)
+	return versions
+}
+
+func fetchPerconaYUMPackageVersions(repoName, channel, osMajor, packageName string) []string {
+	if channel == "" {
+		channel = "release"
+	}
+	if osMajor == "" {
+		osMajor = "9"
+	}
+	cacheKey := "percona_yum:" + repoName + ":" + channel + ":" + osMajor + ":" + packageName
+	if v, ok := cacheGet(cacheKey); ok {
+		return v.([]string)
+	}
+
+	url := "https://repo.percona.com/" + repoName + "/yum/" + channel + "/" + osMajor + "/RPMS/x86_64/"
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		slog.Warn("YUM repository listing fetch failed", "url", url, "err", err)
+		cacheSet(cacheKey, []string{})
+		return []string{}
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		cacheSet(cacheKey, []string{})
+		return []string{}
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		slog.Warn("YUM repository listing read failed", "url", url, "err", err)
+		cacheSet(cacheKey, []string{})
+		return []string{}
+	}
+	versions := parseYUMPackageVersions(string(body), packageName)
+	slog.Info("fetched Percona YUM package versions", "repo", repoName, "channel", channel, "os", osMajor, "package", packageName, "count", len(versions))
 	cacheSet(cacheKey, versions)
 	return versions
 }
@@ -283,6 +330,115 @@ func parseAPTPackageVersions(content, packageName string) []string {
 	}
 
 	sort.Slice(versions, func(i, j int) bool { return semverGreater(versions[i], versions[j]) })
+	return versions
+}
+
+func parseYUMPackageVersions(content, packageName string) []string {
+	re := regexp.MustCompile(regexp.QuoteMeta(packageName) + `-([0-9]+\.[0-9]+\.[0-9]+)-[^"<>\s]*\.(?:el|rhel)[0-9]`)
+	seen := map[string]bool{}
+	var versions []string
+	for _, m := range re.FindAllStringSubmatch(content, -1) {
+		if len(m) < 2 || seen[m[1]] {
+			continue
+		}
+		seen[m[1]] = true
+		versions = append(versions, m[1])
+	}
+	sort.Slice(versions, func(i, j int) bool { return semverGreater(versions[i], versions[j]) })
+	return versions
+}
+
+type packagePlatform struct {
+	Family  string
+	Distro  string
+	OSMajor string
+}
+
+func packagePlatformForOSImage(osImage string) packagePlatform {
+	switch strings.TrimSpace(osImage) {
+	case "Ubuntu 24.04":
+		return packagePlatform{Family: "apt", Distro: "noble"}
+	case "Debian 12":
+		return packagePlatform{Family: "apt", Distro: "bookworm"}
+	case "Rocky Linux 8", "Oracle Linux 8":
+		return packagePlatform{Family: "yum", OSMajor: "8"}
+	case "Rocky Linux 9", "CentOS 9", "Oracle Linux 9":
+		return packagePlatform{Family: "yum", OSMajor: "9"}
+	case "Ubuntu 22.04", "":
+		fallthrough
+	default:
+		return packagePlatform{Family: "apt", Distro: "jammy"}
+	}
+}
+
+func repoComponentForChannel(channel string) string {
+	switch strings.TrimSpace(channel) {
+	case "testing", "experimental":
+		return channel
+	default:
+		return "main"
+	}
+}
+
+func normalizedRepoChannel(channel string) string {
+	switch strings.TrimSpace(channel) {
+	case "testing", "experimental":
+		return strings.TrimSpace(channel)
+	default:
+		return "release"
+	}
+}
+
+func perconaPackageVersions(repoName, packageName, channel, osImage string) []string {
+	platform := packagePlatformForOSImage(osImage)
+	channel = normalizedRepoChannel(channel)
+	if platform.Family == "yum" {
+		return fetchPerconaYUMPackageVersions(repoName, channel, platform.OSMajor, packageName)
+	}
+	return fetchPerconaAPTPackageVersionsFor(repoName, repoComponentForChannel(channel), platform.Distro, packageName)
+}
+
+func getPSMDBMinorVersionsByMajorFor(channel, osImage string) map[string][]string {
+	result := map[string][]string{}
+	for _, release := range getPSMDBVersions() {
+		versions := perconaPackageVersions(release, "percona-server-mongodb", channel, osImage)
+		if len(versions) > 0 {
+			result[release] = versions
+		}
+	}
+	if len(result) == 0 && normalizedRepoChannel(channel) == "release" && strings.TrimSpace(osImage) == "" {
+		return getPSMDBMinorVersionsByMajor()
+	}
+	return result
+}
+
+func getPSMDBVersionsFor(channel, osImage string) []string {
+	minorVersions := getPSMDBMinorVersionsByMajorFor(channel, osImage)
+	versions := make([]string, 0, len(minorVersions))
+	for _, release := range getPSMDBVersions() {
+		if len(minorVersions[release]) > 0 {
+			versions = append(versions, release)
+		}
+	}
+	if len(versions) == 0 && normalizedRepoChannel(channel) == "release" && strings.TrimSpace(osImage) == "" {
+		return getPSMDBVersions()
+	}
+	return versions
+}
+
+func getPBMVersionsFor(channel, osImage string) []string {
+	versions := perconaPackageVersions("pbm", "percona-backup-mongodb", channel, osImage)
+	if len(versions) == 0 && normalizedRepoChannel(channel) == "release" && strings.TrimSpace(osImage) == "" {
+		return getPBMVersions()
+	}
+	return versions
+}
+
+func getPMMClientVersionsFor(channel, osImage string) []string {
+	versions := perconaPackageVersions("pmm3-client", "pmm-client", channel, osImage)
+	if len(versions) == 0 {
+		versions = getPMMClientImages()
+	}
 	return versions
 }
 

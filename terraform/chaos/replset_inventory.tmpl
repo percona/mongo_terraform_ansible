@@ -55,6 +55,8 @@ pbm_version=${pbm_version}
 pmm_client_version=${pmm_client_version}
 %{ endif ~}
 enable_audit=${enable_audit}
+enable_mongot=${enable_mongot}
+mongot_node_count=${mongot_node_count}
 %{ if audit_filter != "" ~}
 audit_filter=${audit_filter}
 %{ endif ~}

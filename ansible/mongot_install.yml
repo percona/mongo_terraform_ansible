@@ -1,0 +1,101 @@
+---
+# Installs Percona Search for MongoDB (mongot) on all data-bearing nodes.
+# Each node runs its own mongot instance which syncs from the local mongod;
+# mongod is pointed at it via the mongotHost / searchIndexManagementHostAndPort
+# parameters (see mongod-*.conf.j2 templates). Requires psmdb-83 or newer.
+- name: Install and configure mongot (Percona Search for MongoDB)
+  hosts: shards:replsets
+  become: yes
+  tags: mongot
+  environment:
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
+
+  vars:
+    mongo_tls_flags: >-
+      {% if use_tls %}
+      --tls
+      --tlsCertificateKeyFile {{ certificateKeyFile }}
+      --tlsCAFile {{ CAFile }}
+      --tlsAllowInvalidCertificates
+      {% endif %}
+    # Find this host's specific replica-set / shard group by excluding parent groups.
+    _replset_group: "{{ group_names | difference(['all', 'shards', 'replsets', 'cfg', 'mongos', 'ungrouped']) | first | default('') }}"
+    # Sorted member list for the group (used to determine node position).
+    _replset_members_sorted: "{{ (groups[_replset_group] | sort | list) if _replset_group in groups else [inventory_hostname] }}"
+    # mongot_node_count == 0 means all nodes; otherwise limit to the first N sorted hosts.
+    _mongot_this_node: "{{ (mongot_node_count | default(0) | int) == 0 or inventory_hostname in _replset_members_sorted[:(mongot_node_count | default(0) | int)] }}"
+
+  tasks:
+    - name: Install and configure mongot
+      when:
+        - enable_mongot | default(false) | bool
+        - arbiter is not defined
+        - _mongot_this_node | bool
+      block:
+        - name: Verify the MongoDB release supports mongot
+          assert:
+            that: (mongo_release | default('') | regex_search('[0-9]+$') | int) >= 83
+            fail_msg: "mongot requires mongo_release psmdb-83 or newer (got '{{ mongo_release | default('') }}')"
+
+        - name: Install mongot package
+          package:
+            name: "{{ mongot_package }}"
+            state: present
+
+        - name: Create the mongot sync user (searchCoordinator role)
+          shell: >
+            mongosh admin {{ mongo_tls_flags }}
+            -u {{ mongo_admin_user }}
+            -p {{ mongo_admin_password }}
+            --port {{ mongo_port }}
+            --host 127.0.0.1
+            --eval 'try { db.getSiblingDB("admin").createUser({user:"{{ mongot_user }}",pwd:"{{ mongot_password }}",roles:[{role:"searchCoordinator",db:"admin"}]}) } catch (e) { if (!/already exists/.test(e.message)) { throw e; } }'
+          no_log: true
+          when: mongodb_primary | default(false)
+
+        - name: Create mongot secrets directory
+          file:
+            path: "{{ mongot_password_file | dirname }}"
+            state: directory
+            owner: root
+            group: mongod
+            mode: '0750'
+
+        - name: Write mongot password file
+          copy:
+            dest: "{{ mongot_password_file }}"
+            content: "{{ mongot_password }}"
+            owner: mongod
+            group: mongod
+            mode: '0600'
+          no_log: true
+
+        - name: Create mongot data directory
+          file:
+            path: "{{ mongot_data_path }}"
+            state: directory
+            owner: mongod
+            group: mongod
+            mode: '0750'
+
+        - name: Copy mongot.yml
+          template:
+            src: templates/mongot.yml.j2
+            dest: "{{ mongot_config_path }}"
+            owner: root
+            group: mongod
+            mode: '0640'
+
+        - name: Restart and enable mongot
+          systemd:
+            name: mongot
+            state: restarted
+            enabled: yes
+            daemon_reload: yes
+
+        - name: Wait for the mongot gRPC port
+          wait_for:
+            host: 127.0.0.1
+            port: "{{ mongot_grpc_port }}"
+            delay: 2
+            timeout: 120

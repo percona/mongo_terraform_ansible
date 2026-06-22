@@ -366,6 +366,17 @@ a:hover { text-decoration: underline; }
 .form-group-checkbox { flex-direction: column; gap: 0.25rem; }
 .form-group-checkbox label { display: flex; align-items: center; gap: 0.4rem; color: var(--color-text); cursor: pointer; }
 .hint { font-size: 0.78rem; color: var(--color-muted); margin-top: 0.5rem; }
+/* Inline warning shown under a select when a pre-release ("testing") version is chosen. */
+.testing-warning {
+  margin-top: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--color-warning);
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: var(--radius-sm);
+}
 
 .component-block {
   background: var(--color-surface2);

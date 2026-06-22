@@ -46,6 +46,8 @@ resource "local_file" "AnsibleInventoryCluster" {
       pbm_release        = var.pbm_release
       pbm_version        = var.pbm_version
       pmm_client_version = var.pmm_client_version
+      enable_mongot      = var.enable_mongot
+      mongot_node_count  = var.mongot_node_count
     }
   )
 
@@ -115,6 +117,8 @@ resource "local_file" "AnsibleInventoryRS" {
       pbm_release        = var.pbm_release
       pbm_version        = var.pbm_version
       pmm_client_version = var.pmm_client_version
+      enable_mongot      = var.enable_mongot
+      mongot_node_count  = var.mongot_node_count
     }
   )
 

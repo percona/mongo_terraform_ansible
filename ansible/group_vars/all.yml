@@ -70,31 +70,6 @@ audit_filter: '{ atype: "authCheck", "param.command": { $in: [ "insert", "update
 
 thp_location: /usr/lib/systemd/system/disable-thp.service
 
-##################
-# Search (mongot)
-##################
-
-# Install Percona Search for MongoDB (mongot) on all data-bearing nodes and
-# point mongod at it (mongotHost / searchIndexManagementHostAndPort).
-# Requires mongo_release psmdb-83 or newer.
-enable_mongot: false
-# 0 = install on all data-bearing nodes; 1–3 limits to the first N sorted nodes per replica set.
-mongot_node_count: 0
-
-mongot_package: percona-server-mongodb-mongot
-# MongoDB user mongot uses to sync data from the local mongod.
-# Gets the built-in "searchCoordinator" role.
-mongot_user: mongot
-# Warning! This is just an example, replace with your own for prod use!
-mongot_password: mongotsecret
-mongot_config_path: /etc/mongot/mongot.yml
-mongot_password_file: /etc/mongot/secrets/passwordFile
-mongot_data_path: /var/lib/mongot
-# Localhost gRPC port mongod uses to reach mongot.
-mongot_grpc_port: 27028
-mongot_metrics_port: 9946
-mongot_healthcheck_port: 8080
-
 ########################
 ## Member Authentication
 ########################

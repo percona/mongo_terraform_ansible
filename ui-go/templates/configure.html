@@ -1356,33 +1356,6 @@
   </section>
   {{end}}
 
-  {{if eq $p "chaos"}}
-  <section class="form-section">
-    <div class="section-header">
-      <h2>Search (mongot)</h2>
-      <label class="toggle-label">
-        <input type=”checkbox” id=”enable_mongot” name=”enable_mongot” value=”true”
-               {{if .Config.EnableMongot}}checked{{end}}
-               onchange=”onMongotChange()”>
-        Include mongot (Percona Search for MongoDB) <span class=”field-tip” data-tip=”Installs percona-server-mongodb-mongot alongside each data-bearing mongod and wires mongod to it, enabling Full Text and Vector Search ($search / $vectorSearch).”>ⓘ</span>
-      </label>
-    </div>
-    <div id=”mongot-release-warning” class=”testing-warning” style=”display:none”>
-      ⚠️ mongot requires Percona Server for MongoDB 8.3 or newer — select MongoDB Major Version
-      “psmdb-83” or above. The configuration cannot be saved with an older release while mongot is enabled.
-    </div>
-    <div id=”mongot-nodes-row” style=”{{if .Config.EnableMongot}}{{else}}display:none{{end}}”>
-      <div class=”form-row”>
-        <div class=”form-group”>
-          <label for=”mongot_node_count”>Nodes per replica set <span class=”field-tip” data-tip=”How many data-bearing nodes per replica set run mongot. 0 = all nodes (default).”>ⓘ</span></label>
-          <input type=”number” id=”mongot_node_count” name=”mongot_node_count”
-                 value=”{{intDefault .Config.MongotNodeCount 0}}” min=”0” max=”3”>
-        </div>
-      </div>
-    </div>
-  </section>
-  {{end}}
-
   <section class="form-section">
     <div class="section-header">
       <h2>Workload Generator</h2>
@@ -1839,42 +1812,14 @@ function toggleMachineImageCustom(sel) {
 // Cascade: when the major MongoDB release (psmdb-70, psmdb-80…) changes,
 // repopulate the specific version dropdown.
 function onMongoReleaseChange(sel) {
-  const release = sel.value;
-  updateMongotWarning();
   const versionSel = document.getElementById('mongo_version');
   if (!versionSel) return;
+  const release = sel.value;
   const minors = (PSMDB_MINOR_VERSIONS && PSMDB_MINOR_VERSIONS[release]) || [];
   // Keep the currently selected value if it's still valid.
   const prevVal = versionSel.value;
   versionSel.innerHTML = '<option value="">latest (default)</option>' +
     minors.map(v => `<option value="${escHtml(v)}" ${v === prevVal ? 'selected' : ''}>${escHtml(v)}</option>`).join('');
-}
-
-// Numeric major release from a "psmdb-NN" identifier, e.g. "psmdb-83" → 83.
-function mongoReleaseNumber(release) {
-  const m = /^psmdb-(\d+)$/.exec(release || '');
-  return m ? parseInt(m[1], 10) : 0;
-}
-
-// True when the currently selected MongoDB major release supports mongot (8.3+).
-function mongotSupportedByRelease() {
-  const rel = document.getElementById('mongo_release');
-  return mongoReleaseNumber(rel ? rel.value : '') >= 83;
-}
-
-// Show a warning when mongot is enabled but the selected release is older than 8.3.
-function updateMongotWarning() {
-  const cb = document.getElementById('enable_mongot');
-  const warn = document.getElementById('mongot-release-warning');
-  if (!cb || !warn) return;
-  warn.style.display = (cb.checked && !mongotSupportedByRelease()) ? '' : 'none';
-}
-
-function onMongotChange() {
-  updateMongotWarning();
-  const cb = document.getElementById('enable_mongot');
-  const row = document.getElementById('mongot-nodes-row');
-  if (row) row.style.display = cb && cb.checked ? '' : 'none';
 }
 
 // Cascade: when the major PBM release changes, repopulate the version dropdown.
@@ -2786,14 +2731,6 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   }
   if (PLATFORM === 'chaos') {
     config.enable_minio = fd.has('enable_minio');
-    config.enable_mongot = fd.has('enable_mongot');
-    config.mongot_node_count = parseInt(fd.get('mongot_node_count') || '0', 10);
-    if (config.enable_mongot && !mongotSupportedByRelease()) {
-      alert('mongot (Percona Search for MongoDB) requires MongoDB major version psmdb-83 or newer. Select PSMDB 8.3 above or disable mongot.');
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Save & Configure';
-      return;
-    }
   }
 
   // SSH Users map (cloud only)

@@ -74,20 +74,9 @@ operationProfiling:
 #   slowOpSampleRate: 0.1
    rateLimit: 100
 
-{% set mongot_enabled = enable_mongot | default(false) | bool %}
-{% if enable_audit or mongot_enabled %}
-setParameter:
 {% if enable_audit %}
+setParameter:
   auditAuthorizationSuccess: true
-{% endif %}
-{% if mongot_enabled %}
-  mongotHost: 127.0.0.1:{{ mongot_grpc_port }}
-  searchIndexManagementHostAndPort: 127.0.0.1:{{ mongot_grpc_port }}
-  useGrpcForSearch: true
-{% if use_tls %}
-  searchTLSMode: requireTLS
-{% endif %}
-{% endif %}
 {% endif %}
 
 replication:

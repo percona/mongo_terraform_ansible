@@ -46,3 +46,31 @@ variable "auth_key" {
 variable "vm_condition_poweron" {
   default = true
 }
+
+variable "domain_type" {
+  type    = string
+  default = "qemu"
+}
+
+variable "arch" {
+  type    = string
+  default = "x86_64"
+  validation {
+    condition     = contains(["x86_64", "aarch64"], var.arch)
+    error_message = "arch must be x86_64 or aarch64."
+  }
+}
+
+variable "firmware" {
+  type    = string
+  default = ""
+  # aarch64 Ubuntu/Debian host: /usr/share/AAVMF/AAVMF_CODE.fd
+  # aarch64 RHEL/Rocky host:    /usr/share/edk2/aarch64/QEMU_EFI-pflash.raw
+}
+
+variable "nvram_template" {
+  type    = string
+  default = ""
+  # aarch64 Ubuntu/Debian host: /usr/share/AAVMF/AAVMF_VARS.fd
+  # aarch64 RHEL/Rocky host:    /usr/share/edk2/aarch64/vars-template-pflash.raw
+}

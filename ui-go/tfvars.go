@@ -189,9 +189,6 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				writeOptInt("minio_memory_gb", cfg.MinioMemoryGb)
 				writeOptInt("minio_volume_size", cfg.MinioVolumeSize)
 			}
-			// Search (mongot) — installed on data-bearing nodes by Ansible.
-			writeVar("enable_mongot", cfg.EnableMongot)
-			writeOptInt("mongot_node_count", cfg.MongotNodeCount)
 			// Backup
 			writeOptStr("default_bucket_name", cfg.DefaultBucketName)
 			writeOptInt("backup_retention", cfg.BackupRetention)

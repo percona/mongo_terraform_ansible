@@ -186,7 +186,9 @@ Since aarch64 guests under software emulation take 10–30+ minutes to boot, you
 virsh -c qemu:///system console db-1
 ```
 
-Press `Ctrl+]` to detach. You will see UEFI output, then the GRUB menu, then the kernel and cloud-init log streaming in real time.
+- This module provisions only virtual machines and base access. It does not run the Ansible MongoDB deployment automatically.
+- After the VMs are reachable, use the playbooks in [`../../ansible`](../../ansible) if you want the full MongoDB software stack installed.
+- Topology expansion automation in this repository targets AWS, GCP, Azure, CHAOS, and Docker. For Libvirt, provision any additional VMs manually and then run the appropriate Ansible playbook (`add_shard.yml` or `add_replset_member.yml`) with an inventory that includes the new hosts.
 
 ## Shutdown VMs
 
@@ -234,6 +236,4 @@ tofu destroy
 - This module provisions VMs and base access only. It does not run Ansible automatically.
 - After the VMs are reachable, use the playbooks in [`../../ansible`](../../ansible) for the MongoDB stack.
 
-## Credits
-
-This project uses the [terraform-provider-libvirt](https://github.com/dmacvicar/terraform-provider-libvirt) by dmacvicar.
+This project makes extensive use of the excellent [terraform-provider-libvirt](https://github.com/dmacvicar/terraform-provider-libvirt). Special thanks to the maintainers for allowing us to manage KVM/Libvirt resources with Terraform.

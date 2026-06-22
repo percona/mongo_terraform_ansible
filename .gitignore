@@ -1,6 +1,7 @@
 **/.terraform/*
 **/.terraform**
 *tfstate*
+ui-go/secrets/
 *inventory
 *.pub
 ssh_config
@@ -18,3 +19,5 @@ environments.json
 ui-go/environments.json
 ui-go/jobs/
 ui-go/mongodeploy
+ui-go/secrets/chaos/search-demo.token
+ui-go/secrets/chaos/mcp-test.token

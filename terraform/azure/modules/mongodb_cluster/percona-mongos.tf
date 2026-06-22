@@ -1,7 +1,7 @@
 # Public IP
 resource "azurerm_public_ip" "mongos" {
-  count               = var.mongos_count
-  name                = "${var.cluster_name}-${var.mongos_tag}0${count.index}-nic-public-ip"
+  for_each            = local.mongos_members
+  name                = "${var.cluster_name}-${var.mongos_tag}0${each.value}-nic-public-ip"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Dynamic"
@@ -52,8 +52,8 @@ resource "azurerm_network_security_group" "mongodb_mongos_nsg" {
 
 # NICs for mongos nodes
 resource "azurerm_network_interface" "mongos" {
-  count               = var.mongos_count
-  name                = "${var.cluster_name}-${var.mongos_tag}0${count.index}-nic"
+  for_each            = local.mongos_members
+  name                = "${var.cluster_name}-${var.mongos_tag}0${each.value}-nic"
   location            = var.location
   resource_group_name = var.resource_group_name
 
@@ -61,15 +61,15 @@ resource "azurerm_network_interface" "mongos" {
     name                          = "internal"
     subnet_id                     = var.subnet
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.mongos[count.index].id
+    public_ip_address_id          = azurerm_public_ip.mongos[each.key].id
 
   }
 }
 
 # mongos VM instances
 resource "azurerm_linux_virtual_machine" "mongos" {
-  count               = var.mongos_count
-  name                = "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+  for_each            = local.mongos_members
+  name                = "${var.cluster_name}-${var.mongos_tag}0${each.value}"
   location            = var.location
   resource_group_name = var.resource_group_name
   size                = var.mongos_type
@@ -80,7 +80,7 @@ resource "azurerm_linux_virtual_machine" "mongos" {
   }
 
   network_interface_ids = [
-    azurerm_network_interface.mongos[count.index].id
+    azurerm_network_interface.mongos[each.key].id
   ]
 
   admin_ssh_key {
@@ -106,7 +106,7 @@ resource "azurerm_linux_virtual_machine" "mongos" {
 
   custom_data = base64encode(<<EOT
 #!/bin/bash
-hostnamectl set-hostname "${var.cluster_name}-${var.mongos_tag}0${count.index}"
+hostnamectl set-hostname "${var.cluster_name}-${var.mongos_tag}0${each.value}"
 echo "127.0.0.1 $(hostname) localhost" > /etc/hosts
 EOT
   )

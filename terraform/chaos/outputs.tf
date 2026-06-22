@@ -27,6 +27,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       my_ssh_user  = var.my_ssh_user
       cluster      = each.value.cluster
       env_tag      = each.value.env_tag
+      enable_pmm   = var.enable_pmm
       enable_audit = each.value.enable_audit
       audit_filter = each.value.audit_filter
 
@@ -45,6 +46,8 @@ resource "local_file" "AnsibleInventoryCluster" {
       pbm_release        = var.pbm_release
       pbm_version        = var.pbm_version
       pmm_client_version = var.pmm_client_version
+      enable_mongot      = var.enable_mongot
+      mongot_node_count  = var.mongot_node_count
     }
   )
 
@@ -96,6 +99,7 @@ resource "local_file" "AnsibleInventoryRS" {
       my_ssh_user        = var.my_ssh_user
       rs_name            = each.value.rs_name
       env_tag            = each.value.env_tag
+      enable_pmm         = var.enable_pmm
       enable_audit       = each.value.enable_audit
       audit_filter       = each.value.audit_filter
       hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
@@ -113,6 +117,8 @@ resource "local_file" "AnsibleInventoryRS" {
       pbm_release        = var.pbm_release
       pbm_version        = var.pbm_version
       pmm_client_version = var.pmm_client_version
+      enable_mongot      = var.enable_mongot
+      mongot_node_count  = var.mongot_node_count
     }
   )
 

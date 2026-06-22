@@ -35,8 +35,9 @@ type ReplsetConfig struct {
 	ArbitersPerReplset  *int   `json:"arbiters_per_replset,omitempty"`
 	// Docker-only port assignment: starting port for data nodes and arbiters.
 	// Auto-assigned on save to avoid collisions between multiple replica sets.
-	ReplsetPort int `json:"replset_port,omitempty"`
-	ArbiterPort int `json:"arbiter_port,omitempty"`
+	ReplsetPort     int `json:"replset_port,omitempty"`
+	ArbiterPort     int `json:"arbiter_port,omitempty"`
+	ArbiterBasePort int `json:"arbiter_base_port,omitempty"`
 	// Docker-only
 	PsmdbImage      string `json:"psmdb_image,omitempty"`
 	PbmImage        string `json:"pbm_image,omitempty"`
@@ -85,13 +86,15 @@ type LdapServerConfig struct {
 // Config holds all user-configurable settings for an environment.
 type Config struct {
 	// General
-	Prefix              string `json:"prefix"`
-	MongoRelease        string `json:"mongo_release,omitempty"`
-	MongoVersion        string `json:"mongo_version,omitempty"`
-	PbmRelease          string `json:"pbm_release,omitempty"`
-	PbmVersion          string `json:"pbm_version,omitempty"`
-	PmmClientVersion    string `json:"pmm_client_version,omitempty"`
-	EnableYcsb          bool   `json:"enable_ycsb,omitempty"`
+	Prefix           string `json:"prefix"`
+	MongoRelease     string `json:"mongo_release,omitempty"`
+	MongoVersion     string `json:"mongo_version,omitempty"`
+	PbmRelease       string `json:"pbm_release,omitempty"`
+	PbmVersion       string `json:"pbm_version,omitempty"`
+	PmmClientVersion string `json:"pmm_client_version,omitempty"`
+	EnableYcsb       bool   `json:"enable_ycsb,omitempty"`
+	EnableMongot        bool `json:"enable_mongot,omitempty"`
+	MongotNodeCount     int  `json:"mongot_node_count,omitempty"`
 	YcsbImage           string `json:"ycsb_image,omitempty"`
 	YcsbOsImage         string `json:"ycsb_os_image,omitempty"`
 	YcsbContainerSuffix string `json:"ycsb_container_suffix,omitempty"`
@@ -131,11 +134,11 @@ type Config struct {
 	MachineImage string `json:"machine_image,omitempty"`
 
 	// CHAOS-specific settings
-	ChaosApiTokenPath  string `json:"chaos_api_token_path,omitempty"`
+	ChaosApiTokenPath   string `json:"chaos_api_token_path,omitempty"`
 	LegacyChaosAPIToken string `json:"chaos_api_token,omitempty"`
-	EnableMinio        *bool  `json:"enable_minio,omitempty"`
-	DeleteAfterDays    int    `json:"delete_after_days,omitempty"`
-	OsImage            string `json:"os_image,omitempty"`
+	EnableMinio         *bool  `json:"enable_minio,omitempty"`
+	DeleteAfterDays     int    `json:"delete_after_days,omitempty"`
+	OsImage             string `json:"os_image,omitempty"`
 	// FirewallRules replaces the old SourceRanges single string for CHAOS.
 	// Each entry is an independent ingress rule with its own CIDR and port.
 	FirewallRules      []ChaosFirewallRule `json:"firewall_rules,omitempty"`
@@ -196,13 +199,17 @@ type HistoryEvent struct {
 
 // Environment is one record in the state file.
 type Environment struct {
-	Platform  string         `json:"platform"`
-	Config    Config         `json:"config"`
-	Status    string         `json:"status"`
-	CreatedAt string         `json:"created_at"`
-	UpdatedAt string         `json:"updated_at"`
-	LastJobID string         `json:"last_job_id,omitempty"`
-	History   []HistoryEvent `json:"history,omitempty"`
+	Platform string `json:"platform"`
+	Config   Config `json:"config"`
+	// LastAppliedConfig is the topology/configuration from the last successful
+	// deploy. It is used to distinguish supported scale-out changes from
+	// unsupported topology mutations before running Terraform.
+	LastAppliedConfig *Config        `json:"last_applied_config,omitempty"`
+	Status            string         `json:"status"`
+	CreatedAt         string         `json:"created_at"`
+	UpdatedAt         string         `json:"updated_at"`
+	LastJobID         string         `json:"last_job_id,omitempty"`
+	History           []HistoryEvent `json:"history,omitempty"`
 	// HostIPs caches the last-known IP address for each Docker container so
 	// that the UI can continue to display addresses even when containers are
 	// stopped (and docker inspect returns an empty IP).

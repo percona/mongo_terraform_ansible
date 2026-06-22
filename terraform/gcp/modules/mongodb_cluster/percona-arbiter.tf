@@ -1,12 +1,12 @@
 resource "google_compute_instance" "arbiter" {
-  name         = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+  for_each     = local.arbiter_members
+  name         = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}"
   machine_type = var.arbiter_type
-  zone         = data.google_compute_zones.available.names[var.shardsvr_replicas + (count.index % var.arbiters_per_replset) % length(data.google_compute_zones.available.names)]
-  count        = var.shard_count * var.arbiters_per_replset
+  zone         = data.google_compute_zones.available.names[(var.shardsvr_replicas + each.value.arbiter_index) % length(data.google_compute_zones.available.names)]
   tags         = ["${var.cluster_name}-${var.arbiter_tag}"]
   labels = {
-    ansible-group = floor(count.index / var.arbiters_per_replset),
-    ansible-index = count.index % var.arbiters_per_replset,
+    ansible-group = tostring(each.value.shard_index),
+    ansible-index = tostring(each.value.arbiter_index),
     environment   = var.env_tag
   }
   boot_disk {
@@ -30,7 +30,7 @@ resource "google_compute_instance" "arbiter" {
   metadata_startup_script = <<EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.arbiters_per_replset)}arb${count.index % var.arbiters_per_replset}"
+    hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname) localhost" > /etc/hosts    

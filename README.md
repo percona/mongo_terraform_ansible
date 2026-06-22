@@ -29,6 +29,16 @@ Install the tools that match your target platform:
 
 You will also need provider credentials or login configured in your shell before running Terraform.
 
+### Quickstart for Mac
+
+```
+git clone https://github.com/percona/mongo_terraform_ansible.git
+brew tap hashicorp/tap
+brew install hashicorp/tap/terraform
+brew install go
+brew install ansible
+```
+
 ## Web UI (Recommended)
 
 A zero-dependency web frontend (written in Go) is available in [`ui-go/`](./ui-go/README.md).
@@ -74,5 +84,36 @@ See [`ui-go/README.md`](./ui-go/README.md) for full details.
     - [CHAOS](./terraform/chaos/README.md)
     - [Local Docker containers](./terraform/docker/README.md)
     - [Local Libvirt/KVM virtual machines](./terraform/libvirt/README.md)
+
+## Expanding Existing Topologies
+
+The framework supports scale-out for existing deployments, but not scale-in.
+
+Supported changes:
+- Add shards to an existing sharded cluster by increasing `shard_count`.
+- Add data-bearing members to an existing standalone replica set by increasing `data_nodes_per_replset`.
+- Add entirely new clusters or standalone replica sets to an existing environment.
+
+Unsupported changes:
+- Reducing `shard_count` or `data_nodes_per_replset`.
+- Changing `configsvr_count` after a sharded cluster is initialized.
+- Changing `shardsvr_replicas` for existing shards.
+- Changing `arbiters_per_replset` for existing sharded clusters or standalone replica sets.
+
+For AWS, GCP, Azure, and CHAOS, scale-out is a two-phase operation: Terraform creates the new hosts and Ansible joins them to MongoDB. For example:
+
+```bash
+# Add a shard after increasing shard_count and applying Terraform
+ansible-playbook -i <prefix>_inventory_<cluster> ansible/add_shard.yml \
+  --extra-vars "new_shard_group=shard<N>"
+
+# Add data-bearing replica set members after increasing data_nodes_per_replset
+ansible-playbook -i <prefix>_inventory_<rs> ansible/add_replset_member.yml \
+  --extra-vars "target_replset=<rs>"
+```
+
+For Docker, Terraform performs the supported scale-out operations directly during `terraform apply`.
+
+The Go UI detects topology changes before deployment. Unsupported changes are refused before Terraform runs. Supported cloud scale-out changes run Terraform first and then the required Ansible scale-out playbook automatically.
 
 ## Disclaimer: This code is not supported by Percona. It has been provided solely as a community-contributed example and is not covered under any Percona services agreement.

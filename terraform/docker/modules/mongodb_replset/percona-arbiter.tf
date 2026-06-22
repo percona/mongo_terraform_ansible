@@ -1,12 +1,12 @@
 resource "docker_volume" "arb_volume" {
-  count = var.arbiters_per_replset
-  name  = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}-data"
+  for_each = local.arbiter_members
+  name     = "${var.rs_name}-${var.arbiter_tag}${each.value.arbiter_index}-data"
 }
 
 resource "docker_container" "arbiter" {
-  count      = var.arbiters_per_replset
-  name       = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}${var.domain_name != "" ? ".${var.domain_name}" : ""}"
-  hostname   = "${var.rs_name}-${var.arbiter_tag}${count.index % var.arbiters_per_replset}"
+  for_each   = local.arbiter_members
+  name       = "${var.rs_name}-${var.arbiter_tag}${each.value.arbiter_index}${var.domain_name != "" ? ".${var.domain_name}" : ""}"
+  hostname   = "${var.rs_name}-${var.arbiter_tag}${each.value.arbiter_index}"
   domainname = var.domain_name
   image      = docker_image.psmdb.image_id
   mounts {
@@ -20,7 +20,7 @@ resource "docker_container" "arbiter" {
       "mongod",
       "--replSet", "${var.rs_name}",
       "--bind_ip_all",
-      "--port", "${var.arbiter_port + var.data_nodes_per_replset + count.index}",
+      "--port", "${var.arbiter_base_port + each.value.arbiter_index}",
       "--keyFile", "${var.keyfile_path}/${var.keyfile_name}"
     ],
     var.enable_audit ? [
@@ -32,8 +32,8 @@ resource "docker_container" "arbiter" {
     ] : []
   )
   ports {
-    internal = var.arbiter_port + var.data_nodes_per_replset + count.index
-    external = var.arbiter_port + var.data_nodes_per_replset + count.index
+    internal = var.arbiter_base_port + each.value.arbiter_index
+    external = var.arbiter_base_port + each.value.arbiter_index
     ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
   }
   user = var.uid
@@ -52,10 +52,10 @@ resource "docker_container" "arbiter" {
   mounts {
     type   = "volume"
     target = "/data/db"
-    source = docker_volume.arb_volume[count.index].name
+    source = docker_volume.arb_volume[each.key].name
   }
   healthcheck {
-    test         = ["CMD-SHELL", "mongosh --port ${var.arbiter_port + var.data_nodes_per_replset + count.index} --eval 'db.runCommand({ ping: 1 })'"]
+    test         = ["CMD-SHELL", "mongosh --port ${var.arbiter_base_port + each.value.arbiter_index} --eval 'db.runCommand({ ping: 1 })'"]
     interval     = "10s"
     timeout      = "10s"
     retries      = 5

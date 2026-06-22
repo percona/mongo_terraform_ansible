@@ -1,9 +1,9 @@
 output "hostname_replsets" {
-  value = chaos_instance.replset[*].name
+  value = [for key in local.replset_member_keys : chaos_instance.replset[key].name]
 }
 
 output "ip_replsets" {
-  value = chaos_instance.replset[*].ip_address
+  value = [for key in local.replset_member_keys : chaos_instance.replset[key].ip_address]
 }
 
 output "ansible_group_replsets" {
@@ -11,11 +11,11 @@ output "ansible_group_replsets" {
 }
 
 output "hostname_arbiters" {
-  value = chaos_instance.arbiter[*].name
+  value = [for key in local.arbiter_member_keys : chaos_instance.arbiter[key].name]
 }
 
 output "ip_arbiters" {
-  value = chaos_instance.arbiter[*].ip_address
+  value = [for key in local.arbiter_member_keys : chaos_instance.arbiter[key].ip_address]
 }
 
 output "ansible_group_arbiters" {

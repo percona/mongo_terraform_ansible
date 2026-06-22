@@ -3,9 +3,12 @@
   hosts: pmm
   tags: pmm_server
   become: true
+  vars:
+    pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
   tasks:
     - name: Load OS-specific variables
       include_vars: "vars/{{ ansible_facts['os_family'] }}.yml"
+      when: pmm_enabled | bool
 
     - name: Create PMM directory
       file:
@@ -14,6 +17,7 @@
         owner: root
         group: root
         mode: 0710
+      when: pmm_enabled | bool
 
     - name: Install Docker on Ubuntu
       block:
@@ -50,7 +54,9 @@
             update_cache: true
           with_items: "{{ docker_packages }}"
 
-      when: ansible_facts['os_family'] == 'Debian'
+      when:
+        - pmm_enabled | bool
+        - ansible_facts['os_family'] == 'Debian'
 
     - name: Install Docker on RedHat
       block:
@@ -69,30 +75,38 @@
             state: present
           with_items: "{{ docker_packages }}"
 
-      when: ansible_facts['os_family'] == 'RedHat'
+      when:
+        - pmm_enabled | bool
+        - ansible_facts['os_family'] == 'RedHat'
 
     - name: Start Docker
       service:
         name: docker
         state: started
+      when: pmm_enabled | bool
 
     - name: Check if Docker network exists
       command: docker network ls --filter name=^pmm-network$ --format '{{ "{{.Name}}" }}'
       register: docker_networks
+      when: pmm_enabled | bool
 
     - name: Create Docker network if not exists
       shell: docker network create pmm-network
-      when: docker_networks.stdout_lines == []
+      when:
+        - pmm_enabled | bool
+        - docker_networks.stdout_lines == []
 
     - name: Get list of existing containers
       command: docker ps -a --format {{ '{{.Names}}' }}
       register: docker_containers
+      when: pmm_enabled | bool
 
     - name: Set facts for container existence
       set_fact:
         renderer_exists: "{{ 'renderer' in docker_containers.stdout_lines }}"
         pmm_server_exists: "{{ 'pmm-server' in docker_containers.stdout_lines }}"
         watchtower_exists: "{{ 'watchtower' in docker_containers.stdout_lines }}"
+      when: pmm_enabled | bool
 
     - name: Run Watchtower container
       shell: >
@@ -101,19 +115,24 @@
         -e WATCHTOWER_HTTP_API_UPDATE=1
         --volume /var/run/docker.sock:/var/run/docker.sock
         percona/watchtower:latest
-      when: not watchtower_exists
+      when:
+        - pmm_enabled | bool
+        - not watchtower_exists
 
     - name: Run Grafana renderer container
       shell: >
         docker run -d --network=pmm-network --name renderer --restart always
         -e IGNORE_HTTPS_ERRORS=true
         grafana/grafana-image-renderer:latest
-      when: not renderer_exists
+      when:
+        - pmm_enabled | bool
+        - not renderer_exists
       
     - name: Create PMM data volume if not exists
       shell: docker volume create pmm-data
       register: volume_output
       changed_when: "'pmm-data' in volume_output.stdout"
+      when: pmm_enabled | bool
 
     - name: Run PMM server container
       shell: >
@@ -125,7 +144,9 @@
         -e PMM_WATCHTOWER_HOST=http://watchtower:8080
         -e PMM_WATCHTOWER_TOKEN={{ watchtower_token }}
         {{ pmm_image }}
-      when: not pmm_server_exists
+      when:
+        - pmm_enabled | bool
+        - not pmm_server_exists
 
     - name: Wait until PMM server is healthy
       uri:
@@ -135,9 +156,12 @@
       register: pmm_ready
       until: pmm_ready.status == 200
       retries: 20
-      delay: 2      
+      delay: 2
+      when: pmm_enabled | bool
 
     - name: Configure PMM server admin password
       shell: >
         docker exec -t pmm-server change-admin-password {{ pmm_server_pwd }}
-      when: not pmm_server_exists        
+      when:
+        - pmm_enabled | bool
+        - not pmm_server_exists

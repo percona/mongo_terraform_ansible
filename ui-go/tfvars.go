@@ -189,6 +189,9 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				writeOptInt("minio_memory_gb", cfg.MinioMemoryGb)
 				writeOptInt("minio_volume_size", cfg.MinioVolumeSize)
 			}
+			// Search (mongot) — installed on data-bearing nodes by Ansible.
+			writeVar("enable_mongot", cfg.EnableMongot)
+			writeOptInt("mongot_node_count", cfg.MongotNodeCount)
 			// Backup
 			writeOptStr("default_bucket_name", cfg.DefaultBucketName)
 			writeOptInt("backup_retention", cfg.BackupRetention)
@@ -356,6 +359,9 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				}
 				if r.ArbiterPort != 0 {
 					write(fmt.Sprintf("    arbiter_port = %s", formatHCLVal(r.ArbiterPort)))
+				}
+				if r.ArbiterBasePort != 0 {
+					write(fmt.Sprintf("    arbiter_base_port = %s", formatHCLVal(r.ArbiterBasePort)))
 				}
 				if r.PsmdbImage != "" {
 					write(fmt.Sprintf("    psmdb_image = %s", formatHCLVal(r.PsmdbImage)))

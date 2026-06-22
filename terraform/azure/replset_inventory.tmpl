@@ -21,6 +21,7 @@ ${hostname_ycsb} ansible_host=${ip_ycsb}
 %{ endif ~}
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
+ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 bucket=${bucket}
 region=${location}
 endpointUrl=${endpointUrl}
@@ -42,6 +43,7 @@ pbm_version=${pbm_version}
 pmm_client_version=${pmm_client_version}
 %{ endif ~}
 env_tag=${env_tag}
+enable_pmm=${enable_pmm}
 account=${account}
 enable_audit=${enable_audit}
 %{ if audit_filter != "" ~}

@@ -1,28 +1,42 @@
+locals {
+  replset_members = {
+    for member_index in range(var.data_nodes_per_replset) : "svr${member_index}" => member_index
+  }
+
+  replset_member_keys = [for member_index in range(var.data_nodes_per_replset) : "svr${member_index}"]
+
+  arbiter_members = {
+    for arbiter_index in range(var.arbiters_per_replset) : "arb${arbiter_index}" => arbiter_index
+  }
+
+  arbiter_member_keys = [for arbiter_index in range(var.arbiters_per_replset) : "arb${arbiter_index}"]
+}
+
 resource "aws_ebs_volume" "replset_disk" {
-  count             = var.data_nodes_per_replset
-  availability_zone = data.aws_subnet.details[count.index % var.subnet_count].availability_zone
+  for_each          = local.replset_members
+  availability_zone = data.aws_subnet.details[each.value % var.subnet_count].availability_zone
   size              = var.replsetsvr_volume_size
   type              = var.data_disk_type
   tags = {
-    Name = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}-data"
+    Name = "${var.rs_name}-${var.replset_tag}${each.value}-data"
   }
 }
 
 resource "aws_instance" "replset" {
-  count         = var.data_nodes_per_replset
+  for_each      = local.replset_members
   ami           = lookup(var.image, var.region)
   instance_type = var.replsetsvr_type
-  subnet_id     = data.aws_subnet.details[count.index % var.subnet_count].id
+  subnet_id     = data.aws_subnet.details[each.value % var.subnet_count].id
   key_name      = var.my_key_pair
   tags = {
-    Name          = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
+    Name          = "${var.rs_name}-${var.replset_tag}${each.value}"
     ansible-group = var.replset_tag
   }
   vpc_security_group_ids = [aws_security_group.replsetsvr_sg.id]
   user_data              = <<-EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
+    hostnamectl set-hostname "${var.rs_name}-${var.replset_tag}${each.value}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname) localhost" > /etc/hosts    
@@ -34,7 +48,7 @@ resource "aws_instance" "replset" {
     done
         
     # Add a dash to lsblk output to match the Terraform volume ID 
-    DEVICE=$(lsblk -o NAME,SERIAL | sed 's/l/l-/' | grep "${aws_ebs_volume.replset_disk[count.index].id}" | awk '{print "/dev/" $1}')
+    DEVICE=$(lsblk -o NAME,SERIAL | sed 's/l/l-/' | grep "${aws_ebs_volume.replset_disk[each.key].id}" | awk '{print "/dev/" $1}')
 
     mkfs.xfs $DEVICE
 
@@ -48,10 +62,10 @@ resource "aws_instance" "replset" {
 }
 
 resource "aws_volume_attachment" "replset_volume_attachment" {
-  count       = var.data_nodes_per_replset
+  for_each    = local.replset_members
   device_name = "/dev/sdf" # Placeholder, not used for NVMe but required by Terraform
-  volume_id   = aws_ebs_volume.replset_disk[count.index].id
-  instance_id = aws_instance.replset[count.index].id
+  volume_id   = aws_ebs_volume.replset_disk[each.key].id
+  instance_id = aws_instance.replset[each.key].id
 }
 
 resource "aws_security_group" "replsetsvr_sg" {
@@ -106,10 +120,10 @@ resource "aws_security_group_rule" "mongodb-replset-egress" {
 }
 
 resource "aws_route53_record" "replsetsvr_dns_record" {
-  count   = var.data_nodes_per_replset
-  zone_id = data.aws_route53_zone.private_zone.zone_id
-  name    = "${var.rs_name}-${var.replset_tag}${count.index % var.data_nodes_per_replset}"
-  type    = "A"
-  ttl     = "300"
-  records = [aws_instance.replset[count.index].private_ip]
+  for_each = local.replset_members
+  zone_id  = data.aws_route53_zone.private_zone.zone_id
+  name     = "${var.rs_name}-${var.replset_tag}${each.value}"
+  type     = "A"
+  ttl      = "300"
+  records  = [aws_instance.replset[each.key].private_ip]
 }

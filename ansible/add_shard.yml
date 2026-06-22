@@ -1,0 +1,262 @@
+---
+- name: Add a new shard replica set to an existing sharded cluster
+  hosts: "{{ new_shard_group }}"
+  become: yes
+  tags: add_shard
+  environment:
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
+
+  vars:
+    mongo_tls_flags: >-
+      {% if use_tls %}
+      --tls
+      --tlsCertificateKeyFile {{ certificateKeyFile }}
+      --tlsCAFile {{ CAFile }}
+      --tlsAllowInvalidCertificates
+      {% endif %}
+
+  tasks:
+    - name: Load OS-specific variables
+      include_vars: "vars/{{ ansible_facts['os_family'] }}.yml"
+
+    - name: Install percona release for Ubuntu
+      block:
+        - name: Install dependencies for percona-release
+          ansible.builtin.apt:
+            name:
+              - curl
+              - gnupg2
+              - lsb-release
+            state: present
+            update_cache: yes
+
+        - name: Download percona-release package
+          ansible.builtin.get_url:
+            url: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+            dest: /tmp/percona-release_latest.deb
+            mode: "0666"
+
+        - name: Install percona-release package
+          ansible.builtin.apt:
+            deb: /tmp/percona-release_latest.deb
+            state: present
+
+        - name: Update apt package cache
+          ansible.builtin.apt:
+            update_cache: yes
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install percona release for RedHat
+      block:
+        - name: Install Percona GPG key
+          rpm_key:
+            key: "{{ percona_key_location }}"
+            state: present
+
+        - name: Install percona-release package
+          package:
+            name: "{{ percona_release_package }}"
+            state: present
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Enable the specific MongoDB version
+      shell: "/usr/bin/percona-release enable {{ mongo_release }}"
+
+    - name: Install mongod packages from repository (latest)
+      package:
+        name: "{{ mongod_packages }}"
+        state: present
+      when: mongo_version is not defined or mongo_version == ''
+
+    - name: Install mongod packages from repository (specific version - Debian/Ubuntu)
+      apt:
+        name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb=' ~ mongo_version ~ '*') | list }}"
+        state: present
+        allow_downgrade: true
+      when:
+        - mongo_version is defined and mongo_version != ''
+        - ansible_facts['os_family'] == 'Debian'
+
+    - name: Install mongod packages from repository (specific version - RedHat)
+      yum:
+        name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb-' ~ mongo_version) | list }}"
+        state: present
+      when:
+        - mongo_version is defined and mongo_version != ''
+        - ansible_facts['os_family'] == 'RedHat'
+
+    - name: Disable Percona telemetry
+      systemd:
+        name: percona-telemetry-agent
+        enabled: false
+        state: stopped
+        daemon_reload: yes
+      ignore_errors: true
+      when: disable_telemetry | bool
+
+    - name: Set up shared mongo keyfile
+      copy:
+        dest: "{{ keyFile_location }}"
+        content: "{{ keyfile_content }}"
+        owner: mongod
+        group: root
+        mode: "0600"
+      when: not use_tls | bool
+
+    - name: Copy mongod.conf
+      template:
+        src: "{{ mongod_conf_template }}"
+        dest: /etc/mongod.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Create the MongoDB directories
+      file:
+        path: "{{ item }}"
+        owner: mongod
+        mode: "0750"
+        state: directory
+      with_items:
+        - "{{ mongod_path }}"
+        - "{{ mongod_log_path }}"
+
+    - name: Ensure audit log directory exists
+      file:
+        path: "{{ audit_log_path | dirname }}"
+        owner: mongod
+        mode: "0750"
+        state: directory
+      when: enable_audit | bool
+
+    - name: Set up keyfile for encryption at rest
+      copy:
+        dest: "{{ encryption_keyfile }}"
+        content: "{{ encryption_key_content }}"
+        owner: mongod
+        group: root
+        mode: "0600"
+      when: keyfile_encryption | bool
+
+    - name: Start mongod on new shard member
+      service:
+        name: mongod
+        state: restarted
+
+    - name: Prepare the init command for new shard replica set
+      template:
+        src: "{{ rs_init_template }}"
+        dest: /tmp/init-rs.js
+        mode: "0644"
+      when: mongodb_primary | default(false)
+
+    - name: Wait for MongoDB port
+      wait_for:
+        host: 127.0.0.1
+        port: "{{ mongo_port }}"
+        delay: 1
+        timeout: 60
+
+    - name: Check whether the new shard replica set is already initialized
+      shell: >
+        mongosh {{ mongo_tls_flags }}
+        --port {{ mongo_port }}
+        --host 127.0.0.1
+        --quiet
+        --eval 'try { rs.status().ok } catch(e) { 0 }'
+      register: shard_rs_status
+      changed_when: false
+      when: mongodb_primary | default(false)
+
+    - name: Initialize new shard replica set
+      command: >
+        mongosh {{ mongo_tls_flags }}
+        --port {{ mongo_port }}
+        --host 127.0.0.1
+        /tmp/init-rs.js
+      when:
+        - mongodb_primary | default(false)
+        - shard_rs_status.stdout != '1'
+
+    - name: Wait for PRIMARY
+      shell: >
+        mongosh admin {{ mongo_tls_flags }}
+        --port {{ mongo_port }}
+        --host 127.0.0.1
+        --quiet
+        --eval 'rs.status().members.filter(m => m.stateStr=="PRIMARY").length'
+        | grep -q 1
+      register: primary_check
+      retries: 30
+      delay: 1
+      until: primary_check.rc == 0
+      changed_when: false
+      when: mongodb_primary | default(false)
+
+    - name: Create MongoDB root user
+      shell: >
+        mongosh admin {{ mongo_tls_flags }}
+        --port {{ mongo_port }}
+        --host 127.0.0.1
+        --eval 'db.createUser({user:"{{ mongo_admin_user }}",pwd:"{{ mongo_admin_password }}",roles:["root"]})'
+      no_log: true
+      when: mongodb_primary | default(false)
+
+    - name: Prepare the commands to create the PBM and PMM users and roles
+      template:
+        src: templates/createUsers.js.j2
+        dest: /tmp/createUsers.js
+        mode: "0644"
+      when: mongodb_primary | default(false)
+
+    - name: Create PBM and PMM users
+      shell: >
+        mongosh admin {{ mongo_tls_flags }}
+        -u {{ mongo_admin_user }}
+        -p {{ mongo_admin_password }}
+        --port {{ mongo_port }}
+        --host {{ ansible_facts['fqdn'] }}
+        < /tmp/createUsers.js
+      no_log: true
+      ignore_errors: true
+      when: mongodb_primary | default(false)
+
+    - name: Configure mongo shell alias
+      lineinfile:
+        path: /etc/profile
+        line: >
+          alias mongo='mongosh admin {{ mongo_tls_flags }}
+          -u {{ mongo_admin_user }}
+          -p {{ mongo_admin_password }}
+          --port {{ mongo_port }}
+          --host {{ ansible_facts['fqdn'] }}'
+        state: present
+
+- name: Register the new shard with mongos
+  hosts: "{{ new_shard_group }}"
+  tags: add_shard
+  vars:
+    mongo_tls_flags: >-
+      {% if use_tls %}
+      --tls
+      --tlsCertificateKeyFile {{ certificateKeyFile }}
+      --tlsCAFile {{ CAFile }}
+      --tlsAllowInvalidCertificates
+      {% endif %}
+  tasks:
+    - name: Add new shard to the cluster if needed
+      shell: |
+        mongosh admin {{ mongo_tls_flags }} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} --eval '
+          const shardName = "{{ cluster }}-{{ group_names[0] }}";
+          const shardConn = shardName + "/{{ ansible_facts["fqdn"] }}:{{ mongo_port }}";
+          if (!db.adminCommand({ listShards: 1 }).shards.some(s => s._id === shardName)) {
+            sh.addShard(shardConn);
+          } else {
+            print("Shard " + shardName + " is already registered, skipping.");
+          }
+        '
+      delegate_to: "{{ groups.mongos | first }}"
+      register: result
+      changed_when: >
+        "already registered, skipping." not in result.stdout     
+      when: mongodb_primary is defined and mongodb_primary

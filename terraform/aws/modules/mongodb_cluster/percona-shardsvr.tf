@@ -1,29 +1,79 @@
+locals {
+  shard_members = {
+    for member in flatten([
+      for shard_index in range(var.shard_count) : [
+        for replica_index in range(var.shardsvr_replicas) : {
+          key           = "shard${shard_index}svr${replica_index}"
+          shard_index   = shard_index
+          replica_index = replica_index
+        }
+      ]
+    ]) : member.key => member
+  }
+
+  shard_member_keys = flatten([
+    for shard_index in range(var.shard_count) : [
+      for replica_index in range(var.shardsvr_replicas) : "shard${shard_index}svr${replica_index}"
+    ]
+  ])
+
+  cfg_members = {
+    for cfg_index in range(var.configsvr_count) : "cfg${cfg_index}" => cfg_index
+  }
+
+  cfg_member_keys = [for cfg_index in range(var.configsvr_count) : "cfg${cfg_index}"]
+
+  mongos_members = {
+    for mongos_index in range(var.mongos_count) : "mongos${mongos_index}" => mongos_index
+  }
+
+  mongos_member_keys = [for mongos_index in range(var.mongos_count) : "mongos${mongos_index}"]
+
+  arbiter_members = {
+    for member in flatten([
+      for shard_index in range(var.shard_count) : [
+        for arbiter_index in range(var.arbiters_per_replset) : {
+          key           = "shard${shard_index}arb${arbiter_index}"
+          shard_index   = shard_index
+          arbiter_index = arbiter_index
+        }
+      ]
+    ]) : member.key => member
+  }
+
+  arbiter_member_keys = flatten([
+    for shard_index in range(var.shard_count) : [
+      for arbiter_index in range(var.arbiters_per_replset) : "shard${shard_index}arb${arbiter_index}"
+    ]
+  ])
+}
+
 resource "aws_ebs_volume" "shard_disk" {
-  count             = var.shard_count * var.shardsvr_replicas
-  availability_zone = data.aws_subnet.details[count.index % var.shardsvr_replicas % var.subnet_count].availability_zone
+  for_each          = local.shard_members
+  availability_zone = data.aws_subnet.details[each.value.replica_index % var.subnet_count].availability_zone
   size              = var.shardsvr_volume_size
   type              = var.data_disk_type
   tags = {
-    Name        = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-data"
+    Name        = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}-data"
     environment = var.env_tag
   }
 }
 
 resource "aws_instance" "shard" {
-  count         = var.shard_count * var.shardsvr_replicas
+  for_each      = local.shard_members
   ami           = lookup(var.image, var.region)
   instance_type = var.shardsvr_type
-  subnet_id     = data.aws_subnet.details[count.index % var.shardsvr_replicas % var.subnet_count].id
+  subnet_id     = data.aws_subnet.details[each.value.replica_index % var.subnet_count].id
   key_name      = var.my_key_pair
   tags = {
-    Name          = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
-    ansible-group = floor(count.index / var.shardsvr_replicas)
-    ansible-index = count.index % var.shardsvr_replicas
+    Name          = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}"
+    ansible-group = tostring(each.value.shard_index)
+    ansible-index = tostring(each.value.replica_index)
   }
   user_data              = <<-EOT
     #!/bin/bash
     # Set the hostname
-    hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
+    hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}"
 
     # Update /etc/hosts to reflect the hostname change
     echo "127.0.0.1 $(hostname).${data.aws_route53_zone.private_zone.name} $(hostname) localhost" > /etc/hosts    
@@ -35,7 +85,7 @@ resource "aws_instance" "shard" {
     done
     
     # Add a dash to lsblk output to match the Terraform volume ID 
-    DEVICE=$(lsblk -o NAME,SERIAL | sed 's/l/l-/' | grep "${aws_ebs_volume.shard_disk[count.index].id}" | awk '{print "/dev/" $1}')
+    DEVICE=$(lsblk -o NAME,SERIAL | sed 's/l/l-/' | grep "${aws_ebs_volume.shard_disk[each.key].id}" | awk '{print "/dev/" $1}')
 
     mkfs.xfs $DEVICE
 
@@ -50,10 +100,10 @@ resource "aws_instance" "shard" {
 }
 
 resource "aws_volume_attachment" "shard_volume_attachment" {
-  count       = var.shard_count * var.shardsvr_replicas
+  for_each    = local.shard_members
   device_name = "/dev/sdf" # Placeholder, not used for NVMe but required by Terraform
-  volume_id   = aws_ebs_volume.shard_disk[count.index].id
-  instance_id = aws_instance.shard[count.index].id
+  volume_id   = aws_ebs_volume.shard_disk[each.key].id
+  instance_id = aws_instance.shard[each.key].id
 }
 
 resource "aws_security_group" "mongodb_shardsvr_sg" {
@@ -109,10 +159,10 @@ resource "aws_security_group_rule" "mongodb-shardsvr-egress" {
 }
 
 resource "aws_route53_record" "shard_dns_record" {
-  count   = var.shard_count * var.shardsvr_replicas
-  zone_id = data.aws_route53_zone.private_zone.zone_id
-  name    = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
-  type    = "A"
-  ttl     = "300"
-  records = [aws_instance.shard[count.index].private_ip]
+  for_each = local.shard_members
+  zone_id  = data.aws_route53_zone.private_zone.zone_id
+  name     = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}"
+  type     = "A"
+  ttl      = "300"
+  records  = [aws_instance.shard[each.key].private_ip]
 }

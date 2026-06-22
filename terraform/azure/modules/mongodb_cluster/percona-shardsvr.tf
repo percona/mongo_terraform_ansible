@@ -1,7 +1,50 @@
+locals {
+  shard_members = {
+    for member in flatten([
+      for shard_index in range(var.shard_count) : [
+        for replica_index in range(var.shardsvr_replicas) : {
+          key           = "shard${shard_index}svr${replica_index}"
+          shard_index   = shard_index
+          replica_index = replica_index
+        }
+      ]
+    ]) : member.key => member
+  }
+
+  shard_member_keys = flatten([
+    for shard_index in range(var.shard_count) : [
+      for replica_index in range(var.shardsvr_replicas) : "shard${shard_index}svr${replica_index}"
+    ]
+  ])
+
+  cfg_members        = { for cfg_index in range(var.configsvr_count) : "cfg${cfg_index}" => cfg_index }
+  cfg_member_keys    = [for cfg_index in range(var.configsvr_count) : "cfg${cfg_index}"]
+  mongos_members     = { for mongos_index in range(var.mongos_count) : "mongos${mongos_index}" => mongos_index }
+  mongos_member_keys = [for mongos_index in range(var.mongos_count) : "mongos${mongos_index}"]
+
+  arbiter_members = {
+    for member in flatten([
+      for shard_index in range(var.shard_count) : [
+        for arbiter_index in range(var.arbiters_per_replset) : {
+          key           = "shard${shard_index}arb${arbiter_index}"
+          shard_index   = shard_index
+          arbiter_index = arbiter_index
+        }
+      ]
+    ]) : member.key => member
+  }
+
+  arbiter_member_keys = flatten([
+    for shard_index in range(var.shard_count) : [
+      for arbiter_index in range(var.arbiters_per_replset) : "shard${shard_index}arb${arbiter_index}"
+    ]
+  ])
+}
+
 # Public IP
 resource "azurerm_public_ip" "shard" {
-  count               = var.shard_count * var.shardsvr_replicas
-  name                = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-nic-public-ip"
+  for_each            = local.shard_members
+  name                = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}-nic-public-ip"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Dynamic"
@@ -52,8 +95,8 @@ resource "azurerm_network_security_group" "mongodb_shard_nsg" {
 
 # Data disks for each shard node
 resource "azurerm_managed_disk" "shard_disk" {
-  count                = var.shard_count * var.shardsvr_replicas
-  name                 = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-data"
+  for_each             = local.shard_members
+  name                 = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}-data"
   location             = var.location
   resource_group_name  = var.resource_group_name
   storage_account_type = var.data_disk_type
@@ -63,8 +106,8 @@ resource "azurerm_managed_disk" "shard_disk" {
 
 # NIC for shard node
 resource "azurerm_network_interface" "shard" {
-  count               = var.shard_count * var.shardsvr_replicas
-  name                = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}-nic"
+  for_each            = local.shard_members
+  name                = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}-nic"
   location            = var.location
   resource_group_name = var.resource_group_name
 
@@ -72,26 +115,26 @@ resource "azurerm_network_interface" "shard" {
     name                          = "internal"
     subnet_id                     = var.subnet
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.shard[count.index].id
+    public_ip_address_id          = azurerm_public_ip.shard[each.key].id
   }
 }
 
 # VM for each shard server
 resource "azurerm_linux_virtual_machine" "shard" {
-  count               = var.shard_count * var.shardsvr_replicas
-  name                = "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
+  for_each            = local.shard_members
+  name                = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}"
   location            = var.location
   resource_group_name = var.resource_group_name
   size                = var.shardsvr_type
   admin_username      = var.my_ssh_user
   tags = {
-    ansible-group = floor(count.index / var.shardsvr_replicas),
-    ansible-index = count.index % var.shardsvr_replicas,
+    ansible-group = tostring(each.value.shard_index),
+    ansible-index = tostring(each.value.replica_index),
     environment   = var.env_tag
   }
 
   network_interface_ids = [
-    azurerm_network_interface.shard[count.index].id
+    azurerm_network_interface.shard[each.key].id
   ]
 
   admin_ssh_key {
@@ -116,7 +159,7 @@ resource "azurerm_linux_virtual_machine" "shard" {
 
   custom_data = base64encode(<<EOT
 #!/bin/bash
-hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${floor(count.index / var.shardsvr_replicas)}svr${count.index % var.shardsvr_replicas}"
+hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}"
 echo "127.0.0.1 $(hostname) localhost" > /etc/hosts
 
 # Wait for the disk to appear
@@ -140,9 +183,9 @@ EOT
 
 # Attach data disk to each shard server
 resource "azurerm_virtual_machine_data_disk_attachment" "shard_disk_attachment" {
-  count              = var.shard_count * var.shardsvr_replicas
-  managed_disk_id    = azurerm_managed_disk.shard_disk[count.index].id
-  virtual_machine_id = azurerm_linux_virtual_machine.shard[count.index].id
+  for_each           = local.shard_members
+  managed_disk_id    = azurerm_managed_disk.shard_disk[each.key].id
+  virtual_machine_id = azurerm_linux_virtual_machine.shard[each.key].id
   lun                = 0
   caching            = "ReadWrite"
 }

@@ -26,6 +26,7 @@ ${minio_hostname} ansible_host=${minio_ip}
 %{ endif ~}
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
+ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 bucket=${bucket}
 region=us-east-1
 %{ if minio_ip != "" ~}
@@ -33,6 +34,7 @@ endpointUrl=http://${minio_ip}:${minio_port}
 %{ endif ~}
 cluster=${rs_name}
 env_tag=${env_tag}
+enable_pmm=${enable_pmm}
 %{ if minio_ip != "" ~}
 access_key_id=${access_key}
 secret_access_key=${secret_access_key}
@@ -54,6 +56,8 @@ pbm_version=${pbm_version}
 pmm_client_version=${pmm_client_version}
 %{ endif ~}
 enable_audit=${enable_audit}
+enable_mongot=${enable_mongot}
+mongot_node_count=${mongot_node_count}
 %{ if audit_filter != "" ~}
 audit_filter=${audit_filter}
 %{ endif ~}

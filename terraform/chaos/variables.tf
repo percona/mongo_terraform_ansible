@@ -346,22 +346,6 @@ variable "enable_minio" {
 }
 
 #############
-# Search (mongot)
-#############
-
-variable "enable_mongot" {
-  type        = bool
-  default     = false
-  description = "Install Percona Search for MongoDB (mongot) alongside each data-bearing mongod. Requires mongo_release psmdb-83 or newer."
-}
-
-variable "mongot_node_count" {
-  type        = number
-  default     = 0
-  description = "Number of data-bearing nodes per replica set to install mongot on. 0 = all data-bearing nodes."
-}
-
-#############
 # Package Versions
 #############
 

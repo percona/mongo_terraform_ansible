@@ -24,6 +24,7 @@ variable "clusters" {
     bind_to_localhost    = optional(bool, false)
     enable_audit         = optional(bool, false)
     audit_filter         = optional(string, "")
+    mongodb_distribution = optional(string, "")
     mongo_release        = optional(string, "")
     mongo_version        = optional(string, "")
     mongo_repo           = optional(string, "")
@@ -31,6 +32,8 @@ variable "clusters" {
     pbm_repo             = optional(string, "")
     pmm_client_version   = optional(string, "")
     pmm_client_repo      = optional(string, "")
+    enable_pmm           = optional(bool, true)
+    enable_pbm           = optional(bool, true)
   }))
   default = {
     ig-cl01 = {
@@ -48,6 +51,7 @@ variable "replsets" {
     bind_to_localhost      = optional(bool, false)
     enable_audit           = optional(bool, false)
     audit_filter           = optional(string, "")
+    mongodb_distribution   = optional(string, "")
     mongo_release          = optional(string, "")
     mongo_version          = optional(string, "")
     mongo_repo             = optional(string, "")
@@ -55,6 +59,8 @@ variable "replsets" {
     pbm_repo               = optional(string, "")
     pmm_client_version     = optional(string, "")
     pmm_client_repo        = optional(string, "")
+    enable_pmm             = optional(bool, true)
+    enable_pbm             = optional(bool, true)
   }))
   default = {
     #     ig-rs01 = {
@@ -301,7 +307,13 @@ variable "source_ranges" {
 variable "mongo_release" {
   type        = string
   default     = ""
-  description = "Percona release channel for MongoDB (e.g. psmdb-80). Empty string uses the default from group_vars."
+  description = "MongoDB release line (e.g. psmdb-80, 8.0, 8.3). Empty string uses the default from group_vars."
+}
+
+variable "mongodb_distribution" {
+  type        = string
+  default     = ""
+  description = "MongoDB distribution for non-Docker packages: psmdb, community, or enterprise. Empty string uses the default from group_vars."
 }
 
 variable "mongo_version" {

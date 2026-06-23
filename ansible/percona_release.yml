@@ -5,10 +5,37 @@
   gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   vars:
-    pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
+    pmm_enabled: "{{ enable_pmm_agent | default(enable_pmm | default((groups['pmm'] | default([]) | length) > 0)) | bool }}"
+    pbm_enabled: "{{ enable_pbm | default(true) | bool }}"
+    mongodb_repo_line: "{{ mongo_release_effective if mongodb_distribution_effective != 'psmdb' else '' }}"
+    mongodb_repo_key_major: "{{ (mongodb_repo_line | regex_search('^[0-9]+') | default('8', true)) ~ '.0' }}"
+    mongodb_repo_product: "{{ 'mongodb-org' if mongodb_distribution_effective == 'community' else 'mongodb-enterprise' }}"
+    mongodb_repo_host: "{{ 'repo.mongodb.org' if mongodb_distribution_effective == 'community' else 'repo.mongodb.com' }}"
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
+    - name: Validate MongoDB distribution
+      assert:
+        that:
+          - mongodb_distribution_effective in ['psmdb', 'community', 'enterprise']
+        fail_msg: "mongodb_distribution must be one of: psmdb, community, enterprise"
+
+    - name: Validate MongoDB release matches distribution
+      assert:
+        that:
+          - mongodb_distribution_effective != 'psmdb' or mongo_release_effective is match('^psmdb-')
+          - mongodb_distribution_effective == 'psmdb' or mongo_release_effective is not match('^psmdb-')
+        fail_msg: "mongo_release must be psmdb-* for mongodb_distribution=psmdb, and a numeric official release line (for example 8.0 or 8.3) for mongodb_distribution=community or enterprise."
+
+    - name: Validate MongoDB Community feature compatibility
+      assert:
+        that:
+          - not (enable_audit | default(false) | bool)
+          - not (keyfile_encryption | default(false) | bool)
+          - not (vault_encryption | default(false) | bool)
+        fail_msg: "MongoDB Community packages do not support audit logging or encryption at rest. Use psmdb/enterprise or disable those features."
+      when: mongodb_distribution_effective == 'community'
+
     - name: Load OS-specific variables
       include_vars: "vars/{{ ansible_facts['os_family'] }}.yml"
 
@@ -36,7 +63,8 @@
             deb: /tmp/percona-release_latest.deb
             state: present
 
-      when: ansible_facts['os_family'] == 'Debian'
+      when:
+        - ansible_facts['os_family'] == 'Debian'
 
     - name: Install percona release for RedHat
       block:
@@ -51,14 +79,55 @@
             name: "{{ percona_release_package }}"
             state: present    
 
-      when: ansible_facts['os_family'] == 'RedHat'
+      when:
+        - ansible_facts['os_family'] == 'RedHat'
+
+    - name: Configure official MongoDB repository for Debian/Ubuntu
+      block:
+        - name: Install dependencies for MongoDB repository
+          ansible.builtin.apt:
+            name:
+              - curl
+              - gnupg
+            state: present
+            update_cache: yes
+            cache_valid_time: 3600
+
+        - name: Add official MongoDB GPG key
+          ansible.builtin.apt_key:
+            url: "https://pgp.mongodb.com/server-{{ mongodb_repo_key_major }}.asc"
+            state: present
+
+        - name: Configure official MongoDB apt repository
+          ansible.builtin.apt_repository:
+            repo: "deb [ arch=amd64,arm64 ] https://{{ mongodb_repo_host }}/apt/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }}/{{ mongodb_repo_product }}/{{ mongodb_repo_line }} multiverse"
+            filename: "{{ mongodb_repo_product }}-{{ mongodb_repo_line }}"
+            state: present
+      when:
+        - ansible_facts['os_family'] == 'Debian'
+        - mongodb_distribution_effective in ['community', 'enterprise']
+
+    - name: Configure official MongoDB repository for RedHat
+      ansible.builtin.yum_repository:
+        name: "{{ mongodb_repo_product }}-{{ mongodb_repo_line }}"
+        description: "MongoDB {{ mongodb_distribution_effective }} Repository"
+        baseurl: "https://{{ mongodb_repo_host }}/yum/redhat/{{ ansible_facts['distribution_major_version'] }}/{{ mongodb_repo_product }}/{{ mongodb_repo_line }}/$basearch/"
+        gpgcheck: yes
+        enabled: yes
+        gpgkey: "https://pgp.mongodb.com/server-{{ mongodb_repo_key_major }}.asc"
+      when:
+        - ansible_facts['os_family'] == 'RedHat'
+        - mongodb_distribution_effective in ['community', 'enterprise']
 
     - name: Enable MongoDB repository
-      command: "/usr/bin/percona-release enable {{ mongo_release }} {{ mongo_repo | default('release') }}"
+      command: "/usr/bin/percona-release enable {{ mongo_release_effective }} {{ mongo_repo_effective }}"
+      when: mongodb_distribution_effective == 'psmdb'
 
     - name: Enable PBM repository
       command: "/usr/bin/percona-release enable pbm {{ pbm_repo | default('release') }}"
-      when: "'cfg' in group_names or 'shards' in group_names or 'replsets' in group_names"
+      when:
+        - pbm_enabled | bool
+        - "'cfg' in group_names or 'shards' in group_names or 'replsets' in group_names"
 
     - name: Enable PMM client repository
       command: "/usr/bin/percona-release enable {{ pmm_client_repo }}"

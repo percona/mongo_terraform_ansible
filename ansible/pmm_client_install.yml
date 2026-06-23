@@ -4,7 +4,7 @@
   gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: monitoring
   vars:
-    pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
+    pmm_enabled: "{{ enable_pmm_agent | default(enable_pmm | default((groups['pmm'] | default([]) | length) > 0)) | bool }}"
   tasks:
     - name: Dummy task to force fact gathering
       debug:
@@ -19,7 +19,7 @@
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   vars:
-    pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
+    pmm_enabled: "{{ enable_pmm_agent | default(enable_pmm | default((groups['pmm'] | default([]) | length) > 0)) | bool }}"
   tasks:
     - name: Install pmm-client package from repository (latest)
       package:
@@ -65,7 +65,7 @@
   become: true
   tags: monitoring
   vars:
-    pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
+    pmm_enabled: "{{ enable_pmm_agent | default(enable_pmm | default((groups['pmm'] | default([]) | length) > 0)) | bool }}"
   tasks:
     - name: Ensure pmm-agent is started
       service:

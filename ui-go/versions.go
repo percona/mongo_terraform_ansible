@@ -398,6 +398,123 @@ func perconaPackageVersions(repoName, packageName, channel, osImage string) []st
 	return fetchPerconaAPTPackageVersionsFor(repoName, repoComponentForChannel(channel), platform.Distro, packageName)
 }
 
+func officialMongoDBRepoHost(distribution string) string {
+	if distribution == "enterprise" {
+		return "repo.mongodb.com"
+	}
+	return "repo.mongodb.org"
+}
+
+func officialMongoDBRepoProduct(distribution string) string {
+	if distribution == "enterprise" {
+		return "mongodb-enterprise"
+	}
+	return "mongodb-org"
+}
+
+func officialMongoDBServerPackage(distribution string) string {
+	if distribution == "enterprise" {
+		return "mongodb-enterprise-server"
+	}
+	return "mongodb-org-server"
+}
+
+func officialAPTComponent(osImage string) string {
+	if strings.HasPrefix(strings.TrimSpace(osImage), "Debian") {
+		return "main"
+	}
+	return "multiverse"
+}
+
+func officialMongoDBAPTPackageVersions(distribution, major, distro, component, packageName string) []string {
+	cacheKey := "mongodb_apt:" + distribution + ":" + major + ":" + component + ":" + distro + ":" + packageName
+	if v, ok := cacheGet(cacheKey); ok {
+		return v.([]string)
+	}
+	host := officialMongoDBRepoHost(distribution)
+	product := officialMongoDBRepoProduct(distribution)
+	baseURL := "https://" + host + "/apt/" + func() string {
+		if distro == "bookworm" {
+			return "debian"
+		}
+		return "ubuntu"
+	}() + "/dists/" + distro + "/" + product + "/" + major + "/" + component + "/binary-amd64/"
+	versions := readAPTPackages(baseURL+"Packages.gz", true, packageName)
+	if len(versions) == 0 {
+		versions = readAPTPackages(baseURL+"Packages", false, packageName)
+	}
+	slog.Info("fetched official MongoDB APT package versions", "distribution", distribution, "major", major, "distro", distro, "component", component, "package", packageName, "count", len(versions))
+	cacheSet(cacheKey, versions)
+	return versions
+}
+
+func officialMongoDBYUMPackageVersions(distribution, major, osMajor, packageName string) []string {
+	cacheKey := "mongodb_yum_s3:" + distribution + ":" + major + ":" + osMajor + ":" + packageName
+	if v, ok := cacheGet(cacheKey); ok {
+		return v.([]string)
+	}
+	host := officialMongoDBRepoHost(distribution)
+	product := officialMongoDBRepoProduct(distribution)
+	prefix := "yum/redhat/" + osMajor + "/" + product + "/" + major + "/x86_64/RPMS/"
+	url := "https://s3.amazonaws.com/" + host + "?list-type=2&prefix=" + prefix + "&delimiter=/"
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		slog.Warn("official MongoDB YUM S3 listing fetch failed", "url", url, "err", err)
+		cacheSet(cacheKey, []string{})
+		return []string{}
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		cacheSet(cacheKey, []string{})
+		return []string{}
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		slog.Warn("official MongoDB YUM S3 listing read failed", "url", url, "err", err)
+		cacheSet(cacheKey, []string{})
+		return []string{}
+	}
+	versions := parseYUMPackageVersions(string(body), packageName)
+	slog.Info("fetched official MongoDB YUM package versions", "distribution", distribution, "major", major, "os", osMajor, "package", packageName, "count", len(versions))
+	cacheSet(cacheKey, versions)
+	return versions
+}
+
+func officialMongoDBPackageVersions(distribution, major, osImage string) []string {
+	platform := packagePlatformForOSImage(osImage)
+	packageName := officialMongoDBServerPackage(distribution)
+	if platform.Family == "yum" {
+		return officialMongoDBYUMPackageVersions(distribution, major, platform.OSMajor, packageName)
+	}
+	return officialMongoDBAPTPackageVersions(distribution, major, platform.Distro, officialAPTComponent(osImage), packageName)
+}
+
+func getOfficialMongoDBMinorVersionsByMajorFor(distribution, osImage string) map[string][]string {
+	if distribution != "enterprise" {
+		distribution = "community"
+	}
+	result := map[string][]string{}
+	for _, major := range defaultMongoDBOfficialVersions {
+		versions := officialMongoDBPackageVersions(distribution, major, osImage)
+		if len(versions) > 0 {
+			result[major] = versions
+		}
+	}
+	return result
+}
+
+func getOfficialMongoDBVersionsFor(distribution, osImage string) []string {
+	minorVersions := getOfficialMongoDBMinorVersionsByMajorFor(distribution, osImage)
+	versions := make([]string, 0, len(minorVersions))
+	for _, major := range defaultMongoDBOfficialVersions {
+		if len(minorVersions[major]) > 0 {
+			versions = append(versions, major)
+		}
+	}
+	return versions
+}
+
 func getPSMDBMinorVersionsByMajorFor(channel, osImage string) map[string][]string {
 	result := map[string][]string{}
 	for _, release := range getPSMDBVersions() {

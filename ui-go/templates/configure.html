@@ -404,7 +404,7 @@
           </div>
           {{end}}
           {{if ne $p "docker"}}
-          {{$packageConfigured := or .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo}}
+          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo}}
           <div class="subsection-header">
             <span class="subsection-title">Package Overrides</span>
             <button type="button" class="btn btn-outline btn-sm package-toggle-btn"
@@ -412,6 +412,15 @@
           </div>
           <div class="package-block-body" {{if not $packageConfigured}}style="display:none"{{end}}>
           <div class="form-row">
+            <div class="form-group">
+              <label>MongoDB Distribution <span class="field-tip" data-tip="Package distribution for this cluster. PSMDB uses Percona repositories; Community and Enterprise use official MongoDB repositories.">ⓘ</span></label>
+              {{$mongoDist := strDefault .Config.MongoDBDistribution "psmdb"}}
+              <select name="cluster_mongodb_distribution[]" onchange="onMongoDBDistributionChange(this)">
+                <option value="psmdb" {{if eq $mongoDist "psmdb"}}selected{{end}}>Percona Server for MongoDB</option>
+                <option value="community" {{if eq $mongoDist "community"}}selected{{end}}>MongoDB Community</option>
+                <option value="enterprise" {{if eq $mongoDist "enterprise"}}selected{{end}}>MongoDB Enterprise</option>
+              </select>
+            </div>
             <div class="form-group">
               <label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this cluster. Defaults to release (GA).">ⓘ</span></label>
               {{$mongoRepo := strDefault .Config.MongoRepo "release"}}
@@ -442,7 +451,7 @@
               </select>
             </div>
           </div>
-          <div class="form-row">
+          <div class="form-row" data-package-feature="pbm" {{if not (boolDefault .Config.EnablePbm false)}}style="display:none"{{end}}>
             <div class="form-group">
               <label>PBM Repository Channel <span class="field-tip" data-tip="PBM repository channel for this cluster. Defaults to release (GA).">ⓘ</span></label>
               {{$pbmRepo := strDefault .Config.PbmRepo "release"}}
@@ -467,7 +476,7 @@
               </select>
             </div>
           </div>
-          <div class="form-row">
+          <div class="form-row" data-package-feature="pmm" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
             <div class="form-group">
               <label>PMM Client Repository Channel <span class="field-tip" data-tip="PMM client repository channel for this cluster. Defaults to release (GA). The PMM server remains environment-wide.">ⓘ</span></label>
               {{$pmmClientRepo := strDefault .Config.PmmClientRepo "release"}}
@@ -493,18 +502,32 @@
             </div>
           </div>
           </div>
+          <div class="form-row">
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="cluster_enable_pmm[]" value="1"
+                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
+                            onchange="onPmmAgentFeatureToggle(this)">
+                Install PMM agent</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="cluster_enable_pbm[]" value="1"
+                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
+                            onchange="onPbmAgentFeatureToggle(this)">
+                Install PBM agent</label>
+            </div>
+          </div>
           {{end}}
           {{if eq $p "docker"}}
             <div class="form-row">
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="cluster_enable_pmm[]" value="1"
-                            {{if .Config.EnablePmm}}checked{{end}}
+                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
                             onchange="onDockerPmmFeatureToggle(this)">
                 Enable PMM monitoring</label>
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="cluster_enable_pbm[]" value="1"
-                            {{if .Config.EnablePbm}}checked{{end}}
+                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
                             onchange="onDockerPbmFeatureToggle(this)">
                 Enable PBM backups</label>
             </div>
@@ -535,7 +558,7 @@
                 <option value="__custom__">Custom image…</option>
               </select>
             </div>
-            <div class="form-group image-field" data-image-group="pbm" data-image-repo="percona-backup-mongodb" {{if not .Config.EnablePbm}}style="display:none"{{end}}>
+            <div class="form-group image-field" data-image-group="pbm" data-image-repo="percona-backup-mongodb" {{if not (boolDefault .Config.EnablePbm false)}}style="display:none"{{end}}>
               <label>PBM Image <span class="field-tip" data-tip="Percona Backup for MongoDB Docker image tag used for backup agents in this cluster.">ⓘ</span></label>
               {{$curPbm := .Config.PbmImage}}{{$pbmNs := imageNamespace $curPbm "percona"}}
               <div class="image-namespace-row">
@@ -555,7 +578,7 @@
                 <option value="__custom__">Custom image…</option>
               </select>
             </div>
-            <div class="form-group image-field" data-image-group="pmm" data-image-repo="pmm-client" {{if not .Config.EnablePmm}}style="display:none"{{end}}>
+            <div class="form-group image-field" data-image-group="pmm" data-image-repo="pmm-client" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
               <label>PMM Client Image <span class="field-tip" data-tip="PMM Client Docker image tag used to monitor nodes in this cluster.">ⓘ</span></label>
               {{$curPmmc := .Config.PmmClientImage}}{{$pmmcNs := imageNamespace $curPmmc "percona"}}
               <div class="image-namespace-row">
@@ -840,7 +863,7 @@
           </div>
           {{end}}
           {{if ne $p "docker"}}
-          {{$packageConfigured := or .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo}}
+          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo}}
           <div class="subsection-header">
             <span class="subsection-title">Package Overrides</span>
             <button type="button" class="btn btn-outline btn-sm package-toggle-btn"
@@ -848,6 +871,15 @@
           </div>
           <div class="package-block-body" {{if not $packageConfigured}}style="display:none"{{end}}>
           <div class="form-row">
+            <div class="form-group">
+              <label>MongoDB Distribution <span class="field-tip" data-tip="Package distribution for this replica set. PSMDB uses Percona repositories; Community and Enterprise use official MongoDB repositories.">ⓘ</span></label>
+              {{$mongoDist := strDefault .Config.MongoDBDistribution "psmdb"}}
+              <select name="replset_mongodb_distribution[]" onchange="onMongoDBDistributionChange(this)">
+                <option value="psmdb" {{if eq $mongoDist "psmdb"}}selected{{end}}>Percona Server for MongoDB</option>
+                <option value="community" {{if eq $mongoDist "community"}}selected{{end}}>MongoDB Community</option>
+                <option value="enterprise" {{if eq $mongoDist "enterprise"}}selected{{end}}>MongoDB Enterprise</option>
+              </select>
+            </div>
             <div class="form-group">
               <label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this replica set. Defaults to release (GA).">ⓘ</span></label>
               {{$mongoRepo := strDefault .Config.MongoRepo "release"}}
@@ -878,7 +910,7 @@
               </select>
             </div>
           </div>
-          <div class="form-row">
+          <div class="form-row" data-package-feature="pbm" {{if not (boolDefault .Config.EnablePbm false)}}style="display:none"{{end}}>
             <div class="form-group">
               <label>PBM Repository Channel <span class="field-tip" data-tip="PBM repository channel for this replica set. Defaults to release (GA).">ⓘ</span></label>
               {{$pbmRepo := strDefault .Config.PbmRepo "release"}}
@@ -903,7 +935,7 @@
               </select>
             </div>
           </div>
-          <div class="form-row">
+          <div class="form-row" data-package-feature="pmm" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
             <div class="form-group">
               <label>PMM Client Repository Channel <span class="field-tip" data-tip="PMM client repository channel for this replica set. Defaults to release (GA). The PMM server remains environment-wide.">ⓘ</span></label>
               {{$pmmClientRepo := strDefault .Config.PmmClientRepo "release"}}
@@ -929,18 +961,32 @@
             </div>
           </div>
           </div>
+          <div class="form-row">
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="replset_enable_pmm[]" value="1"
+                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
+                            onchange="onPmmAgentFeatureToggle(this)">
+                Install PMM agent</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="replset_enable_pbm[]" value="1"
+                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
+                            onchange="onPbmAgentFeatureToggle(this)">
+                Install PBM agent</label>
+            </div>
+          </div>
           {{end}}
           {{if eq $p "docker"}}
           <div class="form-row">
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="replset_enable_pmm[]" value="1"
-                            {{if .Config.EnablePmm}}checked{{end}}
+                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
                             onchange="onDockerPmmFeatureToggle(this)">
                 Enable PMM monitoring</label>
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="replset_enable_pbm[]" value="1"
-                            {{if .Config.EnablePbm}}checked{{end}}
+                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
                             onchange="onDockerPbmFeatureToggle(this)">
                 Enable PBM backups</label>
             </div>
@@ -971,7 +1017,7 @@
                 <option value="__custom__">Custom image…</option>
               </select>
             </div>
-            <div class="form-group image-field" data-image-group="pbm" data-image-repo="percona-backup-mongodb" {{if not .Config.EnablePbm}}style="display:none"{{end}}>
+            <div class="form-group image-field" data-image-group="pbm" data-image-repo="percona-backup-mongodb" {{if not (boolDefault .Config.EnablePbm false)}}style="display:none"{{end}}>
               <label>PBM Image <span class="field-tip" data-tip="Percona Backup for MongoDB Docker image tag for backup agents in this replica set.">ⓘ</span></label>
               {{$curPbm := .Config.PbmImage}}{{$pbmNs := imageNamespace $curPbm "percona"}}
               <div class="image-namespace-row">
@@ -991,7 +1037,7 @@
                 <option value="__custom__">Custom image…</option>
               </select>
             </div>
-            <div class="form-group image-field" data-image-group="pmm" data-image-repo="pmm-client" {{if not .Config.EnablePmm}}style="display:none"{{end}}>
+            <div class="form-group image-field" data-image-group="pmm" data-image-repo="pmm-client" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
               <label>PMM Client Image <span class="field-tip" data-tip="PMM Client Docker image tag for monitoring nodes in this replica set.">ⓘ</span></label>
               {{$curPmmc := .Config.PmmClientImage}}{{$pmmcNs := imageNamespace $curPmmc "percona"}}
               <div class="image-namespace-row">
@@ -1708,6 +1754,7 @@ const PBM_IMAGES      = {{json .PBMImages}};
 const PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
 const PMM_SERVER_IMAGES = {{json .PMMImages}};
 const PSMDB_VERSIONS  = {{json .PSMDBVersions}};
+const OFFICIAL_MONGODB_VERSIONS = ['8.3', '8.2', '8.0', '7.0', '6.0'];
 const PBM_VERSIONS    = {{json .PBMVersions}};
 const DEFAULT_AUDIT_FILTER = {{json .DefaultAuditFilter}};
 // Minor versions keyed by major release identifier, e.g. {"psmdb-70": ["7.0.12", ...]}
@@ -1964,6 +2011,22 @@ function toggleImageGroup(checkbox, group) {
   el.style.display = checkbox.checked ? '' : 'none';
 }
 
+function togglePackageFeatureGroup(checkbox, feature) {
+  const body = checkbox.closest('.customize-body');
+  if (!body) return;
+  const el = body.querySelector(`[data-package-feature="${feature}"]`);
+  if (!el) return;
+  el.style.display = checkbox.checked ? '' : 'none';
+}
+
+function onPmmAgentFeatureToggle(checkbox) {
+  togglePackageFeatureGroup(checkbox, 'pmm');
+}
+
+function onPbmAgentFeatureToggle(checkbox) {
+  togglePackageFeatureGroup(checkbox, 'pbm');
+}
+
 function toggleAuditFilter(checkbox) {
   const body = checkbox.closest('.customize-body');
   if (!body) return;
@@ -2010,6 +2073,28 @@ function packageSelect(block, prefix, field) {
 function selectedPackageOsImage(block, prefix) {
   if (PLATFORM !== 'chaos') return '';
   return (packageSelect(block, prefix, 'os_image')?.value || '').trim();
+}
+
+function selectedMongoDBDistribution(block, prefix) {
+  return (packageSelect(block, prefix, 'mongodb_distribution')?.value || 'psmdb').trim() || 'psmdb';
+}
+
+function syncMongoDBDistributionControls(block, prefix) {
+  const distribution = selectedMongoDBDistribution(block, prefix);
+  const repoSel = packageSelect(block, prefix, 'mongo_repo');
+  if (repoSel) {
+    repoSel.disabled = distribution !== 'psmdb';
+    if (distribution !== 'psmdb') repoSel.value = 'release';
+  }
+  const releaseSel = packageSelect(block, prefix, 'mongo_release');
+  if (!releaseSel) return;
+  if (distribution !== 'psmdb' && releaseSel.value.startsWith('psmdb-')) {
+    setSelectOptionsNoEmpty(releaseSel, OFFICIAL_MONGODB_VERSIONS);
+    onMongoReleaseChange(releaseSel);
+  } else if (distribution === 'psmdb' && !releaseSel.value.startsWith('psmdb-')) {
+    setSelectOptionsNoEmpty(releaseSel, PSMDB_VERSIONS);
+    onMongoReleaseChange(releaseSel);
+  }
 }
 
 function setSelectOptions(sel, values) {
@@ -2095,7 +2180,9 @@ async function refreshPackageVersions(block, prefix, product) {
   const repoField = product === 'psmdb' ? 'mongo_repo' : product === 'pbm' ? 'pbm_repo' : 'pmm_client_repo';
   const channel = packageSelect(block, prefix, repoField)?.value || 'release';
   const osImage = selectedPackageOsImage(block, prefix);
+  const distribution = product === 'psmdb' ? selectedMongoDBDistribution(block, prefix) : 'psmdb';
   const params = new URLSearchParams({ product, channel });
+  if (product === 'psmdb') params.set('distribution', distribution);
   if (osImage) params.set('os_image', osImage);
 
   const affected = product === 'psmdb'
@@ -2109,7 +2196,8 @@ async function refreshPackageVersions(block, prefix, product) {
     if (!resp.ok) throw new Error(data.error || 'Could not load package versions');
     const currentChannel = packageSelect(block, prefix, repoField)?.value || 'release';
     const currentOsImage = selectedPackageOsImage(block, prefix);
-    if (currentChannel !== channel || currentOsImage !== osImage) return;
+    const currentDistribution = product === 'psmdb' ? selectedMongoDBDistribution(block, prefix) : 'psmdb';
+    if (currentChannel !== channel || currentOsImage !== osImage || currentDistribution !== distribution) return;
     if (product === 'psmdb') {
       const releaseSel = packageSelect(block, prefix, 'mongo_release');
       if (releaseSel) {
@@ -2143,6 +2231,13 @@ function onPackageRepoChange(sel, product) {
   withPackageVersionDialog(() => refreshPackageVersions(block, packageFieldPrefix(sel), product));
 }
 
+function onMongoDBDistributionChange(sel) {
+  const block = packageBlockForField(sel);
+  const prefix = packageFieldPrefix(sel);
+  syncMongoDBDistributionControls(block, prefix);
+  withPackageVersionDialog(() => refreshPackageVersions(block, prefix, 'psmdb'));
+}
+
 function onPackageMajorChange(sel, product) {
   const block = packageBlockForField(sel);
   refreshPackageMinorOptions(block, packageFieldPrefix(sel), product);
@@ -2158,6 +2253,7 @@ function refreshAllPackageVersions(block) {
   const marker = block?.querySelector('select[name="cluster_mongo_repo[]"], select[name="replset_mongo_repo[]"]');
   const prefix = packageFieldPrefix(marker);
   if (!prefix) return;
+  syncMongoDBDistributionControls(block, prefix);
   return Promise.all(['psmdb', 'pbm', 'pmm_client'].map(product => refreshPackageVersions(block, prefix, product)));
 }
 
@@ -2379,12 +2475,28 @@ function buildPackageOverrideRows(type) {
     </div>` : '';
   return `
     ${osImageRows}
+    <div class="form-row">
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="${type}_enable_pmm[]" value="1" onchange="onPmmAgentFeatureToggle(this)">
+          Install PMM agent</label>
+      </div>
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="${type}_enable_pbm[]" value="1" onchange="onPbmAgentFeatureToggle(this)">
+          Install PBM agent</label>
+      </div>
+    </div>
     <div class="subsection-header">
       <span class="subsection-title">Package Overrides</span>
       <button type="button" class="btn btn-outline btn-sm package-toggle-btn" onclick="togglePackageBlock(this)">▼ Customize</button>
     </div>
     <div class="package-block-body" style="display:none">
     <div class="form-row">
+      <div class="form-group"><label>MongoDB Distribution <span class="field-tip" data-tip="Package distribution for this ${label}. PSMDB uses Percona repositories; Community and Enterprise use official MongoDB repositories.">ⓘ</span></label>
+        <select name="${type}_mongodb_distribution[]" onchange="onMongoDBDistributionChange(this)">
+          <option value="psmdb" selected>Percona Server for MongoDB</option>
+          <option value="community">MongoDB Community</option>
+          <option value="enterprise">MongoDB Enterprise</option>
+        </select></div>
       <div class="form-group"><label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this ${label}. Defaults to release (GA).">ⓘ</span></label>
         <select name="${type}_mongo_repo[]" onchange="onPackageRepoChange(this, 'psmdb')">${repoOptions}</select></div>
       <div class="form-group"><label>MongoDB Major Version <span class="field-tip" data-tip="PSMDB major release line for this ${label}. Defaults to the latest listed release line.">ⓘ</span></label>
@@ -2392,7 +2504,7 @@ function buildPackageOverrideRows(type) {
       <div class="form-group"><label>MongoDB Minor Version <span class="field-tip" data-tip="PSMDB minor/package version pin for this ${label}. Defaults to the newest package from the selected release/channel.">ⓘ</span></label>
         <select name="${type}_mongo_version[]"></select></div>
     </div>
-    <div class="form-row">
+    <div class="form-row" data-package-feature="pbm" style="display:none">
       <div class="form-group"><label>PBM Repository Channel <span class="field-tip" data-tip="PBM repository channel for this ${label}. Defaults to release (GA).">ⓘ</span></label>
         <select name="${type}_pbm_repo[]" onchange="onPackageRepoChange(this, 'pbm')">${repoOptions}</select></div>
       <div class="form-group"><label>PBM Major Version <span class="field-tip" data-tip="PBM major version line for this ${label}.">ⓘ</span></label>
@@ -2400,7 +2512,7 @@ function buildPackageOverrideRows(type) {
       <div class="form-group"><label>PBM Minor Version <span class="field-tip" data-tip="PBM package version pin for this ${label}. Defaults to the newest package from the selected channel.">ⓘ</span></label>
         <select name="${type}_pbm_version[]">${pbmVersionOptions}</select></div>
     </div>
-    <div class="form-row">
+    <div class="form-row" data-package-feature="pmm" style="display:none">
       <div class="form-group"><label>PMM Client Repository Channel <span class="field-tip" data-tip="PMM client repository channel for this ${label}. Defaults to release (GA). The PMM server remains environment-wide.">ⓘ</span></label>
         <select name="${type}_pmm_client_repo[]" onchange="onPackageRepoChange(this, 'pmm_client')">${repoOptions}</select></div>
       <div class="form-group"><label>PMM Client Major Version <span class="field-tip" data-tip="PMM client major version line for this ${label}.">ⓘ</span></label>
@@ -3147,6 +3259,7 @@ function getBlockImageValue(block, name, imageName) {
 function copyPackageOverrides(block, target, prefix) {
   if (PLATFORM === 'docker') return;
   [
+    'mongodb_distribution',
     'mongo_release',
     'mongo_version',
     'mongo_repo',
@@ -3222,6 +3335,13 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 	  if (ycsbContainerSuffix) config.ycsb_container_suffix = ycsbContainerSuffix;
 	}
 	if (PLATFORM !== 'docker') {
+    const anyPmmAgent = Array.from(document.querySelectorAll('input[name="cluster_enable_pmm[]"], input[name="replset_enable_pmm[]"]')).some(cb => cb.checked);
+    if (anyPmmAgent && !fd.has('enable_pmm')) {
+      alert('Enable the PMM monitoring server or disable PMM agents for all clusters and replica sets.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save & Configure';
+      return;
+    }
     // enable_pmm is a tri-state *bool on the server: only send false when the
     // user explicitly unchecked it; when checked send true so it's stored.
     config.enable_pmm = fd.has('enable_pmm');
@@ -3317,6 +3437,10 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     const auditFilter = getBlockFieldValue(block, 'cluster_audit_filter[]').trim();
     if (c.enable_audit && auditFilter && auditFilter !== DEFAULT_AUDIT_FILTER) c.audit_filter = auditFilter;
     copyPackageOverrides(block, c, 'cluster');
+    if (PLATFORM !== 'docker') {
+      c.enable_pmm = getBlockChecked(block, 'cluster_enable_pmm[]');
+      c.enable_pbm = getBlockChecked(block, 'cluster_enable_pbm[]');
+    }
     if (PLATFORM === 'docker') {
       const psmdbImage = getBlockImageValue(block, 'cluster_psmdb_image[]', 'percona-server-mongodb');
       const pbmImage = getBlockImageValue(block, 'cluster_pbm_image[]', 'percona-backup-mongodb');
@@ -3345,6 +3469,10 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     const auditFilter = getBlockFieldValue(block, 'replset_audit_filter[]').trim();
     if (r.enable_audit && auditFilter && auditFilter !== DEFAULT_AUDIT_FILTER) r.audit_filter = auditFilter;
     copyPackageOverrides(block, r, 'replset');
+    if (PLATFORM !== 'docker') {
+      r.enable_pmm = getBlockChecked(block, 'replset_enable_pmm[]');
+      r.enable_pbm = getBlockChecked(block, 'replset_enable_pbm[]');
+    }
     if (PLATFORM === 'docker') {
       const port = parseInt(getBlockFieldValue(block, 'replset_port[]'));
       if (port > 0) { r.replset_port = port; r.arbiter_port = port; }

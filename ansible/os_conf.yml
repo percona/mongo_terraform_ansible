@@ -15,7 +15,7 @@
       net.core.somaxconn: 65535
       vm.max_map_count: 102400
 
-    mongo_major: "{{ mongo_release | regex_search('[0-9]+$') | int }}"
+    mongo_major: "{{ (mongo_release_effective | regex_search('^[0-9]+') | default(mongo_release_effective | regex_search('[0-9]+$'), true)) | int }}"
 
     pam_limits:
       - domain: "*"

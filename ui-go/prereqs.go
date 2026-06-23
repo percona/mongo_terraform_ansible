@@ -1,14 +1,95 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 )
+
+const chaosProviderExampleVersion = "1.0.0"
 
 // toolInstalled returns true when the named executable can be found on PATH.
 func toolInstalled(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
+}
+
+func chaosProviderTarget() string {
+	return runtime.GOOS + "_" + runtime.GOARCH
+}
+
+func standardTerraformPluginRoot() (string, error) {
+	if runtime.GOOS == "windows" {
+		if appData := os.Getenv("APPDATA"); appData != "" {
+			return filepath.Join(appData, "terraform.d", "plugins"), nil
+		}
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".terraform.d", "plugins"), nil
+}
+
+func chaosProviderInstalledIn(pluginRoot string) bool {
+	pattern := filepath.Join(
+		pluginRoot,
+		"registry.terraform.io",
+		"percona",
+		"chaos",
+		"*",
+		chaosProviderTarget(),
+		"terraform-provider-chaos*",
+	)
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return false
+	}
+	for _, match := range matches {
+		info, err := os.Stat(match)
+		if err == nil && !info.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
+func chaosProviderInstalled() bool {
+	pluginRoot, err := standardTerraformPluginRoot()
+	if err != nil {
+		return false
+	}
+	return chaosProviderInstalledIn(pluginRoot)
+}
+
+func chaosProviderInstallPath() (string, error) {
+	pluginRoot, err := standardTerraformPluginRoot()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(
+		pluginRoot,
+		"registry.terraform.io",
+		"percona",
+		"chaos",
+		chaosProviderExampleVersion,
+		chaosProviderTarget(),
+	), nil
+}
+
+func chaosProviderMissingError() string {
+	installPath, err := chaosProviderInstallPath()
+	if err != nil {
+		return "CHAOS Terraform provider percona/chaos is not installed and the standard Terraform plugin directory could not be determined: " + err.Error()
+	}
+	return fmt.Sprintf(
+		"CHAOS Terraform provider percona/chaos is not installed for %s. Install terraform-provider-chaos under %s and retry.",
+		chaosProviderTarget(),
+		installPath,
+	)
 }
 
 // platformPrereqs returns the prerequisite tool list for a given platform.
@@ -89,6 +170,14 @@ func platformPrereqs(platform string) []PrereqTool {
 			"curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash",
 		},
 	}
+	chaosProvider := PrereqTool{
+		Name:       "terraform-provider-chaos",
+		InstallDoc: "https://developer.hashicorp.com/terraform/cli/config/config-file#implied-local-mirror-directories",
+		InstallCmds: []string{
+			"Install terraform-provider-chaos in the standard local Terraform plugin path:",
+			filepath.Join("~", ".terraform.d", "plugins", "registry.terraform.io", "percona", "chaos", chaosProviderExampleVersion, chaosProviderTarget()),
+		},
+	}
 
 	var tools []PrereqTool
 	switch platform {
@@ -101,13 +190,17 @@ func platformPrereqs(platform string) []PrereqTool {
 	case "azure":
 		tools = []PrereqTool{terraform, ansible, azureCLI}
 	case "chaos":
-		tools = []PrereqTool{terraform, ansible}
+		tools = []PrereqTool{terraform, ansible, chaosProvider}
 	default:
 		tools = []PrereqTool{terraform, ansible}
 	}
 
 	for i := range tools {
-		tools[i].Installed = toolInstalled(tools[i].Name)
+		if tools[i].Name == "terraform-provider-chaos" {
+			tools[i].Installed = chaosProviderInstalled()
+		} else {
+			tools[i].Installed = toolInstalled(tools[i].Name)
+		}
 	}
 	return tools
 }

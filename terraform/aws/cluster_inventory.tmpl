@@ -43,9 +43,14 @@ endpointUrl=${endpointUrl}
 cluster=${cluster}
 env_tag=${env_tag}
 enable_pmm=${enable_pmm}
+enable_pmm_agent=${enable_pmm_agent}
+enable_pbm=${enable_pbm}
 access_key_id=${access_key}
 secret_access_key=${secret_access_key}
 storage_provider=s3
+%{ if mongodb_distribution != "" ~}
+mongodb_distribution=${mongodb_distribution}
+%{ endif ~}
 %{ if mongo_release != "" ~}
 mongo_release=${mongo_release}
 %{ endif ~}

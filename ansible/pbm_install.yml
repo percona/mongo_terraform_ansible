@@ -4,6 +4,8 @@
   gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: install,backup
+  vars:
+    pbm_enabled: "{{ enable_pbm | default(true) | bool }}"
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
@@ -11,7 +13,9 @@
       package:
         name: "{{ pbm_package }}"
         state: present
-      when: pbm_version is not defined or pbm_version == ''
+      when:
+        - pbm_enabled | bool
+        - pbm_version is not defined or pbm_version == ''
 
     - name: Install pbm packages from repository (specific version – Debian/Ubuntu)
       apt:
@@ -21,6 +25,7 @@
       when:
         - pbm_version is defined and pbm_version != ''
         - ansible_facts['os_family'] == 'Debian'
+        - pbm_enabled | bool
 
     - name: Install pbm packages from repository (specific version – RedHat)
       yum:
@@ -29,6 +34,7 @@
       when:
         - pbm_version is defined and pbm_version != ''
         - ansible_facts['os_family'] == 'RedHat'
+        - pbm_enabled | bool
 
     - name: Disable Percona telemetry
       systemd:
@@ -37,7 +43,9 @@
         state: stopped
         daemon_reload: yes
       ignore_errors: true
-      when: disable_telemetry | bool
+      when:
+        - pbm_enabled | bool
+        - disable_telemetry | bool
 
 - name: Figure out backup URI for replica sets
   hosts: replsets
@@ -45,43 +53,54 @@
   tags: backup
   become: true
   vars:
+    pbm_enabled: "{{ enable_pbm | default(true) | bool }}"
     replset_group: "{{ (group_names | difference(['replsets', 'shards']))[0] }}"
     replset_name: "{{ replset_group if cluster is defined and cluster == replset_group else (cluster ~ '-' ~ replset_group if cluster is defined else replset_group) }}"
   tasks:
     - name: generate PBM_MONGODB_URI
       set_fact:
         mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[replset_group] %}{{ h }}:{{ mongo_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ replset_name }}&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
+      when: pbm_enabled | bool
 
 - name: Figure out backup URI for sharded cluster
   hosts: shards:cfg
   gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: backup
   become: true
+  vars:
+    pbm_enabled: "{{ enable_pbm | default(true) | bool }}"
   tasks:
     - name: generate PBM_MONGODB_URI
       set_fact:
         mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-cfg&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
+      when: pbm_enabled | bool
 
 - name: Configure PBM agent and CLI
   hosts: cfg:shards:replsets
   gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: backup
   become: true
+  vars:
+    pbm_enabled: "{{ enable_pbm | default(true) | bool }}"
   tasks:
     - name: Load OS-specific variables
       include_vars: "vars/{{ ansible_facts['os_family'] }}.yml"
+      when: pbm_enabled | bool
 
     - name: set up PBM_MONGODB_URI
       lineinfile:
         dest: /etc/profile
         line: export PBM_MONGODB_URI='{{ mongodb_uri }}'
         state: present
+      when: pbm_enabled | bool
 
     - name: Configure credentials file for PBM agent
       template:
         src: templates/pbm-agent.j2
         dest: "{{ pbm_env_file }}"
-      when: arbiter is not defined
+      when:
+        - pbm_enabled | bool
+        - arbiter is not defined
       notify: restart pbm-agent
 
     - name: Ensure PBM agent is started
@@ -89,16 +108,21 @@
         name: pbm-agent
         state: started
         enabled: yes
-      when: arbiter is not defined
+      when:
+        - pbm_enabled | bool
+        - arbiter is not defined
 
     - name: Apply pending PBM agent restarts
       meta: flush_handlers
+      when: pbm_enabled | bool
 
     - name: Prepare storage details file for PBM
       template:
         src: templates/pbm-storage.conf.j2
         dest: "{{ pbm_config_path }}"
-      when: arbiter is not defined
+      when:
+        - pbm_enabled | bool
+        - arbiter is not defined
 
   handlers:
     - name: restart pbm-agent
@@ -111,20 +135,28 @@
   gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: backup
   become: true
+  vars:
+    pbm_enabled: "{{ enable_pbm | default(true) | bool }}"
   tasks:
     - name: Configure filesystem-backed PBM storage
       ansible.builtin.include_tasks: pbm_nfs.yml
-      when: (storage_provider | default('')) == "filesystem"
+      when:
+        - pbm_enabled | bool
+        - (storage_provider | default('')) == "filesystem"
 
 - name: Configure backup process
   hosts: cfg:replsets
   gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: backup
+  vars:
+    pbm_enabled: "{{ enable_pbm | default(true) | bool }}"
   tasks:
     - name: set up storage location for PBM
       shell: pbm config --file '{{ pbm_config_path }}' --mongodb-uri '{{ mongodb_uri }}'
-      when: mongodb_primary is defined and mongodb_primary
+      when:
+        - pbm_enabled | bool
+        - mongodb_primary is defined and mongodb_primary
 
     - name: Set up backup cron job
       cron:
@@ -134,7 +166,9 @@
         user: '{{ pbm_os_user }}'
         job: /usr/bin/pbm backup --type '{{ pbm_backup_type }}' --mongodb-uri '{{ mongodb_uri }}'
         cron_file: pbm_daily_backup
-      when: arbiter is not defined
+      when:
+        - pbm_enabled | bool
+        - arbiter is not defined
 
     - name: Set up purge old backups cron job
       cron:
@@ -144,4 +178,6 @@
         user: '{{ pbm_os_user }}'
         job: /usr/bin/pbm cleanup --force --older-than $(date -u -d '-{{ pbm_retention_days }} days' +'\%Y-\%m-\%d') --mongodb-uri '{{ mongodb_uri }}'
         cron_file: pbm_purge_old
-      when: arbiter is not defined
+      when:
+        - pbm_enabled | bool
+        - arbiter is not defined

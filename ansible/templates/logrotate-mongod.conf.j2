@@ -9,7 +9,6 @@
   create 640 mongod mongod
   sharedscripts
   postrotate
-    /bin/kill -SIGUSR1 `cat /var/run/mongod.pid 2>/dev/null` >/dev/null 2>&1
+    /bin/kill -SIGUSR1 `cat {{ mongod_pid_path }} 2>/dev/null` >/dev/null 2>&1
   endscript
 }
-

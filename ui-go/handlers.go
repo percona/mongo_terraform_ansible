@@ -680,19 +680,29 @@ func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /api/package-versions?product=psmdb&channel=release&os_image=Ubuntu%2022.04
+// GET /api/package-versions?product=psmdb&distribution=psmdb&channel=release&os_image=Ubuntu%2022.04
 func apiPackageVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	product := strings.TrimSpace(r.URL.Query().Get("product"))
+	distribution := strings.TrimSpace(r.URL.Query().Get("distribution"))
+	if distribution == "" {
+		distribution = "psmdb"
+	}
 	channel := normalizedRepoChannel(r.URL.Query().Get("channel"))
 	osImage := strings.TrimSpace(r.URL.Query().Get("os_image"))
 
 	switch product {
 	case "psmdb":
-		minorVersions := getPSMDBMinorVersionsByMajorFor(channel, osImage)
-		majorVersions := make([]string, 0, len(minorVersions))
-		for _, release := range getPSMDBVersions() {
-			if len(minorVersions[release]) > 0 {
-				majorVersions = append(majorVersions, release)
+		var minorVersions map[string][]string
+		var majorVersions []string
+		if distribution == "community" || distribution == "enterprise" {
+			minorVersions = getOfficialMongoDBMinorVersionsByMajorFor(distribution, osImage)
+			majorVersions = getOfficialMongoDBVersionsFor(distribution, osImage)
+		} else {
+			minorVersions = getPSMDBMinorVersionsByMajorFor(channel, osImage)
+			for _, release := range getPSMDBVersions() {
+				if len(minorVersions[release]) > 0 {
+					majorVersions = append(majorVersions, release)
+				}
 			}
 		}
 		writeJSON(w, 200, map[string]interface{}{
@@ -880,6 +890,92 @@ func apiImagesHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]interface{}{"images": images})
 }
 
+func normalizePackageDistribution(distribution string) string {
+	switch strings.TrimSpace(distribution) {
+	case "", "psmdb":
+		return "psmdb"
+	case "community", "enterprise":
+		return strings.TrimSpace(distribution)
+	default:
+		return ""
+	}
+}
+
+func validatePackageBlock(kind, name string, distribution, release string, enableAudit bool) error {
+	distribution = normalizePackageDistribution(distribution)
+	if distribution == "" {
+		return fmt.Errorf("%s %q has invalid mongodb_distribution", kind, name)
+	}
+	if distribution == "community" && enableAudit {
+		return fmt.Errorf("%s %q uses MongoDB Community, which does not support audit logging", kind, name)
+	}
+	if release == "" {
+		return nil
+	}
+	if distribution == "psmdb" && !strings.HasPrefix(release, "psmdb-") {
+		return fmt.Errorf("%s %q uses PSMDB but mongo_release %q is not a psmdb-* release", kind, name, release)
+	}
+	if distribution != "psmdb" && strings.HasPrefix(release, "psmdb-") {
+		return fmt.Errorf("%s %q uses MongoDB %s but mongo_release %q is a PSMDB release", kind, name, distribution, release)
+	}
+	return nil
+}
+
+func normalizeAndValidatePackageConfig(platform string, cfg *Config) error {
+	if platform == "docker" {
+		return nil
+	}
+	defaultDistribution := normalizePackageDistribution(cfg.MongoDBDistribution)
+	if defaultDistribution == "" {
+		return fmt.Errorf("invalid mongodb_distribution %q", cfg.MongoDBDistribution)
+	}
+	cfg.MongoDBDistribution = strings.TrimSpace(cfg.MongoDBDistribution)
+	if defaultDistribution != "psmdb" && cfg.MongoRelease == "" {
+		cfg.MongoRelease = "8.0"
+	}
+	for name, cluster := range cfg.Clusters {
+		distribution := normalizePackageDistribution(cluster.MongoDBDistribution)
+		if distribution == "psmdb" && cluster.MongoDBDistribution == "" {
+			distribution = defaultDistribution
+		}
+		if cluster.MongoDBDistribution == "" && distribution != "psmdb" {
+			cluster.MongoDBDistribution = distribution
+		}
+		if distribution != "psmdb" && cluster.MongoRelease == "" && cfg.MongoRelease == "" {
+			cluster.MongoRelease = "8.0"
+		}
+		release := cluster.MongoRelease
+		if release == "" {
+			release = cfg.MongoRelease
+		}
+		if err := validatePackageBlock("cluster", name, distribution, release, boolDefault(cluster.EnableAudit, false)); err != nil {
+			return err
+		}
+		cfg.Clusters[name] = cluster
+	}
+	for name, replset := range cfg.Replsets {
+		distribution := normalizePackageDistribution(replset.MongoDBDistribution)
+		if distribution == "psmdb" && replset.MongoDBDistribution == "" {
+			distribution = defaultDistribution
+		}
+		if replset.MongoDBDistribution == "" && distribution != "psmdb" {
+			replset.MongoDBDistribution = distribution
+		}
+		if distribution != "psmdb" && replset.MongoRelease == "" && cfg.MongoRelease == "" {
+			replset.MongoRelease = "8.0"
+		}
+		release := replset.MongoRelease
+		if release == "" {
+			release = cfg.MongoRelease
+		}
+		if err := validatePackageBlock("replica set", name, distribution, release, boolDefault(replset.EnableAudit, false)); err != nil {
+			return err
+		}
+		cfg.Replsets[name] = replset
+	}
+	return nil
+}
+
 // POST /api/environment
 func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
@@ -924,6 +1020,9 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, 400, err.Error())
 			return
 		}
+	} else if err := normalizeAndValidatePackageConfig(payload.Platform, &payload.Config); err != nil {
+		jsonError(w, 400, err.Error())
+		return
 	}
 
 	existing := state[payload.EnvID]
@@ -1231,6 +1330,13 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	varfile := tfvarsPath(envID, platform)
 
 	if platform == "chaos" {
+		switch action {
+		case "deploy", "provision", "destroy":
+			if !chaosProviderInstalled() {
+				jsonError(w, http.StatusBadRequest, chaosProviderMissingError())
+				return
+			}
+		}
 		switch action {
 		case "deploy", "stop", "restart", "destroy":
 			if err := canReachChaosAPI(); err != nil {

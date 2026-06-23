@@ -18,20 +18,22 @@ type ClusterConfig struct {
 	ArbitersPerReplset *int   `json:"arbiters_per_replset,omitempty"`
 	MongosCount        int    `json:"mongos_count"`
 	// Non-Docker package source overrides. Empty values inherit Config defaults.
-	MongoRelease     string `json:"mongo_release,omitempty"`
-	MongoVersion     string `json:"mongo_version,omitempty"`
-	MongoRepo        string `json:"mongo_repo,omitempty"`
-	PbmVersion       string `json:"pbm_version,omitempty"`
-	PbmRepo          string `json:"pbm_repo,omitempty"`
-	PmmClientVersion string `json:"pmm_client_version,omitempty"`
-	PmmClientRepo    string `json:"pmm_client_repo,omitempty"`
-	OsImage          string `json:"os_image,omitempty"`
+	MongoDBDistribution string `json:"mongodb_distribution,omitempty"`
+	MongoRelease        string `json:"mongo_release,omitempty"`
+	MongoVersion        string `json:"mongo_version,omitempty"`
+	MongoRepo           string `json:"mongo_repo,omitempty"`
+	PbmVersion          string `json:"pbm_version,omitempty"`
+	PbmRepo             string `json:"pbm_repo,omitempty"`
+	PmmClientVersion    string `json:"pmm_client_version,omitempty"`
+	PmmClientRepo       string `json:"pmm_client_repo,omitempty"`
+	OsImage             string `json:"os_image,omitempty"`
+	// Per-topology PMM/PBM toggles. Docker uses them for containers; non-Docker uses them for agents.
+	EnablePmm *bool `json:"enable_pmm,omitempty"`
+	EnablePbm *bool `json:"enable_pbm,omitempty"`
 	// Docker-only
 	PsmdbImage      string `json:"psmdb_image,omitempty"`
 	PbmImage        string `json:"pbm_image,omitempty"`
 	PmmClientImage  string `json:"pmm_client_image,omitempty"`
-	EnablePmm       bool   `json:"enable_pmm,omitempty"`
-	EnablePbm       bool   `json:"enable_pbm,omitempty"`
 	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
 	EnableAudit     *bool  `json:"enable_audit,omitempty"`
 	AuditFilter     string `json:"audit_filter,omitempty"`
@@ -43,25 +45,27 @@ type ReplsetConfig struct {
 	DataNodesPerReplset int    `json:"data_nodes_per_replset"`
 	ArbitersPerReplset  *int   `json:"arbiters_per_replset,omitempty"`
 	// Non-Docker package source overrides. Empty values inherit Config defaults.
-	MongoRelease     string `json:"mongo_release,omitempty"`
-	MongoVersion     string `json:"mongo_version,omitempty"`
-	MongoRepo        string `json:"mongo_repo,omitempty"`
-	PbmVersion       string `json:"pbm_version,omitempty"`
-	PbmRepo          string `json:"pbm_repo,omitempty"`
-	PmmClientVersion string `json:"pmm_client_version,omitempty"`
-	PmmClientRepo    string `json:"pmm_client_repo,omitempty"`
-	OsImage          string `json:"os_image,omitempty"`
+	MongoDBDistribution string `json:"mongodb_distribution,omitempty"`
+	MongoRelease        string `json:"mongo_release,omitempty"`
+	MongoVersion        string `json:"mongo_version,omitempty"`
+	MongoRepo           string `json:"mongo_repo,omitempty"`
+	PbmVersion          string `json:"pbm_version,omitempty"`
+	PbmRepo             string `json:"pbm_repo,omitempty"`
+	PmmClientVersion    string `json:"pmm_client_version,omitempty"`
+	PmmClientRepo       string `json:"pmm_client_repo,omitempty"`
+	OsImage             string `json:"os_image,omitempty"`
 	// Docker-only port assignment: starting port for data nodes and arbiters.
 	// Auto-assigned on save to avoid collisions between multiple replica sets.
 	ReplsetPort     int `json:"replset_port,omitempty"`
 	ArbiterPort     int `json:"arbiter_port,omitempty"`
 	ArbiterBasePort int `json:"arbiter_base_port,omitempty"`
+	// Per-topology PMM/PBM toggles. Docker uses them for containers; non-Docker uses them for agents.
+	EnablePmm *bool `json:"enable_pmm,omitempty"`
+	EnablePbm *bool `json:"enable_pbm,omitempty"`
 	// Docker-only
 	PsmdbImage      string `json:"psmdb_image,omitempty"`
 	PbmImage        string `json:"pbm_image,omitempty"`
 	PmmClientImage  string `json:"pmm_client_image,omitempty"`
-	EnablePmm       bool   `json:"enable_pmm,omitempty"`
-	EnablePbm       bool   `json:"enable_pbm,omitempty"`
 	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
 	EnableAudit     *bool  `json:"enable_audit,omitempty"`
 	AuditFilter     string `json:"audit_filter,omitempty"`
@@ -106,6 +110,7 @@ type Config struct {
 	// General
 	Prefix              string `json:"prefix"`
 	MongoRelease        string `json:"mongo_release,omitempty"`
+	MongoDBDistribution string `json:"mongodb_distribution,omitempty"`
 	MongoVersion        string `json:"mongo_version,omitempty"`
 	MongoRepo           string `json:"mongo_repo,omitempty"`
 	PbmRelease          string `json:"pbm_release,omitempty"`

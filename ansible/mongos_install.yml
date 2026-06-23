@@ -27,10 +27,28 @@
       {% endif %}
 
   tasks:    
-    - name: Install mongos packages from repository
+    - name: Install mongos packages from repository (latest)
       package:
         name: "{{ mongos_packages }}"
         state: present
+      when: mongo_version is not defined or mongo_version == ''
+
+    - name: Install mongos packages from repository (specific version - Debian/Ubuntu)
+      apt:
+        name: "{{ mongos_versioned_packages | map('regex_replace', '^(percona-server-mongodb-mongos|mongodb-org-mongos|mongodb-enterprise-mongos)$', '\\1=' ~ mongo_version ~ '*') | list }}"
+        state: present
+        allow_downgrade: true
+      when:
+        - mongo_version is defined and mongo_version != ''
+        - ansible_facts['os_family'] == 'Debian'
+
+    - name: Install mongos packages from repository (specific version - RedHat)
+      yum:
+        name: "{{ mongos_versioned_packages | map('regex_replace', '^(percona-server-mongodb-mongos|mongodb-org-mongos|mongodb-enterprise-mongos)$', '\\1-' ~ mongo_version) | list }}"
+        state: present
+      when:
+        - mongo_version is defined and mongo_version != ''
+        - ansible_facts['os_family'] == 'RedHat'
 
     - name: Disable Percona telemetry
       systemd:
@@ -39,23 +57,25 @@
         state: stopped
         daemon_reload: yes
       ignore_errors: true
-      when: disable_telemetry | bool
+      when:
+        - disable_telemetry | bool
+        - mongodb_distribution_effective == 'psmdb'
 
     - name: Create logs directory for mongos 
       file:
         path: "{{ mongod_log_path }}"
         state: directory
         mode: '0755'
-        owner: mongod
-        group: mongod
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
 
     - name: Ensure audit log directory exists
       file:
         path: "{{ audit_log_path | dirname }}"
         state: directory
         mode: '0750'
-        owner: mongod
-        group: mongod
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
       when: enable_audit | bool
 
     - name: Configure mongo shell alias
@@ -74,7 +94,7 @@
       copy:
         dest: "{{ keyFile_location }}"
         content: "{{ keyfile_content }}"
-        owner: mongod
+        owner: "{{ mongo_os_user }}"
         group: root
         mode: 0600
       when: not use_tls | bool

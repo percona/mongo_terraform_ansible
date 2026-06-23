@@ -43,8 +43,13 @@ endpointUrl=${endpointUrl}
 cluster=${cluster}
 env_tag=${env_tag}
 enable_pmm=${enable_pmm}
+enable_pmm_agent=${enable_pmm_agent}
+enable_pbm=${enable_pbm}
 key=${key}
 storage_provider=azure
+%{ if mongodb_distribution != "" ~}
+mongodb_distribution=${mongodb_distribution}
+%{ endif ~}
 %{ if mongo_release != "" ~}
 mongo_release=${mongo_release}
 %{ endif ~}

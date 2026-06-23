@@ -15,7 +15,7 @@
 
     - name: Install mongod packages from repository (specific version – Debian/Ubuntu)
       apt:
-        name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb=' ~ mongo_version ~ '*') | list }}"
+        name: "{{ mongod_versioned_packages | map('regex_replace', '^(percona-server-mongodb|mongodb-org|mongodb-org-database|mongodb-org-server|mongodb-org-mongos|mongodb-org-tools|mongodb-enterprise|mongodb-enterprise-database|mongodb-enterprise-server|mongodb-enterprise-mongos|mongodb-enterprise-tools)$', '\\1=' ~ mongo_version ~ '*') | list }}"
         state: present
         allow_downgrade: true
       when:
@@ -24,7 +24,7 @@
 
     - name: Install mongod packages from repository (specific version – RedHat)
       yum:
-        name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb-' ~ mongo_version) | list }}"
+        name: "{{ mongod_versioned_packages | map('regex_replace', '^(percona-server-mongodb|mongodb-org|mongodb-org-database|mongodb-org-server|mongodb-org-mongos|mongodb-org-tools|mongodb-enterprise|mongodb-enterprise-database|mongodb-enterprise-server|mongodb-enterprise-mongos|mongodb-enterprise-tools)$', '\\1-' ~ mongo_version) | list }}"
         state: present
       when:
         - mongo_version is defined and mongo_version != ''
@@ -37,7 +37,9 @@
         state: stopped
         daemon_reload: yes
       ignore_errors: true
-      when: disable_telemetry | bool
+      when:
+        - disable_telemetry | bool
+        - mongodb_distribution_effective == 'psmdb'
 
 - name: Prepare the configuration
   hosts: cfg:shards:replsets
@@ -59,7 +61,7 @@
       copy:
         dest: "{{ keyFile_location }}"
         content: "{{ keyfile_content }}"
-        owner: mongod
+        owner: "{{ mongo_os_user }}"
         group: root
         mode: 0600
       when: not use_tls | bool
@@ -79,7 +81,8 @@
       become: yes
       file:
         path: "{{ item }}"
-        owner: mongod
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
         mode: '0750'
         state: directory
       with_items:
@@ -90,7 +93,8 @@
       become: yes
       file:
         path: "{{ audit_log_path | dirname }}"
-        owner: mongod
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
         mode: '0750'
         state: directory
       when: enable_audit | bool
@@ -100,7 +104,7 @@
       copy:
         dest: "{{ encryption_keyfile }}"
         content: "{{ encryption_key_content }}"
-        owner: mongod
+        owner: "{{ mongo_os_user }}"
         group: root
         mode: 0600
       when: keyfile_encryption | bool
@@ -114,8 +118,8 @@
           file:
             path: /etc/mongodb
             state: directory
-            owner: mongod
-            group: mongod
+            owner: "{{ mongo_os_user }}"
+            group: "{{ mongo_os_group }}"
             mode: 0500
 
         - name: Fetch the Vault crt file from Vault server to control machine
@@ -132,8 +136,8 @@
           copy:
             src: "{{ playbook_dir }}/vault.crt"
             dest: "{{ vault_cafile }}"
-            owner: mongod
-            group: mongod
+            owner: "{{ mongo_os_user }}"
+            group: "{{ mongo_os_group }}"
             mode: '0400'
           notify: restart mongod
 
@@ -151,8 +155,8 @@
           copy:
             src: "{{ playbook_dir }}/mongo_token.txt"
             dest: "{{ vault_tokenfile }}"
-            owner: mongod
-            group: mongod
+            owner: "{{ mongo_os_user }}"
+            group: "{{ mongo_os_group }}"
             mode: '0400'
           notify: restart mongod
 

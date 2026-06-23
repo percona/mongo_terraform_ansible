@@ -45,7 +45,7 @@
         path: "{{ pbm_path }}"
         state: directory
         owner: '{{ pbm_os_user }}'
-        group: mongod
+        group: '{{ mongo_os_group }}'
         mode: '0755'
       when: (storage_provider | default('')) == "filesystem"
 

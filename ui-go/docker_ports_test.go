@@ -66,8 +66,8 @@ func TestWriteTfvarsDockerPerComponentImageNamespaces(t *testing.T) {
 				PsmdbImage:     "perconalab/percona-server-mongodb:latest",
 				PbmImage:       "percona/percona-backup-mongodb:latest",
 				PmmClientImage: "perconalab/pmm-client:latest",
-				EnablePbm:      true,
-				EnablePmm:      true,
+				EnablePbm:      boolPtr(true),
+				EnablePmm:      boolPtr(true),
 			},
 		},
 		PmmServers: map[string]PmmServerConfig{
@@ -164,23 +164,25 @@ func TestWriteTfvarsCloudPackageOverrides(t *testing.T) {
 	cfg := Config{
 		Clusters: map[string]ClusterConfig{
 			"cl01": {
-				EnvTag:           "test",
-				MongoRelease:     "psmdb-70",
-				MongoVersion:     "7.0.18",
-				MongoRepo:        "testing",
-				PbmVersion:       "2.7.0",
-				PbmRepo:          "experimental",
-				PmmClientVersion: "3.3.0",
-				PmmClientRepo:    "testing",
+				EnvTag:              "test",
+				MongoDBDistribution: "community",
+				MongoRelease:        "8.0",
+				MongoVersion:        "8.0.13",
+				MongoRepo:           "testing",
+				PbmVersion:          "2.7.0",
+				PbmRepo:             "experimental",
+				PmmClientVersion:    "3.3.0",
+				PmmClientRepo:       "testing",
 			},
 		},
 		Replsets: map[string]ReplsetConfig{
 			"rs01": {
-				EnvTag:        "test",
-				MongoRelease:  "psmdb-60",
-				MongoRepo:     "experimental",
-				PbmRepo:       "testing",
-				PmmClientRepo: "experimental",
+				EnvTag:              "test",
+				MongoDBDistribution: "enterprise",
+				MongoRelease:        "7.0",
+				MongoRepo:           "experimental",
+				PbmRepo:             "testing",
+				PmmClientRepo:       "experimental",
 			},
 		},
 	}
@@ -197,15 +199,21 @@ func TestWriteTfvarsCloudPackageOverrides(t *testing.T) {
 
 	for _, want := range []string{
 		`"cl01" = {`,
-		`mongo_release = "psmdb-70"`,
-		`mongo_version = "7.0.18"`,
+		`enable_pmm = false`,
+		`enable_pbm = false`,
+		`mongodb_distribution = "community"`,
+		`mongo_release = "8.0"`,
+		`mongo_version = "8.0.13"`,
 		`mongo_repo = "testing"`,
 		`pbm_version = "2.7.0"`,
 		`pbm_repo = "experimental"`,
 		`pmm_client_version = "3.3.0"`,
 		`pmm_client_repo = "testing"`,
 		`"rs01" = {`,
-		`mongo_release = "psmdb-60"`,
+		`enable_pmm = false`,
+		`enable_pbm = false`,
+		`mongodb_distribution = "enterprise"`,
+		`mongo_release = "7.0"`,
 		`mongo_repo = "experimental"`,
 		`pbm_repo = "testing"`,
 		`pmm_client_repo = "experimental"`,
@@ -221,6 +229,53 @@ func TestWriteTfvarsCloudPackageOverrides(t *testing.T) {
 	} {
 		if strings.Contains(tfvars, unwanted) {
 			t.Fatalf("did not expect top-level %q in tfvars:\n%s", unwanted, tfvars)
+		}
+	}
+}
+
+func TestWriteTfvarsCloudAgentToggles(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{
+		Clusters: map[string]ClusterConfig{
+			"cl01": {
+				EnvTag:    "test",
+				EnablePmm: boolPtr(false),
+				EnablePbm: boolPtr(true),
+			},
+		},
+		Replsets: map[string]ReplsetConfig{
+			"rs01": {
+				EnvTag:    "test",
+				EnablePmm: boolPtr(true),
+				EnablePbm: boolPtr(false),
+			},
+		},
+	}
+
+	if err := writeTfvars("cloud-agent-toggles", "gcp", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tfvarsPath("cloud-agent-toggles", "gcp"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	tfvars := string(content)
+
+	for _, want := range []string{
+		`"cl01" = {`,
+		`enable_pmm = false`,
+		`enable_pbm = true`,
+		`"rs01" = {`,
+		`enable_pmm = true`,
+		`enable_pbm = false`,
+	} {
+		if !strings.Contains(tfvars, want) {
+			t.Fatalf("expected %q in tfvars:\n%s", want, tfvars)
 		}
 	}
 }

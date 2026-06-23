@@ -32,30 +32,33 @@ resource "local_file" "AnsibleInventoryCluster" {
       number_of_shards     = each.value.number_of_shards
       arbiters_per_replset = range(each.value.arbiters_per_replset)
 
-      my_ssh_user  = var.my_ssh_user
-      cluster      = each.value.cluster
-      env_tag      = each.value.env_tag
-      enable_pmm   = var.enable_pmm
-      enable_audit = each.value.enable_audit
-      audit_filter = each.value.audit_filter
+      my_ssh_user      = var.my_ssh_user
+      cluster          = each.value.cluster
+      env_tag          = each.value.env_tag
+      enable_pmm       = var.enable_pmm
+      enable_pmm_agent = var.enable_pmm && var.clusters[each.key].enable_pmm
+      enable_pbm       = var.clusters[each.key].enable_pbm
+      enable_audit     = each.value.enable_audit
+      audit_filter     = each.value.audit_filter
 
-      location           = each.value.location
-      hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
-      ip_pmm             = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
-      hostname_ycsb      = var.enable_ycsb ? local.ycsb_host : ""
-      ip_ycsb            = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
-      bucket             = azurerm_storage_container.mongo_backups_container.name
-      endpointUrl        = local.storage_endpoint
-      key                = azurerm_storage_account.mongo_backups.primary_access_key
-      account            = azurerm_storage_account.mongo_backups.name
-      mongo_release      = each.value.mongo_release != "" ? each.value.mongo_release : var.mongo_release
-      mongo_version      = each.value.mongo_version != "" ? each.value.mongo_version : var.mongo_version
-      mongo_repo         = each.value.mongo_repo != "" ? each.value.mongo_repo : var.mongo_repo
-      pbm_release        = var.pbm_release
-      pbm_version        = each.value.pbm_version != "" ? each.value.pbm_version : var.pbm_version
-      pbm_repo           = each.value.pbm_repo != "" ? each.value.pbm_repo : var.pbm_repo
-      pmm_client_version = each.value.pmm_client_version != "" ? each.value.pmm_client_version : var.pmm_client_version
-      pmm_client_repo    = lookup(local.pmm_client_inventory_repos, each.value.pmm_client_repo != "" ? each.value.pmm_client_repo : var.pmm_client_repo, each.value.pmm_client_repo != "" ? each.value.pmm_client_repo : var.pmm_client_repo)
+      location             = each.value.location
+      hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
+      ip_pmm               = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
+      hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
+      ip_ycsb              = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
+      bucket               = azurerm_storage_container.mongo_backups_container.name
+      endpointUrl          = local.storage_endpoint
+      key                  = azurerm_storage_account.mongo_backups.primary_access_key
+      account              = azurerm_storage_account.mongo_backups.name
+      mongodb_distribution = var.clusters[each.key].mongodb_distribution != "" ? var.clusters[each.key].mongodb_distribution : var.mongodb_distribution
+      mongo_release        = var.clusters[each.key].mongo_release != "" ? var.clusters[each.key].mongo_release : var.mongo_release
+      mongo_version        = var.clusters[each.key].mongo_version != "" ? var.clusters[each.key].mongo_version : var.mongo_version
+      mongo_repo           = var.clusters[each.key].mongo_repo != "" ? var.clusters[each.key].mongo_repo : var.mongo_repo
+      pbm_release          = var.pbm_release
+      pbm_version          = var.clusters[each.key].pbm_version != "" ? var.clusters[each.key].pbm_version : var.pbm_version
+      pbm_repo             = var.clusters[each.key].pbm_repo != "" ? var.clusters[each.key].pbm_repo : var.pbm_repo
+      pmm_client_version   = var.clusters[each.key].pmm_client_version != "" ? var.clusters[each.key].pmm_client_version : var.pmm_client_version
+      pmm_client_repo      = lookup(local.pmm_client_inventory_repos, var.clusters[each.key].pmm_client_repo != "" ? var.clusters[each.key].pmm_client_repo : var.pmm_client_repo, var.clusters[each.key].pmm_client_repo != "" ? var.clusters[each.key].pmm_client_repo : var.pmm_client_repo)
     }
   )
 
@@ -104,29 +107,32 @@ resource "local_file" "AnsibleInventoryRS" {
       hostname_arbiters      = each.value.hostname_arbiters
       ip_arbiters            = each.value.ip_arbiters
 
-      my_ssh_user        = var.my_ssh_user
-      rs_name            = each.value.rs_name
-      env_tag            = each.value.env_tag
-      enable_pmm         = var.enable_pmm
-      enable_audit       = each.value.enable_audit
-      audit_filter       = each.value.audit_filter
-      location           = each.value.location
-      hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
-      ip_pmm             = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
-      hostname_ycsb      = var.enable_ycsb ? local.ycsb_host : ""
-      ip_ycsb            = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
-      bucket             = azurerm_storage_container.mongo_backups_container.name
-      endpointUrl        = local.storage_endpoint
-      key                = azurerm_storage_account.mongo_backups.primary_access_key
-      account            = azurerm_storage_account.mongo_backups.name
-      mongo_release      = each.value.mongo_release != "" ? each.value.mongo_release : var.mongo_release
-      mongo_version      = each.value.mongo_version != "" ? each.value.mongo_version : var.mongo_version
-      mongo_repo         = each.value.mongo_repo != "" ? each.value.mongo_repo : var.mongo_repo
-      pbm_release        = var.pbm_release
-      pbm_version        = each.value.pbm_version != "" ? each.value.pbm_version : var.pbm_version
-      pbm_repo           = each.value.pbm_repo != "" ? each.value.pbm_repo : var.pbm_repo
-      pmm_client_version = each.value.pmm_client_version != "" ? each.value.pmm_client_version : var.pmm_client_version
-      pmm_client_repo    = lookup(local.pmm_client_inventory_repos, each.value.pmm_client_repo != "" ? each.value.pmm_client_repo : var.pmm_client_repo, each.value.pmm_client_repo != "" ? each.value.pmm_client_repo : var.pmm_client_repo)
+      my_ssh_user          = var.my_ssh_user
+      rs_name              = each.value.rs_name
+      env_tag              = each.value.env_tag
+      enable_pmm           = var.enable_pmm
+      enable_pmm_agent     = var.enable_pmm && var.replsets[each.key].enable_pmm
+      enable_pbm           = var.replsets[each.key].enable_pbm
+      enable_audit         = each.value.enable_audit
+      audit_filter         = each.value.audit_filter
+      location             = each.value.location
+      hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
+      ip_pmm               = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
+      hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
+      ip_ycsb              = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
+      bucket               = azurerm_storage_container.mongo_backups_container.name
+      endpointUrl          = local.storage_endpoint
+      key                  = azurerm_storage_account.mongo_backups.primary_access_key
+      account              = azurerm_storage_account.mongo_backups.name
+      mongodb_distribution = var.replsets[each.key].mongodb_distribution != "" ? var.replsets[each.key].mongodb_distribution : var.mongodb_distribution
+      mongo_release        = var.replsets[each.key].mongo_release != "" ? var.replsets[each.key].mongo_release : var.mongo_release
+      mongo_version        = var.replsets[each.key].mongo_version != "" ? var.replsets[each.key].mongo_version : var.mongo_version
+      mongo_repo           = var.replsets[each.key].mongo_repo != "" ? var.replsets[each.key].mongo_repo : var.mongo_repo
+      pbm_release          = var.pbm_release
+      pbm_version          = var.replsets[each.key].pbm_version != "" ? var.replsets[each.key].pbm_version : var.pbm_version
+      pbm_repo             = var.replsets[each.key].pbm_repo != "" ? var.replsets[each.key].pbm_repo : var.pbm_repo
+      pmm_client_version   = var.replsets[each.key].pmm_client_version != "" ? var.replsets[each.key].pmm_client_version : var.pmm_client_version
+      pmm_client_repo      = lookup(local.pmm_client_inventory_repos, var.replsets[each.key].pmm_client_repo != "" ? var.replsets[each.key].pmm_client_repo : var.pmm_client_repo, var.replsets[each.key].pmm_client_repo != "" ? var.replsets[each.key].pmm_client_repo : var.pmm_client_repo)
     }
   )
 

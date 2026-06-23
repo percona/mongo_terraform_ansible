@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -26,6 +27,7 @@ var safeFilenameRe = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
 
 // defaultPSMDBVersions is used as a fallback when the Percona repo is unreachable.
 var defaultPSMDBVersions = []string{"psmdb-80", "psmdb-70", "psmdb-60", "psmdb-50", "psmdb-44", "psmdb-42", "psmdb-40", "psmdb-36"}
+var defaultMongoDBOfficialVersions = []string{"8.3", "8.2", "8.0", "7.0", "6.0"}
 
 // Default Docker image tags used when Docker Hub is unreachable.
 var defaultPSMDBImages = []string{
@@ -132,6 +134,7 @@ var funcMap = template.FuncMap{
 		}
 		return def
 	},
+	"mongodbPackageLabel": mongodbPackageLabel,
 	"namespaceCustom": func(ns string) bool {
 		return ns != "" && ns != "percona" && ns != "perconalab"
 	},
@@ -164,12 +167,12 @@ var funcMap = template.FuncMap{
 	// Docker environment (checked across all replsets, then clusters).
 	"dockerPbmImage": func(cfg Config) string {
 		for _, rc := range cfg.Replsets {
-			if rc.EnablePbm && rc.PbmImage != "" {
+			if boolDefault(rc.EnablePbm, false) && rc.PbmImage != "" {
 				return rc.PbmImage
 			}
 		}
 		for _, cc := range cfg.Clusters {
-			if cc.EnablePbm && cc.PbmImage != "" {
+			if boolDefault(cc.EnablePbm, false) && cc.PbmImage != "" {
 				return cc.PbmImage
 			}
 		}
@@ -290,6 +293,71 @@ func boolDefault(b *bool, def bool) bool {
 		return def
 	}
 	return *b
+}
+
+func mongodbPackageLabel(cfg Config) string {
+	labels := map[string]bool{}
+	for _, rc := range cfg.Replsets {
+		labels[mongodbPackageLabelFor(cfg.MongoDBDistribution, cfg.MongoRelease, cfg.MongoVersion, rc.MongoDBDistribution, rc.MongoRelease, rc.MongoVersion)] = true
+	}
+	for _, cc := range cfg.Clusters {
+		labels[mongodbPackageLabelFor(cfg.MongoDBDistribution, cfg.MongoRelease, cfg.MongoVersion, cc.MongoDBDistribution, cc.MongoRelease, cc.MongoVersion)] = true
+	}
+	if len(labels) == 0 {
+		return mongodbPackageLabelFor("", "", "", cfg.MongoDBDistribution, cfg.MongoRelease, cfg.MongoVersion)
+	}
+	if len(labels) == 1 {
+		for label := range labels {
+			return label
+		}
+	}
+	parts := make([]string, 0, len(labels))
+	for label := range labels {
+		parts = append(parts, label)
+	}
+	sort.Strings(parts)
+	return "Mixed: " + strings.Join(parts, ", ")
+}
+
+func mongodbPackageLabelFor(defaultDistribution, defaultRelease, defaultVersion, distribution, release, version string) string {
+	distribution = strings.TrimSpace(distribution)
+	if distribution == "" {
+		distribution = strings.TrimSpace(defaultDistribution)
+	}
+	distribution = normalizePackageDistribution(distribution)
+	if distribution == "" {
+		distribution = "psmdb"
+	}
+
+	release = strings.TrimSpace(release)
+	if release == "" {
+		release = strings.TrimSpace(defaultRelease)
+	}
+	version = strings.TrimSpace(version)
+	if version == "" {
+		version = strings.TrimSpace(defaultVersion)
+	}
+
+	selectedVersion := version
+	if selectedVersion == "" {
+		selectedVersion = release
+	}
+	if selectedVersion == "" {
+		if distribution == "psmdb" {
+			selectedVersion = "psmdb-80"
+		} else {
+			selectedVersion = "8.0"
+		}
+	}
+
+	switch distribution {
+	case "community":
+		return "MongoDB Community " + selectedVersion
+	case "enterprise":
+		return "MongoDB Enterprise " + selectedVersion
+	default:
+		return "PSMDB " + selectedVersion
+	}
 }
 
 // ─── ANSI stripping ───────────────────────────────────────────────────────────

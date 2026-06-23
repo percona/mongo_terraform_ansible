@@ -1,14 +1,12 @@
 ---
 - name: Install MongoDB
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: install
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
-    - name: Enable the specific MongoDB version
-      shell: "/usr/bin/percona-release enable {{ mongo_release }}"
-
     - name: Install mongod packages from repository (latest)
       package:
         name: "{{ mongod_packages }}"
@@ -17,7 +15,7 @@
 
     - name: Install mongod packages from repository (specific version – Debian/Ubuntu)
       apt:
-        name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb=' ~ mongo_version ~ '*') | list }}"
+        name: "{{ mongod_versioned_packages | map('regex_replace', '^(percona-server-mongodb|mongodb-org|mongodb-org-database|mongodb-org-server|mongodb-org-mongos|mongodb-org-tools|mongodb-enterprise|mongodb-enterprise-database|mongodb-enterprise-server|mongodb-enterprise-mongos|mongodb-enterprise-tools)$', '\\1=' ~ mongo_version ~ '*') | list }}"
         state: present
         allow_downgrade: true
       when:
@@ -26,7 +24,7 @@
 
     - name: Install mongod packages from repository (specific version – RedHat)
       yum:
-        name: "{{ mongod_packages | map('regex_replace', '^percona-server-mongodb$', 'percona-server-mongodb-' ~ mongo_version) | list }}"
+        name: "{{ mongod_versioned_packages | map('regex_replace', '^(percona-server-mongodb|mongodb-org|mongodb-org-database|mongodb-org-server|mongodb-org-mongos|mongodb-org-tools|mongodb-enterprise|mongodb-enterprise-database|mongodb-enterprise-server|mongodb-enterprise-mongos|mongodb-enterprise-tools)$', '\\1-' ~ mongo_version) | list }}"
         state: present
       when:
         - mongo_version is defined and mongo_version != ''
@@ -39,10 +37,13 @@
         state: stopped
         daemon_reload: yes
       ignore_errors: true
-      when: disable_telemetry | bool
+      when:
+        - disable_telemetry | bool
+        - mongodb_distribution_effective == 'psmdb'
 
 - name: Prepare the configuration
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: bootstrap_rs
   
   vars:
@@ -60,10 +61,11 @@
       copy:
         dest: "{{ keyFile_location }}"
         content: "{{ keyfile_content }}"
-        owner: mongod
+        owner: "{{ mongo_os_user }}"
         group: root
         mode: 0600
       when: not use_tls | bool
+      notify: restart mongod
 
     - name: Copy mongod.conf 
       become: yes
@@ -73,12 +75,14 @@
         owner: root
         group: root
         mode: 0644
+      notify: restart mongod
 
     - name: Create the MongoDB directories
       become: yes
       file:
         path: "{{ item }}"
-        owner: mongod
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
         mode: '0750'
         state: directory
       with_items:
@@ -89,7 +93,8 @@
       become: yes
       file:
         path: "{{ audit_log_path | dirname }}"
-        owner: mongod
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
         mode: '0750'
         state: directory
       when: enable_audit | bool
@@ -99,10 +104,11 @@
       copy:
         dest: "{{ encryption_keyfile }}"
         content: "{{ encryption_key_content }}"
-        owner: mongod
+        owner: "{{ mongo_os_user }}"
         group: root
         mode: 0600
       when: keyfile_encryption | bool
+      notify: restart mongod
 
     - name: Copy Vault crt and mongo token file to all servers
       block:
@@ -112,8 +118,8 @@
           file:
             path: /etc/mongodb
             state: directory
-            owner: mongod
-            group: mongod
+            owner: "{{ mongo_os_user }}"
+            group: "{{ mongo_os_group }}"
             mode: 0500
 
         - name: Fetch the Vault crt file from Vault server to control machine
@@ -130,9 +136,10 @@
           copy:
             src: "{{ playbook_dir }}/vault.crt"
             dest: "{{ vault_cafile }}"
-            owner: mongod
-            group: mongod
+            owner: "{{ mongo_os_user }}"
+            group: "{{ mongo_os_group }}"
             mode: '0400'
+          notify: restart mongod
 
         - name: Fetch the mongo token file from Vault server to control machine
           become: yes
@@ -148,17 +155,22 @@
           copy:
             src: "{{ playbook_dir }}/mongo_token.txt"
             dest: "{{ vault_tokenfile }}"
-            owner: mongod
-            group: mongod
+            owner: "{{ mongo_os_user }}"
+            group: "{{ mongo_os_group }}"
             mode: '0400'
+          notify: restart mongod
 
       when: vault_encryption | bool
 
-    - name: Start mongod on replica set member
+    - name: Ensure mongod is started
       become: yes
       service:
         name: mongod
-        state: restarted
+        state: started
+        enabled: yes
+
+    - name: Apply pending mongod restarts
+      meta: flush_handlers
 
     - name: Prepare the init command for replica set
       template:
@@ -197,8 +209,16 @@
       changed_when: false
       when: mongodb_primary | default(false)
 
+  handlers:
+    - name: restart mongod
+      become: yes
+      service:
+        name: mongod
+        state: restarted
+
 - name: Create the local users & logrotate
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: os_conf
 

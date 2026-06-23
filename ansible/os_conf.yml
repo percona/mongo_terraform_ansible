@@ -1,6 +1,7 @@
 ---
 - name: Prepare OS configuration
   hosts: cfg:shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: os_conf
   become : yes
   strategy: free
@@ -14,7 +15,7 @@
       net.core.somaxconn: 65535
       vm.max_map_count: 102400
 
-    mongo_major: "{{ mongo_release | regex_search('[0-9]+$') | int }}"
+    mongo_major: "{{ (mongo_release_effective | regex_search('^[0-9]+') | default(mongo_release_effective | regex_search('[0-9]+$'), true)) | int }}"
 
     pam_limits:
       - domain: "*"

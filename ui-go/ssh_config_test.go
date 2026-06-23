@@ -143,6 +143,26 @@ func TestSemverGreater(t *testing.T) {
 	}
 }
 
+func TestParseYUMPackageVersionsFromMongoDBS3Listing(t *testing.T) {
+	sampleListing := `<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <Contents><Key>yum/redhat/9/mongodb-org/8.3/x86_64/RPMS/mongodb-org-server-8.3.2-1.el9.x86_64.rpm</Key></Contents>
+  <Contents><Key>yum/redhat/9/mongodb-org/8.3/x86_64/RPMS/mongodb-org-server-8.3.4-1.el9.x86_64.rpm</Key></Contents>
+  <Contents><Key>yum/redhat/9/mongodb-org/8.3/x86_64/RPMS/mongodb-org-mongos-8.3.4-1.el9.x86_64.rpm</Key></Contents>
+</ListBucketResult>`
+
+	got := parseYUMPackageVersions(sampleListing, "mongodb-org-server")
+	if len(got) != 2 {
+		t.Fatalf("expected 2 versions, got %d: %v", len(got), got)
+	}
+	if got[0] != "8.3.4" {
+		t.Fatalf("expected newest version 8.3.4, got %s", got[0])
+	}
+	if got[1] != "8.3.2" {
+		t.Fatalf("expected second version 8.3.2, got %s", got[1])
+	}
+}
+
 func TestWriteTfvarsDockerCredentials(t *testing.T) {
 	dir := t.TempDir()
 	// Override terraformDir so writeTfvars writes into the temp directory.

@@ -48,6 +48,7 @@ browser instead of editing `.tfvars` files by hand.
 Key features:
 - Visual wizard for cluster topology, images/packages, credentials, and networking
 - Audit plugin controls for every cluster and replica set, including enable/disable and custom filter expressions
+- Optional YCSB workload generator with UI controls to insert data, start load, and stop load
 - Live deployment log streamed in the browser via Server-Sent Events
 - Hosts & Connections panel with one-click SSH/`docker exec` commands, MongoDB connection
   strings, and direct links to PMM and MinIO Console web UIs
@@ -85,35 +86,12 @@ See [`ui-go/README.md`](./ui-go/README.md) for full details.
     - [Local Docker containers](./terraform/docker/README.md)
     - [Local Libvirt/KVM virtual machines](./terraform/libvirt/README.md)
 
-## Expanding Existing Topologies
+## Advanced Workflows
 
-The framework supports scale-out for existing deployments, but not scale-in.
+The root README is a starting point. Detailed operational guidance lives with the component that runs each workflow:
 
-Supported changes:
-- Add shards to an existing sharded cluster by increasing `shard_count`.
-- Add data-bearing members to an existing standalone replica set by increasing `data_nodes_per_replset`.
-- Add entirely new clusters or standalone replica sets to an existing environment.
-
-Unsupported changes:
-- Reducing `shard_count` or `data_nodes_per_replset`.
-- Changing `configsvr_count` after a sharded cluster is initialized.
-- Changing `shardsvr_replicas` for existing shards.
-- Changing `arbiters_per_replset` for existing sharded clusters or standalone replica sets.
-
-For AWS, GCP, Azure, and CHAOS, scale-out is a two-phase operation: Terraform creates the new hosts and Ansible joins them to MongoDB. For example:
-
-```bash
-# Add a shard after increasing shard_count and applying Terraform
-ansible-playbook -i <prefix>_inventory_<cluster> ansible/add_shard.yml \
-  --extra-vars "new_shard_group=shard<N>"
-
-# Add data-bearing replica set members after increasing data_nodes_per_replset
-ansible-playbook -i <prefix>_inventory_<rs> ansible/add_replset_member.yml \
-  --extra-vars "target_replset=<rs>"
-```
-
-For Docker, Terraform performs the supported scale-out operations directly during `terraform apply`.
-
-The Go UI detects topology changes before deployment. Unsupported changes are refused before Terraform runs. Supported cloud scale-out changes run Terraform first and then the required Ansible scale-out playbook automatically.
+- Existing topology expansion: [UI workflow](./ui-go/README.md#topology-expansion), [Ansible playbooks](./ansible/README.md#running), and each Terraform provider README.
+- Workload generation with YCSB: [UI workflow](./ui-go/README.md#ycsb-workloads), [cloud Ansible notes](./ansible/README.md#ycsb-workloads), and [Docker workflow](./terraform/docker/README.md#simulating-a-workload-with-ycsb).
+- TLS, Vault-backed encryption, PBM, PMM, stopping, restarting, and reset playbooks: [Ansible README](./ansible/README.md).
 
 ## Disclaimer: This code is not supported by Percona. It has been provided solely as a community-contributed example and is not covered under any Percona services agreement.

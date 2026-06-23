@@ -1,6 +1,7 @@
 ---
 - name: Configure PMM server
   hosts: pmm
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: pmm_server
   become: true
   vars:
@@ -29,6 +30,7 @@
               - curl
             state: present
             update_cache: true
+            cache_valid_time: 3600
 
         - name: Create keyrings directory
           file:
@@ -49,10 +51,10 @@
 
         - name: Install Docker
           apt:
-            name: "{{ item }}"
-            state: latest
+            name: "{{ docker_packages }}"
+            state: present
             update_cache: true
-          with_items: "{{ docker_packages }}"
+            cache_valid_time: 3600
 
       when:
         - pmm_enabled | bool
@@ -71,9 +73,8 @@
 
         - name: Install Docker
           yum:
-            name: "{{ item }}"
+            name: "{{ docker_packages }}"
             state: present
-          with_items: "{{ docker_packages }}"
 
       when:
         - pmm_enabled | bool

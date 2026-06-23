@@ -1,3 +1,11 @@
+locals {
+  pmm_client_inventory_repos = {
+    release      = "pmm3-client"
+    testing      = "pmm3-client testing"
+    experimental = "pmm3-client experimental"
+  }
+}
+
 resource "local_file" "AnsibleInventoryCluster" {
   for_each = module.mongodb_clusters
 
@@ -24,25 +32,31 @@ resource "local_file" "AnsibleInventoryCluster" {
       number_of_shards     = each.value.number_of_shards
       arbiters_per_replset = range(each.value.arbiters_per_replset)
 
-      my_ssh_user  = var.my_ssh_user
-      cluster      = each.value.cluster
-      env_tag      = each.value.env_tag
-      enable_pmm   = var.enable_pmm
-      enable_audit = each.value.enable_audit
-      audit_filter = each.value.audit_filter
+      my_ssh_user      = var.my_ssh_user
+      cluster          = each.value.cluster
+      env_tag          = each.value.env_tag
+      enable_pmm       = var.enable_pmm
+      enable_pmm_agent = var.enable_pmm && var.clusters[each.key].enable_pmm
+      enable_pbm       = var.clusters[each.key].enable_pbm
+      enable_audit     = each.value.enable_audit
+      audit_filter     = each.value.audit_filter
 
-      hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
-      ip_pmm             = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
-      hostname_ycsb      = var.enable_ycsb ? local.ycsb_host : ""
-      ip_ycsb            = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
-      bucket             = google_storage_bucket.mongo-backups.name
-      access_key         = google_storage_hmac_key.mongo-backup-service-account.access_id
-      secret_access_key  = google_storage_hmac_key.mongo-backup-service-account.secret
-      mongo_release      = var.mongo_release
-      mongo_version      = var.mongo_version
-      pbm_release        = var.pbm_release
-      pbm_version        = var.pbm_version
-      pmm_client_version = var.pmm_client_version
+      hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
+      ip_pmm               = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
+      hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
+      ip_ycsb              = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
+      bucket               = google_storage_bucket.mongo-backups.name
+      access_key           = google_storage_hmac_key.mongo-backup-service-account.access_id
+      secret_access_key    = google_storage_hmac_key.mongo-backup-service-account.secret
+      mongodb_distribution = var.clusters[each.key].mongodb_distribution != "" ? var.clusters[each.key].mongodb_distribution : var.mongodb_distribution
+      mongo_release        = var.clusters[each.key].mongo_release != "" ? var.clusters[each.key].mongo_release : var.mongo_release
+      mongo_version        = var.clusters[each.key].mongo_version != "" ? var.clusters[each.key].mongo_version : var.mongo_version
+      mongo_repo           = var.clusters[each.key].mongo_repo != "" ? var.clusters[each.key].mongo_repo : var.mongo_repo
+      pbm_release          = var.pbm_release
+      pbm_version          = var.clusters[each.key].pbm_version != "" ? var.clusters[each.key].pbm_version : var.pbm_version
+      pbm_repo             = var.clusters[each.key].pbm_repo != "" ? var.clusters[each.key].pbm_repo : var.pbm_repo
+      pmm_client_version   = var.clusters[each.key].pmm_client_version != "" ? var.clusters[each.key].pmm_client_version : var.pmm_client_version
+      pmm_client_repo      = lookup(local.pmm_client_inventory_repos, var.clusters[each.key].pmm_client_repo != "" ? var.clusters[each.key].pmm_client_repo : var.pmm_client_repo, var.clusters[each.key].pmm_client_repo != "" ? var.clusters[each.key].pmm_client_repo : var.pmm_client_repo)
     }
   )
 
@@ -91,24 +105,30 @@ resource "local_file" "AnsibleInventoryRS" {
       hostname_arbiters      = each.value.hostname_arbiters
       ip_arbiters            = each.value.ip_arbiters
 
-      my_ssh_user        = var.my_ssh_user
-      rs_name            = each.value.rs_name
-      env_tag            = each.value.env_tag
-      enable_pmm         = var.enable_pmm
-      enable_audit       = each.value.enable_audit
-      audit_filter       = each.value.audit_filter
-      hostname_pmm       = var.enable_pmm ? local.pmm_host : ""
-      ip_pmm             = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
-      hostname_ycsb      = var.enable_ycsb ? local.ycsb_host : ""
-      ip_ycsb            = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
-      bucket             = google_storage_bucket.mongo-backups.name
-      access_key         = google_storage_hmac_key.mongo-backup-service-account.access_id
-      secret_access_key  = google_storage_hmac_key.mongo-backup-service-account.secret
-      mongo_release      = var.mongo_release
-      mongo_version      = var.mongo_version
-      pbm_release        = var.pbm_release
-      pbm_version        = var.pbm_version
-      pmm_client_version = var.pmm_client_version
+      my_ssh_user          = var.my_ssh_user
+      rs_name              = each.value.rs_name
+      env_tag              = each.value.env_tag
+      enable_pmm           = var.enable_pmm
+      enable_pmm_agent     = var.enable_pmm && var.replsets[each.key].enable_pmm
+      enable_pbm           = var.replsets[each.key].enable_pbm
+      enable_audit         = each.value.enable_audit
+      audit_filter         = each.value.audit_filter
+      hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
+      ip_pmm               = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
+      hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
+      ip_ycsb              = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
+      bucket               = google_storage_bucket.mongo-backups.name
+      access_key           = google_storage_hmac_key.mongo-backup-service-account.access_id
+      secret_access_key    = google_storage_hmac_key.mongo-backup-service-account.secret
+      mongodb_distribution = var.replsets[each.key].mongodb_distribution != "" ? var.replsets[each.key].mongodb_distribution : var.mongodb_distribution
+      mongo_release        = var.replsets[each.key].mongo_release != "" ? var.replsets[each.key].mongo_release : var.mongo_release
+      mongo_version        = var.replsets[each.key].mongo_version != "" ? var.replsets[each.key].mongo_version : var.mongo_version
+      mongo_repo           = var.replsets[each.key].mongo_repo != "" ? var.replsets[each.key].mongo_repo : var.mongo_repo
+      pbm_release          = var.pbm_release
+      pbm_version          = var.replsets[each.key].pbm_version != "" ? var.replsets[each.key].pbm_version : var.pbm_version
+      pbm_repo             = var.replsets[each.key].pbm_repo != "" ? var.replsets[each.key].pbm_repo : var.pbm_repo
+      pmm_client_version   = var.replsets[each.key].pmm_client_version != "" ? var.replsets[each.key].pmm_client_version : var.pmm_client_version
+      pmm_client_repo      = lookup(local.pmm_client_inventory_repos, var.replsets[each.key].pmm_client_repo != "" ? var.replsets[each.key].pmm_client_repo : var.pmm_client_repo, var.replsets[each.key].pmm_client_repo != "" ? var.replsets[each.key].pmm_client_repo : var.pmm_client_repo)
     }
   )
 

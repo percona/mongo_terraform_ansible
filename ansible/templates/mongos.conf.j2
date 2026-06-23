@@ -44,7 +44,9 @@ security:
 operationProfiling:
    slowOpThresholdMs: 200
 #   slowOpSampleRate: 0.1
+{% if mongodb_distribution_effective == 'psmdb' %}
    rateLimit: 100
+{% endif %}
 
 {% if enable_audit %}
 setParameter:

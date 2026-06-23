@@ -161,11 +161,16 @@ stateDiagram-v2
 2. **Configuration wizard** – fill in cluster topology, images/packages, credentials,
     networking, and (for cloud platforms) per-component instance types and disk sizes.
     - Image tags are fetched live from Docker Hub on startup and cached for 5 minutes.
+    - Docker deployments can change the Percona image namespace, for example from
+      `percona` to `perconalab`, while still using the same tag dropdowns.
     - Percona package release identifiers (`psmdb-80`, …) are fetched from the Percona
       repository listing on startup.
+    - Cloud deployments can select `release`, `testing`, or `experimental` Percona
+      repository channels for MongoDB, PBM, and PMM client packages.
     - Each cluster and replica set includes audit plugin controls. Audit is disabled by
       default. Docker environments use the built-in write-only filter for non-system users
       unless you override it.
+    - Optional YCSB workload generation can be enabled for Docker and cloud environments.
 3. **Save** – writes `<env_id>.tfvars` inside the corresponding `../terraform/<platform>/`
    directory and records the environment in `environments.json`.
 4. **Deploy** – runs `terraform init && terraform apply` (and Ansible for cloud platforms)
@@ -181,8 +186,18 @@ stateDiagram-v2
    every host or container with its IP address, a copy-pasteable connect command
    (`ssh user@host` or `docker exec -it <name> bash`), MongoDB connection strings for
    every replica set and cluster, and clickable **Open** buttons for PMM and MinIO
-    Console URLs.  All PMM-related containers (server, Grafana renderer, Watchtower,
-    and per-node PMM client sidecars) are grouped together under a single **PMM** section.
+   Console URLs. All PMM-related containers (server, Grafana renderer, Watchtower,
+   and per-node PMM client sidecars) are grouped together under a single **PMM** section.
+
+## YCSB Workloads
+
+When **Include YCSB** is enabled, the UI provisions a dedicated workload generator for Docker and cloud environments. After the environment is provisioned or running, each cluster and standalone replica set shows YCSB controls:
+
+- **Insert Data** runs the initial YCSB load.
+- **Start Load** starts a background workload against the selected target.
+- **Stop Load** stops the active workload.
+
+For Docker, the UI runs YCSB inside the generated YCSB container. For cloud platforms, it connects to the generated YCSB host over SSH and runs `/opt/ycsb/bin/ycsb`.
 
 ## Topology Expansion
 

@@ -2,18 +2,12 @@
 - name: Install YCSB workload generator
   hosts: ycsb
   become: yes
-  gather_facts: yes
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tasks:
     - name: Define Java runtime package for the current OS family
       set_fact:
         ycsb_java_package: "{{ 'default-jre-headless' if ansible_facts['os_family'] == 'Debian' else 'java-17-openjdk' }}"
         ycsb_python_package: "{{ 'python-is-python3' if ansible_facts['os_family'] == 'Debian' else 'python3' }}"
-
-    - name: Refresh APT package metadata from scratch
-      shell: |
-        rm -rf /var/lib/apt/lists/*
-        apt-get update
-      when: ansible_facts['os_family'] == 'Debian'
 
     - name: Install Java runtime and tools on Debian/Ubuntu
       apt:
@@ -24,6 +18,8 @@
           - "{{ ycsb_python_package }}"
           - "{{ ycsb_java_package }}"
         state: present
+        update_cache: yes
+        cache_valid_time: 3600
       when: ansible_facts['os_family'] == 'Debian'
 
     - name: Install Java runtime and tools on non-Debian systems

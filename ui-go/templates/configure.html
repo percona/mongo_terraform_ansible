@@ -15,59 +15,13 @@
     <h2>General</h2>
     <div class="form-row">
       <div class="form-group">
-        <label for="env_id_field">Name <span class="field-tip" data-tip="Unique identifier for this environment. Leave blank to auto-generate. Also used as the tfvars filename prefix.">ⓘ</span></label>
+        <label for="env_id_field">Name <span class="field-tip" data-tip="Unique identifier for this environment. Leave blank to auto-generate. Also used as the resource prefix and tfvars filename prefix.">ⓘ</span></label>
         <input type="text" id="env_id_field" name="env_id" placeholder="e.g. dev01"
-               value="{{.EnvID}}" maxlength="20" pattern="[a-zA-Z0-9_-]+"
-               title="Alphanumeric, hyphens and underscores only">
-      </div>
-      <div class="form-group">
-        <label for="prefix">Resource Prefix <span class="field-tip" data-tip="Prefix applied to all created resources to avoid naming collisions. Defaults to the environment name.">ⓘ</span></label>
-        <input type="text" id="prefix" name="prefix"
-               value="{{strDefault .Config.Prefix .EnvID}}"
-               placeholder="{{.EnvID}}">
+               value="{{.EnvID}}" maxlength="16" pattern="[a-z0-9]+"
+               title="Lowercase letters and digits only, max 16 characters">
       </div>
     </div>
 
-    {{if ne $p "docker"}}
-    <div class="form-row">
-      <div class="form-group">
-        <label for="mongo_release">MongoDB Major Version <span class="field-tip" data-tip="Percona repository identifier – selects the major MongoDB release line to install.">ⓘ</span></label>
-        <select id="mongo_release" name="mongo_release"
-                onchange="onMongoReleaseChange(this)">
-          {{$cur := .Config.MongoRelease}}
-          {{range .PSMDBVersions}}
-          <option value="{{.}}" {{if eq $cur .}}selected{{end}}>{{.}}</option>
-          {{end}}
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="mongo_version">MongoDB Specific Version <span class="field-tip" data-tip="Optional: pin to a specific version (e.g., 7.0.12). Leave empty to install the latest available in the selected major release.">ⓘ</span></label>
-        <select id="mongo_version" name="mongo_version">
-          <option value="">latest (default)</option>
-          {{$curVer := .Config.MongoVersion}}
-          {{$release := .Config.MongoRelease}}
-          {{if $release}}
-            {{$minors := index $.PSMDBMinorVersions $release}}
-            {{range $minors}}
-            <option value="{{.}}" {{if eq $curVer .}}selected{{end}}>{{.}}</option>
-            {{end}}
-          {{end}}
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="pbm_version">PBM Version <span class="field-tip" data-tip="Optional: pin to a specific PBM version (e.g., 2.7.0). Leave empty to install the latest.">ⓘ</span></label>
-        <select id="pbm_version" name="pbm_version">
-          <option value="">latest (default)</option>
-          {{$curPbmVer := .Config.PbmVersion}}
-          {{range .PBMVersions}}
-          <option value="{{.}}" {{if eq $curPbmVer .}}selected{{end}}>{{.}}</option>
-          {{end}}
-        </select>
-      </div>
-    </div>
-    {{end}}
   </section>
 
   <!-- ──────────── Platform-specific settings ──────────── -->
@@ -310,23 +264,6 @@
   <section class="form-section">
     <h2>CHAOS Settings</h2>
     <div class="form-row">
-      <div class="form-group form-group-full">
-        <label for="chaos_api_token_path">CHAOS API Token File <span class="field-tip" data-tip="Path to a file containing the CHAOS API token. The token itself is not stored in environments.json.">ⓘ</span></label>
-        <div style="display:flex;gap:0.5rem;align-items:center">
-          <input type="text" id="chaos_api_token_path" name="chaos_api_token_path"
-                 value="{{.Config.ChaosApiTokenPath}}"
-                 placeholder="/path/to/chaos-token.txt" style="flex:1">
-          <label class="btn btn-outline btn-sm" style="cursor:pointer;white-space:nowrap;margin:0">
-            Browse&hellip;
-            <input type="file" id="chaos_token_file" style="display:none"
-                   onchange="setChaosTokenFilePath(this)">
-          </label>
-        </div>
-        <small id="chaos_token_filename" class="text-muted">{{if .Config.ChaosApiTokenPath}}Stored token file: {{.Config.ChaosApiTokenPath}}{{else}}Upload a token file or enter a readable path on the UI host.{{end}}</small>
-
-      </div>
-    </div>
-    <div class="form-row">
       <div class="form-group">
         <label for="my_ssh_user">SSH User <span class="field-tip" data-tip="Username Ansible uses to connect to all CHAOS instances.">ⓘ</span></label>
         <input type="text" id="my_ssh_user" name="my_ssh_user"
@@ -352,23 +289,13 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label for="os_image">OS Image <span class="field-tip" data-tip="Operating system for all CHAOS instances. Default: Ubuntu 24.04.">ⓘ</span></label>
-        <select id="os_image" name="os_image">
-          {{$curOs := strDefault .Config.OsImage "Ubuntu 24.04"}}
-          <option value="Ubuntu 24.04" {{if eq $curOs "Ubuntu 24.04"}}selected{{end}}>Ubuntu 24.04</option>
-          <option value="Ubuntu 22.04" {{if eq $curOs "Ubuntu 22.04"}}selected{{end}}>Ubuntu 22.04</option>
-          <option value="Rocky Linux 9" {{if eq $curOs "Rocky Linux 9"}}selected{{end}}>Rocky Linux 9</option>
-          <option value="Rocky Linux 8" {{if eq $curOs "Rocky Linux 8"}}selected{{end}}>Rocky Linux 8</option>
-          <option value="CentOS 9" {{if eq $curOs "CentOS 9"}}selected{{end}}>CentOS 9</option>
-          <option value="Oracle Linux 9" {{if eq $curOs "Oracle Linux 9"}}selected{{end}}>Oracle Linux 9</option>
-          <option value="Oracle Linux 8" {{if eq $curOs "Oracle Linux 8"}}selected{{end}}>Oracle Linux 8</option>
-          <option value="Debian 12" {{if eq $curOs "Debian 12"}}selected{{end}}>Debian 12</option>
+        <label for="delete_after_days">Delete After <span class="field-tip" data-tip="CHAOS will automatically delete instances after the selected retention. Choose Never to omit delete_after_days from the Terraform provider request.">ⓘ</span></label>
+        <select id="delete_after_days" name="delete_after_days">
+          <option value="7" {{if eq .Config.DeleteAfterDays 7}}selected{{end}}>7 days</option>
+          <option value="14" {{if eq .Config.DeleteAfterDays 14}}selected{{end}}>14 days</option>
+          <option value="30" {{if eq .Config.DeleteAfterDays 30}}selected{{end}}>30 days</option>
+          <option value="" {{if eq .Config.DeleteAfterDays 0}}selected{{end}}>Never</option>
         </select>
-      </div>
-      <div class="form-group">
-        <label for="delete_after_days">Delete After (days) <span class="field-tip" data-tip="CHAOS will automatically delete instances after this many days (0–30, default 14).">ⓘ</span></label>
-        <input type="number" id="delete_after_days" name="delete_after_days"
-               value="{{intDefault .Config.DeleteAfterDays 14}}" min="0" max="30">
       </div>
     </div>
   </section>
@@ -397,7 +324,7 @@
         <div class="customize-body" style="display:none">
           <div class="form-row">
             <div class="form-group">
-              <label>Env Tag <span class="field-tip" data-tip="Tag applied to resources in this cluster (e.g. test, prod).">ⓘ</span></label>
+              <label>Environment <span class="field-tip" data-tip="Environment for the resources created. Examples: dev, qa, prod.">ⓘ</span></label>
               <input type="text" name="cluster_env_tag[]" value="{{strDefault .Config.EnvTag "test"}}" placeholder="test">
             </div>
             <div class="form-group">
@@ -457,17 +384,150 @@
               <textarea name="cluster_audit_filter[]" rows="4" spellcheck="false">{{strDefault .Config.AuditFilter $.DefaultAuditFilter}}</textarea>
             </div>
           </div>
+          {{if eq $p "chaos"}}
+          <div class="form-row">
+            <div class="form-group">
+              <label>OS Image <span class="field-tip" data-tip="Operating system for this CHAOS cluster only. Leave blank to use the Terraform module default.">ⓘ</span></label>
+              {{$curOs := .Config.OsImage}}
+              <select name="cluster_os_image[]" onchange="onPackageOsImageChange(this)">
+                <option value="" {{if eq $curOs ""}}selected{{end}}>default</option>
+                <option value="Ubuntu 24.04" {{if eq $curOs "Ubuntu 24.04"}}selected{{end}}>Ubuntu 24.04</option>
+                <option value="Ubuntu 22.04" {{if eq $curOs "Ubuntu 22.04"}}selected{{end}}>Ubuntu 22.04</option>
+                <option value="Rocky Linux 9" {{if eq $curOs "Rocky Linux 9"}}selected{{end}}>Rocky Linux 9</option>
+                <option value="Rocky Linux 8" {{if eq $curOs "Rocky Linux 8"}}selected{{end}}>Rocky Linux 8</option>
+                <option value="CentOS 9" {{if eq $curOs "CentOS 9"}}selected{{end}}>CentOS 9</option>
+                <option value="Oracle Linux 9" {{if eq $curOs "Oracle Linux 9"}}selected{{end}}>Oracle Linux 9</option>
+                <option value="Oracle Linux 8" {{if eq $curOs "Oracle Linux 8"}}selected{{end}}>Oracle Linux 8</option>
+                <option value="Debian 12" {{if eq $curOs "Debian 12"}}selected{{end}}>Debian 12</option>
+              </select>
+            </div>
+          </div>
+          {{end}}
+          {{if ne $p "docker"}}
+          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo}}
+          <div class="subsection-header">
+            <span class="subsection-title">Package Overrides</span>
+            <button type="button" class="btn btn-outline btn-sm package-toggle-btn"
+                    onclick="togglePackageBlock(this)">{{if $packageConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+          </div>
+          <div class="package-block-body" {{if not $packageConfigured}}style="display:none"{{end}}>
+          <div class="form-row">
+            <div class="form-group">
+              <label>MongoDB Distribution <span class="field-tip" data-tip="Package distribution for this cluster. PSMDB uses Percona repositories; Community and Enterprise use official MongoDB repositories.">ⓘ</span></label>
+              {{$mongoDist := strDefault .Config.MongoDBDistribution "psmdb"}}
+              <select name="cluster_mongodb_distribution[]" onchange="onMongoDBDistributionChange(this)">
+                <option value="psmdb" {{if eq $mongoDist "psmdb"}}selected{{end}}>Percona Server for MongoDB</option>
+                <option value="community" {{if eq $mongoDist "community"}}selected{{end}}>MongoDB Community</option>
+                <option value="enterprise" {{if eq $mongoDist "enterprise"}}selected{{end}}>MongoDB Enterprise</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this cluster. Defaults to release (GA).">ⓘ</span></label>
+              {{$mongoRepo := strDefault .Config.MongoRepo "release"}}
+              <select name="cluster_mongo_repo[]" onchange="onPackageRepoChange(this, 'psmdb')">
+                <option value="release" {{if eq $mongoRepo "release"}}selected{{end}}>release (GA)</option>
+                <option value="testing" {{if eq $mongoRepo "testing"}}selected{{end}}>testing</option>
+                <option value="experimental" {{if eq $mongoRepo "experimental"}}selected{{end}}>experimental</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>MongoDB Major Version <span class="field-tip" data-tip="PSMDB major release line for this cluster. Defaults to the latest listed release line.">ⓘ</span></label>
+              <select name="cluster_mongo_release[]" onchange="onMongoReleaseChange(this)">
+                {{$curRel := .Config.MongoRelease}}
+                {{range $.PSMDBVersions}}
+                <option value="{{.}}" {{if eq $curRel .}}selected{{end}}>{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>MongoDB Minor Version <span class="field-tip" data-tip="PSMDB minor/package version pin for this cluster. Defaults to the newest package from the selected release/channel.">ⓘ</span></label>
+              <select name="cluster_mongo_version[]">
+                {{$curVer := .Config.MongoVersion}}
+                {{$effectiveRel := strDefault .Config.MongoRelease $.Config.MongoRelease}}
+                {{$minors := index $.PSMDBMinorVersions $effectiveRel}}
+                {{range $minors}}
+                <option value="{{.}}" {{if eq $curVer .}}selected{{end}}>{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
+          <div class="form-row" data-package-feature="pbm" {{if not (boolDefault .Config.EnablePbm false)}}style="display:none"{{end}}>
+            <div class="form-group">
+              <label>PBM Repository Channel <span class="field-tip" data-tip="PBM repository channel for this cluster. Defaults to release (GA).">ⓘ</span></label>
+              {{$pbmRepo := strDefault .Config.PbmRepo "release"}}
+              <select name="cluster_pbm_repo[]" onchange="onPackageRepoChange(this, 'pbm')">
+                <option value="release" {{if eq $pbmRepo "release"}}selected{{end}}>release (GA)</option>
+                <option value="testing" {{if eq $pbmRepo "testing"}}selected{{end}}>testing</option>
+                <option value="experimental" {{if eq $pbmRepo "experimental"}}selected{{end}}>experimental</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>PBM Major Version <span class="field-tip" data-tip="PBM major version line for this cluster.">ⓘ</span></label>
+              <select name="cluster_pbm_major[]" onchange="onPackageMajorChange(this, 'pbm')">
+              </select>
+            </div>
+            <div class="form-group">
+              <label>PBM Minor Version <span class="field-tip" data-tip="PBM package version pin for this cluster. Defaults to the newest package from the selected channel.">ⓘ</span></label>
+              <select name="cluster_pbm_version[]">
+                {{$curPbmVer := .Config.PbmVersion}}
+                {{range $.PBMVersions}}
+                <option value="{{.}}" {{if eq $curPbmVer .}}selected{{end}}>{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
+          <div class="form-row" data-package-feature="pmm" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
+            <div class="form-group">
+              <label>PMM Client Repository Channel <span class="field-tip" data-tip="PMM client repository channel for this cluster. Defaults to release (GA). The PMM server remains environment-wide.">ⓘ</span></label>
+              {{$pmmClientRepo := strDefault .Config.PmmClientRepo "release"}}
+              <select name="cluster_pmm_client_repo[]" onchange="onPackageRepoChange(this, 'pmm_client')">
+                <option value="release" {{if eq $pmmClientRepo "release"}}selected{{end}}>release (GA)</option>
+                <option value="testing" {{if eq $pmmClientRepo "testing"}}selected{{end}}>testing</option>
+                <option value="experimental" {{if eq $pmmClientRepo "experimental"}}selected{{end}}>experimental</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>PMM Client Major Version <span class="field-tip" data-tip="PMM client major version line for this cluster.">ⓘ</span></label>
+              <select name="cluster_pmm_client_major[]" onchange="onPackageMajorChange(this, 'pmm_client')">
+              </select>
+            </div>
+            <div class="form-group">
+              <label>PMM Client Minor Version <span class="field-tip" data-tip="PMM client package version pin for this cluster. Defaults to the newest client package from the selected channel. The PMM server remains environment-wide.">ⓘ</span></label>
+              <select name="cluster_pmm_client_version[]">
+                {{$curPmmClientVer := .Config.PmmClientVersion}}
+                {{range $.PMMClientImages}}
+                <option value="{{.}}" {{if eq $curPmmClientVer .}}selected{{end}}>{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="cluster_enable_pmm[]" value="1"
+                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
+                            onchange="onPmmAgentFeatureToggle(this)">
+                Install PMM agent</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="cluster_enable_pbm[]" value="1"
+                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
+                            onchange="onPbmAgentFeatureToggle(this)">
+                Install PBM agent</label>
+            </div>
+          </div>
+          {{end}}
           {{if eq $p "docker"}}
             <div class="form-row">
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="cluster_enable_pmm[]" value="1"
-                            {{if .Config.EnablePmm}}checked{{end}}
+                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
                             onchange="onDockerPmmFeatureToggle(this)">
                 Enable PMM monitoring</label>
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="cluster_enable_pbm[]" value="1"
-                            {{if .Config.EnablePbm}}checked{{end}}
+                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
                             onchange="onDockerPbmFeatureToggle(this)">
                 Enable PBM backups</label>
             </div>
@@ -478,37 +538,64 @@
             </div>
           </div>
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group image-field" data-image-repo="percona-server-mongodb">
               <label>PSMDB Image <span class="field-tip" data-tip="Percona Server for MongoDB Docker image tag used for all nodes in this cluster.">ⓘ</span></label>
-              <select name="cluster_psmdb_image[]">
-                {{$cur := .Config.PsmdbImage}}
+              {{$cur := .Config.PsmdbImage}}{{$ns := imageNamespace $cur "percona"}}
+              <div class="image-namespace-row">
+                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                  <option value="percona" {{if eq $ns "percona"}}selected{{end}}>percona</option>
+                  <option value="perconalab" {{if eq $ns "perconalab"}}selected{{end}}>perconalab</option>
+                  <option value="__custom__" {{if namespaceCustom $ns}}selected{{end}}>custom</option>
+                </select>
+                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $ns}}{{$ns}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $ns)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+              </div>
+              <select name="cluster_psmdb_image[]" class="docker-tag-select" data-image-repo="percona-server-mongodb">
                 {{range $.PSMDBImages}}
-                <option value="{{.}}" {{if tagSelected $cur "percona/percona-server-mongodb" .}}selected{{end}}>
-                  percona/percona-server-mongodb:{{.}}
+                <option value="{{.}}" {{if tagSelected $cur (printf "%s/percona-server-mongodb" $ns) .}}selected{{end}}>
+                  {{$ns}}/percona-server-mongodb:{{.}}
                 </option>
                 {{end}}
+                <option value="__custom__">Custom image…</option>
               </select>
             </div>
-            <div class="form-group" data-image-group="pbm" {{if not .Config.EnablePbm}}style="display:none"{{end}}>
+            <div class="form-group image-field" data-image-group="pbm" data-image-repo="percona-backup-mongodb" {{if not (boolDefault .Config.EnablePbm false)}}style="display:none"{{end}}>
               <label>PBM Image <span class="field-tip" data-tip="Percona Backup for MongoDB Docker image tag used for backup agents in this cluster.">ⓘ</span></label>
-              <select name="cluster_pbm_image[]">
-                {{$curPbm := .Config.PbmImage}}
+              {{$curPbm := .Config.PbmImage}}{{$pbmNs := imageNamespace $curPbm "percona"}}
+              <div class="image-namespace-row">
+                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                  <option value="percona" {{if eq $pbmNs "percona"}}selected{{end}}>percona</option>
+                  <option value="perconalab" {{if eq $pbmNs "perconalab"}}selected{{end}}>perconalab</option>
+                  <option value="__custom__" {{if namespaceCustom $pbmNs}}selected{{end}}>custom</option>
+                </select>
+                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $pbmNs}}{{$pbmNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $pbmNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+              </div>
+              <select name="cluster_pbm_image[]" class="docker-tag-select" data-image-repo="percona-backup-mongodb">
                 {{range $.PBMImages}}
-                <option value="{{.}}" {{if tagSelected $curPbm "percona/percona-backup-mongodb" .}}selected{{end}}>
-                  percona/percona-backup-mongodb:{{.}}
+                <option value="{{.}}" {{if tagSelected $curPbm (printf "%s/percona-backup-mongodb" $pbmNs) .}}selected{{end}}>
+                  {{$pbmNs}}/percona-backup-mongodb:{{.}}
                 </option>
                 {{end}}
+                <option value="__custom__">Custom image…</option>
               </select>
             </div>
-            <div class="form-group" data-image-group="pmm" {{if not .Config.EnablePmm}}style="display:none"{{end}}>
+            <div class="form-group image-field" data-image-group="pmm" data-image-repo="pmm-client" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
               <label>PMM Client Image <span class="field-tip" data-tip="PMM Client Docker image tag used to monitor nodes in this cluster.">ⓘ</span></label>
-              <select name="cluster_pmm_client_image[]">
-                {{$curPmmc := .Config.PmmClientImage}}
+              {{$curPmmc := .Config.PmmClientImage}}{{$pmmcNs := imageNamespace $curPmmc "percona"}}
+              <div class="image-namespace-row">
+                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                  <option value="percona" {{if eq $pmmcNs "percona"}}selected{{end}}>percona</option>
+                  <option value="perconalab" {{if eq $pmmcNs "perconalab"}}selected{{end}}>perconalab</option>
+                  <option value="__custom__" {{if namespaceCustom $pmmcNs}}selected{{end}}>custom</option>
+                </select>
+                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $pmmcNs}}{{$pmmcNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $pmmcNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+              </div>
+              <select name="cluster_pmm_client_image[]" class="docker-tag-select" data-image-repo="pmm-client">
                 {{range $.PMMClientImages}}
-                <option value="{{.}}" {{if tagSelected $curPmmc "percona/pmm-client" .}}selected{{end}}>
-                  percona/pmm-client:{{.}}
+                <option value="{{.}}" {{if tagSelected $curPmmc (printf "%s/pmm-client" $pmmcNs) .}}selected{{end}}>
+                  {{$pmmcNs}}/pmm-client:{{.}}
                 </option>
                 {{end}}
+                <option value="__custom__">Custom image…</option>
               </select>
             </div>
           </div>
@@ -713,7 +800,7 @@
         <div class="customize-body" style="display:none">
           <div class="form-row">
             <div class="form-group">
-              <label>Env Tag <span class="field-tip" data-tip="Tag applied to resources in this cluster (e.g. test, prod).">ⓘ</span></label>
+              <label>Environment <span class="field-tip" data-tip="Environment for the resources created. Examples: dev, qa, prod.">ⓘ</span></label>
               <input type="text" name="replset_env_tag[]" value="{{strDefault .Config.EnvTag "test"}}">
             </div>
             <div class="form-group">
@@ -756,17 +843,150 @@
               <textarea name="replset_audit_filter[]" rows="4" spellcheck="false">{{strDefault .Config.AuditFilter $.DefaultAuditFilter}}</textarea>
             </div>
           </div>
+          {{if eq $p "chaos"}}
+          <div class="form-row">
+            <div class="form-group">
+              <label>OS Image <span class="field-tip" data-tip="Operating system for this CHAOS replica set only. Leave blank to use the Terraform module default.">ⓘ</span></label>
+              {{$curOs := .Config.OsImage}}
+              <select name="replset_os_image[]" onchange="onPackageOsImageChange(this)">
+                <option value="" {{if eq $curOs ""}}selected{{end}}>default</option>
+                <option value="Ubuntu 24.04" {{if eq $curOs "Ubuntu 24.04"}}selected{{end}}>Ubuntu 24.04</option>
+                <option value="Ubuntu 22.04" {{if eq $curOs "Ubuntu 22.04"}}selected{{end}}>Ubuntu 22.04</option>
+                <option value="Rocky Linux 9" {{if eq $curOs "Rocky Linux 9"}}selected{{end}}>Rocky Linux 9</option>
+                <option value="Rocky Linux 8" {{if eq $curOs "Rocky Linux 8"}}selected{{end}}>Rocky Linux 8</option>
+                <option value="CentOS 9" {{if eq $curOs "CentOS 9"}}selected{{end}}>CentOS 9</option>
+                <option value="Oracle Linux 9" {{if eq $curOs "Oracle Linux 9"}}selected{{end}}>Oracle Linux 9</option>
+                <option value="Oracle Linux 8" {{if eq $curOs "Oracle Linux 8"}}selected{{end}}>Oracle Linux 8</option>
+                <option value="Debian 12" {{if eq $curOs "Debian 12"}}selected{{end}}>Debian 12</option>
+              </select>
+            </div>
+          </div>
+          {{end}}
+          {{if ne $p "docker"}}
+          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo}}
+          <div class="subsection-header">
+            <span class="subsection-title">Package Overrides</span>
+            <button type="button" class="btn btn-outline btn-sm package-toggle-btn"
+                    onclick="togglePackageBlock(this)">{{if $packageConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+          </div>
+          <div class="package-block-body" {{if not $packageConfigured}}style="display:none"{{end}}>
+          <div class="form-row">
+            <div class="form-group">
+              <label>MongoDB Distribution <span class="field-tip" data-tip="Package distribution for this replica set. PSMDB uses Percona repositories; Community and Enterprise use official MongoDB repositories.">ⓘ</span></label>
+              {{$mongoDist := strDefault .Config.MongoDBDistribution "psmdb"}}
+              <select name="replset_mongodb_distribution[]" onchange="onMongoDBDistributionChange(this)">
+                <option value="psmdb" {{if eq $mongoDist "psmdb"}}selected{{end}}>Percona Server for MongoDB</option>
+                <option value="community" {{if eq $mongoDist "community"}}selected{{end}}>MongoDB Community</option>
+                <option value="enterprise" {{if eq $mongoDist "enterprise"}}selected{{end}}>MongoDB Enterprise</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this replica set. Defaults to release (GA).">ⓘ</span></label>
+              {{$mongoRepo := strDefault .Config.MongoRepo "release"}}
+              <select name="replset_mongo_repo[]" onchange="onPackageRepoChange(this, 'psmdb')">
+                <option value="release" {{if eq $mongoRepo "release"}}selected{{end}}>release (GA)</option>
+                <option value="testing" {{if eq $mongoRepo "testing"}}selected{{end}}>testing</option>
+                <option value="experimental" {{if eq $mongoRepo "experimental"}}selected{{end}}>experimental</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>MongoDB Major Version <span class="field-tip" data-tip="PSMDB major release line for this replica set. Defaults to the latest listed release line.">ⓘ</span></label>
+              <select name="replset_mongo_release[]" onchange="onMongoReleaseChange(this)">
+                {{$curRel := .Config.MongoRelease}}
+                {{range $.PSMDBVersions}}
+                <option value="{{.}}" {{if eq $curRel .}}selected{{end}}>{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>MongoDB Minor Version <span class="field-tip" data-tip="PSMDB minor/package version pin for this replica set. Defaults to the newest package from the selected release/channel.">ⓘ</span></label>
+              <select name="replset_mongo_version[]">
+                {{$curVer := .Config.MongoVersion}}
+                {{$effectiveRel := strDefault .Config.MongoRelease $.Config.MongoRelease}}
+                {{$minors := index $.PSMDBMinorVersions $effectiveRel}}
+                {{range $minors}}
+                <option value="{{.}}" {{if eq $curVer .}}selected{{end}}>{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
+          <div class="form-row" data-package-feature="pbm" {{if not (boolDefault .Config.EnablePbm false)}}style="display:none"{{end}}>
+            <div class="form-group">
+              <label>PBM Repository Channel <span class="field-tip" data-tip="PBM repository channel for this replica set. Defaults to release (GA).">ⓘ</span></label>
+              {{$pbmRepo := strDefault .Config.PbmRepo "release"}}
+              <select name="replset_pbm_repo[]" onchange="onPackageRepoChange(this, 'pbm')">
+                <option value="release" {{if eq $pbmRepo "release"}}selected{{end}}>release (GA)</option>
+                <option value="testing" {{if eq $pbmRepo "testing"}}selected{{end}}>testing</option>
+                <option value="experimental" {{if eq $pbmRepo "experimental"}}selected{{end}}>experimental</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>PBM Major Version <span class="field-tip" data-tip="PBM major version line for this replica set.">ⓘ</span></label>
+              <select name="replset_pbm_major[]" onchange="onPackageMajorChange(this, 'pbm')">
+              </select>
+            </div>
+            <div class="form-group">
+              <label>PBM Minor Version <span class="field-tip" data-tip="PBM package version pin for this replica set. Defaults to the newest package from the selected channel.">ⓘ</span></label>
+              <select name="replset_pbm_version[]">
+                {{$curPbmVer := .Config.PbmVersion}}
+                {{range $.PBMVersions}}
+                <option value="{{.}}" {{if eq $curPbmVer .}}selected{{end}}>{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
+          <div class="form-row" data-package-feature="pmm" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
+            <div class="form-group">
+              <label>PMM Client Repository Channel <span class="field-tip" data-tip="PMM client repository channel for this replica set. Defaults to release (GA). The PMM server remains environment-wide.">ⓘ</span></label>
+              {{$pmmClientRepo := strDefault .Config.PmmClientRepo "release"}}
+              <select name="replset_pmm_client_repo[]" onchange="onPackageRepoChange(this, 'pmm_client')">
+                <option value="release" {{if eq $pmmClientRepo "release"}}selected{{end}}>release (GA)</option>
+                <option value="testing" {{if eq $pmmClientRepo "testing"}}selected{{end}}>testing</option>
+                <option value="experimental" {{if eq $pmmClientRepo "experimental"}}selected{{end}}>experimental</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>PMM Client Major Version <span class="field-tip" data-tip="PMM client major version line for this replica set.">ⓘ</span></label>
+              <select name="replset_pmm_client_major[]" onchange="onPackageMajorChange(this, 'pmm_client')">
+              </select>
+            </div>
+            <div class="form-group">
+              <label>PMM Client Minor Version <span class="field-tip" data-tip="PMM client package version pin for this replica set. Defaults to the newest client package from the selected channel. The PMM server remains environment-wide.">ⓘ</span></label>
+              <select name="replset_pmm_client_version[]">
+                {{$curPmmClientVer := .Config.PmmClientVersion}}
+                {{range $.PMMClientImages}}
+                <option value="{{.}}" {{if eq $curPmmClientVer .}}selected{{end}}>{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="replset_enable_pmm[]" value="1"
+                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
+                            onchange="onPmmAgentFeatureToggle(this)">
+                Install PMM agent</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="replset_enable_pbm[]" value="1"
+                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
+                            onchange="onPbmAgentFeatureToggle(this)">
+                Install PBM agent</label>
+            </div>
+          </div>
+          {{end}}
           {{if eq $p "docker"}}
           <div class="form-row">
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="replset_enable_pmm[]" value="1"
-                            {{if .Config.EnablePmm}}checked{{end}}
+                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
                             onchange="onDockerPmmFeatureToggle(this)">
                 Enable PMM monitoring</label>
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="replset_enable_pbm[]" value="1"
-                            {{if .Config.EnablePbm}}checked{{end}}
+                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
                             onchange="onDockerPbmFeatureToggle(this)">
                 Enable PBM backups</label>
             </div>
@@ -777,37 +997,64 @@
             </div>
           </div>
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group image-field" data-image-repo="percona-server-mongodb">
               <label>PSMDB Image <span class="field-tip" data-tip="Percona Server for MongoDB Docker image tag for this replica set.">ⓘ</span></label>
-              <select name="replset_psmdb_image[]">
-                {{$cur := .Config.PsmdbImage}}
+              {{$cur := .Config.PsmdbImage}}{{$ns := imageNamespace $cur "percona"}}
+              <div class="image-namespace-row">
+                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                  <option value="percona" {{if eq $ns "percona"}}selected{{end}}>percona</option>
+                  <option value="perconalab" {{if eq $ns "perconalab"}}selected{{end}}>perconalab</option>
+                  <option value="__custom__" {{if namespaceCustom $ns}}selected{{end}}>custom</option>
+                </select>
+                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $ns}}{{$ns}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $ns)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+              </div>
+              <select name="replset_psmdb_image[]" class="docker-tag-select" data-image-repo="percona-server-mongodb">
                 {{range $.PSMDBImages}}
-                <option value="{{.}}" {{if tagSelected $cur "percona/percona-server-mongodb" .}}selected{{end}}>
-                  percona/percona-server-mongodb:{{.}}
+                <option value="{{.}}" {{if tagSelected $cur (printf "%s/percona-server-mongodb" $ns) .}}selected{{end}}>
+                  {{$ns}}/percona-server-mongodb:{{.}}
                 </option>
                 {{end}}
+                <option value="__custom__">Custom image…</option>
               </select>
             </div>
-            <div class="form-group" data-image-group="pbm" {{if not .Config.EnablePbm}}style="display:none"{{end}}>
+            <div class="form-group image-field" data-image-group="pbm" data-image-repo="percona-backup-mongodb" {{if not (boolDefault .Config.EnablePbm false)}}style="display:none"{{end}}>
               <label>PBM Image <span class="field-tip" data-tip="Percona Backup for MongoDB Docker image tag for backup agents in this replica set.">ⓘ</span></label>
-              <select name="replset_pbm_image[]">
-                {{$curPbm := .Config.PbmImage}}
+              {{$curPbm := .Config.PbmImage}}{{$pbmNs := imageNamespace $curPbm "percona"}}
+              <div class="image-namespace-row">
+                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                  <option value="percona" {{if eq $pbmNs "percona"}}selected{{end}}>percona</option>
+                  <option value="perconalab" {{if eq $pbmNs "perconalab"}}selected{{end}}>perconalab</option>
+                  <option value="__custom__" {{if namespaceCustom $pbmNs}}selected{{end}}>custom</option>
+                </select>
+                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $pbmNs}}{{$pbmNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $pbmNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+              </div>
+              <select name="replset_pbm_image[]" class="docker-tag-select" data-image-repo="percona-backup-mongodb">
                 {{range $.PBMImages}}
-                <option value="{{.}}" {{if tagSelected $curPbm "percona/percona-backup-mongodb" .}}selected{{end}}>
-                  percona/percona-backup-mongodb:{{.}}
+                <option value="{{.}}" {{if tagSelected $curPbm (printf "%s/percona-backup-mongodb" $pbmNs) .}}selected{{end}}>
+                  {{$pbmNs}}/percona-backup-mongodb:{{.}}
                 </option>
                 {{end}}
+                <option value="__custom__">Custom image…</option>
               </select>
             </div>
-            <div class="form-group" data-image-group="pmm" {{if not .Config.EnablePmm}}style="display:none"{{end}}>
+            <div class="form-group image-field" data-image-group="pmm" data-image-repo="pmm-client" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
               <label>PMM Client Image <span class="field-tip" data-tip="PMM Client Docker image tag for monitoring nodes in this replica set.">ⓘ</span></label>
-              <select name="replset_pmm_client_image[]">
-                {{$curPmmc := .Config.PmmClientImage}}
+              {{$curPmmc := .Config.PmmClientImage}}{{$pmmcNs := imageNamespace $curPmmc "percona"}}
+              <div class="image-namespace-row">
+                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                  <option value="percona" {{if eq $pmmcNs "percona"}}selected{{end}}>percona</option>
+                  <option value="perconalab" {{if eq $pmmcNs "perconalab"}}selected{{end}}>perconalab</option>
+                  <option value="__custom__" {{if namespaceCustom $pmmcNs}}selected{{end}}>custom</option>
+                </select>
+                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $pmmcNs}}{{$pmmcNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $pmmcNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+              </div>
+              <select name="replset_pmm_client_image[]" class="docker-tag-select" data-image-repo="pmm-client">
                 {{range $.PMMClientImages}}
-                <option value="{{.}}" {{if tagSelected $curPmmc "percona/pmm-client" .}}selected{{end}}>
-                  percona/pmm-client:{{.}}
+                <option value="{{.}}" {{if tagSelected $curPmmc (printf "%s/pmm-client" $pmmcNs) .}}selected{{end}}>
+                  {{$pmmcNs}}/pmm-client:{{.}}
                 </option>
                 {{end}}
+                <option value="__custom__">Custom image…</option>
               </select>
             </div>
           </div>
@@ -944,15 +1191,24 @@
         </div>
         <div class="customize-body" style="display:none">
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group image-field" data-image-repo="pmm-server">
               <label>PMM Server Image <span class="field-tip" data-tip="Percona PMM Server Docker image tag.">ⓘ</span></label>
-              <select name="pmm_server_image[]">
-                {{$cur := .Config.PmmServerImage}}
+              {{$cur := .Config.PmmServerImage}}{{$pmmNs := imageNamespace $cur "percona"}}
+              <div class="image-namespace-row">
+                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                  <option value="percona" {{if eq $pmmNs "percona"}}selected{{end}}>percona</option>
+                  <option value="perconalab" {{if eq $pmmNs "perconalab"}}selected{{end}}>perconalab</option>
+                  <option value="__custom__" {{if namespaceCustom $pmmNs}}selected{{end}}>custom</option>
+                </select>
+                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $pmmNs}}{{$pmmNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $pmmNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+              </div>
+              <select name="pmm_server_image[]" class="docker-tag-select" data-image-repo="pmm-server">
                 {{range $.PMMImages}}
-                <option value="{{.}}" {{if tagSelected $cur "percona/pmm-server" .}}selected{{end}}>
-                  percona/pmm-server:{{.}}
+                <option value="{{.}}" {{if tagSelected $cur (printf "%s/pmm-server" $pmmNs) .}}selected{{end}}>
+                  {{$pmmNs}}/pmm-server:{{.}}
                 </option>
                 {{end}}
+                <option value="__custom__">Custom image…</option>
               </select>
             </div>
             <div class="form-group">
@@ -992,7 +1248,6 @@
     <div id="pmm-cloud-body" {{if not $pmmCustomized}}style="display:none"{{end}}>
     <div id="pmm-cloud-settings" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
     {{$curPmm := .Config.PmmImage}}
-    {{$curPmmClientVer := .Config.PmmClientVersion}}
     {{$isCustomPmm := and $curPmm (not (or (hasPrefix $curPmm "docker.io/percona/pmm-server:") (hasPrefix $curPmm "percona/pmm-server:")))}}
     {{if eq $p "chaos"}}
     <div class="form-row">
@@ -1051,15 +1306,6 @@
                  oninput="syncCustomImageOption(this)">
         </div>
       </div>
-      <div class="form-group">
-        <label for="pmm_client_version">PMM Client Version <span class="field-tip" data-tip="Optional: pin to a specific PMM client package version for monitored nodes. Leave empty to install the latest available.">ⓘ</span></label>
-        <select id="pmm_client_version" name="pmm_client_version">
-          <option value="">latest (default)</option>
-          {{range .PMMClientImages}}
-          <option value="{{.}}" {{if eq $curPmmClientVer .}}selected{{end}}>{{.}}</option>
-          {{end}}
-        </select>
-      </div>
     </div>
     {{else}}
     <div class="form-row">
@@ -1105,15 +1351,6 @@
                  style="{{if $isCustomPmm}}display:block{{else}}display:none{{end}};margin-top:0.3rem"
                  oninput="syncCustomImageOption(this)">
         </div>
-      </div>
-      <div class="form-group">
-        <label for="pmm_client_version">PMM Client Version <span class="field-tip" data-tip="Optional: pin to a specific PMM client package version for monitored nodes. Leave empty to install the latest available.">ⓘ</span></label>
-        <select id="pmm_client_version" name="pmm_client_version">
-          <option value="">latest (default)</option>
-          {{range .PMMClientImages}}
-          <option value="{{.}}" {{if eq $curPmmClientVer .}}selected{{end}}>{{.}}</option>
-          {{end}}
-        </select>
       </div>
     </div>
     {{end}}
@@ -1491,6 +1728,13 @@
   </div>
 </form>
 
+<div class="modal-backdrop" id="versions-loading-modal" style="display:none" aria-modal="true" role="dialog" aria-labelledby="versions-loading-title">
+  <div class="modal">
+    <h2 id="versions-loading-title">Reading available versions...</h2>
+    <p>Please wait while package versions are refreshed for the selected OS image and repository channel.</p>
+  </div>
+</div>
+
 <script>
 function stepNumber(btn, delta) {
   const input = btn.closest('.number-stepper').querySelector('input[type="number"]');
@@ -1510,6 +1754,7 @@ const PBM_IMAGES      = {{json .PBMImages}};
 const PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
 const PMM_SERVER_IMAGES = {{json .PMMImages}};
 const PSMDB_VERSIONS  = {{json .PSMDBVersions}};
+const OFFICIAL_MONGODB_VERSIONS = ['8.3', '8.2', '8.0', '7.0', '6.0'];
 const PBM_VERSIONS    = {{json .PBMVersions}};
 const DEFAULT_AUDIT_FILTER = {{json .DefaultAuditFilter}};
 // Minor versions keyed by major release identifier, e.g. {"psmdb-70": ["7.0.12", ...]}
@@ -1518,12 +1763,12 @@ let PSMDB_MINOR_VERSIONS = {{json .PSMDBMinorVersions}};
 
 // Refresh a <select> with a new list of values, preserving the current selection.
 // valueOf(v) maps a raw list item to the option value; labelOf(v) maps it to the
-// display label. An empty/"latest" option is prepended when includeEmpty is true.
-function refreshVersionSelect(id, items, valueOf, labelOf, includeEmpty = true) {
+// display label. An empty option is prepended when includeEmpty is true.
+function refreshVersionSelect(id, items, valueOf, labelOf, includeEmpty = false) {
   const sel = document.getElementById(id);
   if (!sel) return;
   const prev = sel.value;
-  let html = includeEmpty ? '<option value="">latest (default)</option>' : '';
+  let html = includeEmpty ? '<option value=""></option>' : '';
   for (const v of items) {
     const val = escHtml(valueOf(v));
     const lbl = escHtml(labelOf(v));
@@ -1701,27 +1946,12 @@ function toggleComputeBlock(btn) {
   btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
 }
 
-async function setChaosTokenFilePath(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const envIdField = document.getElementById('env_id_field');
-  const body = new FormData();
-  body.append('chaos_token_file', file);
-  if (envIdField && envIdField.value.trim()) {
-    body.append('env_id', envIdField.value.trim());
-  }
-  try {
-    const resp = await fetch('/api/upload-chaos-token', { method: 'POST', body });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || 'Upload failed');
-    document.getElementById('chaos_api_token_path').value = data.path || '';
-    const label = document.getElementById('chaos_token_filename');
-    if (label) label.textContent = `Stored token file: ${data.path}`;
-  } catch (err) {
-    alert('Could not upload CHAOS token file: ' + err.message);
-  } finally {
-    input.value = '';
-  }
+function togglePackageBlock(btn) {
+  const body = btn.closest('.subsection-header').nextElementSibling;
+  if (!body || !body.classList.contains('package-block-body')) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
 }
 
 // Toggle the Minio VM body and Customize button when enable_minio checkbox changes.
@@ -1781,6 +2011,22 @@ function toggleImageGroup(checkbox, group) {
   el.style.display = checkbox.checked ? '' : 'none';
 }
 
+function togglePackageFeatureGroup(checkbox, feature) {
+  const body = checkbox.closest('.customize-body');
+  if (!body) return;
+  const el = body.querySelector(`[data-package-feature="${feature}"]`);
+  if (!el) return;
+  el.style.display = checkbox.checked ? '' : 'none';
+}
+
+function onPmmAgentFeatureToggle(checkbox) {
+  togglePackageFeatureGroup(checkbox, 'pmm');
+}
+
+function onPbmAgentFeatureToggle(checkbox) {
+  togglePackageFeatureGroup(checkbox, 'pbm');
+}
+
 function toggleAuditFilter(checkbox) {
   const body = checkbox.closest('.customize-body');
   if (!body) return;
@@ -1809,17 +2055,229 @@ function toggleMachineImageCustom(sel) {
   }
 }
 
+function packageFieldPrefix(field) {
+  const name = field?.name || '';
+  if (name.startsWith('cluster_')) return 'cluster';
+  if (name.startsWith('replset_')) return 'replset';
+  return '';
+}
+
+function packageBlockForField(field) {
+  return field?.closest('.customize-body') || null;
+}
+
+function packageSelect(block, prefix, field) {
+  return block ? block.querySelector(`select[name="${prefix}_${field}[]"]`) : null;
+}
+
+function selectedPackageOsImage(block, prefix) {
+  if (PLATFORM !== 'chaos') return '';
+  return (packageSelect(block, prefix, 'os_image')?.value || '').trim();
+}
+
+function selectedMongoDBDistribution(block, prefix) {
+  return (packageSelect(block, prefix, 'mongodb_distribution')?.value || 'psmdb').trim() || 'psmdb';
+}
+
+function syncMongoDBDistributionControls(block, prefix) {
+  const distribution = selectedMongoDBDistribution(block, prefix);
+  const repoSel = packageSelect(block, prefix, 'mongo_repo');
+  if (repoSel) {
+    repoSel.disabled = distribution !== 'psmdb';
+    if (distribution !== 'psmdb') repoSel.value = 'release';
+  }
+  const releaseSel = packageSelect(block, prefix, 'mongo_release');
+  if (!releaseSel) return;
+  if (distribution !== 'psmdb' && releaseSel.value.startsWith('psmdb-')) {
+    setSelectOptionsNoEmpty(releaseSel, OFFICIAL_MONGODB_VERSIONS);
+    onMongoReleaseChange(releaseSel);
+  } else if (distribution === 'psmdb' && !releaseSel.value.startsWith('psmdb-')) {
+    setSelectOptionsNoEmpty(releaseSel, PSMDB_VERSIONS);
+    onMongoReleaseChange(releaseSel);
+  }
+}
+
+function setSelectOptions(sel, values) {
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = (values || []).map(v => `<option value="${escHtml(v)}"${v === prev ? ' selected' : ''}>${escHtml(v)}</option>`).join('');
+  if (prev && Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+}
+
+function setSelectOptionsNoEmpty(sel, values) {
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = (values || []).map(v => `<option value="${escHtml(v)}"${v === prev ? ' selected' : ''}>${escHtml(v)}</option>`).join('');
+  if (prev && Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+}
+
+function majorFromPackageVersion(version) {
+  const match = String(version || '').match(/^(\d+)/);
+  return match ? match[1] : '';
+}
+
+function packageMajorField(product) {
+  return product === 'pbm' ? 'pbm_major' : 'pmm_client_major';
+}
+
+function packageVersionField(product) {
+  return product === 'pbm' ? 'pbm_version' : 'pmm_client_version';
+}
+
+let packageVersionRefreshDepth = 0;
+let packageVersionDisabledStates = null;
+
+function showPackageVersionDialog() {
+  packageVersionRefreshDepth++;
+  if (packageVersionRefreshDepth > 1) return;
+  const form = document.getElementById('config-form');
+  packageVersionDisabledStates = [];
+  if (form) {
+    form.querySelectorAll('input, select, textarea, button').forEach(field => {
+      packageVersionDisabledStates.push([field, field.disabled]);
+      field.disabled = true;
+    });
+  }
+  const modal = document.getElementById('versions-loading-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function hidePackageVersionDialog() {
+  if (packageVersionRefreshDepth === 0) return;
+  packageVersionRefreshDepth--;
+  if (packageVersionRefreshDepth > 0) return;
+  const modal = document.getElementById('versions-loading-modal');
+  if (modal) modal.style.display = 'none';
+  (packageVersionDisabledStates || []).forEach(([field, disabled]) => {
+    field.disabled = disabled;
+  });
+  packageVersionDisabledStates = null;
+}
+
+async function withPackageVersionDialog(fn) {
+  showPackageVersionDialog();
+  try {
+    return await fn();
+  } finally {
+    hidePackageVersionDialog();
+  }
+}
+
+function refreshPackageMinorOptions(block, prefix, product) {
+  const majorSel = packageSelect(block, prefix, packageMajorField(product));
+  const versionSel = packageSelect(block, prefix, packageVersionField(product));
+  if (!majorSel || !versionSel) return;
+  let versions = [];
+  if (majorSel.dataset.versions) {
+    try { versions = JSON.parse(majorSel.dataset.versions) || []; } catch (_) { versions = []; }
+  }
+  const major = majorSel.value;
+  setSelectOptions(versionSel, major ? versions.filter(v => majorFromPackageVersion(v) === major) : versions);
+}
+
+async function refreshPackageVersions(block, prefix, product) {
+  if (!block || !prefix || PLATFORM === 'docker') return;
+  const repoField = product === 'psmdb' ? 'mongo_repo' : product === 'pbm' ? 'pbm_repo' : 'pmm_client_repo';
+  const channel = packageSelect(block, prefix, repoField)?.value || 'release';
+  const osImage = selectedPackageOsImage(block, prefix);
+  const distribution = product === 'psmdb' ? selectedMongoDBDistribution(block, prefix) : 'psmdb';
+  const params = new URLSearchParams({ product, channel });
+  if (product === 'psmdb') params.set('distribution', distribution);
+  if (osImage) params.set('os_image', osImage);
+
+  const affected = product === 'psmdb'
+    ? [packageSelect(block, prefix, 'mongo_release'), packageSelect(block, prefix, 'mongo_version')]
+    : [packageSelect(block, prefix, packageMajorField(product)), packageSelect(block, prefix, packageVersionField(product))];
+  const affectedStates = affected.map(sel => [sel, sel ? sel.disabled : false]);
+  affected.forEach(sel => { if (sel) sel.disabled = true; });
+  try {
+    const resp = await fetch(`/api/package-versions?${params.toString()}`);
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Could not load package versions');
+    const currentChannel = packageSelect(block, prefix, repoField)?.value || 'release';
+    const currentOsImage = selectedPackageOsImage(block, prefix);
+    const currentDistribution = product === 'psmdb' ? selectedMongoDBDistribution(block, prefix) : 'psmdb';
+    if (currentChannel !== channel || currentOsImage !== osImage || currentDistribution !== distribution) return;
+    if (product === 'psmdb') {
+      const releaseSel = packageSelect(block, prefix, 'mongo_release');
+      if (releaseSel) {
+        releaseSel.dataset.minorVersions = JSON.stringify(data.minor_versions || {});
+        setSelectOptionsNoEmpty(releaseSel, data.major_versions || []);
+        onMongoReleaseChange(releaseSel);
+      }
+    } else {
+      const majorSel = packageSelect(block, prefix, packageMajorField(product));
+      const versions = data.versions || [];
+      const majors = [];
+      versions.forEach(v => {
+        const major = majorFromPackageVersion(v);
+        if (major && !majors.includes(major)) majors.push(major);
+      });
+      if (majorSel) {
+        majorSel.dataset.versions = JSON.stringify(versions);
+        setSelectOptionsNoEmpty(majorSel, majors);
+      }
+      refreshPackageMinorOptions(block, prefix, product);
+    }
+  } catch (err) {
+    console.warn(err);
+  } finally {
+    affectedStates.forEach(([sel, disabled]) => { if (sel) sel.disabled = disabled; });
+  }
+}
+
+function onPackageRepoChange(sel, product) {
+  const block = packageBlockForField(sel);
+  withPackageVersionDialog(() => refreshPackageVersions(block, packageFieldPrefix(sel), product));
+}
+
+function onMongoDBDistributionChange(sel) {
+  const block = packageBlockForField(sel);
+  const prefix = packageFieldPrefix(sel);
+  syncMongoDBDistributionControls(block, prefix);
+  withPackageVersionDialog(() => refreshPackageVersions(block, prefix, 'psmdb'));
+}
+
+function onPackageMajorChange(sel, product) {
+  const block = packageBlockForField(sel);
+  refreshPackageMinorOptions(block, packageFieldPrefix(sel), product);
+}
+
+function onPackageOsImageChange(sel) {
+  const block = packageBlockForField(sel);
+  const prefix = packageFieldPrefix(sel);
+  withPackageVersionDialog(() => Promise.all(['psmdb', 'pbm', 'pmm_client'].map(product => refreshPackageVersions(block, prefix, product))));
+}
+
+function refreshAllPackageVersions(block) {
+  const marker = block?.querySelector('select[name="cluster_mongo_repo[]"], select[name="replset_mongo_repo[]"]');
+  const prefix = packageFieldPrefix(marker);
+  if (!prefix) return;
+  syncMongoDBDistributionControls(block, prefix);
+  return Promise.all(['psmdb', 'pbm', 'pmm_client'].map(product => refreshPackageVersions(block, prefix, product)));
+}
+
 // Cascade: when the major MongoDB release (psmdb-70, psmdb-80…) changes,
 // repopulate the specific version dropdown.
 function onMongoReleaseChange(sel) {
-  const versionSel = document.getElementById('mongo_version');
+  let versionSel = null;
+  if (sel.id === 'mongo_release') {
+    versionSel = document.getElementById('mongo_version');
+  } else {
+    const body = sel.closest('.customize-body');
+    const name = sel.name ? sel.name.replace('mongo_release', 'mongo_version') : '';
+    versionSel = body && name ? body.querySelector(`[name="${name}"]`) : null;
+  }
   if (!versionSel) return;
   const release = sel.value;
-  const minors = (PSMDB_MINOR_VERSIONS && PSMDB_MINOR_VERSIONS[release]) || [];
+  let scopedMinorVersions = null;
+  if (sel.dataset.minorVersions) {
+    try { scopedMinorVersions = JSON.parse(sel.dataset.minorVersions); } catch (_) { scopedMinorVersions = null; }
+  }
+  const minors = ((scopedMinorVersions || PSMDB_MINOR_VERSIONS) && (scopedMinorVersions || PSMDB_MINOR_VERSIONS)[release]) || [];
   // Keep the currently selected value if it's still valid.
   const prevVal = versionSel.value;
-  versionSel.innerHTML = '<option value="">latest (default)</option>' +
-    minors.map(v => `<option value="${escHtml(v)}" ${v === prevVal ? 'selected' : ''}>${escHtml(v)}</option>`).join('');
+  versionSel.innerHTML = minors.map(v => `<option value="${escHtml(v)}" ${v === prevVal ? 'selected' : ''}>${escHtml(v)}</option>`).join('');
 }
 
 // Cascade: when the major PBM release changes, repopulate the version dropdown.
@@ -1862,7 +2320,18 @@ function buildImageSelect(name, images, prefix, defaultVal) {
 
 function toggleCustomImageInput(sel) {
   const wrapper = sel.parentElement;
-  const customInput = wrapper.querySelector('.custom-image-input');
+  let customInput = wrapper.querySelector('.custom-image-input');
+  if (!customInput) {
+    customInput = document.createElement('input');
+    customInput.type = 'text';
+    customInput.className = 'custom-image-input';
+    customInput.name = `${sel.name.replace('[]', '')}_custom`;
+    customInput.placeholder = 'registry/repo:tag';
+    customInput.style.display = 'none';
+    customInput.style.marginTop = '0.3rem';
+    customInput.addEventListener('input', () => syncCustomImageOption(customInput));
+    wrapper.appendChild(customInput);
+  }
   if (sel.value === '__custom__') {
     customInput.style.display = '';
     customInput.focus();
@@ -1889,18 +2358,76 @@ function getImageValue(wrapper) {
   return sel.value;
 }
 
+function dockerImageNamespaceForField(field) {
+  const group = field.closest('.image-field');
+  if (!group) return 'percona';
+  const sel = group.querySelector('.docker-namespace-select');
+  const custom = group.querySelector('.docker-namespace-custom');
+  if (sel && sel.value === '__custom__') return (custom?.value || '').trim().replace(/^\/+|\/+$/g, '') || 'percona';
+  return sel?.value || 'percona';
+}
+
+function setDockerImageOptions(tagSelect, tags, selectedTag) {
+  const repo = tagSelect.dataset.imageRepo || tagSelect.closest('.image-field')?.dataset.imageRepo || '';
+  const ns = dockerImageNamespaceForField(tagSelect);
+  const current = selectedTag || tagSelect.value || 'latest';
+  tagSelect.innerHTML = '';
+  let matched = false;
+  (tags || []).forEach(tag => {
+    const opt = new Option(`${ns}/${repo}:${tag}`, tag);
+    if (tag === current) { opt.selected = true; matched = true; }
+    tagSelect.appendChild(opt);
+  });
+  if (current && current !== '__custom__' && !matched) {
+    tagSelect.insertBefore(new Option(`${ns}/${repo}:${current}`, current, true, true), tagSelect.firstChild);
+  }
+  tagSelect.appendChild(new Option('Custom image…', '__custom__'));
+}
+
+async function onDockerImageNamespaceChange(el) {
+  const group = el.closest('.image-field');
+  if (!group) return;
+  const nsSel = group.querySelector('.docker-namespace-select');
+  const custom = group.querySelector('.docker-namespace-custom');
+  if (custom) {
+    custom.style.display = nsSel && nsSel.value === '__custom__' ? '' : 'none';
+  }
+  const tagSelect = group.querySelector('.docker-tag-select');
+  if (!tagSelect) return;
+  const repo = tagSelect.dataset.imageRepo || group.dataset.imageRepo;
+  const namespace = dockerImageNamespaceForField(group);
+  const previous = tagSelect.value;
+  if (!repo || !namespace) return;
+  tagSelect.disabled = true;
+  try {
+    const resp = await fetch(`/api/docker-tags?namespace=${encodeURIComponent(namespace)}&repo=${encodeURIComponent(repo)}`);
+    const data = await resp.json();
+    setDockerImageOptions(tagSelect, data.tags || [], previous);
+  } catch (_) {
+    setDockerImageOptions(tagSelect, Array.from(tagSelect.options).map(o => o.value).filter(v => v && v !== '__custom__'), previous);
+  } finally {
+    tagSelect.disabled = false;
+  }
+}
+
+function dockerImageRepoForSelect(tagSelect, imageName) {
+  return `${dockerImageNamespaceForField(tagSelect)}/${imageName}`;
+}
+
 function buildDockerImageRows(type) {
   if (type !== 'cluster' && type !== 'replset') return '';
+  const namespaceControl = `<div class="image-namespace-row"><select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)"><option value="percona" selected>percona</option><option value="perconalab">perconalab</option><option value="__custom__">custom</option></select><input type="text" class="docker-namespace-custom" placeholder="namespace" style="display:none" oninput="onDockerImageNamespaceChange(this)"></div>`;
   const psmdbSel = PSMDB_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/percona-server-mongodb:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
   const pbmSel   = PBM_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/percona-backup-mongodb:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
   const pmmcSel  = PMM_CLIENT_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/pmm-client:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
-  const makeImageGroup = (label, tip, selectName, options, dataGroup) => `
-    <div class="form-group"${dataGroup ? ` data-image-group="${dataGroup}" style="display:none"` : ''}><label>${label} <span class="field-tip" data-tip="${tip}">ⓘ</span></label>
+  const makeImageGroup = (label, tip, selectName, options, dataGroup, repo) => `
+    <div class="form-group image-field" data-image-repo="${repo}"${dataGroup ? ` data-image-group="${dataGroup}" style="display:none"` : ''}><label>${label} <span class="field-tip" data-tip="${tip}">ⓘ</span></label>
+      ${namespaceControl}
       <div class="image-select-wrapper">
-        <select name="${type}_${selectName}" onchange="toggleCustomImageInput(this)">${options}</select>
+        <select name="${type}_${selectName}" class="docker-tag-select" data-image-repo="${repo}" onchange="toggleCustomImageInput(this)">${options}</select>
         <input type="text" class="custom-image-input" name="${type}_${selectName}_custom"
                placeholder="registry/repo:tag" style="display:none;margin-top:0.3rem"
                oninput="syncCustomImageOption(this)">
@@ -1918,9 +2445,81 @@ function buildDockerImageRows(type) {
         <label><input type="checkbox" name="${type}_bind_to_localhost[]" value="1"> Bind ports to localhost only</label></div>
     </div>
     <div class="form-row">
-      ${makeImageGroup('PSMDB Image', 'Percona Server for MongoDB Docker image tag for nodes in this block.', 'psmdb_image[]', psmdbSel, null)}
-      ${makeImageGroup('PBM Image', 'Percona Backup for MongoDB Docker image tag for backup agents.', 'pbm_image[]', pbmSel, 'pbm')}
-      ${makeImageGroup('PMM Client Image', 'PMM Client Docker image tag for monitoring nodes.', 'pmm_client_image[]', pmmcSel, 'pmm')}
+      ${makeImageGroup('PSMDB Image', 'Percona Server for MongoDB Docker image tag for nodes in this block.', 'psmdb_image[]', psmdbSel, null, 'percona-server-mongodb')}
+      ${makeImageGroup('PBM Image', 'Percona Backup for MongoDB Docker image tag for backup agents.', 'pbm_image[]', pbmSel, 'pbm', 'percona-backup-mongodb')}
+      ${makeImageGroup('PMM Client Image', 'PMM Client Docker image tag for monitoring nodes.', 'pmm_client_image[]', pmmcSel, 'pmm', 'pmm-client')}
+    </div>`;
+}
+
+function buildPackageOverrideRows(type) {
+  if (PLATFORM === 'docker' || (type !== 'cluster' && type !== 'replset')) return '';
+  const mongoReleaseOptions = PSMDB_VERSIONS.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('');
+  const pbmVersionOptions = PBM_VERSIONS.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('');
+  const pmmClientVersionOptions = PMM_CLIENT_IMAGES.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('');
+  const repoOptions = '<option value="release" selected>release (GA)</option><option value="testing">testing</option><option value="experimental">experimental</option>';
+  const label = type === 'cluster' ? 'cluster' : 'replica set';
+  const osImageRows = PLATFORM === 'chaos' ? `
+    <div class="form-row">
+      <div class="form-group"><label>OS Image <span class="field-tip" data-tip="Operating system for this CHAOS ${label} only. Leave blank to use the Terraform module default.">ⓘ</span></label>
+        <select name="${type}_os_image[]" onchange="onPackageOsImageChange(this)">
+          <option value="">default</option>
+          <option value="Ubuntu 24.04">Ubuntu 24.04</option>
+          <option value="Ubuntu 22.04">Ubuntu 22.04</option>
+          <option value="Rocky Linux 9">Rocky Linux 9</option>
+          <option value="Rocky Linux 8">Rocky Linux 8</option>
+          <option value="CentOS 9">CentOS 9</option>
+          <option value="Oracle Linux 9">Oracle Linux 9</option>
+          <option value="Oracle Linux 8">Oracle Linux 8</option>
+          <option value="Debian 12">Debian 12</option>
+        </select></div>
+    </div>` : '';
+  return `
+    ${osImageRows}
+    <div class="form-row">
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="${type}_enable_pmm[]" value="1" onchange="onPmmAgentFeatureToggle(this)">
+          Install PMM agent</label>
+      </div>
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="${type}_enable_pbm[]" value="1" onchange="onPbmAgentFeatureToggle(this)">
+          Install PBM agent</label>
+      </div>
+    </div>
+    <div class="subsection-header">
+      <span class="subsection-title">Package Overrides</span>
+      <button type="button" class="btn btn-outline btn-sm package-toggle-btn" onclick="togglePackageBlock(this)">▼ Customize</button>
+    </div>
+    <div class="package-block-body" style="display:none">
+    <div class="form-row">
+      <div class="form-group"><label>MongoDB Distribution <span class="field-tip" data-tip="Package distribution for this ${label}. PSMDB uses Percona repositories; Community and Enterprise use official MongoDB repositories.">ⓘ</span></label>
+        <select name="${type}_mongodb_distribution[]" onchange="onMongoDBDistributionChange(this)">
+          <option value="psmdb" selected>Percona Server for MongoDB</option>
+          <option value="community">MongoDB Community</option>
+          <option value="enterprise">MongoDB Enterprise</option>
+        </select></div>
+      <div class="form-group"><label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this ${label}. Defaults to release (GA).">ⓘ</span></label>
+        <select name="${type}_mongo_repo[]" onchange="onPackageRepoChange(this, 'psmdb')">${repoOptions}</select></div>
+      <div class="form-group"><label>MongoDB Major Version <span class="field-tip" data-tip="PSMDB major release line for this ${label}. Defaults to the latest listed release line.">ⓘ</span></label>
+        <select name="${type}_mongo_release[]" onchange="onMongoReleaseChange(this)">${mongoReleaseOptions}</select></div>
+      <div class="form-group"><label>MongoDB Minor Version <span class="field-tip" data-tip="PSMDB minor/package version pin for this ${label}. Defaults to the newest package from the selected release/channel.">ⓘ</span></label>
+        <select name="${type}_mongo_version[]"></select></div>
+    </div>
+    <div class="form-row" data-package-feature="pbm" style="display:none">
+      <div class="form-group"><label>PBM Repository Channel <span class="field-tip" data-tip="PBM repository channel for this ${label}. Defaults to release (GA).">ⓘ</span></label>
+        <select name="${type}_pbm_repo[]" onchange="onPackageRepoChange(this, 'pbm')">${repoOptions}</select></div>
+      <div class="form-group"><label>PBM Major Version <span class="field-tip" data-tip="PBM major version line for this ${label}.">ⓘ</span></label>
+        <select name="${type}_pbm_major[]" onchange="onPackageMajorChange(this, 'pbm')"></select></div>
+      <div class="form-group"><label>PBM Minor Version <span class="field-tip" data-tip="PBM package version pin for this ${label}. Defaults to the newest package from the selected channel.">ⓘ</span></label>
+        <select name="${type}_pbm_version[]">${pbmVersionOptions}</select></div>
+    </div>
+    <div class="form-row" data-package-feature="pmm" style="display:none">
+      <div class="form-group"><label>PMM Client Repository Channel <span class="field-tip" data-tip="PMM client repository channel for this ${label}. Defaults to release (GA). The PMM server remains environment-wide.">ⓘ</span></label>
+        <select name="${type}_pmm_client_repo[]" onchange="onPackageRepoChange(this, 'pmm_client')">${repoOptions}</select></div>
+      <div class="form-group"><label>PMM Client Major Version <span class="field-tip" data-tip="PMM client major version line for this ${label}.">ⓘ</span></label>
+        <select name="${type}_pmm_client_major[]" onchange="onPackageMajorChange(this, 'pmm_client')"></select></div>
+      <div class="form-group"><label>PMM Client Minor Version <span class="field-tip" data-tip="PMM client package version pin for this ${label}. Defaults to the newest client package from the selected channel. The PMM server remains environment-wide.">ⓘ</span></label>
+        <select name="${type}_pmm_client_version[]">${pmmClientVersionOptions}</select></div>
+    </div>
     </div>`;
 }
 
@@ -2127,6 +2726,7 @@ function addCluster() {
   const c = document.createElement('div');
   c.className = 'component-block';
   const dockerRows = PLATFORM === 'docker' ? buildDockerImageRows('cluster') : '';
+  const packageRows = buildPackageOverrideRows('cluster');
   const computeRows = buildCloudComputeRows('cluster');
   c.innerHTML = `
     <div class="component-block-header">
@@ -2141,7 +2741,7 @@ function addCluster() {
     </div>
     <div class="customize-body" style="display:none">
       <div class="form-row">
-        <div class="form-group"><label>Env Tag <span class="field-tip" data-tip="Tag applied to resources in this cluster (e.g. test, prod).">ⓘ</span></label>
+        <div class="form-group"><label>Environment <span class="field-tip" data-tip="Environment for the resources created. Examples: dev, qa, prod.">ⓘ</span></label>
           <input type="text" name="cluster_env_tag[]" value="test"></div>
         <div class="form-group"><label>Config Servers <span class="field-tip" data-tip="Number of config server replica set members (CSRS). Use an odd number, typically 3.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="cluster_configsvr_count[]" value="3" min="1" max="7"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
         <div class="form-group"><label>Mongos Routers <span class="field-tip" data-tip="Number of mongos query router instances.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="cluster_mongos_count[]" value="2" min="1" max="10"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
@@ -2151,9 +2751,11 @@ function addCluster() {
         <div class="form-group"><label>Replicas / Shard <span class="field-tip" data-tip="Number of data-bearing replica set members per shard.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="cluster_shardsvr_replicas[]" value="2" min="1" max="7"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
         <div class="form-group"><label>Arbiters / Shard <span class="field-tip" data-tip="Number of arbiters per shard replica set. Use 0 for none.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="cluster_arbiters_per_replset[]" value="1" min="0" max="3"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
       </div>
-      ${buildAuditRows('cluster')}${dockerRows}${computeRows}
+      ${buildAuditRows('cluster')}${packageRows}${dockerRows}${computeRows}
     </div>`;
   document.getElementById('clusters-container').appendChild(c);
+  c.querySelectorAll('select[name="cluster_mongo_release[]"]').forEach(onMongoReleaseChange);
+  if (PLATFORM !== 'docker') refreshAllPackageVersions(c);
   syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
   syncDockerMinioDependencies(document.getElementById('enable-minio-docker')?.checked);
 }
@@ -2163,6 +2765,7 @@ function addReplset() {
   const c = document.createElement('div');
   c.className = 'component-block';
   const dockerRows = PLATFORM === 'docker' ? buildDockerImageRows('replset') : '';
+  const packageRows = buildPackageOverrideRows('replset');
   const computeRows = buildCloudComputeRows('replset');
   // Pick a random base port between 28000-38000 for Docker to avoid collisions.
   const randomPort = PLATFORM === 'docker' ? (28000 + Math.floor(Math.random() * 10000)) : 0;
@@ -2179,7 +2782,7 @@ function addReplset() {
     </div>
     <div class="customize-body" style="display:none">
       <div class="form-row">
-        <div class="form-group"><label>Env Tag <span class="field-tip" data-tip="Tag applied to resources in this cluster (e.g. test, prod).">ⓘ</span></label>
+        <div class="form-group"><label>Environment <span class="field-tip" data-tip="Environment for the resources created. Examples: dev, qa, prod.">ⓘ</span></label>
           <input type="text" name="replset_env_tag[]" value="test"></div>
         <div class="form-group"><label>Data Nodes <span class="field-tip" data-tip="Number of data-bearing replica set members.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="replset_data_nodes[]" value="2" min="1" max="7"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
         <div class="form-group"><label>Arbiters <span class="field-tip" data-tip="Number of arbiters in this replica set. Use 0 for none.">ⓘ</span></label><div class="number-stepper"><button type="button" class="stepper-btn" onclick="stepNumber(this,-1)">−</button><input type="number" name="replset_arbiters[]" value="1" min="0" max="3"><button type="button" class="stepper-btn" onclick="stepNumber(this,1)">+</button></div></div>
@@ -2187,9 +2790,11 @@ function addReplset() {
           <input type="number" name="replset_port[]" value="${randomPort}" placeholder="auto" min="1024" max="65000">
           </div>` : ''}
       </div>
-      ${buildAuditRows('replset')}${dockerRows}${computeRows}
+      ${buildAuditRows('replset')}${packageRows}${dockerRows}${computeRows}
     </div>`;
   document.getElementById('replsets-container').appendChild(c);
+  c.querySelectorAll('select[name="replset_mongo_release[]"]').forEach(onMongoReleaseChange);
+  if (PLATFORM !== 'docker') refreshAllPackageVersions(c);
   syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
   syncDockerMinioDependencies(document.getElementById('enable-minio-docker')?.checked);
 }
@@ -2211,10 +2816,13 @@ function addPmmServer() {
     </div>
     <div class="customize-body" style="display:none">
       <div class="form-row">
-        <div class="form-group"><label>PMM Server Image <span class="field-tip" data-tip="Percona PMM Server Docker image tag.">ⓘ</span></label>
-          <select name="pmm_server_image[]">
+        <div class="form-group image-field" data-image-repo="pmm-server"><label>PMM Server Image <span class="field-tip" data-tip="Percona PMM Server Docker image tag.">ⓘ</span></label>
+          <div class="image-namespace-row"><select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)"><option value="percona" selected>percona</option><option value="perconalab">perconalab</option><option value="__custom__">custom</option></select><input type="text" class="docker-namespace-custom" placeholder="namespace" style="display:none" oninput="onDockerImageNamespaceChange(this)"></div>
+          <select name="pmm_server_image[]" class="docker-tag-select" data-image-repo="pmm-server" onchange="toggleCustomImageInput(this)">
             ${PMM_SERVER_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/pmm-server:${escHtml(t)}</option>`).join('')}
-          </select></div>
+            <option value="__custom__">Custom image…</option>
+          </select>
+          <input type="text" class="custom-image-input" name="pmm_server_image_custom" placeholder="registry/repo:tag" style="display:none;margin-top:0.3rem" oninput="syncCustomImageOption(this)"></div>
         <div class="form-group"><label>PMM Port <span class="field-tip" data-tip="Host port exposed for the PMM Server HTTPS interface (default: 8443).">ⓘ</span></label>
           <input type="number" name="pmm_server_port[]" value="${DOCKER_DEFAULT_PMM_EXTERNAL_PORT}"></div>
       </div>
@@ -2552,8 +3160,10 @@ async function pickSshUserKey(btn) {
 // Also fetch versions asynchronously so selects are populated even if the cache
 // was cold when the page was server-rendered.
 document.addEventListener('DOMContentLoaded', () => {
-  const mongoRelSel = document.getElementById('mongo_release');
-  if (mongoRelSel) onMongoReleaseChange(mongoRelSel);
+  document.querySelectorAll('select[name="cluster_mongo_release[]"], select[name="replset_mongo_release[]"]').forEach(onMongoReleaseChange);
+  if (PLATFORM !== 'docker') {
+    document.querySelectorAll('#clusters-container > .component-block, #replsets-container > .component-block').forEach(refreshAllPackageVersions);
+  }
 
   if (PLATFORM === 'docker') {
     syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
@@ -2568,17 +3178,15 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(r => r.json())
     .then(data => {
       if (data.psmdb_versions && data.psmdb_versions.length) {
-        refreshVersionSelect('mongo_release', data.psmdb_versions, v => v,
-          v => v.replace('psmdb-', 'PSMDB ').replace(/(\d)(\d)$/, '$1.$2'));
         // Keep PSMDB_MINOR_VERSIONS in sync so cascade still works.
         if (data.psmdb_minor_versions) {
           Object.assign(PSMDB_MINOR_VERSIONS, data.psmdb_minor_versions);
         }
-        const rel = document.getElementById('mongo_release');
-        if (rel) onMongoReleaseChange(rel);
+        document.querySelectorAll('select[name="cluster_mongo_release[]"], select[name="replset_mongo_release[]"]').forEach(onMongoReleaseChange);
       }
       if (data.pbm_versions && data.pbm_versions.length) {
-        refreshVersionSelect('pbm_version', data.pbm_versions, v => v, v => v);
+        // Existing per-resource PBM selects are populated server-side; newly
+        // added blocks use PBM_VERSIONS from the initial page payload.
       }
     })
     .catch(() => {}); // silently ignore if offline
@@ -2637,7 +3245,7 @@ function getBlockChecked(block, name) {
   return !!field && field.checked;
 }
 
-function getBlockImageValue(block, name, prefix) {
+function getBlockImageValue(block, name, imageName) {
   const field = block.querySelector(`[name="${name}"]`);
   if (!field) return '';
   const tag = field.value;
@@ -2645,7 +3253,25 @@ function getBlockImageValue(block, name, prefix) {
     const customField = block.querySelector(`[name="${name.replace('[]', '_custom')}"]`);
     return customField ? customField.value.trim() : '';
   }
-  return tag ? `${prefix}:${tag}` : '';
+  return tag ? `${dockerImageRepoForSelect(field, imageName)}:${tag}` : '';
+}
+
+function copyPackageOverrides(block, target, prefix) {
+  if (PLATFORM === 'docker') return;
+  [
+    'mongodb_distribution',
+    'mongo_release',
+    'mongo_version',
+    'mongo_repo',
+    'pbm_version',
+    'pbm_repo',
+    'pmm_client_version',
+    'pmm_client_repo',
+    'os_image',
+  ].forEach(field => {
+    const value = getBlockFieldValue(block, `${prefix}_${field}[]`).trim();
+    if (value) target[field] = value;
+  });
 }
 
 document.getElementById('config-form').addEventListener('submit', async (e) => {
@@ -2654,26 +3280,11 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   const submitBtn = form.querySelector('[type=submit]');
   const fd = new FormData(form);
 
-  // Validate mandatory CHAOS API token file path before doing anything else.
-  if (PLATFORM === 'chaos') {
-    const tokenPath = (fd.get('chaos_api_token_path') || '').trim();
-    if (!tokenPath) {
-      const tokenInput = document.getElementById('chaos_api_token_path');
-      if (tokenInput) {
-        tokenInput.focus();
-        tokenInput.style.outline = '2px solid red';
-        setTimeout(() => { tokenInput.style.outline = ''; }, 3000);
-      }
-      alert('CHAOS API token file path is required. Please provide the path to your token file.');
-      return;
-    }
-  }
-
   const config = {};
 
   // Simple scalar fields
   const simpleFields = [
-    'prefix','mongo_release','mongo_version','pbm_version','pmm_client_version','project_id','region','location',
+    'project_id','region','location',
     'subnet_cidr','subnet_count','source_ranges',
     'my_ssh_user','ssh_public_key_path','default_key_pair','default_vpc_name',
     'enable_ssh_gateway','ssh_gateway_name','port_to_forward',
@@ -2687,8 +3298,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     'mongos_type','arbiter_type',
     'replsetsvr_type','replsetsvr_volume_size',
     // CHAOS-specific fields
-    'chaos_api_token_path',
-    'delete_after_days','os_image',
+    'delete_after_days',
     'shardsvr_cpu_cores','shardsvr_memory_gb',
     'configsvr_cpu_cores','configsvr_memory_gb',
     'mongos_cpu_cores','mongos_memory_gb',
@@ -2725,6 +3335,13 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 	  if (ycsbContainerSuffix) config.ycsb_container_suffix = ycsbContainerSuffix;
 	}
 	if (PLATFORM !== 'docker') {
+    const anyPmmAgent = Array.from(document.querySelectorAll('input[name="cluster_enable_pmm[]"], input[name="replset_enable_pmm[]"]')).some(cb => cb.checked);
+    if (anyPmmAgent && !fd.has('enable_pmm')) {
+      alert('Enable the PMM monitoring server or disable PMM agents for all clusters and replica sets.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save & Configure';
+      return;
+    }
     // enable_pmm is a tri-state *bool on the server: only send false when the
     // user explicitly unchecked it; when checked send true so it's stored.
     config.enable_pmm = fd.has('enable_pmm');
@@ -2819,10 +3436,15 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     };
     const auditFilter = getBlockFieldValue(block, 'cluster_audit_filter[]').trim();
     if (c.enable_audit && auditFilter && auditFilter !== DEFAULT_AUDIT_FILTER) c.audit_filter = auditFilter;
+    copyPackageOverrides(block, c, 'cluster');
+    if (PLATFORM !== 'docker') {
+      c.enable_pmm = getBlockChecked(block, 'cluster_enable_pmm[]');
+      c.enable_pbm = getBlockChecked(block, 'cluster_enable_pbm[]');
+    }
     if (PLATFORM === 'docker') {
-      const psmdbImage = getBlockImageValue(block, 'cluster_psmdb_image[]', 'percona/percona-server-mongodb');
-      const pbmImage = getBlockImageValue(block, 'cluster_pbm_image[]', 'percona/percona-backup-mongodb');
-      const pmmClientImage = getBlockImageValue(block, 'cluster_pmm_client_image[]', 'percona/pmm-client');
+      const psmdbImage = getBlockImageValue(block, 'cluster_psmdb_image[]', 'percona-server-mongodb');
+      const pbmImage = getBlockImageValue(block, 'cluster_pbm_image[]', 'percona-backup-mongodb');
+      const pmmClientImage = getBlockImageValue(block, 'cluster_pmm_client_image[]', 'pmm-client');
       c.enable_pmm = getBlockChecked(block, 'cluster_enable_pmm[]');
       c.enable_pbm = getBlockChecked(block, 'cluster_enable_pbm[]');
       if (psmdbImage) c.psmdb_image = psmdbImage;
@@ -2846,12 +3468,17 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     };
     const auditFilter = getBlockFieldValue(block, 'replset_audit_filter[]').trim();
     if (r.enable_audit && auditFilter && auditFilter !== DEFAULT_AUDIT_FILTER) r.audit_filter = auditFilter;
+    copyPackageOverrides(block, r, 'replset');
+    if (PLATFORM !== 'docker') {
+      r.enable_pmm = getBlockChecked(block, 'replset_enable_pmm[]');
+      r.enable_pbm = getBlockChecked(block, 'replset_enable_pbm[]');
+    }
     if (PLATFORM === 'docker') {
       const port = parseInt(getBlockFieldValue(block, 'replset_port[]'));
       if (port > 0) { r.replset_port = port; r.arbiter_port = port; }
-      const psmdbImage = getBlockImageValue(block, 'replset_psmdb_image[]', 'percona/percona-server-mongodb');
-      const pbmImage = getBlockImageValue(block, 'replset_pbm_image[]', 'percona/percona-backup-mongodb');
-      const pmmClientImage = getBlockImageValue(block, 'replset_pmm_client_image[]', 'percona/pmm-client');
+      const psmdbImage = getBlockImageValue(block, 'replset_psmdb_image[]', 'percona-server-mongodb');
+      const pbmImage = getBlockImageValue(block, 'replset_pbm_image[]', 'percona-backup-mongodb');
+      const pmmClientImage = getBlockImageValue(block, 'replset_pmm_client_image[]', 'pmm-client');
       r.enable_pmm = getBlockChecked(block, 'replset_enable_pmm[]');
       r.enable_pbm = getBlockChecked(block, 'replset_enable_pbm[]');
       if (psmdbImage) r.psmdb_image = psmdbImage;
@@ -2864,23 +3491,19 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 
   // PMM Servers (Docker)
   if (PLATFORM === 'docker') {
-    const pNames  = fd.getAll('pmm_server_name[]');
-    const pImages = fd.getAll('pmm_server_image[]');
-    const pPorts  = fd.getAll('pmm_server_port[]');
-    const pBind   = fd.getAll('pmm_server_bind_localhost[]');
     config.pmm_servers = {};
-    for (let i = 0; i < pNames.length; i++) {
-      const name = pNames[i].trim();
-      if (!name) continue;
+    document.querySelectorAll('#pmm-servers-container > .component-block').forEach(block => {
+      const name = getBlockFieldValue(block, 'pmm_server_name[]').trim();
+      if (!name) return;
       config.pmm_servers[name] = {
         env_tag: 'test',
-        pmm_server_image: `percona/pmm-server:${pImages[i] || 'latest'}`,
+        pmm_server_image: getBlockImageValue(block, 'pmm_server_image[]', 'pmm-server') || 'percona/pmm-server:latest',
         pmm_port: 8443,
-        pmm_external_port: parseInt(pPorts[i]) || 8443,
+        pmm_external_port: parseInt(getBlockFieldValue(block, 'pmm_server_port[]')) || 8443,
         // pmm_server_user/pwd not set here – they use the Terraform defaults
-        bind_to_localhost: pBind.some((v,idx) => idx === i && v === '1'),
+        bind_to_localhost: getBlockChecked(block, 'pmm_server_bind_localhost[]'),
       };
-    }
+    });
 
     // Minio Servers – access/secret key come from the Credentials section
     const mNames   = fd.getAll('minio_server_name[]');
@@ -2931,7 +3554,12 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     }
   }
 
-  const envId = fd.get('env_id') || document.querySelector('[data-env-id]').dataset.envId || '';
+  const envId = ((fd.get('env_id') || document.querySelector('[data-env-id]').dataset.envId || '') + '').trim();
+  if (envId && !/^[a-z0-9]{1,16}$/.test(envId)) {
+    alert('Environment name must use lowercase letters and digits only, up to 16 characters.');
+    return;
+  }
+  if (envId) config.prefix = envId;
   const payload = { env_id: envId || undefined, platform: PLATFORM, config };
 
   if (PLATFORM === 'docker') {

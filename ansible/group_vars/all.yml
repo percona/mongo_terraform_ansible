@@ -16,10 +16,20 @@
 
 ansible_python_interpreter: /usr/bin/python3
 
-# MongoDB version as per "percona-release". Availability of MongoDB version depend on the OS version.
-# e.g. -> Available repositories for centos7: psmdb-36 psmdb-40 psmdb-42 psmdb-44 psmdb-50 psmdb-60
-#mongo_release: psmdb-70
-mongo_release: psmdb-80
+# MongoDB package distribution for non-Docker deployments: psmdb, community, or enterprise.
+# Keep defaults behind effective vars so inventory/UI selections can override them.
+mongodb_distribution_default: psmdb
+mongodb_distribution_effective: "{{ mongodb_distribution | default(mongodb_distribution_default, true) | trim }}"
+
+# MongoDB version/release line. For PSMDB this is the percona-release repo name
+# (for example psmdb-80). For MongoDB Community/Enterprise this is the official
+# MongoDB repo line (for example 8.0 or 8.3).
+# Availability depends on the OS version.
+#mongo_release_default: psmdb-70
+mongo_release_default: psmdb-80
+mongo_release_effective: "{{ mongo_release | default(mongo_release_default, true) | trim }}"
+mongo_repo_default: release
+mongo_repo_effective: "{{ mongo_repo | default(mongo_repo_default, true) | trim }}"
 
 # We can also use perconalab/pmm-server-fb:PR-number-hash or perconalab/pmm-server:dev-latest. In that case set experimental to true.
 #pmm_image: perconalab/pmm-server:3-dev-latest
@@ -29,19 +39,69 @@ pmm_image: docker.io/percona/pmm-server:latest
 #pmm_client_repo: pmm2-client experimental
 #pmm_client_repo: pmm2-client
 pmm_client_repo: pmm3-client
+pbm_repo: release
 
 #########################
 ## Package sources
 #########################
 
-# you can use a specific version instead of the default `latest` by passing the package names and version e.g. "percona-server-mongodb-7.0.12-7.el9"
-mongod_packages:
+mongodb_psmdb_mongod_packages:
+  - percona-server-mongodb
+  - percona-mongodb-mongosh
+mongodb_psmdb_mongod_versioned_packages:
   - percona-server-mongodb
   - percona-mongodb-mongosh
 
-mongos_packages:
-   - percona-server-mongodb-mongos
-   - percona-mongodb-mongosh   
+mongodb_psmdb_mongos_packages:
+  - percona-server-mongodb-mongos
+  - percona-mongodb-mongosh
+mongodb_psmdb_mongos_versioned_packages:
+  - percona-server-mongodb-mongos
+  - percona-mongodb-mongosh
+
+mongodb_community_mongod_packages:
+  - mongodb-org
+  - mongodb-mongosh
+mongodb_community_mongod_versioned_packages:
+  - mongodb-org
+  - mongodb-org-database
+  - mongodb-org-server
+  - mongodb-org-mongos
+  - mongodb-org-tools
+  - mongodb-mongosh
+
+mongodb_community_mongos_packages:
+  - mongodb-org-mongos
+  - mongodb-mongosh
+mongodb_community_mongos_versioned_packages:
+  - mongodb-org-mongos
+  - mongodb-mongosh
+
+mongodb_enterprise_mongod_packages:
+  - mongodb-enterprise
+  - mongodb-mongosh
+mongodb_enterprise_mongod_versioned_packages:
+  - mongodb-enterprise
+  - mongodb-enterprise-database
+  - mongodb-enterprise-server
+  - mongodb-enterprise-mongos
+  - mongodb-enterprise-tools
+  - mongodb-mongosh
+
+mongodb_enterprise_mongos_packages:
+  - mongodb-enterprise-mongos
+  - mongodb-mongosh
+mongodb_enterprise_mongos_versioned_packages:
+  - mongodb-enterprise-mongos
+  - mongodb-mongosh
+
+mongod_packages: "{{ lookup('vars', 'mongodb_' ~ mongodb_distribution_effective ~ '_mongod_packages') }}"
+mongod_versioned_packages: "{{ lookup('vars', 'mongodb_' ~ mongodb_distribution_effective ~ '_mongod_versioned_packages') }}"
+mongos_packages: "{{ lookup('vars', 'mongodb_' ~ mongodb_distribution_effective ~ '_mongos_packages') }}"
+mongos_versioned_packages: "{{ lookup('vars', 'mongodb_' ~ mongodb_distribution_effective ~ '_mongos_versioned_packages') }}"
+
+mongo_os_user: "{{ 'mongodb' if mongodb_distribution_effective in ['community', 'enterprise'] and ansible_facts['os_family'] == 'Debian' else 'mongod' }}"
+mongo_os_group: "{{ mongo_os_user }}"
 
 pbm_package:
   - percona-backup-mongodb
@@ -61,6 +121,7 @@ mongo_admin_password: percona
 
 mongod_log_path: /var/log/mongo/
 mongod_path: /var/lib/mongo/
+mongod_pid_path: "{{ '/var/run/mongodb/mongod.pid' if mongodb_distribution_effective in ['community', 'enterprise'] else '/var/run/mongod.pid' }}"
 enable_audit: false
 audit_log_path: /var/log/mongo/auditLog.json
 
@@ -180,7 +241,7 @@ pbm_backup_minute: 2
 pbm_purge_hour: 0
 pbm_purge_minute: 2
 # older pbm versions used a dedicated pbm user
-pbm_os_user: mongod
+pbm_os_user: "{{ mongo_os_user }}"
 
 pbm_config_path: /etc/pbm-storage.conf
 

@@ -91,6 +91,10 @@ Review these first before deploying:
 
     Number of days before instances are automatically deleted (default: 14). Useful for temporary lab environments.
 
+- **enable_ycsb**
+
+    Optional dedicated YCSB workload generator instance.
+
 - **enable_audit** and **audit_filter**
 
     Optional per-cluster or per-replset PSMDB audit settings inside `clusters` or `replsets`.
@@ -101,8 +105,9 @@ Supported scale-out changes are additive only:
 
 - Increase `shard_count` to add shards to an existing sharded cluster.
 - Increase `data_nodes_per_replset` to add data-bearing members to an existing standalone replica set.
+- Add a new sharded cluster or standalone replica set.
 
-After editing variables, run `terraform apply` to create the new instances and regenerate inventory files. Then run the matching Ansible playbook from the repository root:
+After editing variables, run `terraform apply` to create the new instances and regenerate inventory files. For added shards or replica set members, run the matching Ansible scale-out playbook from the repository root:
 
 ```bash
 ansible-playbook -i terraform/chaos/<prefix>_inventory_<cluster> ansible/add_shard.yml \
@@ -111,6 +116,8 @@ ansible-playbook -i terraform/chaos/<prefix>_inventory_<cluster> ansible/add_sha
 ansible-playbook -i terraform/chaos/<prefix>_inventory_<rs> ansible/add_replset_member.yml \
   --extra-vars "target_replset=<rs>"
 ```
+
+For entirely new clusters or replica sets, run `ansible/main.yml` against their generated inventory.
 
 Reducing topology size, changing `configsvr_count`, changing `shardsvr_replicas`, and changing arbiter counts are not implemented.
 

@@ -1,6 +1,7 @@
 ---
 - name: Add the shards to the cluster
   hosts: shards
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   tags: add_shards
   tasks:
     - name: Set cluster default read/write concern

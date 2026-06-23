@@ -1,4 +1,17 @@
 ---
+- name: Gather reusable facts
+  hosts: all
+  gather_facts: true
+  gather_subset:
+    - min
+    - network
+  tags: always
+  tasks:
+    - name: Mark facts as available for imported plays
+      set_fact:
+        skip_repeated_facts: true
+      tags: always
+
 - import_playbook: os_conf.yml
 
 - import_playbook: percona_release.yml

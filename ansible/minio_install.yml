@@ -1,6 +1,7 @@
 ---
 - name: Install and configure Minio server
   hosts: minio
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
   become: yes
   tags: install,backup,minio
   vars:

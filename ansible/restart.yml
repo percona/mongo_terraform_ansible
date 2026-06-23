@@ -2,6 +2,8 @@
 - hosts: cfg:shards:replsets
   gather_facts: false
   become: yes
+  vars:
+    pbm_enabled: "{{ enable_pbm | default(true) | bool }}"
   tasks:
     - name: Wipe arbiter directory contents
       shell: rm -rf {{ mongod_path }}/*
@@ -20,7 +22,9 @@
         state: restarted
       with_items:
         - pbm-agent
-      when: arbiter is not defined
+      when:
+        - pbm_enabled | bool
+        - arbiter is not defined
 
     - name: Figure out the Mongo TLS options
       set_fact:
@@ -40,6 +44,7 @@
   hosts: replsets
   become: true
   vars:
+    pbm_enabled: "{{ enable_pbm | default(true) | bool }}"
     replset_group: "{{ (group_names | difference(['replsets', 'shards']))[0] }}"
     replset_name: "{{ replset_group if cluster is defined and cluster == replset_group else (cluster ~ '-' ~ replset_group if cluster is defined else replset_group) }}"
 
@@ -52,11 +57,15 @@
         - name: Resync pbm storage
           shell: pbm config --force-resync --mongodb-uri '{{ mongodb_uri }}'
 
-      when: inventory_hostname == groups[replset_group][0]     
+      when:
+        - pbm_enabled | bool
+        - inventory_hostname == groups[replset_group][0]
 
 - name: Resync pbm storage (sharded clusters)
   hosts: cfg
   become: true
+  vars:
+    pbm_enabled: "{{ enable_pbm | default(true) | bool }}"
   tasks:
     - block:
         - name: generate PBM_MONGODB_URI
@@ -66,11 +75,15 @@
         - name: Resync pbm storage
           shell: pbm config --force-resync --mongodb-uri '{{ mongodb_uri }}'
 
-      when: inventory_hostname == groups['cfg'][0]     
+      when:
+        - pbm_enabled | bool
+        - inventory_hostname == groups['cfg'][0]
 
 - hosts: cfg:shards:replsets:mongos
   become: yes
   gather_facts: false
+  vars:
+    pmm_enabled: "{{ enable_pmm_agent | default(enable_pmm | default((groups['pmm'] | default([]) | length) > 0)) | bool }}"
   tasks:
     - name: Restart pmm service
       systemd:
@@ -78,3 +91,4 @@
         state: restarted
       with_items:
         - pmm-agent
+      when: pmm_enabled | bool

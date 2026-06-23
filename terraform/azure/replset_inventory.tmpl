@@ -25,13 +25,22 @@ ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/n
 bucket=${bucket}
 region=${location}
 endpointUrl=${endpointUrl}
+enable_pmm=${enable_pmm}
+enable_pmm_agent=${enable_pmm_agent}
+enable_pbm=${enable_pbm}
 key=${key}
 storage_provider=azure
+%{ if mongodb_distribution != "" ~}
+mongodb_distribution=${mongodb_distribution}
+%{ endif ~}
 %{ if mongo_release != "" ~}
 mongo_release=${mongo_release}
 %{ endif ~}
 %{ if mongo_version != "" ~}
 mongo_version=${mongo_version}
+%{ endif ~}
+%{ if mongo_repo != "" ~}
+mongo_repo=${mongo_repo}
 %{ endif ~}
 %{ if pbm_release != "" ~}
 pbm_release=${pbm_release}
@@ -39,8 +48,14 @@ pbm_release=${pbm_release}
 %{ if pbm_version != "" ~}
 pbm_version=${pbm_version}
 %{ endif ~}
+%{ if pbm_repo != "" ~}
+pbm_repo=${pbm_repo}
+%{ endif ~}
 %{ if pmm_client_version != "" ~}
 pmm_client_version=${pmm_client_version}
+%{ endif ~}
+%{ if pmm_client_repo != "" ~}
+pmm_client_repo=${pmm_client_repo}
 %{ endif ~}
 env_tag=${env_tag}
 enable_pmm=${enable_pmm}

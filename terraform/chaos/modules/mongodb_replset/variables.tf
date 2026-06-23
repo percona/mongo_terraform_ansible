@@ -121,8 +121,8 @@ variable "os_image" {
 
 variable "delete_after_days" {
   type        = number
-  default     = 14
-  description = "Number of days before instances are automatically deleted"
+  default     = null
+  description = "Number of days before instances are automatically deleted. Null omits the provider argument."
 }
 
 #############

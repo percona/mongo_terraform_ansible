@@ -35,7 +35,7 @@ module "mongodb_clusters" {
   audit_filter         = each.value.audit_filter
 
   my_ssh_user       = var.my_ssh_user
-  os_image          = var.os_image
+  os_image          = each.value.os_image != "" ? each.value.os_image : var.os_image
   delete_after_days = var.delete_after_days
 
   shardsvr_cpu_cores    = var.shardsvr_cpu_cores
@@ -67,7 +67,7 @@ module "mongodb_replsets" {
   audit_filter           = each.value.audit_filter
 
   my_ssh_user       = var.my_ssh_user
-  os_image          = var.os_image
+  os_image          = each.value.os_image != "" ? each.value.os_image : var.os_image
   delete_after_days = var.delete_after_days
 
   replsetsvr_cpu_cores   = var.replsetsvr_cpu_cores

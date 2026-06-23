@@ -20,6 +20,17 @@ variable "clusters" {
     mongos_count         = optional(number, 2)      # Number of mongos to provision
     enable_audit         = optional(bool, false)    # Enable audit logging
     audit_filter         = optional(string, "")     # Optional audit filter override
+    mongodb_distribution = optional(string, "")
+    mongo_release        = optional(string, "")
+    mongo_version        = optional(string, "")
+    mongo_repo           = optional(string, "")
+    pbm_version          = optional(string, "")
+    pbm_repo             = optional(string, "")
+    pmm_client_version   = optional(string, "")
+    pmm_client_repo      = optional(string, "")
+    enable_pmm           = optional(bool, true)
+    enable_pbm           = optional(bool, true)
+    os_image             = optional(string, "")
   }))
 
   default = {
@@ -43,6 +54,17 @@ variable "replsets" {
     arbiters_per_replset   = optional(number, 1)      # Number of arbiters per replica set
     enable_audit           = optional(bool, false)    # Enable audit logging
     audit_filter           = optional(string, "")     # Optional audit filter override
+    mongodb_distribution   = optional(string, "")
+    mongo_release          = optional(string, "")
+    mongo_version          = optional(string, "")
+    mongo_repo             = optional(string, "")
+    pbm_version            = optional(string, "")
+    pbm_repo               = optional(string, "")
+    pmm_client_version     = optional(string, "")
+    pmm_client_repo        = optional(string, "")
+    enable_pmm             = optional(bool, true)
+    enable_pbm             = optional(bool, true)
+    os_image               = optional(string, "")
   }))
 
   default = {
@@ -231,8 +253,8 @@ variable "os_image" {
 
 variable "delete_after_days" {
   type        = number
-  default     = 14
-  description = "Number of days before instances are automatically deleted"
+  default     = null
+  description = "Number of days before instances are automatically deleted. Null omits the provider argument."
 }
 
 ################
@@ -352,13 +374,25 @@ variable "enable_minio" {
 variable "mongo_release" {
   type        = string
   default     = ""
-  description = "Percona release channel for MongoDB (e.g. psmdb-80). Empty string uses the default from group_vars."
+  description = "MongoDB release line (e.g. psmdb-80, 8.0, 8.3). Empty string uses the default from group_vars."
+}
+
+variable "mongodb_distribution" {
+  type        = string
+  default     = ""
+  description = "MongoDB distribution for non-Docker packages: psmdb, community, or enterprise. Empty string uses the default from group_vars."
 }
 
 variable "mongo_version" {
   type        = string
   default     = ""
   description = "Specific MongoDB version to install (e.g. 8.0.4). Empty string installs the latest available."
+}
+
+variable "mongo_repo" {
+  type        = string
+  default     = ""
+  description = "Percona repository channel for MongoDB packages (release, testing, experimental). Empty string uses group_vars default."
 }
 
 variable "pbm_release" {
@@ -373,8 +407,20 @@ variable "pbm_version" {
   description = "Specific PBM version to install (e.g. 2.4.0). Empty string installs the latest available."
 }
 
+variable "pbm_repo" {
+  type        = string
+  default     = ""
+  description = "Percona repository channel for PBM packages (release, testing, experimental). Empty string uses group_vars default."
+}
+
 variable "pmm_client_version" {
   type        = string
   default     = ""
   description = "Specific PMM client version to install (e.g. 3.4.0). Empty string installs the latest available."
+}
+
+variable "pmm_client_repo" {
+  type        = string
+  default     = ""
+  description = "Percona repository channel for PMM client packages (release, testing, experimental). Empty string uses group_vars default."
 }

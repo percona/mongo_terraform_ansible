@@ -79,6 +79,11 @@ func writeTfvars(envID, platform string, cfg Config) error {
 	}
 
 	if platform != "docker" {
+		writeOptStr("mongodb_distribution", cfg.MongoDBDistribution)
+		writeOptStr("mongo_release", cfg.MongoRelease)
+		writeOptStr("mongo_version", cfg.MongoVersion)
+		writeOptStr("mongo_repo", cfg.MongoRepo)
+
 		// Cloud-only simple vars
 		writeOptStr("project_id", cfg.ProjectID)
 		writeOptStr("region", cfg.Region)
@@ -130,13 +135,6 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			write("}")
 		}
 
-		// Package version vars – written for all cloud platforms so Terraform
-		// passes them into the inventory [all:vars] section instead of using --extra-vars.
-		writeOptStr("mongo_release", cfg.MongoRelease)
-		writeOptStr("mongo_version", cfg.MongoVersion)
-		writeOptStr("pbm_release", cfg.PbmRelease)
-		writeOptStr("pbm_version", cfg.PbmVersion)
-		writeOptStr("pmm_client_version", cfg.PmmClientVersion)
 		writeVar("enable_ycsb", cfg.EnableYcsb)
 
 		if platform == "chaos" {
@@ -145,7 +143,6 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			// it is sensitive. It is passed at runtime via the CHAOS_API_TOKEN environment
 			// variable (see handlers.go).
 			writeOptInt("delete_after_days", cfg.DeleteAfterDays)
-			writeOptStr("os_image", cfg.OsImage)
 			// Firewall rules: new structured per-rule list replaces source_ranges string.
 			// For backward compat, also write source_ranges if FirewallRules is empty.
 			if len(cfg.FirewallRules) > 0 {
@@ -311,6 +308,37 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			if strings.TrimSpace(c.AuditFilter) != "" {
 				write(fmt.Sprintf("    audit_filter = %s", formatHCLVal(c.AuditFilter)))
 			}
+			if platform != "docker" {
+				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(boolDefault(c.EnablePmm, false))))
+				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(boolDefault(c.EnablePbm, false))))
+				if platform == "chaos" && c.OsImage != "" {
+					write(fmt.Sprintf("    os_image = %s", formatHCLVal(c.OsImage)))
+				}
+				if c.MongoDBDistribution != "" {
+					write(fmt.Sprintf("    mongodb_distribution = %s", formatHCLVal(c.MongoDBDistribution)))
+				}
+				if c.MongoRelease != "" {
+					write(fmt.Sprintf("    mongo_release = %s", formatHCLVal(c.MongoRelease)))
+				}
+				if c.MongoVersion != "" {
+					write(fmt.Sprintf("    mongo_version = %s", formatHCLVal(c.MongoVersion)))
+				}
+				if c.MongoRepo != "" {
+					write(fmt.Sprintf("    mongo_repo = %s", formatHCLVal(c.MongoRepo)))
+				}
+				if c.PbmVersion != "" {
+					write(fmt.Sprintf("    pbm_version = %s", formatHCLVal(c.PbmVersion)))
+				}
+				if c.PbmRepo != "" {
+					write(fmt.Sprintf("    pbm_repo = %s", formatHCLVal(c.PbmRepo)))
+				}
+				if c.PmmClientVersion != "" {
+					write(fmt.Sprintf("    pmm_client_version = %s", formatHCLVal(c.PmmClientVersion)))
+				}
+				if c.PmmClientRepo != "" {
+					write(fmt.Sprintf("    pmm_client_repo = %s", formatHCLVal(c.PmmClientRepo)))
+				}
+			}
 			if platform == "docker" {
 				if c.PsmdbImage != "" {
 					write(fmt.Sprintf("    psmdb_image = %s", formatHCLVal(c.PsmdbImage)))
@@ -321,8 +349,8 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				if c.PmmClientImage != "" {
 					write(fmt.Sprintf("    pmm_client_image = %s", formatHCLVal(c.PmmClientImage)))
 				}
-				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(c.EnablePmm)))
-				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(c.EnablePbm)))
+				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(boolDefault(c.EnablePmm, false))))
+				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(boolDefault(c.EnablePbm, false))))
 				write(fmt.Sprintf("    bind_to_localhost = %s", formatHCLVal(c.BindToLocalhost)))
 				if dockerMongoRootPassword != "" {
 					write(fmt.Sprintf("    mongodb_root_password = %s", formatHCLVal(dockerMongoRootPassword)))
@@ -350,6 +378,37 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			if strings.TrimSpace(r.AuditFilter) != "" {
 				write(fmt.Sprintf("    audit_filter = %s", formatHCLVal(r.AuditFilter)))
 			}
+			if platform != "docker" {
+				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(boolDefault(r.EnablePmm, false))))
+				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(boolDefault(r.EnablePbm, false))))
+				if platform == "chaos" && r.OsImage != "" {
+					write(fmt.Sprintf("    os_image = %s", formatHCLVal(r.OsImage)))
+				}
+				if r.MongoDBDistribution != "" {
+					write(fmt.Sprintf("    mongodb_distribution = %s", formatHCLVal(r.MongoDBDistribution)))
+				}
+				if r.MongoRelease != "" {
+					write(fmt.Sprintf("    mongo_release = %s", formatHCLVal(r.MongoRelease)))
+				}
+				if r.MongoVersion != "" {
+					write(fmt.Sprintf("    mongo_version = %s", formatHCLVal(r.MongoVersion)))
+				}
+				if r.MongoRepo != "" {
+					write(fmt.Sprintf("    mongo_repo = %s", formatHCLVal(r.MongoRepo)))
+				}
+				if r.PbmVersion != "" {
+					write(fmt.Sprintf("    pbm_version = %s", formatHCLVal(r.PbmVersion)))
+				}
+				if r.PbmRepo != "" {
+					write(fmt.Sprintf("    pbm_repo = %s", formatHCLVal(r.PbmRepo)))
+				}
+				if r.PmmClientVersion != "" {
+					write(fmt.Sprintf("    pmm_client_version = %s", formatHCLVal(r.PmmClientVersion)))
+				}
+				if r.PmmClientRepo != "" {
+					write(fmt.Sprintf("    pmm_client_repo = %s", formatHCLVal(r.PmmClientRepo)))
+				}
+			}
 			if platform == "docker" {
 				if r.ReplsetPort != 0 {
 					write(fmt.Sprintf("    replset_port = %s", formatHCLVal(r.ReplsetPort)))
@@ -369,8 +428,8 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				if r.PmmClientImage != "" {
 					write(fmt.Sprintf("    pmm_client_image = %s", formatHCLVal(r.PmmClientImage)))
 				}
-				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(r.EnablePmm)))
-				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(r.EnablePbm)))
+				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(boolDefault(r.EnablePmm, false))))
+				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(boolDefault(r.EnablePbm, false))))
 				write(fmt.Sprintf("    bind_to_localhost = %s", formatHCLVal(r.BindToLocalhost)))
 				if dockerMongoRootPassword != "" {
 					write(fmt.Sprintf("    mongodb_root_password = %s", formatHCLVal(dockerMongoRootPassword)))

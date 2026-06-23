@@ -72,6 +72,10 @@ a:hover { text-decoration: underline; }
   padding: 2rem 1.5rem;
 }
 
+.container:has(.env-table-wrapper) {
+  max-width: 1500px;
+}
+
 /* ─── Buttons ──────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
@@ -192,6 +196,14 @@ a:hover { text-decoration: underline; }
 }
 .env-meta { display: flex; flex-direction: column; gap: 0.2rem; margin-top: 0.6rem; }
 .env-meta small { color: var(--color-muted); }
+
+.image-namespace-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+.image-namespace-row select { flex: 0 0 8.5rem; }
+.image-namespace-row input { flex: 1; }
 
 /* ─── Platform badge ────────────────────────────────────────────── */
 .platform-badge {

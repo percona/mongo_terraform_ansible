@@ -14,6 +14,16 @@ resource "aws_instance" "arbiter" {
   vpc_security_group_ids      = [aws_security_group.mongodb-arbiter-sg.id]
   user_data                   = <<-EOT
     #!/bin/bash
+    id -u "${var.my_ssh_user}" >/dev/null 2>&1 || useradd -m -s /bin/bash "${var.my_ssh_user}"
+    usermod -aG wheel "${var.my_ssh_user}" 2>/dev/null || usermod -aG sudo "${var.my_ssh_user}" 2>/dev/null || true
+    echo "${var.my_ssh_user} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${var.my_ssh_user}"
+    chmod 440 "/etc/sudoers.d/${var.my_ssh_user}"
+    home_dir="$(getent passwd "${var.my_ssh_user}" | cut -d: -f6)"
+    install -d -m 700 -o "${var.my_ssh_user}" -g "${var.my_ssh_user}" "$home_dir/.ssh"
+    printf '%s' '${base64encode(file(var.ssh_public_key_path))}' | base64 -d > "$home_dir/.ssh/authorized_keys"
+    chown "${var.my_ssh_user}:${var.my_ssh_user}" "$home_dir/.ssh/authorized_keys"
+    chmod 600 "$home_dir/.ssh/authorized_keys"
+
     # Set the hostname
     hostnamectl set-hostname "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}"
 

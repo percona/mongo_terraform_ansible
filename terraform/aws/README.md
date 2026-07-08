@@ -16,11 +16,13 @@ This Terraform module creates:
 
 1. Install [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+.
 2. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
-3. Authenticate in your shell:
+3. Authenticate in your shell when running Terraform manually:
 
 ```bash
 aws configure
 ```
+
+If you use the Web UI, configure an AWS access key in UI Settings instead. The UI writes isolated AWS credential/config files under `ui-go/secrets/cloud/aws/` and passes them to Terraform with `AWS_SHARED_CREDENTIALS_FILE`, `AWS_CONFIG_FILE`, and `AWS_PROFILE`.
 
 4. Change into this directory:
 

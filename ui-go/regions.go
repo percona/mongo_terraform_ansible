@@ -24,6 +24,10 @@ var awsImageOwners = []struct {
 
 func getAWSImages(region string) (map[string][]CloudImage, error) {
 	result := map[string][]CloudImage{}
+	env, envErr := configuredProviderAuthEnv("aws")
+	if envErr != nil {
+		return result, nil
+	}
 	for _, o := range awsImageOwners {
 		args := []string{
 			"ec2", "describe-images",
@@ -38,7 +42,7 @@ func getAWSImages(region string) (map[string][]CloudImage, error) {
 			"reverse(sort_by(Images,&CreationDate))[:5].{id:ImageId,name:Name,desc:Description}",
 			"--output", "json",
 		}
-		out, err := execOutput("aws", args...)
+		out, err := execOutputEnv(env, "aws", args...)
 		if err != nil {
 			slog.Warn("aws describe-images failed", "group", o.Group, "region", region, "err", err)
 			continue
@@ -77,6 +81,10 @@ var gcpImageProjects = []struct {
 
 func getGCPImages(region string) (map[string][]CloudImage, error) {
 	result := map[string][]CloudImage{}
+	env, envErr := configuredProviderAuthEnv("gcp")
+	if envErr != nil {
+		return result, nil
+	}
 	for _, p := range gcpImageProjects {
 		args := []string{
 			"compute", "images", "list",
@@ -86,7 +94,7 @@ func getGCPImages(region string) (map[string][]CloudImage, error) {
 			"--limit", "5",
 			"--format", "json(selfLink,name,description)",
 		}
-		out, err := execOutput("gcloud", args...)
+		out, err := execOutputEnv(env, "gcloud", args...)
 		if err != nil {
 			slog.Warn("gcloud images list failed", "group", p.Group, "err", err)
 			continue
@@ -124,6 +132,10 @@ var azureImagePublishers = []struct {
 
 func getAzureImages(location string) (map[string][]CloudImage, error) {
 	result := map[string][]CloudImage{}
+	env, envErr := configuredProviderAuthEnv("azure")
+	if envErr != nil {
+		return result, nil
+	}
 	for _, pub := range azureImagePublishers {
 		args := []string{
 			"vm", "image", "list",
@@ -134,7 +146,7 @@ func getAzureImages(location string) (map[string][]CloudImage, error) {
 			"--query", "reverse(sort_by([?osType=='Linux'],&version))[:5].{id:urn,name:skus,desc:offer}",
 			"--output", "json",
 		}
-		out, err := execOutput("az", args...)
+		out, err := execOutputEnv(env, "az", args...)
 		if err != nil {
 			slog.Warn("az vm image list failed", "group", pub.Group, "location", location, "err", err)
 			continue
@@ -207,7 +219,11 @@ func getCloudRegions(platform string) []string {
 }
 
 func getAWSRegions() []string {
-	out, err := execOutput("aws", "ec2", "describe-regions",
+	env, envErr := configuredProviderAuthEnv("aws")
+	if envErr != nil {
+		return nil
+	}
+	out, err := execOutputEnv(env, "aws", "ec2", "describe-regions",
 		"--query", "Regions[].RegionName", "--output", "json")
 	if err != nil {
 		slog.Warn("aws describe-regions failed", "err", err)
@@ -223,7 +239,11 @@ func getAWSRegions() []string {
 }
 
 func getGCPRegions() []string {
-	out, err := execOutput("gcloud", "compute", "regions", "list",
+	env, envErr := configuredProviderAuthEnv("gcp")
+	if envErr != nil {
+		return nil
+	}
+	out, err := execOutputEnv(env, "gcloud", "compute", "regions", "list",
 		"--format=value(name)")
 	if err != nil {
 		slog.Warn("gcloud regions list failed", "err", err)
@@ -241,7 +261,11 @@ func getGCPRegions() []string {
 }
 
 func getAzureRegions() []string {
-	out, err := execOutput("az", "account", "list-locations",
+	env, envErr := configuredProviderAuthEnv("azure")
+	if envErr != nil {
+		return nil
+	}
+	out, err := execOutputEnv(env, "az", "account", "list-locations",
 		"--query", "[].name", "--output", "json")
 	if err != nil {
 		slog.Warn("az list-locations failed", "err", err)

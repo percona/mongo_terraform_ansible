@@ -90,6 +90,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		writeOptStr("location", cfg.Location)
 		writeOptStr("source_ranges", cfg.SourceRanges)
 		writeOptStr("my_ssh_user", cfg.MySSHUser)
+		writeOptStr("ssh_private_key_path", cfg.SSHPrivateKeyPath)
 		if platform != "chaos" {
 			writeOptStr("subnet_cidr", cfg.SubnetCIDR)
 			if platform == "aws" {
@@ -172,6 +173,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			writeOptInt("pmm_volume_size", cfg.PmmVolumeSize)
 			writeOptInt("pmm_cpu_cores", cfg.PmmCpuCores)
 			writeOptInt("pmm_memory_gb", cfg.PmmMemoryGb)
+			writeOptStr("pmm_image", cfg.PmmImage)
 			// Minio
 			enableMinio := cfg.EnableMinio != nil && *cfg.EnableMinio
 			if cfg.EnableMinio != nil {
@@ -210,6 +212,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			writeOptInt("pmm_volume_size", cfg.PmmVolumeSize)
 			writeOptInt("pmm_port", cfg.PmmPort)
 			writeOptStr("pmm_disk_type", cfg.PmmDiskType)
+			writeOptStr("pmm_image", cfg.PmmImage)
 			if cfg.EnablePmm != nil {
 				writeVar("enable_pmm", *cfg.EnablePmm)
 			}

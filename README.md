@@ -27,7 +27,7 @@ Install the tools that match your target platform:
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), [Google Cloud SDK](https://cloud.google.com/sdk/docs/install), or [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) for the corresponding cloud provider
 - KVM/Libvirt plus `genisoimage` for local Libvirt deployments
 
-You will also need provider credentials or login configured in your shell before running Terraform.
+When using the Web UI, configure provider credentials in **Settings**. The UI stores them under `ui-go/secrets/cloud/` and passes isolated credential environment variables to Terraform. Manual CLI usage still requires provider credentials configured in your shell.
 
 ### Quickstart for Mac
 

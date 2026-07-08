@@ -29,6 +29,11 @@ variable "my_key_pair" {
   default     = "key"
 }
 
+variable "ssh_public_key_path" {
+  description = "SSH public key file used to provision the configured SSH user"
+  type        = string
+}
+
 ##################
 # MongoDB topology
 ##################

@@ -14,11 +14,13 @@ This Terraform module creates:
 
 1. Install [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+.
 2. Install the [Google Cloud SDK](https://cloud.google.com/sdk/docs/install).
-3. Authenticate in your shell:
+3. Authenticate in your shell when running Terraform manually:
 
 ```bash
 gcloud auth application-default login
 ```
+
+If you use the Web UI, upload a GCP service account JSON key and set the project ID in UI Settings instead. The UI stores the key under `ui-go/secrets/cloud/gcp/`, uses an isolated Cloud SDK config directory, and passes `GOOGLE_APPLICATION_CREDENTIALS` to Terraform.
 
 4. Change into this directory:
 

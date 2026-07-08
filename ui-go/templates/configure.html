@@ -45,27 +45,9 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label for="my_ssh_user">Default SSH User <span class="field-tip" data-tip="Primary username Ansible uses to connect to instances (also used to generate ssh_config).">ⓘ</span></label>
-        <input type="text" id="my_ssh_user" name="my_ssh_user"
-               value="{{strDefault .Config.MySSHUser .OSUser}}" placeholder="{{.OSUser}}">
-      </div>
-      <div class="form-group">
         <label for="default_vpc_name">VPC Name <span class="field-tip" data-tip="Base name for the VPC (full name = prefix-vpc_name).">ⓘ</span></label>
         <input type="text" id="default_vpc_name" name="default_vpc_name"
                value="{{strDefault .Config.DefaultVpcName "mongo"}}" placeholder="mongo">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>SSH Public Key for Default User <span class="field-tip" data-tip="Public key added to every GCP instance for the default SSH user.">ⓘ</span></label>
-        <div class="file-picker-row">
-          <span id="ssh-key-filename" class="file-picker-name">{{if .Config.SSHPublicKeyPath}}{{.Config.SSHPublicKeyPath}}{{else}}No file selected{{end}}</span>
-          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('ssh_key_file_input').click()">Browse…</button>
-        </div>
-        <input type="file" id="ssh_key_file_input" accept=".pub,text/plain" style="display:none"
-               onchange="uploadSSHKey(this)">
-        <input type="hidden" id="ssh_public_key_path" name="ssh_public_key_path"
-               value="{{.Config.SSHPublicKeyPath}}">
       </div>
       <div class="form-group">
         <label for="subnet_cidr">Subnet CIDR <span class="field-tip" data-tip="CIDR block for the VPC subnet (e.g. 10.128.0.0/20).">ⓘ</span></label>
@@ -93,26 +75,6 @@
         <small>GCP image used for all instances. Images are fetched from GCP and grouped by OS. Select "Custom…" to enter a full image path.</small>
       </div>
     </div>
-    <!-- gce_ssh_users: additional users whose public keys are provisioned on every instance -->
-    <div class="form-row">
-      <div class="form-group form-group-full">
-        <label>Additional SSH Users <span class="field-tip" data-tip="Builds the gce_ssh_users Terraform variable — adds public keys for each listed user to every GCP instance.">ⓘ</span></label>
-        <div id="ssh-users-container">
-          {{range $user, $key := .Config.SSHUsers}}
-          <div class="ssh-user-row">
-            <input type="text" name="ssh_user_name[]" value="{{$user}}" placeholder="username">
-            <div class="file-picker-row">
-              <span class="file-picker-name">{{$key}}</span>
-              <button type="button" class="btn btn-outline btn-sm" onclick="pickSshUserKey(this)">Browse…</button>
-            </div>
-            <input type="hidden" name="ssh_user_key[]" value="{{$key}}">
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>
-          </div>
-          {{end}}
-        </div>
-        <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addSshUser()">+ Add SSH User</button>
-      </div>
-    </div>
   </section>
 
   {{else if eq $p "aws"}}
@@ -126,29 +88,6 @@
           {{if .Config.Region}}<option value="{{.Config.Region}}" selected>{{.Config.Region}}</option>{{end}}
         </select>
         <small><a href="#" onclick="reloadRegions(event)">↻ Refresh from AWS</a></small>
-      </div>
-      <div class="form-group">
-        <label for="my_ssh_user">Default SSH User <span class="field-tip" data-tip="Primary username Ansible uses to SSH into instances.">ⓘ</span></label>
-        <input type="text" id="my_ssh_user" name="my_ssh_user"
-               value="{{strDefault .Config.MySSHUser "ec2-user"}}" placeholder="{{strDefault .OSUser "ec2-user"}}">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>SSH Public Key File <span class="field-tip" data-tip="Public key uploaded to AWS as an EC2 Key Pair and used by Terraform/Ansible to connect.">ⓘ</span></label>
-        <div class="file-picker-row">
-          <span id="ssh-key-filename" class="file-picker-name">{{if .Config.SSHPublicKeyPath}}{{.Config.SSHPublicKeyPath}}{{else}}No file selected{{end}}</span>
-          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('ssh_key_file_input').click()">Browse…</button>
-        </div>
-        <input type="file" id="ssh_key_file_input" accept=".pub,text/plain" style="display:none"
-               onchange="uploadSSHKey(this)">
-        <input type="hidden" id="ssh_public_key_path" name="ssh_public_key_path"
-               value="{{.Config.SSHPublicKeyPath}}">
-      </div>
-      <div class="form-group">
-        <label for="default_key_pair">Key Pair Name <span class="field-tip" data-tip="EC2 Key Pair name in AWS. Must match the uploaded SSH public key.">ⓘ</span></label>
-        <input type="text" id="default_key_pair" name="default_key_pair"
-               value="{{strDefault .Config.DefaultKeyPair "key"}}">
       </div>
     </div>
     <div class="form-row">
@@ -195,22 +134,6 @@
         <small class="field-tip" data-tip="Spot instances are cheaper but may be reclaimed by AWS with short notice.">ⓘ</small>
       </div>
     </div>
-    <!-- ssh_users: additional users whose public keys are provisioned on every instance -->
-    <div class="form-row">
-      <div class="form-group form-group-full">
-        <label>Additional SSH Users <span class="field-tip" data-tip="Builds the ssh_users Terraform variable — adds public keys for each listed user to every AWS instance.">ⓘ</span></label>
-        <div id="ssh-users-container">
-          {{range $user, $key := .Config.SSHUsers}}
-          <div class="ssh-user-row">
-            <input type="text" name="ssh_user_name[]" value="{{$user}}" placeholder="username">
-            <input type="text" name="ssh_user_key[]"  value="{{$key}}" placeholder="~/.ssh/id_rsa.pub">
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>
-          </div>
-          {{end}}
-        </div>
-        <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addSshUser()">+ Add SSH User</button>
-      </div>
-    </div>
   </section>
 
   {{else if eq $p "azure"}}
@@ -225,11 +148,6 @@
         </select>
         <small><a href="#" onclick="reloadRegions(event)">↻ Refresh from Azure</a></small>
       </div>
-      <div class="form-group">
-        <label for="my_ssh_user">Default SSH User <span class="field-tip" data-tip="Primary username Ansible uses to connect to Azure instances.">ⓘ</span></label>
-        <input type="text" id="my_ssh_user" name="my_ssh_user"
-               value="{{strDefault .Config.MySSHUser .OSUser}}" placeholder="{{strDefault .OSUser "azureuser"}}">
-      </div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -243,33 +161,10 @@
           Use Spot Instances <span class="field-tip" data-tip="Use Azure Spot VMs. Cheaper but can be evicted by Azure with short notice.">ⓘ</span></label>
       </div>
     </div>
-    <!-- ssh_users: additional users whose public keys are provisioned on every instance -->
-    <div class="form-row">
-      <div class="form-group form-group-full">
-        <label>Additional SSH Users <span class="field-tip" data-tip="Builds the ssh_users Terraform variable — adds public keys for each listed user to every Azure instance.">ⓘ</span></label>
-        <div id="ssh-users-container">
-          {{range $user, $key := .Config.SSHUsers}}
-          <div class="ssh-user-row">
-            <input type="text" name="ssh_user_name[]" value="{{$user}}" placeholder="username">
-            <input type="text" name="ssh_user_key[]"  value="{{$key}}" placeholder="~/.ssh/id_rsa.pub">
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>
-          </div>
-          {{end}}
-        </div>
-        <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="addSshUser()">+ Add SSH User</button>
-      </div>
-    </div>
   </section>
   {{else if eq $p "chaos"}}
   <section class="form-section">
     <h2>CHAOS Settings</h2>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="my_ssh_user">SSH User <span class="field-tip" data-tip="Username Ansible uses to connect to all CHAOS instances.">ⓘ</span></label>
-        <input type="text" id="my_ssh_user" name="my_ssh_user"
-               value="{{strDefault .Config.MySSHUser .OSUser}}" placeholder="{{strDefault .OSUser "ubuntu"}}">
-      </div>
-    </div>
     <!-- Firewall rules: multiple per-rule entries (CIDR + port) -->
     <div class="form-row">
       <div class="form-group form-group-full">
@@ -1248,7 +1143,10 @@
     <div id="pmm-cloud-body" {{if not $pmmCustomized}}style="display:none"{{end}}>
     <div id="pmm-cloud-settings" {{if not (boolDefault .Config.EnablePmm false)}}style="display:none"{{end}}>
     {{$curPmm := .Config.PmmImage}}
-    {{$isCustomPmm := and $curPmm (not (or (hasPrefix $curPmm "docker.io/percona/pmm-server:") (hasPrefix $curPmm "percona/pmm-server:")))}}
+    {{$pmmSource := imageSource $curPmm "percona"}}
+    {{$pmmTag := "latest"}}{{if $curPmm}}{{$pmmTag = imageTag $curPmm}}{{end}}
+    {{$pmmChannel := .Config.PmmImageChannel}}{{if not $pmmChannel}}{{$pmmChannel = "release"}}{{end}}
+    {{$isCustomPmm := pmmServerImageCustom $curPmm}}
     {{if eq $p "chaos"}}
     <div class="form-row">
       <div class="form-group">
@@ -1287,18 +1185,37 @@
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group">
+      <div class="form-group image-field" data-image-repo="pmm-server">
         <label>PMM Server Image (Ansible) <span class="field-tip" data-tip="Docker image used by Ansible to provision the PMM server.">ⓘ</span></label>
+        <div class="pmm-image-control-row">
+          <div class="pmm-image-select-group pmm-image-source-group">
+            <label for="pmm_image_source">Source <span class="field-tip" data-tip="Docker Hub namespace used to fetch PMM server image tags. Use perconalab for lab/dev builds or custom for another namespace.">ⓘ</span></label>
+            <select id="pmm_image_source" class="docker-namespace-select" title="Docker Hub namespace used to fetch PMM server image tags" onchange="onPmmServerImageSourceChange(this)">
+              <option value="percona" {{if eq $pmmSource "percona"}}selected{{end}}>percona</option>
+              <option value="perconalab" {{if eq $pmmSource "perconalab"}}selected{{end}}>perconalab</option>
+              <option value="__custom__" {{if namespaceCustom $pmmSource}}selected{{end}}>custom</option>
+            </select>
+          </div>
+          <div class="pmm-image-select-group pmm-image-channel-group">
+            <label for="pmm_image_channel">Channel <span class="field-tip" data-tip="Filters available PMM server image tags by release, testing, or experimental naming patterns.">ⓘ</span></label>
+            <select id="pmm_image_channel" name="pmm_image_channel" title="Filter available PMM server image tags by channel" onchange="onPmmServerImageChannelChange(this)">
+              <option value="release" {{if eq $pmmChannel "release"}}selected{{end}}>release</option>
+              <option value="testing" {{if eq $pmmChannel "testing"}}selected{{end}}>testing</option>
+              <option value="experimental" {{if eq $pmmChannel "experimental"}}selected{{end}}>experimental</option>
+            </select>
+          </div>
+          <div class="pmm-image-select-group pmm-image-tag-group">
+            <label for="pmm_image">Version <span class="field-tip" data-tip="PMM server image tag to deploy. The list refreshes when source or channel changes.">ⓘ</span></label>
+            <select id="pmm_image" name="pmm_image" data-current-tag="{{$pmmTag}}" title="PMM server image tag to deploy" onchange="toggleCustomImageInput(this)">
+              {{range .PMMImages}}
+              <option value="{{.}}" {{if tagSelected $curPmm (printf "%s/pmm-server" $pmmSource) .}}selected{{end}}>{{$pmmSource}}/pmm-server:{{.}}</option>
+              {{end}}
+              <option value="__custom__" {{if $isCustomPmm}}selected{{end}}>Custom image…</option>
+            </select>
+          </div>
+        </div>
+        <input type="text" id="pmm_image_source_custom" class="docker-namespace-custom" value="{{if namespaceCustom $pmmSource}}{{$pmmSource}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $pmmSource)}}style="display:none"{{end}} oninput="onPmmServerImageSourceChange(this)">
         <div class="image-select-wrapper">
-          <select name="pmm_image" onchange="toggleCustomImageInput(this)">
-            {{range .PMMImages}}
-            <option value="docker.io/percona/pmm-server:{{.}}"
-                    {{if tagSelected $curPmm "docker.io/percona/pmm-server" .}}selected{{end}}>
-              docker.io/percona/pmm-server:{{.}}
-            </option>
-            {{end}}
-            <option value="__custom__" {{if $isCustomPmm}}selected{{end}}>Custom…</option>
-          </select>
           <input type="text" class="custom-image-input" name="pmm_image_custom"
                  value="{{if $isCustomPmm}}{{$curPmm}}{{end}}"
                  placeholder="registry/repo:tag"
@@ -1333,18 +1250,37 @@
                value="{{.Config.PmmDiskType}}"
                placeholder="{{if eq $p "aws"}}gp2{{else if eq $p "gcp"}}pd-ssd{{else}}Premium_LRS{{end}}">
       </div>
-      <div class="form-group">
+      <div class="form-group image-field" data-image-repo="pmm-server">
         <label>PMM Server Image (Ansible) <span class="field-tip" data-tip="Docker image used by Ansible to provision the PMM server.">ⓘ</span></label>
+        <div class="pmm-image-control-row">
+          <div class="pmm-image-select-group pmm-image-source-group">
+            <label for="pmm_image_source">Source <span class="field-tip" data-tip="Docker Hub namespace used to fetch PMM server image tags. Use perconalab for lab/dev builds or custom for another namespace.">ⓘ</span></label>
+            <select id="pmm_image_source" class="docker-namespace-select" title="Docker Hub namespace used to fetch PMM server image tags" onchange="onPmmServerImageSourceChange(this)">
+              <option value="percona" {{if eq $pmmSource "percona"}}selected{{end}}>percona</option>
+              <option value="perconalab" {{if eq $pmmSource "perconalab"}}selected{{end}}>perconalab</option>
+              <option value="__custom__" {{if namespaceCustom $pmmSource}}selected{{end}}>custom</option>
+            </select>
+          </div>
+          <div class="pmm-image-select-group pmm-image-channel-group">
+            <label for="pmm_image_channel">Channel <span class="field-tip" data-tip="Filters available PMM server image tags by release, testing, or experimental naming patterns.">ⓘ</span></label>
+            <select id="pmm_image_channel" name="pmm_image_channel" title="Filter available PMM server image tags by channel" onchange="onPmmServerImageChannelChange(this)">
+              <option value="release" {{if eq $pmmChannel "release"}}selected{{end}}>release</option>
+              <option value="testing" {{if eq $pmmChannel "testing"}}selected{{end}}>testing</option>
+              <option value="experimental" {{if eq $pmmChannel "experimental"}}selected{{end}}>experimental</option>
+            </select>
+          </div>
+          <div class="pmm-image-select-group pmm-image-tag-group">
+            <label for="pmm_image">Version <span class="field-tip" data-tip="PMM server image tag to deploy. The list refreshes when source or channel changes.">ⓘ</span></label>
+            <select id="pmm_image" name="pmm_image" data-current-tag="{{$pmmTag}}" title="PMM server image tag to deploy" onchange="toggleCustomImageInput(this)">
+              {{range .PMMImages}}
+              <option value="{{.}}" {{if tagSelected $curPmm (printf "%s/pmm-server" $pmmSource) .}}selected{{end}}>{{$pmmSource}}/pmm-server:{{.}}</option>
+              {{end}}
+              <option value="__custom__" {{if $isCustomPmm}}selected{{end}}>Custom image…</option>
+            </select>
+          </div>
+        </div>
+        <input type="text" id="pmm_image_source_custom" class="docker-namespace-custom" value="{{if namespaceCustom $pmmSource}}{{$pmmSource}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $pmmSource)}}style="display:none"{{end}} oninput="onPmmServerImageSourceChange(this)">
         <div class="image-select-wrapper">
-          <select name="pmm_image" onchange="toggleCustomImageInput(this)">
-            {{range .PMMImages}}
-            <option value="docker.io/percona/pmm-server:{{.}}"
-                    {{if tagSelected $curPmm "docker.io/percona/pmm-server" .}}selected{{end}}>
-              docker.io/percona/pmm-server:{{.}}
-            </option>
-            {{end}}
-            <option value="__custom__" {{if $isCustomPmm}}selected{{end}}>Custom…</option>
-          </select>
           <input type="text" class="custom-image-input" name="pmm_image_custom"
                  value="{{if $isCustomPmm}}{{$curPmm}}{{end}}"
                  placeholder="registry/repo:tag"
@@ -2319,7 +2255,7 @@ function buildImageSelect(name, images, prefix, defaultVal) {
 }
 
 function toggleCustomImageInput(sel) {
-  const wrapper = sel.parentElement;
+  const wrapper = sel.name === 'pmm_image' ? sel.closest('.image-field') : sel.parentElement;
   let customInput = wrapper.querySelector('.custom-image-input');
   if (!customInput) {
     customInput = document.createElement('input');
@@ -2342,8 +2278,8 @@ function toggleCustomImageInput(sel) {
 
 function syncCustomImageOption(input) {
   // Keep the __custom__ option selected and store value in hidden field.
-  const wrapper = input.parentElement;
-  const sel = wrapper.querySelector('select');
+  const wrapper = input.closest('.image-field') || input.parentElement;
+  const sel = wrapper.querySelector('select[name="pmm_image"]') || wrapper.querySelector('select');
   sel.value = '__custom__';
 }
 
@@ -2412,6 +2348,157 @@ async function onDockerImageNamespaceChange(el) {
 
 function dockerImageRepoForSelect(tagSelect, imageName) {
   return `${dockerImageNamespaceForField(tagSelect)}/${imageName}`;
+}
+
+function pmmServerImageSource() {
+  const sel = document.getElementById('pmm_image_source');
+  if (!sel) return 'percona';
+  if (sel.value === '__custom__') return '';
+  return sel.value || 'percona';
+}
+
+function pmmServerImageChannelFilter(tags, channel, sourceOverride) {
+  const values = tags || [];
+  const source = sourceOverride || pmmServerImageSource();
+  const releaseRe = /^(latest|\d+(?:\.\d+){0,2})$/;
+  const testingRe = /(test|testing|rc|beta|candidate)/i;
+  const experimentalRe = /(dev|experimental|main|master|nightly|fb-|pr-|pull)/i;
+  const dateBuildRe = /^\d{8,}$/;
+  if (channel === 'testing') return values.filter(t => testingRe.test(t));
+  if (channel === 'experimental') {
+    return values.filter(t => experimentalRe.test(t) || dateBuildRe.test(t) || (source === 'perconalab' && !releaseRe.test(t)));
+  }
+  return values.filter(t => releaseRe.test(t) && !dateBuildRe.test(t) && !testingRe.test(t) && !experimentalRe.test(t));
+}
+
+function pmmServerImageChannelsForTags(tags, source) {
+  return ['release', 'testing', 'experimental'].filter(channel =>
+    pmmServerImageChannelFilter(tags, channel, source).length > 0
+  );
+}
+
+function updatePmmServerImageChannelOptions(tags, preferredChannel, source) {
+  const sel = document.getElementById('pmm_image_channel');
+  if (!sel) return '';
+  const available = pmmServerImageChannelsForTags(tags, source);
+  sel.innerHTML = '';
+  if (available.length === 0) {
+    const opt = new Option('no channels available', '', true, true);
+    opt.disabled = true;
+    sel.appendChild(opt);
+    sel.disabled = true;
+    return '';
+  }
+  available.forEach(channel => sel.appendChild(new Option(channel, channel)));
+  sel.disabled = false;
+  sel.value = available.includes(preferredChannel) ? preferredChannel : available[0];
+  return sel.value;
+}
+
+function updatePmmServerImageCustomMode() {
+  const sourceSel = document.getElementById('pmm_image_source');
+  const isCustom = sourceSel?.value === '__custom__';
+  const channelGroup = document.querySelector('.pmm-image-channel-group');
+  const tagGroup = document.querySelector('.pmm-image-tag-group');
+  const sourceCustom = document.getElementById('pmm_image_source_custom');
+  const imageSel = document.getElementById('pmm_image');
+  const customImage = document.querySelector('.image-field[data-image-repo="pmm-server"] .custom-image-input');
+
+  if (channelGroup) channelGroup.style.display = isCustom ? 'none' : '';
+  if (tagGroup) tagGroup.style.display = isCustom ? 'none' : '';
+  if (sourceCustom) sourceCustom.style.display = 'none';
+  if (imageSel && isCustom) imageSel.value = '__custom__';
+  if (customImage) customImage.style.display = isCustom ? '' : (imageSel?.value === '__custom__' ? '' : 'none');
+  return isCustom;
+}
+
+function setPmmServerImageOptions(tags, selectedTag, preserveUnmatched) {
+  const sel = document.getElementById('pmm_image');
+  if (!sel) return;
+  const source = pmmServerImageSource();
+  const current = selectedTag || sel.value || sel.dataset.currentTag || 'latest';
+  sel.innerHTML = '';
+  let matched = false;
+  (tags || []).forEach(tag => {
+    const opt = new Option(`${source}/pmm-server:${tag}`, tag);
+    if (tag === current) { opt.selected = true; matched = true; }
+    sel.appendChild(opt);
+  });
+  if (!tags || tags.length === 0) {
+    const emptyOpt = new Option(`No ${document.getElementById('pmm_image_channel')?.value || 'selected'} tags found`, '', true, true);
+    emptyOpt.disabled = true;
+    sel.appendChild(emptyOpt);
+  }
+  if (preserveUnmatched && current && current !== '__custom__' && !matched) {
+    sel.insertBefore(new Option(`${source}/pmm-server:${current}`, current, true, true), sel.firstChild);
+  }
+  sel.appendChild(new Option('Custom image…', '__custom__'));
+  if (!matched && !preserveUnmatched && sel.options.length > 1) {
+    sel.selectedIndex = 0;
+  }
+  if (sel.value !== '__custom__') {
+    sel.dataset.currentTag = sel.value || 'latest';
+    const custom = sel.closest('.image-field')?.querySelector('.custom-image-input');
+    if (custom) custom.style.display = 'none';
+  }
+}
+
+let pmmServerImageRefreshSeq = 0;
+let pmmServerImageRefreshTimer = null;
+
+async function refreshPmmServerImageTags(options) {
+  const sel = document.getElementById('pmm_image');
+  if (!sel || PLATFORM === 'docker') return;
+  if (updatePmmServerImageCustomMode()) return;
+  const preserveUnmatched = !!(options && options.preserveUnmatched);
+  const source = pmmServerImageSource();
+  const preferredChannel = document.getElementById('pmm_image_channel')?.value || 'release';
+  const previous = sel.value === '__custom__' ? (sel.dataset.currentTag || 'latest') : (sel.value || sel.dataset.currentTag || 'latest');
+  const seq = ++pmmServerImageRefreshSeq;
+  sel.innerHTML = '<option value="">Loading tags...</option>';
+  sel.disabled = true;
+  try {
+    const resp = await fetch(`/api/docker-tags?namespace=${encodeURIComponent(source)}&repo=pmm-server&ts=${Date.now()}`);
+    const data = await resp.json();
+    if (seq !== pmmServerImageRefreshSeq) return;
+    if (!resp.ok) throw new Error(data.error || 'Could not load PMM server image tags');
+    const channel = updatePmmServerImageChannelOptions(data.tags || [], preferredChannel, source);
+    const filtered = channel ? pmmServerImageChannelFilter(data.tags || [], channel, source) : [];
+    setPmmServerImageOptions(filtered, previous, preserveUnmatched);
+  } catch (_) {
+    if (seq !== pmmServerImageRefreshSeq) return;
+    const existing = Array.from(sel.options).map(o => o.value).filter(v => v && v !== '__custom__');
+    const channel = updatePmmServerImageChannelOptions(existing, preferredChannel, source);
+    setPmmServerImageOptions(channel ? pmmServerImageChannelFilter(existing, channel, source) : [], previous, preserveUnmatched);
+  } finally {
+    if (seq === pmmServerImageRefreshSeq) sel.disabled = false;
+  }
+}
+
+function schedulePmmServerImageRefresh() {
+  clearTimeout(pmmServerImageRefreshTimer);
+  pmmServerImageRefreshTimer = setTimeout(() => refreshPmmServerImageTags(), 50);
+}
+
+function onPmmServerImageSourceChange(el) {
+  if (updatePmmServerImageCustomMode()) return;
+  schedulePmmServerImageRefresh();
+}
+
+function onPmmServerImageChannelChange(sel) {
+  schedulePmmServerImageRefresh();
+}
+
+function selectedPmmServerImageValue() {
+  const sel = document.getElementById('pmm_image');
+  if (!sel) return '';
+  if (document.getElementById('pmm_image_source')?.value === '__custom__' || sel.value === '__custom__') {
+    const custom = sel.closest('.image-field')?.querySelector('.custom-image-input');
+    return custom ? custom.value.trim() : '';
+  }
+  if (!sel.value) return '';
+  if (sel.value.includes('/')) return sel.value;
+  return `docker.io/${pmmServerImageSource()}/pmm-server:${sel.value}`;
 }
 
 function buildDockerImageRows(type) {
@@ -2918,33 +3005,6 @@ const numericFields = new Set([
   'pmm_cpu_cores','pmm_memory_gb',
 ]);
 
-// ── SSH Users (add/remove rows) ──────────────────────────────────────────────
-function addSshUser() {
-  const row = document.createElement('div');
-  row.className = 'ssh-user-row';
-  if (PLATFORM === 'gcp') {
-    // GCP: use file picker for key path since gce_ssh_users needs a server-side path.
-    row.innerHTML = `
-      <input type="text" name="ssh_user_name[]" placeholder="username">
-      <div class="file-picker-row">
-        <span class="file-picker-name">No file selected</span>
-        <button type="button" class="btn btn-outline btn-sm" onclick="pickSshUserKey(this)">Browse…</button>
-      </div>
-      <input type="hidden" name="ssh_user_key[]" value="">
-      <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>`;
-  } else {
-    row.innerHTML = `
-      <input type="text" name="ssh_user_name[]" placeholder="username">
-      <input type="text" name="ssh_user_key[]"  placeholder="~/.ssh/id_rsa.pub">
-      <button type="button" class="btn btn-danger btn-sm" onclick="removeSshUser(this)">✕</button>`;
-  }
-  document.getElementById('ssh-users-container').appendChild(row);
-}
-
-function removeSshUser(btn) {
-  btn.closest('.ssh-user-row').remove();
-}
-
 function addAnsibleVar() {
   const row = document.createElement('div');
   row.className = 'ansible-var-row';
@@ -3108,52 +3168,6 @@ function reloadImages(evt) {
   loadImages();
 }
 
-// ── SSH Key File Upload ───────────────────────────────────────────────────────
-
-// Uploads the selected SSH public key file to the server and updates the hidden
-// path input and the display span.
-async function uploadSSHKey(input) {
-  if (!input.files || input.files.length === 0) return;
-  const file = input.files[0];
-  const fd = new FormData();
-  fd.append('ssh_key_file', file);
-  try {
-    const resp = await fetch(`/api/upload-ssh-key/${PLATFORM}`, { method: 'POST', body: fd });
-    const data = await resp.json();
-    if (!resp.ok) { alert('SSH key upload failed: ' + (data.error || resp.status)); return; }
-    document.getElementById('ssh_public_key_path').value = data.path;
-    document.getElementById('ssh-key-filename').textContent = data.path;
-  } catch (err) {
-    alert('SSH key upload error: ' + err.message);
-  }
-}
-
-// Triggers an SSH public key file picker for an "Additional SSH User" row and
-// uploads the selected file, storing the returned server path in the hidden input.
-async function pickSshUserKey(btn) {
-  const row = btn.closest('.ssh-user-row');
-  const hiddenInput = row.querySelector('input[name="ssh_user_key[]"]');
-  const nameSpan = row.querySelector('.file-picker-name');
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.accept = '.pub,text/plain';
-  fileInput.onchange = async () => {
-    if (!fileInput.files || fileInput.files.length === 0) return;
-    const fd = new FormData();
-    fd.append('ssh_key_file', fileInput.files[0]);
-    try {
-      const resp = await fetch(`/api/upload-ssh-key/${PLATFORM}`, { method: 'POST', body: fd });
-      const data = await resp.json();
-      if (!resp.ok) { alert('Upload failed: ' + (data.error || resp.status)); return; }
-      hiddenInput.value = data.path;
-      if (nameSpan) nameSpan.textContent = data.path;
-    } catch (err) {
-      alert('Upload error: ' + err.message);
-    }
-  };
-  fileInput.click();
-}
-
 // On page load, populate the MongoDB specific version dropdown based on the
 // currently selected major release, so the dropdown is ready without requiring
 // user interaction.
@@ -3162,7 +3176,11 @@ async function pickSshUserKey(btn) {
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('select[name="cluster_mongo_release[]"], select[name="replset_mongo_release[]"]').forEach(onMongoReleaseChange);
   if (PLATFORM !== 'docker') {
+    document.getElementById('pmm_image_source')?.addEventListener('change', onPmmServerImageSourceChange);
+    document.getElementById('pmm_image_channel')?.addEventListener('change', onPmmServerImageChannelChange);
+    document.getElementById('pmm_image_source_custom')?.addEventListener('input', onPmmServerImageSourceChange);
     document.querySelectorAll('#clusters-container > .component-block, #replsets-container > .component-block').forEach(refreshAllPackageVersions);
+    refreshPmmServerImageTags({ preserveUnmatched: true });
   }
 
   if (PLATFORM === 'docker') {
@@ -3285,10 +3303,9 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   // Simple scalar fields
   const simpleFields = [
     'project_id','region','location',
-    'subnet_cidr','subnet_count','source_ranges',
-    'my_ssh_user','ssh_public_key_path','default_key_pair','default_vpc_name',
+    'subnet_cidr','subnet_count','source_ranges','default_vpc_name',
     'enable_ssh_gateway','ssh_gateway_name','port_to_forward',
-    'pmm_type','pmm_volume_size','pmm_port','pmm_image','pmm_disk_type',
+    'pmm_type','pmm_volume_size','pmm_port','pmm_image','pmm_image_channel','pmm_disk_type',
     'default_bucket_name','backup_retention',
     'data_disk_type','network_name',
     'machine_image',
@@ -3320,9 +3337,9 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     const customVal = (fd.get('machine_image_custom') || '').trim();
     config.machine_image = customVal;
   }
-  if (config.pmm_image === '__custom__') {
-    const customVal = (fd.get('pmm_image_custom') || '').trim();
-    config.pmm_image = customVal;
+  if (PLATFORM !== 'docker') {
+    const pmmImage = selectedPmmServerImageValue();
+    if (pmmImage) config.pmm_image = pmmImage;
   }
 	config.use_spot_instances = fd.has('use_spot_instances');
 	config.enable_ycsb = fd.has('enable_ycsb');
@@ -3350,31 +3367,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     config.enable_minio = fd.has('enable_minio');
   }
 
-  // SSH Users map (cloud only)
   if (PLATFORM !== 'docker') {
-    const sshNames = fd.getAll('ssh_user_name[]');
-    const sshKeys  = fd.getAll('ssh_user_key[]');
-    const sshUsers = {};
-    const partialRows = [];
-    for (let i = 0; i < sshNames.length; i++) {
-      const name = sshNames[i].trim();
-      const key  = sshKeys[i].trim();
-      if (name && key) {
-        sshUsers[name] = key;
-      } else if (name || key) {
-        partialRows.push(i + 1);
-      }
-    }
-    if (partialRows.length > 0) {
-      alert(`SSH User row(s) ${partialRows.join(', ')} have only one field filled. Both username and public key file are required. Please complete or remove these rows.`);
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Save & Configure';
-      return;
-    }
-    if (Object.keys(sshUsers).length > 0) {
-      config.ssh_users = sshUsers;
-    }
-
     // Ansible variable overrides (cloud only)
     const avKeys = fd.getAll('ansible_var_key[]');
     const avVals = fd.getAll('ansible_var_val[]');

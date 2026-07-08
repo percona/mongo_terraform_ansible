@@ -124,31 +124,33 @@ type Config struct {
 	YcsbContainerSuffix string `json:"ycsb_container_suffix,omitempty"`
 
 	// Cloud credentials / settings
-	ProjectID        string `json:"project_id,omitempty"`
-	Region           string `json:"region,omitempty"`
-	Location         string `json:"location,omitempty"`
-	SubnetCIDR       string `json:"subnet_cidr,omitempty"`
-	SubnetCount      int    `json:"subnet_count,omitempty"`
-	SourceRanges     string `json:"source_ranges,omitempty"`
-	MySSHUser        string `json:"my_ssh_user,omitempty"`
-	SSHPublicKeyPath string `json:"ssh_public_key_path,omitempty"`
-	DefaultKeyPair   string `json:"default_key_pair,omitempty"`
-	EnableSSHGateway bool   `json:"enable_ssh_gateway,omitempty"`
-	SSHGatewayName   string `json:"ssh_gateway_name,omitempty"`
-	PortToForward    string `json:"port_to_forward,omitempty"`
-	UseSpotInstances bool   `json:"use_spot_instances,omitempty"`
-	DefaultVpcName   string `json:"default_vpc_name,omitempty"`
+	ProjectID         string `json:"project_id,omitempty"`
+	Region            string `json:"region,omitempty"`
+	Location          string `json:"location,omitempty"`
+	SubnetCIDR        string `json:"subnet_cidr,omitempty"`
+	SubnetCount       int    `json:"subnet_count,omitempty"`
+	SourceRanges      string `json:"source_ranges,omitempty"`
+	MySSHUser         string `json:"my_ssh_user,omitempty"`
+	SSHPublicKeyPath  string `json:"ssh_public_key_path,omitempty"`
+	SSHPrivateKeyPath string `json:"ssh_private_key_path,omitempty"`
+	DefaultKeyPair    string `json:"default_key_pair,omitempty"`
+	EnableSSHGateway  bool   `json:"enable_ssh_gateway,omitempty"`
+	SSHGatewayName    string `json:"ssh_gateway_name,omitempty"`
+	PortToForward     string `json:"port_to_forward,omitempty"`
+	UseSpotInstances  bool   `json:"use_spot_instances,omitempty"`
+	DefaultVpcName    string `json:"default_vpc_name,omitempty"`
 
 	// SSH users map — key=username, value=path to public key file.
 	SSHUsers map[string]string `json:"ssh_users,omitempty"`
 
 	// PMM (cloud)
-	EnablePmm     *bool  `json:"enable_pmm,omitempty"`
-	PmmType       string `json:"pmm_type,omitempty"`
-	PmmVolumeSize int    `json:"pmm_volume_size,omitempty"`
-	PmmPort       int    `json:"pmm_port,omitempty"`
-	PmmImage      string `json:"pmm_image,omitempty"`
-	PmmDiskType   string `json:"pmm_disk_type,omitempty"`
+	EnablePmm       *bool  `json:"enable_pmm,omitempty"`
+	PmmType         string `json:"pmm_type,omitempty"`
+	PmmVolumeSize   int    `json:"pmm_volume_size,omitempty"`
+	PmmPort         int    `json:"pmm_port,omitempty"`
+	PmmImage        string `json:"pmm_image,omitempty"`
+	PmmImageChannel string `json:"pmm_image_channel,omitempty"`
+	PmmDiskType     string `json:"pmm_disk_type,omitempty"`
 
 	// Backup
 	DefaultBucketName string `json:"default_bucket_name,omitempty"`
@@ -336,13 +338,29 @@ type EnvEntry struct {
 }
 
 type AppSettings struct {
-	ChaosApiTokenPath string `json:"chaos_api_token_path,omitempty"`
+	ChaosApiTokenPath    string `json:"chaos_api_token_path,omitempty"`
+	SSHUser              string `json:"ssh_user,omitempty"`
+	AWSSSHUser           string `json:"aws_ssh_user,omitempty"`
+	GCPSSHUser           string `json:"gcp_ssh_user,omitempty"`
+	AzureSSHUser         string `json:"azure_ssh_user,omitempty"`
+	ChaosSSHUser         string `json:"chaos_ssh_user,omitempty"`
+	SSHPublicKeyPath     string `json:"ssh_public_key_path,omitempty"`
+	SSHPrivateKeyPath    string `json:"ssh_private_key_path,omitempty"`
+	TerraformParallelism int    `json:"terraform_parallelism,omitempty"`
+	AWSProfile           string `json:"aws_profile,omitempty"`
+	AWSRegion            string `json:"aws_region,omitempty"`
+	GCPProjectID         string `json:"gcp_project_id,omitempty"`
+	GCPServiceAccountKey string `json:"gcp_service_account_key,omitempty"`
+	AzureTenantID        string `json:"azure_tenant_id,omitempty"`
+	AzureSubscriptionID  string `json:"azure_subscription_id,omitempty"`
+	AzureClientID        string `json:"azure_client_id,omitempty"`
 }
 
 type IndexData struct {
 	Environments []EnvEntry
 	HasDeleted   bool
 	Settings     AppSettings
+	LocalSSHUser string
 }
 
 type NewEnvData struct {
@@ -392,6 +410,7 @@ type EnvironmentData struct {
 type HostInfo struct {
 	Name       string `json:"name"`
 	IP         string `json:"ip"`
+	Port       string `json:"port"`
 	ConnectCmd string `json:"connect_cmd"`
 	Role       string `json:"role"`
 	Group      string `json:"group"`

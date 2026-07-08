@@ -59,6 +59,20 @@ func loadAppSettings() (AppSettings, error) {
 		return AppSettings{}, err
 	}
 	settings.ChaosApiTokenPath = strings.TrimSpace(settings.ChaosApiTokenPath)
+	settings.SSHUser = strings.TrimSpace(settings.SSHUser)
+	settings.AWSSSHUser = strings.TrimSpace(settings.AWSSSHUser)
+	settings.GCPSSHUser = strings.TrimSpace(settings.GCPSSHUser)
+	settings.AzureSSHUser = strings.TrimSpace(settings.AzureSSHUser)
+	settings.ChaosSSHUser = strings.TrimSpace(settings.ChaosSSHUser)
+	settings.SSHPublicKeyPath = strings.TrimSpace(settings.SSHPublicKeyPath)
+	settings.SSHPrivateKeyPath = strings.TrimSpace(settings.SSHPrivateKeyPath)
+	settings.AWSProfile = strings.TrimSpace(settings.AWSProfile)
+	settings.AWSRegion = strings.TrimSpace(settings.AWSRegion)
+	settings.GCPProjectID = strings.TrimSpace(settings.GCPProjectID)
+	settings.GCPServiceAccountKey = strings.TrimSpace(settings.GCPServiceAccountKey)
+	settings.AzureTenantID = strings.TrimSpace(settings.AzureTenantID)
+	settings.AzureSubscriptionID = strings.TrimSpace(settings.AzureSubscriptionID)
+	settings.AzureClientID = strings.TrimSpace(settings.AzureClientID)
 	return settings, nil
 }
 
@@ -69,6 +83,20 @@ func saveAppSettings(settings AppSettings) error {
 		return nil
 	}
 	settings.ChaosApiTokenPath = strings.TrimSpace(settings.ChaosApiTokenPath)
+	settings.SSHUser = strings.TrimSpace(settings.SSHUser)
+	settings.AWSSSHUser = strings.TrimSpace(settings.AWSSSHUser)
+	settings.GCPSSHUser = strings.TrimSpace(settings.GCPSSHUser)
+	settings.AzureSSHUser = strings.TrimSpace(settings.AzureSSHUser)
+	settings.ChaosSSHUser = strings.TrimSpace(settings.ChaosSSHUser)
+	settings.SSHPublicKeyPath = strings.TrimSpace(settings.SSHPublicKeyPath)
+	settings.SSHPrivateKeyPath = strings.TrimSpace(settings.SSHPrivateKeyPath)
+	settings.AWSProfile = strings.TrimSpace(settings.AWSProfile)
+	settings.AWSRegion = strings.TrimSpace(settings.AWSRegion)
+	settings.GCPProjectID = strings.TrimSpace(settings.GCPProjectID)
+	settings.GCPServiceAccountKey = strings.TrimSpace(settings.GCPServiceAccountKey)
+	settings.AzureTenantID = strings.TrimSpace(settings.AzureTenantID)
+	settings.AzureSubscriptionID = strings.TrimSpace(settings.AzureSubscriptionID)
+	settings.AzureClientID = strings.TrimSpace(settings.AzureClientID)
 	b, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		return err

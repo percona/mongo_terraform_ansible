@@ -31,21 +31,23 @@ resource "local_file" "AnsibleInventoryCluster" {
     number_of_shards     = each.value.number_of_shards
     arbiters_per_replset = range(each.value.arbiters_per_replset)
 
-    my_ssh_user      = var.my_ssh_user
-    hostname_pmm     = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
-    ip_pmm           = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
-    hostname_ycsb    = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
-    ip_ycsb          = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
-    bucket           = aws_s3_bucket.mongo_backups.bucket
-    region           = aws_s3_bucket.mongo_backups.region
-    endpointUrl      = local.storage_endpoint
-    cluster          = each.value.cluster
-    env_tag          = each.value.env_tag
-    enable_pmm       = var.enable_pmm
-    enable_pmm_agent = var.enable_pmm && var.clusters[each.key].enable_pmm
-    enable_pbm       = var.clusters[each.key].enable_pbm
-    enable_audit     = each.value.enable_audit
-    audit_filter     = each.value.audit_filter
+    my_ssh_user          = var.my_ssh_user
+    ssh_private_key_path = var.ssh_private_key_path
+    hostname_pmm         = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
+    ip_pmm               = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
+    hostname_ycsb        = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
+    ip_ycsb              = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
+    bucket               = aws_s3_bucket.mongo_backups.bucket
+    region               = aws_s3_bucket.mongo_backups.region
+    endpointUrl          = local.storage_endpoint
+    cluster              = each.value.cluster
+    env_tag              = each.value.env_tag
+    enable_pmm           = var.enable_pmm
+    enable_pmm_agent     = var.enable_pmm && var.clusters[each.key].enable_pmm
+    pmm_image            = var.pmm_image
+    enable_pbm           = var.clusters[each.key].enable_pbm
+    enable_audit         = each.value.enable_audit
+    audit_filter         = each.value.audit_filter
 
     access_key           = aws_iam_access_key.mongo_backup_access_key.id
     secret_access_key    = aws_iam_access_key.mongo_backup_access_key.secret
@@ -80,6 +82,7 @@ resource "local_file" "SSHConfigCluster" {
     hostname_arbiters    = each.value.hostname_arbiters
     ip_arbiters          = each.value.ip_arbiters
     my_ssh_user          = var.my_ssh_user
+    ssh_private_key_path = var.ssh_private_key_path
     enable_ssh_gateway   = var.enable_ssh_gateway
     port_to_forward      = var.port_to_forward
     ssh_gateway_name     = var.ssh_gateway_name
@@ -105,14 +108,16 @@ resource "local_file" "AnsibleInventoryRS" {
     hostname_arbiters      = each.value.hostname_arbiters
     ip_arbiters            = each.value.ip_arbiters
 
-    my_ssh_user      = var.my_ssh_user
-    rs_name          = each.value.rs_name
-    env_tag          = each.value.env_tag
-    enable_pmm       = var.enable_pmm
-    enable_pmm_agent = var.enable_pmm && var.replsets[each.key].enable_pmm
-    enable_pbm       = var.replsets[each.key].enable_pbm
-    enable_audit     = each.value.enable_audit
-    audit_filter     = each.value.audit_filter
+    my_ssh_user          = var.my_ssh_user
+    ssh_private_key_path = var.ssh_private_key_path
+    rs_name              = each.value.rs_name
+    env_tag              = each.value.env_tag
+    enable_pmm           = var.enable_pmm
+    enable_pmm_agent     = var.enable_pmm && var.replsets[each.key].enable_pmm
+    pmm_image            = var.pmm_image
+    enable_pbm           = var.replsets[each.key].enable_pbm
+    enable_audit         = each.value.enable_audit
+    audit_filter         = each.value.audit_filter
 
     region        = aws_s3_bucket.mongo_backups.region
     hostname_pmm  = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
@@ -149,6 +154,7 @@ resource "local_file" "SSHConfigRS" {
     hostname_arbiters      = each.value.hostname_arbiters
     ip_arbiters            = each.value.ip_arbiters
     my_ssh_user            = var.my_ssh_user
+    ssh_private_key_path   = var.ssh_private_key_path
     enable_ssh_gateway     = var.enable_ssh_gateway
     port_to_forward        = var.port_to_forward
     ssh_gateway_name       = var.ssh_gateway_name

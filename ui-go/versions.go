@@ -175,6 +175,28 @@ func getPMMClientImages() []string {
 	return tags
 }
 
+func getMongotImages() []string {
+	tags := getDockerHubTags("mongodb", "mongodb-community-search", 50)
+	if len(tags) == 0 {
+		return defaultMongotImages
+	}
+	return filterMongotTags(tags)
+}
+
+func filterMongotTags(tags []string) []string {
+	re := regexp.MustCompile(`^(latest|\d+\.\d+\.\d+)$`)
+	filtered := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		if re.MatchString(tag) {
+			filtered = append(filtered, tag)
+		}
+	}
+	if len(filtered) == 0 {
+		return defaultMongotImages
+	}
+	return filtered
+}
+
 // semverGreater returns true if version string a is semantically greater than b.
 // Versions are dot-separated numeric components (e.g., "7.0.12" vs "7.0.9").
 // Lexicographic comparison fails for multi-digit patch numbers ("7.0.9" > "7.0.10"
@@ -628,6 +650,7 @@ func prefetchVersions() {
 	getPSMDBImages()
 	getPBMImages()
 	getPMMClientImages()
+	getMongotImages()
 	getPSMDBMinorVersionsByMajor()
 	slog.Info("version prefetch complete")
 }
@@ -678,6 +701,13 @@ func cachedPMMClientImages() []string {
 		return v.([]string)
 	}
 	return defaultPMMClientImages
+}
+
+func cachedMongotImages() []string {
+	if v, ok := cacheGet("dh:mongodb/mongodb-community-search"); ok {
+		return filterMongotTags(v.([]string))
+	}
+	return defaultMongotImages
 }
 
 func cachedPSMDBMinorVersionsByMajor() map[string][]string {

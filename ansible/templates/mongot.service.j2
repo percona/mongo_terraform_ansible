@@ -1,0 +1,15 @@
+[Unit]
+Description=MongoDB Search and Vector Search process
+After=network-online.target mongod.service
+Wants=network-online.target
+
+[Service]
+User={{ mongot_user }}
+Group={{ mongot_group }}
+ExecStart={{ mongot_install_dir }}/mongot --config {{ mongot_config_dir }}/config.yml
+Restart=always
+RestartSec=5
+LimitNOFILE=64000
+
+[Install]
+WantedBy=multi-user.target

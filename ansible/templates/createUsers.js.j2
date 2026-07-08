@@ -65,3 +65,12 @@ db.getSiblingDB("admin").createUser({"user": "{{ pbmuser }}",
        ]
     });
 
+{% if enable_mongot_effective | bool and arbiter is not defined %}
+if (!db.getSiblingDB("admin").getUser("{{ mongodb_mongot_user }}")) {
+   db.getSiblingDB("admin").createUser({
+      "user": "{{ mongodb_mongot_user }}",
+      "pwd": "{{ mongodb_mongot_password }}",
+      "roles": [ { "role": "searchCoordinator", "db": "admin" } ]
+   });
+}
+{% endif %}

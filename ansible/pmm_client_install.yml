@@ -99,3 +99,16 @@
         --enable-all-collectors
         {% endif %}
       when: pmm_enabled | bool
+
+    - name: Add mongot metrics collector
+      shell: >
+        pmm-admin add external
+        --service-name={{ inventory_hostname }}-mongot
+        --listen-port={{ mongot_metrics_port }}
+        --metrics-path=/metrics
+        --scheme=http
+      when:
+        - pmm_enabled | bool
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+        - "'shards' in group_names or 'replsets' in group_names"

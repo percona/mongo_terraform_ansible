@@ -125,6 +125,23 @@ mongod_pid_path: "{{ '/var/run/mongodb/mongod.pid' if mongodb_distribution_effec
 enable_audit: false
 audit_log_path: /var/log/mongo/auditLog.json
 
+# MongoDB Search / Vector Search (mongot) experimental support.
+enable_mongot_default: false
+enable_mongot_effective: "{{ enable_mongot | default(enable_mongot_default, true) | bool }}"
+mongot_version_default: "1.70.1"
+mongot_version_effective: "{{ mongot_version | default(mongot_version_default, true) | trim }}"
+mongot_port: 27028
+mongot_metrics_port: 9946
+mongot_health_port: 8080
+mongot_user: mongot
+mongot_group: mongot
+mongot_install_dir: /opt/mongot-community
+mongot_config_dir: /etc/mongot
+mongot_data_path: /var/lib/mongot
+mongot_log_path: /var/log/mongot/mongot.log
+mongodb_mongot_user: mongotUser
+mongodb_mongot_password: percona
+
 # Default audit policy: log successful write authorization checks for non-system users.
 # Override audit_filter per deployment or via --extra-vars when needed.
 audit_filter: '{ atype: "authCheck", "param.command": { $in: [ "insert", "update", "delete", "findandmodify" ] }, "users.user": { $not: /^__/ } }'

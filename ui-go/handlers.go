@@ -152,6 +152,12 @@ func cleanupDockerModuleArtifacts(cfg Config) {
 func cleanupModuleResourceFiles(moduleDir, resourceName string) {
 	// pbm-storage.conf.{resourceName}
 	os.Remove(filepath.Join(moduleDir, "pbm-storage.conf."+resourceName))
+	os.Remove(filepath.Join(moduleDir, resourceName+"-mongot-password"))
+	if matches, _ := filepath.Glob(filepath.Join(moduleDir, resourceName+"-*-mongot.yml")); matches != nil {
+		for _, f := range matches {
+			os.Remove(f)
+		}
+	}
 
 	// {resourceName}-*.Dockerfile (sanitized image name)
 	if matches, _ := filepath.Glob(filepath.Join(moduleDir, resourceName+"-*.Dockerfile")); matches != nil {
@@ -293,6 +299,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		PSMDBImages:                   cachedPSMDBImages(),
 		PBMImages:                     cachedPBMImages(),
 		PMMClientImages:               cachedPMMClientImages(),
+		MongotImages:                  cachedMongotImages(),
 		SortedClusters:                sortedClusters(cfg.Clusters),
 		SortedReplsets:                sortedReplsets(cfg.Replsets),
 		SortedPmmServers:              sortedPmmServers(cfg.PmmServers),
@@ -684,6 +691,7 @@ func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
 		"psmdb_images":         getPSMDBImages(),
 		"pbm_images":           getPBMImages(),
 		"pmm_client_images":    getPMMClientImages(),
+		"mongot_images":        getMongotImages(),
 		"psmdb_minor_versions": getPSMDBMinorVersionsByMajor(),
 	})
 }
@@ -749,7 +757,12 @@ func apiDockerTagsHandler(w http.ResponseWriter, r *http.Request) {
 			tags = defaultPMMClientImages
 		case "pmm-server":
 			tags = defaultPMMServerImages
+		case "mongodb-community-search":
+			tags = defaultMongotImages
 		}
+	}
+	if repo == "mongodb-community-search" {
+		tags = filterMongotTags(tags)
 	}
 	writeJSON(w, 200, map[string]interface{}{"tags": tags})
 }

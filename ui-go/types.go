@@ -28,12 +28,15 @@ type ClusterConfig struct {
 	PmmClientRepo       string `json:"pmm_client_repo,omitempty"`
 	OsImage             string `json:"os_image,omitempty"`
 	// Per-topology PMM/PBM toggles. Docker uses them for containers; non-Docker uses them for agents.
-	EnablePmm *bool `json:"enable_pmm,omitempty"`
-	EnablePbm *bool `json:"enable_pbm,omitempty"`
+	EnablePmm     *bool  `json:"enable_pmm,omitempty"`
+	EnablePbm     *bool  `json:"enable_pbm,omitempty"`
+	EnableMongot  *bool  `json:"enable_mongot,omitempty"`
+	MongotVersion string `json:"mongot_version,omitempty"`
 	// Docker-only
 	PsmdbImage      string `json:"psmdb_image,omitempty"`
 	PbmImage        string `json:"pbm_image,omitempty"`
 	PmmClientImage  string `json:"pmm_client_image,omitempty"`
+	MongotImage     string `json:"mongot_image,omitempty"`
 	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
 	EnableAudit     *bool  `json:"enable_audit,omitempty"`
 	AuditFilter     string `json:"audit_filter,omitempty"`
@@ -60,12 +63,15 @@ type ReplsetConfig struct {
 	ArbiterPort     int `json:"arbiter_port,omitempty"`
 	ArbiterBasePort int `json:"arbiter_base_port,omitempty"`
 	// Per-topology PMM/PBM toggles. Docker uses them for containers; non-Docker uses them for agents.
-	EnablePmm *bool `json:"enable_pmm,omitempty"`
-	EnablePbm *bool `json:"enable_pbm,omitempty"`
+	EnablePmm     *bool  `json:"enable_pmm,omitempty"`
+	EnablePbm     *bool  `json:"enable_pbm,omitempty"`
+	EnableMongot  *bool  `json:"enable_mongot,omitempty"`
+	MongotVersion string `json:"mongot_version,omitempty"`
 	// Docker-only
 	PsmdbImage      string `json:"psmdb_image,omitempty"`
 	PbmImage        string `json:"pbm_image,omitempty"`
 	PmmClientImage  string `json:"pmm_client_image,omitempty"`
+	MongotImage     string `json:"mongot_image,omitempty"`
 	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
 	EnableAudit     *bool  `json:"enable_audit,omitempty"`
 	AuditFilter     string `json:"audit_filter,omitempty"`
@@ -388,6 +394,7 @@ type ConfigureData struct {
 	PSMDBImages        []string
 	PBMImages          []string
 	PMMClientImages    []string
+	MongotImages       []string
 	// Pre-sorted for templates
 	SortedClusters   []NamedCluster
 	SortedReplsets   []NamedReplset

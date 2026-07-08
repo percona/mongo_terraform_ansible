@@ -30,6 +30,8 @@ variable "clusters" {
     pmm_client_repo      = optional(string, "")
     enable_pmm           = optional(bool, true)
     enable_pbm           = optional(bool, true)
+    enable_mongot        = optional(bool, false)
+    mongot_version       = optional(string, "")
     os_image             = optional(string, "")
   }))
 
@@ -64,6 +66,8 @@ variable "replsets" {
     pmm_client_repo        = optional(string, "")
     enable_pmm             = optional(bool, true)
     enable_pbm             = optional(bool, true)
+    enable_mongot          = optional(bool, false)
+    mongot_version         = optional(string, "")
     os_image               = optional(string, "")
   }))
 

@@ -1,0 +1,121 @@
+---
+- name: Install and configure mongot
+  hosts: shards:replsets
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
+  become: yes
+  tags: install,mongot
+  vars:
+    mongot_download_version: "{{ '1.70.1' if mongot_version_effective == 'latest' else mongot_version_effective }}"
+    mongot_arch: "{{ 'aarch64' if ansible_facts['architecture'] in ['aarch64', 'arm64'] else 'x86_64' }}"
+    mongot_tarball: "mongot_community_{{ mongot_download_version }}_linux_{{ mongot_arch }}.tgz"
+    mongot_url: "https://downloads.mongodb.org/mongodb-search-community/{{ mongot_download_version }}/{{ mongot_tarball }}"
+  tasks:
+    - name: Ensure mongot group exists
+      group:
+        name: "{{ mongot_group }}"
+        system: yes
+      when:
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+
+    - name: Ensure mongot user exists
+      user:
+        name: "{{ mongot_user }}"
+        group: "{{ mongot_group }}"
+        system: yes
+        shell: /sbin/nologin
+        create_home: no
+      when:
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+
+    - name: Create mongot directories
+      file:
+        path: "{{ item.path }}"
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+        state: directory
+      loop:
+        - { path: "{{ mongot_config_dir }}", owner: root, group: "{{ mongot_group }}", mode: "0750" }
+        - { path: "{{ mongot_data_path }}", owner: "{{ mongot_user }}", group: "{{ mongot_group }}", mode: "0750" }
+        - { path: "{{ mongot_log_path | dirname }}", owner: "{{ mongot_user }}", group: "{{ mongot_group }}", mode: "0750" }
+      when:
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+
+    - name: Download mongot tarball
+      get_url:
+        url: "{{ mongot_url }}"
+        dest: "/tmp/{{ mongot_tarball }}"
+        mode: "0644"
+      when:
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+
+    - name: Extract mongot tarball
+      unarchive:
+        src: "/tmp/{{ mongot_tarball }}"
+        dest: /opt
+        remote_src: yes
+        creates: "{{ mongot_install_dir }}/mongot"
+      when:
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+        - not ansible_check_mode
+
+    - name: Write mongot password file
+      copy:
+        dest: "{{ mongot_config_dir }}/passwordFile"
+        content: "{{ mongodb_mongot_password }}"
+        owner: "{{ mongot_user }}"
+        group: "{{ mongot_group }}"
+        mode: "0400"
+      no_log: true
+      notify: restart mongot
+      when:
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+
+    - name: Write mongot config
+      template:
+        src: mongot.conf.j2
+        dest: "{{ mongot_config_dir }}/config.yml"
+        owner: root
+        group: "{{ mongot_group }}"
+        mode: "0640"
+      notify: restart mongot
+      when:
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+
+    - name: Install mongot systemd unit
+      template:
+        src: mongot.service.j2
+        dest: /etc/systemd/system/mongot.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart mongot
+      when:
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+
+    - name: Ensure mongot is started
+      systemd:
+        name: mongot
+        enabled: yes
+        state: started
+        daemon_reload: yes
+      when:
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+        - not ansible_check_mode
+
+  handlers:
+    - name: restart mongot
+      systemd:
+        name: mongot
+        state: restarted
+        daemon_reload: yes
+      when: not ansible_check_mode

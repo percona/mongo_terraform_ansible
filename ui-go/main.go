@@ -43,6 +43,7 @@ var defaultPMMServerImages = []string{
 var defaultPMMClientImages = []string{
 	"3.3.0", "3.2.0", "3.1.0", "3.0.0", "2.43.2", "2.43.1", "latest",
 }
+var defaultMongotImages = []string{"1.70.1", "latest"}
 
 const defaultAuditFilter = `{ atype: "authCheck", "param.command": { $in: [ "insert", "update", "delete", "findandmodify" ] }, "users.user": { $not: /^__/ } }`
 

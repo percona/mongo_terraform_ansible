@@ -40,6 +40,8 @@ resource "local_file" "AnsibleInventoryCluster" {
       enable_pmm_agent     = var.enable_pmm && var.clusters[each.key].enable_pmm
       pmm_image            = var.pmm_image
       enable_pbm           = var.clusters[each.key].enable_pbm
+      enable_mongot        = var.clusters[each.key].enable_mongot
+      mongot_version       = var.clusters[each.key].mongot_version
       enable_audit         = each.value.enable_audit
       audit_filter         = each.value.audit_filter
 
@@ -116,6 +118,8 @@ resource "local_file" "AnsibleInventoryRS" {
       enable_pmm_agent     = var.enable_pmm && var.replsets[each.key].enable_pmm
       pmm_image            = var.pmm_image
       enable_pbm           = var.replsets[each.key].enable_pbm
+      enable_mongot        = var.replsets[each.key].enable_mongot
+      mongot_version       = var.replsets[each.key].mongot_version
       enable_audit         = each.value.enable_audit
       audit_filter         = each.value.audit_filter
       hostname_pmm         = var.enable_pmm ? local.pmm_host : ""

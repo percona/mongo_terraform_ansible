@@ -40,6 +40,16 @@ resource "docker_image" "base_os" {
   keep_locally  = true
 }
 
+data "docker_registry_image" "mongot" {
+  name = var.mongot_image
+}
+
+resource "docker_image" "mongot" {
+  name          = data.docker_registry_image.mongot.name
+  pull_triggers = [data.docker_registry_image.mongot.sha256_digest]
+  keep_locally  = true
+}
+
 # Write PBM Dockerfile to disk
 resource "local_file" "pbm_mongod_image_dockerfile_content" {
   filename = "${path.module}/${var.cluster_name}-${replace(var.pbm_mongod_image, "/", "-")}.Dockerfile"

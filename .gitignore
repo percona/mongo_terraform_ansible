@@ -19,5 +19,10 @@ ui/*.pyc
 # Go UI runtime artifacts
 environments.json
 ui-go/environments.json
+ui-go/settings.json
 ui-go/jobs/
 ui-go/mongodeploy
+
+# Terraform-generated per-environment connection files
+terraform/**/*_inventory_*
+terraform/**/*_ssh_config_*

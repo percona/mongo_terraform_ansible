@@ -32,6 +32,7 @@ module "mongodb_clusters" {
   subnet_count          = var.subnet_count
   my_key_pair           = local.my_key_pair
   my_ssh_user           = var.my_ssh_user
+  ssh_public_key_path   = var.ssh_public_key_path
   image                 = var.image
   use_spot_instances    = var.use_spot_instances
   data_disk_type        = var.data_disk_type
@@ -61,6 +62,7 @@ module "mongodb_replsets" {
   subnet_count           = var.subnet_count
   my_key_pair            = local.my_key_pair
   my_ssh_user            = var.my_ssh_user
+  ssh_public_key_path    = var.ssh_public_key_path
   image                  = var.image
   use_spot_instances     = var.use_spot_instances
   data_disk_type         = var.data_disk_type

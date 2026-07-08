@@ -2,6 +2,7 @@
 Host ${hostname_replsets[index]}
   Hostname ${ip_replsets[index]}
   User ${my_ssh_user}
+  %{ if ssh_private_key_path != "" }IdentityFile ${ssh_private_key_path}%{ endif }
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
   CheckHostIP no
@@ -11,6 +12,7 @@ Host ${hostname_replsets[index]}
 Host ${hostname_arbiters[index]}
   Hostname ${ip_arbiters[index]}
   User ${my_ssh_user}
+  %{ if ssh_private_key_path != "" }IdentityFile ${ssh_private_key_path}%{ endif }
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
   CheckHostIP no
@@ -20,6 +22,7 @@ Host ${hostname_arbiters[index]}
 Host ${hostname_pmm}
   Hostname ${public_ip_pmm}
   User ${my_ssh_user}
+  %{ if ssh_private_key_path != "" }IdentityFile ${ssh_private_key_path}%{ endif }
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
   CheckHostIP no
@@ -30,6 +33,7 @@ Host ${hostname_pmm}
 Host ${hostname_ycsb}
   Hostname ${public_ip_ycsb}
   User ${my_ssh_user}
+  %{ if ssh_private_key_path != "" }IdentityFile ${ssh_private_key_path}%{ endif }
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
   CheckHostIP no

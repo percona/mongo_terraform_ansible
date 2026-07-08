@@ -73,9 +73,11 @@ func collectDockerHosts(envID string, env *Environment) ([]HostInfo, []ServiceUR
 		connectCmd := fmt.Sprintf("docker exec -it %s bash", name)
 		role := guessDockerRole(name, prefix)
 		group := guessDockerGroup(name, prefix)
+		port := dockerContainerPorts(name)
 		hosts = append(hosts, HostInfo{
 			Name:       name,
 			IP:         ip,
+			Port:       port,
 			ConnectCmd: connectCmd,
 			Role:       role,
 			Group:      group,
@@ -244,6 +246,33 @@ func dockerContainerHostPort(containerName string) string {
 	return ""
 }
 
+// dockerContainerPorts returns the exposed container-side ports for display in
+// the Hosts & Connections table. Multiple service ports are comma-separated.
+func dockerContainerPorts(containerName string) string {
+	out, err := execOutput("docker", "inspect",
+		"--format", `{{range $p, $_ := .NetworkSettings.Ports}}{{$p}} {{end}}{{range $p, $_ := .Config.ExposedPorts}}{{$p}} {{end}}`,
+		containerName)
+	if err != nil {
+		return "—"
+	}
+	ports := make(map[string]struct{})
+	for _, f := range strings.Fields(out) {
+		port := strings.TrimSpace(strings.SplitN(f, "/", 2)[0])
+		if port != "" && port != "0" {
+			ports[port] = struct{}{}
+		}
+	}
+	if len(ports) == 0 {
+		return "—"
+	}
+	var ordered []string
+	for port := range ports {
+		ordered = append(ordered, port)
+	}
+	sort.Strings(ordered)
+	return strings.Join(ordered, ", ")
+}
+
 // mongoAdminCredentials returns the MongoDB admin username and password for
 // the environment.
 func mongoAdminCredentials(env *Environment) (user, pass string) {
@@ -263,6 +292,7 @@ func mongoAdminCredentials(env *Environment) (user, pass string) {
 func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnInfo, string) {
 	tfDir := filepath.Join(terraformDir, env.Platform)
 	sshUser := strDefault(env.Config.MySSHUser, "ec2-user")
+	sshPrivateKeyPath := strings.TrimSpace(env.Config.SSHPrivateKeyPath)
 
 	var names []string
 	for name := range env.Config.Clusters {
@@ -281,7 +311,8 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 		if err != nil {
 			continue
 		}
-		groupHosts := parseInventoryHosts(string(content), name, sshUser)
+		groupHosts := parseInventoryHosts(string(content), name, sshUser, sshPrivateKeyPath)
+		applyConfiguredCloudServicePorts(groupHosts, env)
 		hosts = append(hosts, groupHosts...)
 	}
 
@@ -335,7 +366,7 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 
 // parseInventoryHosts parses a simple Ansible INI-style inventory file and
 // returns a HostInfo list.
-func parseInventoryHosts(content, group, sshUser string) []HostInfo {
+func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []HostInfo {
 	var hosts []HostInfo
 	var currentSection string
 	skipSection := false
@@ -364,9 +395,13 @@ func parseInventoryHosts(content, group, sshUser string) []HostInfo {
 			continue
 		}
 		ip := ""
+		isArbiter := false
 		for _, kv := range parts[1:] {
 			if strings.HasPrefix(kv, "ansible_host=") {
 				ip = strings.TrimPrefix(kv, "ansible_host=")
+			}
+			if strings.EqualFold(kv, "arbiter=True") || strings.EqualFold(kv, "arbiter=true") {
+				isArbiter = true
 			}
 		}
 		if ip == "" {
@@ -375,6 +410,8 @@ func parseInventoryHosts(content, group, sshUser string) []HostInfo {
 		role := "mongod"
 		sec := strings.ToLower(currentSection)
 		switch {
+		case isArbiter:
+			role = "arbiter"
 		case strings.Contains(sec, "mongos"):
 			role = "mongos"
 		case strings.Contains(sec, "cfg") || strings.Contains(sec, "configsvr"):
@@ -400,15 +437,62 @@ func parseInventoryHosts(content, group, sshUser string) []HostInfo {
 			hostGroup = "YCSB"
 		}
 		sshCmd := fmt.Sprintf("ssh %s@%s", sshUser, ip)
+		if sshPrivateKeyPath != "" {
+			sshCmd = fmt.Sprintf("ssh -i %s %s@%s", shellQuote(sshPrivateKeyPath), sshUser, ip)
+		}
 		hosts = append(hosts, HostInfo{
 			Name:       hostName,
 			IP:         ip,
+			Port:       cloudHostPort(role, sec),
 			ConnectCmd: sshCmd,
 			Role:       role,
 			Group:      hostGroup,
 		})
 	}
 	return hosts
+}
+
+func cloudHostPort(role, section string) string {
+	switch role {
+	case "mongos", "mongod":
+		return "27017"
+	case "configsvr":
+		return "27019"
+	case "arbiter":
+		if strings.Contains(section, "shard") || strings.Contains(section, "cluster") {
+			return "27018"
+		}
+		return "27017"
+	case "pmm":
+		return "8443"
+	case "minio":
+		return "9000, 9001"
+	default:
+		return "—"
+	}
+}
+
+func applyConfiguredCloudServicePorts(hosts []HostInfo, env *Environment) {
+	for i := range hosts {
+		switch hosts[i].Role {
+		case "pmm":
+			port := env.Config.PmmPort
+			if port == 0 {
+				port = 8443
+			}
+			hosts[i].Port = fmt.Sprintf("%d", port)
+		case "minio":
+			servicePort := env.Config.MinioPort
+			if servicePort == 0 {
+				servicePort = 9000
+			}
+			consolePort := env.Config.MinioConsolePort
+			if consolePort == 0 {
+				consolePort = 9001
+			}
+			hosts[i].Port = fmt.Sprintf("%d, %d", servicePort, consolePort)
+		}
+	}
 }
 
 // hostsWithRole filters a host list by group and role.

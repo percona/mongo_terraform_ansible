@@ -21,12 +21,16 @@ ${hostname_ycsb} ansible_host=${ip_ycsb}
 %{ endif ~}
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
+%{ if ssh_private_key_path != "" ~}
+ansible_ssh_private_key_file=${ssh_private_key_path}
+%{ endif ~}
 ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 bucket=${bucket}
 region=${location}
 endpointUrl=${endpointUrl}
 enable_pmm=${enable_pmm}
 enable_pmm_agent=${enable_pmm_agent}
+pmm_image=${pmm_image}
 enable_pbm=${enable_pbm}
 key=${key}
 storage_provider=azure

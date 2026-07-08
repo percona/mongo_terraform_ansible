@@ -25,7 +25,7 @@ Optional, depending on the environment type you want to deploy:
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+
 - [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/) for AWS, GCP, Azure, and CHAOS
 - [Docker](https://docs.docker.com/get-docker/) for Docker environments
-- Cloud CLI credentials configured in your environment (`aws`, `gcloud`, `az`, and so on)
+- Cloud CLIs for the target platform. Provider credentials can be configured in the UI Settings using isolated key/service-account credentials.
 
 ## Quick Start
 
@@ -186,8 +186,18 @@ stateDiagram-v2
    every host or container with its IP address, a copy-pasteable connect command
    (`ssh user@host` or `docker exec -it <name> bash`), MongoDB connection strings for
    every replica set and cluster, and clickable **Open** buttons for PMM and MinIO
-   Console URLs. All PMM-related containers (server, Grafana renderer, Watchtower,
-   and per-node PMM client sidecars) are grouped together under a single **PMM** section.
+    Console URLs. All PMM-related containers (server, Grafana renderer, Watchtower,
+    and per-node PMM client sidecars) are grouped together under a single **PMM** section.
+
+## Cloud Provider Credentials
+
+Open **Settings** from the environments page and configure credentials for the cloud provider you want to use:
+
+- AWS: access key ID, secret access key, profile, and default region. The UI writes isolated AWS config files under `ui-go/secrets/cloud/aws/` and runs Terraform with `AWS_SHARED_CREDENTIALS_FILE`, `AWS_CONFIG_FILE`, and `AWS_PROFILE`.
+- GCP: service account JSON file and project ID. The UI stores the uploaded key under `ui-go/secrets/cloud/gcp/`, uses an isolated `CLOUDSDK_CONFIG`, and runs Terraform with `GOOGLE_APPLICATION_CREDENTIALS`.
+- Azure: service principal tenant ID, subscription ID, client ID, and client secret. The UI uses an isolated `AZURE_CONFIG_DIR` and runs Terraform with the matching `ARM_*` environment variables.
+
+Use the provider-specific **Configure** button after entering credentials, then **Test** to validate them. Deploy, Provision, and Destroy validate provider credentials before Terraform runs.
 
 ## YCSB Workloads
 

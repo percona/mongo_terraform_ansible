@@ -1211,7 +1211,8 @@ function renderHosts(data) {
             <thead><tr>
               <th class="sortable" data-col="0" onclick="sortHostsTable(this)">Name <span class="sort-icon">↕</span></th>
               <th class="sortable" data-col="1" onclick="sortHostsTable(this)">IP / Address <span class="sort-icon">↕</span></th>
-              <th class="sortable" data-col="2" onclick="sortHostsTable(this)">Role <span class="sort-icon">↕</span></th>
+              <th class="sortable" data-col="2" onclick="sortHostsTable(this)">Port <span class="sort-icon">↕</span></th>
+              <th class="sortable" data-col="3" onclick="sortHostsTable(this)">Role <span class="sort-icon">↕</span></th>
               <th>Action</th>
             </tr></thead>
             <tbody>`;
@@ -1219,6 +1220,7 @@ function renderHosts(data) {
         html += `<tr>
           <td class="host-name">${escHtml(h.name)}</td>
           <td class="host-ip"><code>${escHtml(h.ip)}</code></td>
+          <td><code>${escHtml(h.port || '—')}</code></td>
           <td><span class="role-badge role-${escHtml(h.role)}">${escHtml(h.role)}</span></td>
           <td>
             <button class="btn btn-outline btn-xs" data-name="${escAttr(h.name)}" data-command="${escAttr(h.connect_cmd)}" onclick="openConnectModalFromButton(this)">Connect</button>

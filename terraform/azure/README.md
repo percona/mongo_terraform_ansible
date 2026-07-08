@@ -14,11 +14,13 @@ This Terraform module creates:
 
 1. Install [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+.
 2. Install [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
-3. Log in:
+3. Log in when running Terraform manually:
 
 ```bash
 az login
 ```
+
+If you use the Web UI, configure an Azure service principal client secret in UI Settings instead. The UI uses an isolated Azure CLI config directory and passes `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, and `ARM_SUBSCRIPTION_ID` to Terraform.
 
 4. Change into this directory:
 

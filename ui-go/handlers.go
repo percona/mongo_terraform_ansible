@@ -29,6 +29,21 @@ func chaosTokenUploadPath() string {
 	return filepath.Join(chaosTokenSecretsDir(), "chaos_api.token")
 }
 
+func sshSecretsDir() string {
+	return filepath.Join(baseDir, "secrets", "ssh")
+}
+
+func sshKeyUploadPath(kind string) string {
+	return filepath.Join(sshSecretsDir(), "settings_"+kind)
+}
+
+func currentLocalUser() string {
+	if u, err := user.Current(); err == nil && u.Username != "" {
+		return u.Username
+	}
+	return os.Getenv("USER")
+}
+
 func isManagedChaosTokenFile(path string) bool {
 	trimmedPath := strings.TrimSpace(path)
 	if trimmedPath == "" {
@@ -221,7 +236,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			hasDeleted = true
 		}
 	}
-	renderPage(w, "index", IndexData{Environments: entries, HasDeleted: hasDeleted, Settings: settings})
+	renderPage(w, "index", IndexData{Environments: entries, HasDeleted: hasDeleted, Settings: settings, LocalSSHUser: currentLocalUser()})
 }
 
 // GET /new
@@ -260,14 +275,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		dockerDefaultMinioPort, dockerDefaultMinioConsolePort = nextFreeDockerPortPair(9000, occupied)
 	}
 
-	// Get current OS user for SSH user field default.
-	osUser := ""
-	if u, err := user.Current(); err == nil {
-		osUser = u.Username
-	}
-	if osUser == "" {
-		osUser = os.Getenv("USER")
-	}
+	osUser := currentLocalUser()
 
 	renderPage(w, "configure", ConfigureData{
 		Platform:                      platform,
@@ -352,7 +360,7 @@ func ycsbCloudHost(envID string, env *Environment) string {
 		if err != nil {
 			continue
 		}
-		for _, h := range parseInventoryHosts(string(content), name, strDefault(env.Config.MySSHUser, "ec2-user")) {
+		for _, h := range parseInventoryHosts(string(content), name, strDefault(env.Config.MySSHUser, "ec2-user"), strings.TrimSpace(env.Config.SSHPrivateKeyPath)) {
 			if h.Role == "ycsb" {
 				return h.Name
 			}
@@ -802,6 +810,64 @@ func apiUploadSSHKeyHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]string{"path": name})
 }
 
+// POST /api/upload-settings-ssh-key/{kind}
+func apiUploadSettingsSSHKeyHandler(w http.ResponseWriter, r *http.Request) {
+	kind := r.PathValue("kind")
+	if kind != "public" && kind != "private" {
+		jsonError(w, 400, "invalid SSH key kind")
+		return
+	}
+	if err := r.ParseMultipartForm(1 << 20); err != nil {
+		jsonError(w, 400, "failed to parse upload: "+err.Error())
+		return
+	}
+	file, header, err := r.FormFile("ssh_key_file")
+	if err != nil {
+		jsonError(w, 400, "ssh_key_file field missing: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		jsonError(w, 500, "read failed: "+err.Error())
+		return
+	}
+	if strings.TrimSpace(string(data)) == "" {
+		jsonError(w, 400, "uploaded SSH key file is empty")
+		return
+	}
+	if err := os.MkdirAll(sshSecretsDir(), 0700); err != nil {
+		jsonError(w, 500, "cannot create secrets dir: "+err.Error())
+		return
+	}
+	storedPath := sshKeyUploadPath(kind)
+	mode := os.FileMode(0600)
+	if err := os.WriteFile(storedPath, data, mode); err != nil {
+		jsonError(w, 500, "write failed: "+err.Error())
+		return
+	}
+
+	settings, err := loadAppSettings()
+	if err != nil {
+		jsonError(w, 500, "settings load failed: "+err.Error())
+		return
+	}
+	if kind == "public" {
+		settings.SSHPublicKeyPath = storedPath
+	} else {
+		settings.SSHPrivateKeyPath = storedPath
+	}
+	if err := saveAppSettings(settings); err != nil {
+		jsonError(w, 500, "settings save failed: "+err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]string{
+		"path":     storedPath,
+		"filename": filepath.Base(header.Filename),
+	})
+}
+
 func apiSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -818,6 +884,24 @@ func apiSettingsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		settings.ChaosApiTokenPath = strings.TrimSpace(settings.ChaosApiTokenPath)
+		settings.SSHUser = strings.TrimSpace(settings.SSHUser)
+		settings.AWSSSHUser = strings.TrimSpace(settings.AWSSSHUser)
+		settings.GCPSSHUser = strings.TrimSpace(settings.GCPSSHUser)
+		settings.AzureSSHUser = strings.TrimSpace(settings.AzureSSHUser)
+		settings.ChaosSSHUser = strings.TrimSpace(settings.ChaosSSHUser)
+		settings.SSHPublicKeyPath = strings.TrimSpace(settings.SSHPublicKeyPath)
+		settings.SSHPrivateKeyPath = strings.TrimSpace(settings.SSHPrivateKeyPath)
+		settings.AWSProfile = strings.TrimSpace(settings.AWSProfile)
+		settings.AWSRegion = strings.TrimSpace(settings.AWSRegion)
+		settings.GCPProjectID = strings.TrimSpace(settings.GCPProjectID)
+		settings.GCPServiceAccountKey = strings.TrimSpace(settings.GCPServiceAccountKey)
+		settings.AzureTenantID = strings.TrimSpace(settings.AzureTenantID)
+		settings.AzureSubscriptionID = strings.TrimSpace(settings.AzureSubscriptionID)
+		settings.AzureClientID = strings.TrimSpace(settings.AzureClientID)
+		if settings.TerraformParallelism < 0 || settings.TerraformParallelism > 256 {
+			jsonError(w, 400, "terraform_parallelism must be between 1 and 256, or empty")
+			return
+		}
 		if err := saveAppSettings(settings); err != nil {
 			jsonError(w, 500, "settings save failed: "+err.Error())
 			return
@@ -976,6 +1060,69 @@ func normalizeAndValidatePackageConfig(platform string, cfg *Config) error {
 	return nil
 }
 
+func requireSettingsFile(label, path string, required bool) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		if required {
+			return fmt.Errorf("%s is required in Settings", label)
+		}
+		return nil
+	}
+	if _, err := os.Stat(path); err != nil {
+		return fmt.Errorf("%s %q is not readable: %w", label, path, err)
+	}
+	return nil
+}
+
+func applySSHSettingsToNewEnvironment(platform string, cfg *Config, settings AppSettings) error {
+	if platform == "docker" {
+		return nil
+	}
+	sshUser := settingsSSHUserForPlatform(settings, platform)
+	if sshUser == "" {
+		return fmt.Errorf("SSH user is required in Settings")
+	}
+	if err := requireSettingsFile("SSH private key file", settings.SSHPrivateKeyPath, false); err != nil {
+		return err
+	}
+
+	cfg.MySSHUser = sshUser
+	cfg.SSHPrivateKeyPath = strings.TrimSpace(settings.SSHPrivateKeyPath)
+
+	if platform == "chaos" {
+		cfg.SSHPublicKeyPath = ""
+		cfg.SSHUsers = nil
+		return nil
+	}
+	if err := requireSettingsFile("SSH public key file", settings.SSHPublicKeyPath, true); err != nil {
+		return err
+	}
+	cfg.SSHPublicKeyPath = strings.TrimSpace(settings.SSHPublicKeyPath)
+	if platform == "gcp" || platform == "azure" {
+		if cfg.SSHUsers == nil {
+			cfg.SSHUsers = map[string]string{}
+		}
+		cfg.SSHUsers[cfg.MySSHUser] = cfg.SSHPublicKeyPath
+	}
+	return nil
+}
+
+func settingsSSHUserForPlatform(settings AppSettings, platform string) string {
+	fallback := strDefault(settings.SSHUser, currentLocalUser())
+	switch platform {
+	case "aws":
+		return strDefault(settings.AWSSSHUser, fallback)
+	case "gcp":
+		return strDefault(settings.GCPSSHUser, fallback)
+	case "azure":
+		return strDefault(settings.AzureSSHUser, fallback)
+	case "chaos":
+		return strDefault(settings.ChaosSSHUser, fallback)
+	default:
+		return fallback
+	}
+}
+
 // POST /api/environment
 func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
@@ -1013,6 +1160,18 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 500, "state load failed: "+err.Error())
 		return
 	}
+	existing := state[payload.EnvID]
+	if existing == nil && payload.Platform != "docker" {
+		settings, err := loadAppSettings()
+		if err != nil {
+			jsonError(w, 500, "settings load failed: "+err.Error())
+			return
+		}
+		if err := applySSHSettingsToNewEnvironment(payload.Platform, &payload.Config, settings); err != nil {
+			jsonError(w, 400, err.Error())
+			return
+		}
+	}
 
 	if payload.Platform == "docker" {
 		assignDockerReplsetPorts(&payload.Config)
@@ -1025,7 +1184,6 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existing := state[payload.EnvID]
 	if payload.Platform == "chaos" {
 		payload.Config.LegacyChaosAPIToken = ""
 		payload.Config.ChaosApiTokenPath = strings.TrimSpace(payload.Config.ChaosApiTokenPath)
@@ -1346,6 +1504,15 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	if platform == "aws" || platform == "gcp" || platform == "azure" {
+		switch action {
+		case "deploy", "provision", "destroy":
+			if err := requireProviderAuth(platform); err != nil {
+				jsonError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+	}
 
 	if _, err := os.Stat(varfile); os.IsNotExist(err) {
 		if wErr := writeTfvars(envID, platform, env.Config); wErr != nil {
@@ -1375,6 +1542,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		// inventory values and break mixed-version environments.
 		for k, v := range env.Config.AnsibleVars {
 			effectiveVars[k] = v
+		}
+		if strings.TrimSpace(env.Config.PmmImage) != "" {
+			effectiveVars["pmm_image"] = strings.TrimSpace(env.Config.PmmImage)
 		}
 		for k, v := range extraVars {
 			effectiveVars[k] = v
@@ -1490,9 +1660,17 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	envStateFile := envID + ".tfstate" // relative to tfDir (the CWD for terraform)
 	backendPathArg := shellQuote("path=" + envStateFile)
 	terraformApplyFlags := "-auto-approve -input=false"
-	if platform == "chaos" {
-		terraformApplyFlags += " -parallelism=1"
+	terraformParallelism := 0
+	if settings, err := loadAppSettings(); err == nil {
+		terraformParallelism = settings.TerraformParallelism
 	}
+	if terraformParallelism == 0 && platform == "chaos" {
+		terraformParallelism = 5
+	}
+	if terraformParallelism > 0 {
+		terraformApplyFlags += fmt.Sprintf(" -parallelism=%d", terraformParallelism)
+	}
+	terraformDestroyFlags := terraformApplyFlags
 
 	var cmd []string
 	configAtStart := cloneConfig(env.Config)
@@ -1614,8 +1792,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	case "destroy":
 		shellCmd := fmt.Sprintf(
-			"terraform init -reconfigure -input=false -backend-config=%s && terraform destroy -auto-approve -input=false -var-file=%s",
+			"terraform init -reconfigure -input=false -backend-config=%s && terraform destroy %s -var-file=%s",
 			backendPathArg,
+			terraformDestroyFlags,
 			shellQuote(varfile),
 		)
 		if platform != "docker" {
@@ -1717,6 +1896,16 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	extraEnv := map[string]string{
 		"ANSIBLE_CONFIG": filepath.Join(ansibleDir, "ansible.cfg"),
+	}
+	if (platform == "aws" || platform == "gcp" || platform == "azure") && (action == "deploy" || action == "provision" || action == "destroy") {
+		providerEnv, err := configuredProviderAuthEnv(platform)
+		if err != nil {
+			jsonError(w, 400, err.Error())
+			return
+		}
+		for k, v := range providerEnv {
+			extraEnv[k] = v
+		}
 	}
 	// For CHAOS environments, pass the API token via an environment variable so
 	// it is never written to the tfvars file on disk.

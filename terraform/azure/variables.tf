@@ -78,6 +78,12 @@ variable "my_ssh_user" {
   description = "User for SSH and configuration"
 }
 
+variable "ssh_private_key_path" {
+  description = "Optional SSH private key file used by generated Ansible inventory and ssh_config. Empty uses ssh-agent/default SSH behavior."
+  type        = string
+  default     = ""
+}
+
 variable "ssh_users" {
   description = "User and public key map"
   type        = map(string)
@@ -135,6 +141,12 @@ variable "pmm_volume_size" {
 variable "pmm_port" {
   type    = number
   default = 8443
+}
+
+variable "pmm_image" {
+  type        = string
+  default     = "docker.io/percona/pmm-server:latest"
+  description = "Docker image used by Ansible to run the PMM server container."
 }
 
 variable "enable_pmm" {

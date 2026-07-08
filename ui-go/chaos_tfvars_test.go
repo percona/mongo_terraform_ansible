@@ -58,3 +58,32 @@ func TestWriteTfvarsChaosOmitsMinioVariablesWhenDisabled(t *testing.T) {
 		}
 	}
 }
+
+func TestWriteTfvarsChaosIncludesPmmImage(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{
+		EnablePmm: boolPtr(true),
+		PmmImage:  "docker.io/perconalab/pmm-server:dev-latest",
+		Clusters: map[string]ClusterConfig{
+			"cl01": {EnvTag: "test"},
+		},
+	}
+
+	if err := writeTfvars("chaos-pmm-image", "chaos", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tfvarsPath("chaos-pmm-image", "chaos"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	tfvars := string(content)
+
+	if !strings.Contains(tfvars, `pmm_image = "docker.io/perconalab/pmm-server:dev-latest"`) {
+		t.Fatalf("expected pmm_image in tfvars:\n%s", tfvars)
+	}
+}

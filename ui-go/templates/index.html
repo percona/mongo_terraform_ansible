@@ -77,39 +77,185 @@
     <div class="modal-header">
       <h2>Advanced Settings</h2>
     </div>
-    <p>Choose which platforms are available on the platform selection page.</p>
     <form id="platform-settings-form" class="settings-form">
-      <label class="settings-checkbox">
-        <input type="checkbox" name="platform" value="aws">
-        <span>AWS</span>
-      </label>
-      <label class="settings-checkbox">
-        <input type="checkbox" name="platform" value="gcp">
-        <span>GCP</span>
-      </label>
-      <label class="settings-checkbox">
-        <input type="checkbox" name="platform" value="azure">
-        <span>Azure</span>
-      </label>
-      <label class="settings-checkbox">
-        <input type="checkbox" name="platform" value="chaos">
-        <span>CHAOS</span>
-      </label>
-      <div class="form-group form-group-full" id="chaos-token-settings-row" style="display:none">
-        <label for="settings_chaos_api_token_path">CHAOS API Token File</label>
-        <div style="display:flex;gap:0.5rem;align-items:center">
-          <input type="text" id="settings_chaos_api_token_path"
-                 value="{{.Settings.ChaosApiTokenPath}}"
-                 placeholder="Uploaded token path" style="flex:1" readonly>
-          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('chaos_token_file_input').click()">Browse...</button>
-          <input type="file" id="chaos_token_file_input" style="display:none" onchange="uploadChaosTokenFile(this)">
-        </div>
-        <small id="chaos_token_upload_status" class="text-muted">Select a token file to upload. It will be stored under ui-go/secrets/chaos/ and ignored by git.</small>
+      <div class="settings-tabs" role="tablist" aria-label="Advanced settings sections">
+        <button type="button" class="settings-tab active" data-tab="global" onclick="switchSettingsTab('global')">Global Settings</button>
+        <button type="button" class="settings-tab" data-tab="docker" onclick="switchSettingsTab('docker')">Docker</button>
+        <button type="button" class="settings-tab" data-tab="gcp" onclick="switchSettingsTab('gcp')">GCP</button>
+        <button type="button" class="settings-tab" data-tab="aws" onclick="switchSettingsTab('aws')">AWS</button>
+        <button type="button" class="settings-tab" data-tab="azure" onclick="switchSettingsTab('azure')">Azure</button>
+        <button type="button" class="settings-tab" data-tab="chaos" onclick="switchSettingsTab('chaos')">CHAOS</button>
       </div>
-      <label class="settings-checkbox">
-        <input type="checkbox" name="platform" value="docker">
-        <span>Docker</span>
-      </label>
+
+      <div class="settings-tab-panel active" data-panel="global">
+        <div class="form-group form-group-full">
+          <label for="settings_terraform_parallelism">Terraform Parallelism <span class="field-tip" data-tip="Optional max number of concurrent Terraform operations for apply/destroy. Leave empty for Terraform default; CHAOS keeps its existing default of 5 when empty.">ⓘ</span></label>
+          <input type="number" id="settings_terraform_parallelism" min="1" max="256" value="{{if .Settings.TerraformParallelism}}{{.Settings.TerraformParallelism}}{{end}}" placeholder="default">
+        </div>
+        <div class="form-group form-group-full">
+          <label for="settings_ssh_public_key_path">SSH Public Key File <span class="field-tip" data-tip="Required for new AWS, GCP, and Azure deployments. Not used for CHAOS.">ⓘ</span></label>
+          <div class="settings-file-row">
+            <input type="text" id="settings_ssh_public_key_path"
+                   value="{{.Settings.SSHPublicKeyPath}}"
+                   placeholder="No file selected" readonly>
+            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('settings_ssh_public_key_file_input').click()">Browse...</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('settings_ssh_public_key_path').value=''">Clear</button>
+            <input type="file" id="settings_ssh_public_key_file_input" accept=".pub,text/plain" style="display:none" onchange="uploadSettingsSSHKeyFile(this, 'public')">
+          </div>
+          <small id="settings_ssh_public_key_upload_status" class="text-muted"></small>
+        </div>
+        <div class="form-group form-group-full">
+          <label for="settings_ssh_private_key_path">SSH Private Key File <span class="field-tip" data-tip="Optional. Leave empty to keep using ssh-agent as today.">ⓘ</span></label>
+          <div class="settings-file-row">
+            <input type="text" id="settings_ssh_private_key_path"
+                   value="{{.Settings.SSHPrivateKeyPath}}"
+                   placeholder="No file selected" readonly>
+            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('settings_ssh_private_key_file_input').click()">Browse...</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('settings_ssh_private_key_path').value=''">Clear</button>
+            <input type="file" id="settings_ssh_private_key_file_input" style="display:none" onchange="uploadSettingsSSHKeyFile(this, 'private')">
+          </div>
+          <small id="settings_ssh_private_key_upload_status" class="text-muted"></small>
+        </div>
+      </div>
+
+      <div class="settings-tab-panel" data-panel="docker">
+        <label class="settings-checkbox">
+          <input type="checkbox" name="platform" value="docker">
+          <span>Enable Docker</span>
+        </label>
+      </div>
+
+      <div class="settings-tab-panel" data-panel="gcp">
+        <label class="settings-checkbox">
+          <input type="checkbox" name="platform" value="gcp">
+          <span>Enable GCP</span>
+        </label>
+        <div class="form-group form-group-full">
+          <label for="settings_gcp_ssh_user">GCP SSH User <span class="field-tip" data-tip="Username Terraform provisions and Ansible uses for new GCP deployments.">ⓘ</span></label>
+          <input type="text" id="settings_gcp_ssh_user" value="{{strDefault .Settings.GCPSSHUser .Settings.SSHUser}}" placeholder="{{.LocalSSHUser}}">
+        </div>
+        <div class="settings-auth-block">
+          <h3>GCP Service Account</h3>
+          <div class="form-group form-group-full">
+            <label for="settings_gcp_project_id">Project ID</label>
+            <input type="text" id="settings_gcp_project_id" value="{{.Settings.GCPProjectID}}" placeholder="my-gcp-project">
+          </div>
+          <div class="form-group form-group-full">
+            <label for="settings_gcp_service_account_key">Service Account JSON</label>
+            <div class="settings-file-row">
+              <input type="text" id="settings_gcp_service_account_key" value="{{.Settings.GCPServiceAccountKey}}" placeholder="Uploaded key path" readonly>
+              <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('gcp_service_account_file_input').click()">Browse...</button>
+              <input type="file" id="gcp_service_account_file_input" accept="application/json,.json" style="display:none" onchange="uploadProviderCredentialFile(this, 'gcp')">
+            </div>
+            <small id="gcp_credential_upload_status" class="text-muted"></small>
+          </div>
+          <div class="settings-auth-actions">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="configureProviderAuth('gcp')">Configure GCP</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="testProviderAuth('gcp')">Test</button>
+            <small id="provider_auth_status_gcp" class="text-muted"></small>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-tab-panel" data-panel="aws">
+        <label class="settings-checkbox">
+          <input type="checkbox" name="platform" value="aws">
+          <span>Enable AWS</span>
+        </label>
+        <div class="form-group form-group-full">
+          <label for="settings_aws_ssh_user">AWS SSH User <span class="field-tip" data-tip="Username Terraform provisions and Ansible uses for new AWS deployments. Common value: ec2-user.">ⓘ</span></label>
+          <input type="text" id="settings_aws_ssh_user" value="{{strDefault .Settings.AWSSSHUser .Settings.SSHUser}}" placeholder="{{.LocalSSHUser}}">
+        </div>
+        <div class="settings-auth-block">
+          <h3>AWS Access Key</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="settings_aws_profile">Profile</label>
+              <input type="text" id="settings_aws_profile" value="{{strDefault .Settings.AWSProfile "default"}}" placeholder="default">
+            </div>
+            <div class="form-group">
+              <label for="settings_aws_region">Default Region</label>
+              <input type="text" id="settings_aws_region" value="{{.Settings.AWSRegion}}" placeholder="us-west-2">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="settings_aws_access_key_id">Access Key ID</label>
+              <input type="text" id="settings_aws_access_key_id" autocomplete="off" placeholder="AKIA...">
+            </div>
+            <div class="form-group">
+              <label for="settings_aws_secret_access_key">Secret Access Key</label>
+              <input type="password" id="settings_aws_secret_access_key" autocomplete="new-password" placeholder="Stored in isolated UI credentials file">
+            </div>
+          </div>
+          <div class="settings-auth-actions">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="configureProviderAuth('aws')">Configure AWS</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="testProviderAuth('aws')">Test</button>
+            <small id="provider_auth_status_aws" class="text-muted"></small>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-tab-panel" data-panel="azure">
+        <label class="settings-checkbox">
+          <input type="checkbox" name="platform" value="azure">
+          <span>Enable Azure</span>
+        </label>
+        <div class="form-group form-group-full">
+          <label for="settings_azure_ssh_user">Azure SSH User <span class="field-tip" data-tip="Admin username Terraform creates and Ansible uses for new Azure deployments.">ⓘ</span></label>
+          <input type="text" id="settings_azure_ssh_user" value="{{strDefault .Settings.AzureSSHUser .Settings.SSHUser}}" placeholder="{{.LocalSSHUser}}">
+        </div>
+        <div class="settings-auth-block">
+          <h3>Azure Service Principal</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="settings_azure_tenant_id">Tenant ID</label>
+              <input type="text" id="settings_azure_tenant_id" value="{{.Settings.AzureTenantID}}" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="settings_azure_subscription_id">Subscription ID</label>
+              <input type="text" id="settings_azure_subscription_id" value="{{.Settings.AzureSubscriptionID}}" autocomplete="off">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="settings_azure_client_id">Client ID</label>
+              <input type="text" id="settings_azure_client_id" value="{{.Settings.AzureClientID}}" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="settings_azure_client_secret">Client Secret</label>
+              <input type="password" id="settings_azure_client_secret" autocomplete="new-password" placeholder="Stored in isolated UI secret file">
+            </div>
+          </div>
+          <div class="settings-auth-actions">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="configureProviderAuth('azure')">Configure Azure</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="testProviderAuth('azure')">Test</button>
+            <small id="provider_auth_status_azure" class="text-muted"></small>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-tab-panel" data-panel="chaos">
+        <label class="settings-checkbox">
+          <input type="checkbox" name="platform" value="chaos">
+          <span>Enable CHAOS</span>
+        </label>
+        <div class="form-group form-group-full">
+          <label for="settings_chaos_ssh_user">CHAOS SSH User <span class="field-tip" data-tip="Username Ansible uses for new CHAOS deployments. Public keys are assumed to already exist on CHAOS instances.">ⓘ</span></label>
+          <input type="text" id="settings_chaos_ssh_user" value="{{strDefault .Settings.ChaosSSHUser .Settings.SSHUser}}" placeholder="{{.LocalSSHUser}}">
+        </div>
+        <div class="form-group form-group-full">
+          <label for="settings_chaos_api_token_path">CHAOS API Token File <span class="field-tip" data-tip="Token file used to authenticate with the CHAOS provider. Stored under ui-go/secrets/chaos/ when uploaded.">ⓘ</span></label>
+          <div class="settings-file-row">
+            <input type="text" id="settings_chaos_api_token_path"
+                   value="{{.Settings.ChaosApiTokenPath}}"
+                   placeholder="Uploaded token path" readonly>
+            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('chaos_token_file_input').click()">Browse...</button>
+            <input type="file" id="chaos_token_file_input" style="display:none" onchange="uploadChaosTokenFile(this)">
+          </div>
+          <small id="chaos_token_upload_status" class="text-muted"></small>
+        </div>
+      </div>
     </form>
     <div class="modal-actions">
       <button type="button" class="btn btn-primary" onclick="savePlatformSettingsFromForm()">Save</button>
@@ -124,22 +270,23 @@ function openPlatformSettings() {
   document.querySelectorAll('#platform-settings-form input[name="platform"]').forEach(input => {
     input.checked = !!settings[input.value];
   });
-  updateChaosTokenSettingsVisibility();
+  switchSettingsTab('global');
   document.getElementById('platform-settings-modal').style.display = 'flex';
+  ['aws', 'gcp', 'azure'].forEach(platform => testProviderAuth(platform, false));
 }
 
 function closePlatformSettings() {
   document.getElementById('platform-settings-modal').style.display = 'none';
 }
 
-function updateChaosTokenSettingsVisibility() {
-  const chaosCheckbox = document.querySelector('#platform-settings-form input[name="platform"][value="chaos"]');
-  const row = document.getElementById('chaos-token-settings-row');
-  if (row) row.style.display = chaosCheckbox && chaosCheckbox.checked ? '' : 'none';
+function switchSettingsTab(tab) {
+  document.querySelectorAll('.settings-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  document.querySelectorAll('.settings-tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.dataset.panel === tab);
+  });
 }
-
-document.querySelector('#platform-settings-form input[name="platform"][value="chaos"]')
-  ?.addEventListener('change', updateChaosTokenSettingsVisibility);
 
 async function uploadChaosTokenFile(input) {
   const file = input.files[0];
@@ -162,6 +309,108 @@ async function uploadChaosTokenFile(input) {
   }
 }
 
+async function uploadSettingsSSHKeyFile(input, kind) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById(`settings_ssh_${kind}_key_upload_status`);
+  const pathInput = document.getElementById(`settings_ssh_${kind}_key_path`);
+  const body = new FormData();
+  body.append('ssh_key_file', file);
+  if (status) status.textContent = `Uploading ${kind} key file...`;
+  try {
+    const resp = await fetch(`/api/upload-settings-ssh-key/${kind}`, { method: 'POST', body });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Upload failed');
+    if (pathInput) pathInput.value = data.path || '';
+    if (status) status.textContent = `Uploaded ${data.filename || kind + ' key'} to ${data.path}`;
+  } catch (err) {
+    if (status) status.textContent = 'Upload failed.';
+    alert(`Could not upload SSH ${kind} key file: ` + err.message);
+  } finally {
+    input.value = '';
+  }
+}
+
+async function uploadProviderCredentialFile(input, platform) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById(`${platform}_credential_upload_status`);
+  const body = new FormData();
+  body.append('credential_file', file);
+  if (status) status.textContent = 'Uploading credential file...';
+  try {
+    const resp = await fetch(`/api/upload-provider-credential/${platform}`, { method: 'POST', body });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Upload failed');
+    if (platform === 'gcp') document.getElementById('settings_gcp_service_account_key').value = data.path || '';
+    if (status) status.textContent = `Uploaded ${data.filename || 'credential file'} to ${data.path}`;
+  } catch (err) {
+    if (status) status.textContent = 'Upload failed.';
+    alert('Could not upload credential file: ' + err.message);
+  } finally {
+    input.value = '';
+  }
+}
+
+function providerAuthPayload(platform) {
+  if (platform === 'aws') {
+    return {
+      aws_profile: document.getElementById('settings_aws_profile').value.trim() || 'default',
+      aws_region: document.getElementById('settings_aws_region').value.trim(),
+      aws_access_key_id: document.getElementById('settings_aws_access_key_id').value.trim(),
+      aws_secret_access_key: document.getElementById('settings_aws_secret_access_key').value.trim(),
+    };
+  }
+  if (platform === 'gcp') {
+    return {
+      gcp_project_id: document.getElementById('settings_gcp_project_id').value.trim(),
+      gcp_service_account_key: document.getElementById('settings_gcp_service_account_key').value.trim(),
+    };
+  }
+  if (platform === 'azure') {
+    return {
+      azure_tenant_id: document.getElementById('settings_azure_tenant_id').value.trim(),
+      azure_subscription_id: document.getElementById('settings_azure_subscription_id').value.trim(),
+      azure_client_id: document.getElementById('settings_azure_client_id').value.trim(),
+      azure_client_secret: document.getElementById('settings_azure_client_secret').value.trim(),
+    };
+  }
+  return {};
+}
+
+function setProviderAuthStatus(platform, status, isError = false) {
+  const el = document.getElementById(`provider_auth_status_${platform}`);
+  if (!el) return;
+  el.textContent = status;
+  el.classList.toggle('provider-auth-ok', !isError && status !== '');
+  el.classList.toggle('provider-auth-error', isError);
+}
+
+async function configureProviderAuth(platform) {
+  setProviderAuthStatus(platform, 'Configuring...');
+  try {
+    const data = await apiFetch(`/api/provider-auth/${platform}`, 'POST', providerAuthPayload(platform));
+    setProviderAuthStatus(platform, data.ok ? `Ready: ${data.identity || 'validated'}` : (data.message || 'Not ready'), !data.ok);
+    if (platform === 'aws') document.getElementById('settings_aws_secret_access_key').value = '';
+    if (platform === 'azure') document.getElementById('settings_azure_client_secret').value = '';
+  } catch (err) {
+    setProviderAuthStatus(platform, err.message, true);
+    alert(`Could not configure ${platform.toUpperCase()} credentials: ` + err.message);
+  }
+}
+
+async function testProviderAuth(platform, showAlert = true) {
+  setProviderAuthStatus(platform, 'Checking...');
+  try {
+    const data = await apiFetch(`/api/provider-auth/${platform}/status`);
+    setProviderAuthStatus(platform, data.ok ? `Ready: ${data.identity || 'validated'}` : (data.message || 'Not ready'), !data.ok);
+    if (showAlert && data.ok) alert(`${platform.toUpperCase()} credentials are ready.`);
+  } catch (err) {
+    setProviderAuthStatus(platform, err.message, true);
+    if (showAlert) alert(`Could not validate ${platform.toUpperCase()} credentials: ` + err.message);
+  }
+}
+
 async function savePlatformSettingsFromForm() {
   const settings = { ...DEFAULT_PLATFORM_SETTINGS };
   document.querySelectorAll('#platform-settings-form input[name="platform"]').forEach(input => {
@@ -169,8 +418,39 @@ async function savePlatformSettingsFromForm() {
   });
   savePlatformSettings(settings);
   const chaosTokenPath = document.getElementById('settings_chaos_api_token_path').value.trim();
+  const terraformParallelismRaw = document.getElementById('settings_terraform_parallelism').value.trim();
+  const terraformParallelism = terraformParallelismRaw ? parseInt(terraformParallelismRaw, 10) : 0;
+  const awsSshUser = document.getElementById('settings_aws_ssh_user').value.trim();
+  const gcpSshUser = document.getElementById('settings_gcp_ssh_user').value.trim();
+  const azureSshUser = document.getElementById('settings_azure_ssh_user').value.trim();
+  const chaosSshUser = document.getElementById('settings_chaos_ssh_user').value.trim();
+  const sshPublicKeyPath = document.getElementById('settings_ssh_public_key_path').value.trim();
+  const sshPrivateKeyPath = document.getElementById('settings_ssh_private_key_path').value.trim();
+  const awsProfile = document.getElementById('settings_aws_profile').value.trim();
+  const awsRegion = document.getElementById('settings_aws_region').value.trim();
+  const gcpProjectId = document.getElementById('settings_gcp_project_id').value.trim();
+  const gcpServiceAccountKey = document.getElementById('settings_gcp_service_account_key').value.trim();
+  const azureTenantId = document.getElementById('settings_azure_tenant_id').value.trim();
+  const azureSubscriptionId = document.getElementById('settings_azure_subscription_id').value.trim();
+  const azureClientId = document.getElementById('settings_azure_client_id').value.trim();
   try {
-    await apiFetch('/api/settings', 'POST', { chaos_api_token_path: chaosTokenPath });
+    await apiFetch('/api/settings', 'POST', {
+      chaos_api_token_path: chaosTokenPath,
+      terraform_parallelism: Number.isFinite(terraformParallelism) ? terraformParallelism : 0,
+      aws_ssh_user: awsSshUser,
+      gcp_ssh_user: gcpSshUser,
+      azure_ssh_user: azureSshUser,
+      chaos_ssh_user: chaosSshUser,
+      ssh_public_key_path: sshPublicKeyPath,
+      ssh_private_key_path: sshPrivateKeyPath,
+      aws_profile: awsProfile,
+      aws_region: awsRegion,
+      gcp_project_id: gcpProjectId,
+      gcp_service_account_key: gcpServiceAccountKey,
+      azure_tenant_id: azureTenantId,
+      azure_subscription_id: azureSubscriptionId,
+      azure_client_id: azureClientId,
+    });
     closePlatformSettings();
   } catch (err) {
     alert('Error saving settings: ' + err.message);

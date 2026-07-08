@@ -134,6 +134,33 @@ var funcMap = template.FuncMap{
 		}
 		return def
 	},
+	"imageSource": func(image, def string) string {
+		if image == "" {
+			return def
+		}
+		withoutTag := image
+		if idx := strings.LastIndex(withoutTag, ":"); idx >= 0 && idx > strings.LastIndex(withoutTag, "/") {
+			withoutTag = withoutTag[:idx]
+		}
+		if strings.HasPrefix(withoutTag, "docker.io/") {
+			withoutTag = strings.TrimPrefix(withoutTag, "docker.io/")
+		}
+		if idx := strings.LastIndex(withoutTag, "/"); idx >= 0 {
+			return withoutTag[:idx]
+		}
+		return def
+	},
+	"pmmServerImageCustom": func(image string) bool {
+		if image == "" {
+			return false
+		}
+		withoutTag := image
+		if idx := strings.LastIndex(withoutTag, ":"); idx >= 0 && idx > strings.LastIndex(withoutTag, "/") {
+			withoutTag = withoutTag[:idx]
+		}
+		withoutTag = strings.TrimPrefix(withoutTag, "docker.io/")
+		return withoutTag != "percona/pmm-server" && withoutTag != "perconalab/pmm-server"
+	},
 	"mongodbPackageLabel": mongodbPackageLabel,
 	"namespaceCustom": func(ns string) bool {
 		return ns != "" && ns != "percona" && ns != "perconalab"
@@ -444,7 +471,12 @@ func main() {
 	mux.HandleFunc("GET /api/settings", apiSettingsHandler)
 	mux.HandleFunc("POST /api/settings", apiSettingsHandler)
 	mux.HandleFunc("POST /api/upload-ssh-key/{platform}", apiUploadSSHKeyHandler)
+	mux.HandleFunc("POST /api/upload-settings-ssh-key/{kind}", apiUploadSettingsSSHKeyHandler)
 	mux.HandleFunc("POST /api/upload-chaos-token", apiUploadChaosTokenHandler)
+	mux.HandleFunc("POST /api/upload-provider-credential/{platform}", uploadProviderCredentialHandler)
+	mux.HandleFunc("GET /api/provider-auth/{platform}", providerAuthHandler)
+	mux.HandleFunc("POST /api/provider-auth/{platform}", providerAuthHandler)
+	mux.HandleFunc("GET /api/provider-auth/{platform}/status", providerAuthStatusHandler)
 	mux.HandleFunc("POST /api/environment", saveEnvironmentHandler)
 	mux.HandleFunc("DELETE /api/environment/{env_id}", deleteEnvironmentHandler)
 	mux.HandleFunc("DELETE /api/environments/deleted", purgeDeletedEnvironmentsHandler)

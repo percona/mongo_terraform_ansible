@@ -246,20 +246,22 @@ func dockerContainerHostPort(containerName string) string {
 	return ""
 }
 
-// dockerContainerPorts returns the exposed container-side ports for display in
-// the Hosts & Connections table. Multiple service ports are comma-separated.
+// dockerContainerPorts returns the host-side ports bound for the given Docker
+// container for display in the Hosts & Connections table.  Only the external
+// (host-reachable) HostPort values from NetworkSettings.Ports are used, so
+// the displayed port matches what is actually accessible from the host machine.
+// Multiple ports are comma-separated.
 func dockerContainerPorts(containerName string) string {
 	out, err := execOutput("docker", "inspect",
-		"--format", `{{range $p, $_ := .NetworkSettings.Ports}}{{$p}} {{end}}{{range $p, $_ := .Config.ExposedPorts}}{{$p}} {{end}}`,
+		"--format", `{{range $p, $bindings := .NetworkSettings.Ports}}{{range $bindings}}{{.HostPort}} {{end}}{{end}}`,
 		containerName)
 	if err != nil {
 		return "—"
 	}
 	ports := make(map[string]struct{})
 	for _, f := range strings.Fields(out) {
-		port := strings.TrimSpace(strings.SplitN(f, "/", 2)[0])
-		if port != "" && port != "0" {
-			ports[port] = struct{}{}
+		if f != "" && f != "0" {
+			ports[f] = struct{}{}
 		}
 	}
 	if len(ports) == 0 {

@@ -861,20 +861,6 @@ func apiUploadSettingsSSHKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settings, err := loadAppSettings()
-	if err != nil {
-		jsonError(w, 500, "settings load failed: "+err.Error())
-		return
-	}
-	if kind == "public" {
-		settings.SSHPublicKeyPath = storedPath
-	} else {
-		settings.SSHPrivateKeyPath = storedPath
-	}
-	if err := saveAppSettings(settings); err != nil {
-		jsonError(w, 500, "settings save failed: "+err.Error())
-		return
-	}
 	writeJSON(w, 200, map[string]string{
 		"path":     storedPath,
 		"filename": filepath.Base(header.Filename),
@@ -954,16 +940,6 @@ func apiUploadChaosTokenHandler(w http.ResponseWriter, r *http.Request) {
 	storedPath := chaosTokenUploadPath()
 	if err := os.WriteFile(storedPath, []byte(token+"\n"), 0600); err != nil {
 		jsonError(w, 500, "write failed: "+err.Error())
-		return
-	}
-	settings, err := loadAppSettings()
-	if err != nil {
-		jsonError(w, 500, "settings load failed: "+err.Error())
-		return
-	}
-	settings.ChaosApiTokenPath = storedPath
-	if err := saveAppSettings(settings); err != nil {
-		jsonError(w, 500, "settings save failed: "+err.Error())
 		return
 	}
 	writeJSON(w, 200, map[string]string{

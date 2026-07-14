@@ -81,7 +81,7 @@ variable "replsets" {
 
 variable "ssh_public_key_path" {
   description = "SSH public key file to be added to authorized_keys"
-  default     = "ivan.pub"
+  default     = "your_ssh_username.pub"
 }
 
 variable "my_ssh_user" {

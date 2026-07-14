@@ -22,12 +22,12 @@ variable "ssh_users" {
   description = "Map of SSH usernames and the path to their public key files on your machine"
   type        = map(string)
   default = {
-    ivan_groenewold = "ivan.pub"
+    your_ssh_username = "your_ssh_username.pub"
   }
 }
 
 variable "my_ssh_user" {
-  default     = "ivan_groenewold"
+  default     = "your_ssh_username"
   description = "Used to generate the ssh_config file"
 }
 

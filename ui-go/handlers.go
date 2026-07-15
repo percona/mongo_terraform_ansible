@@ -13,6 +13,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -974,6 +975,82 @@ func normalizePackageDistribution(distribution string) string {
 	}
 }
 
+// parseMajorMinor extracts the major and minor version numbers from a version
+// string like "8.2.1" or "8.2". Returns (-1, -1) if parsing fails.
+func parseMajorMinor(v string) (int, int) {
+	parts := strings.SplitN(v, ".", 3)
+	if len(parts) < 2 {
+		return -1, -1
+	}
+	major, err1 := strconv.Atoi(parts[0])
+	minor, err2 := strconv.Atoi(parts[1])
+	if err1 != nil || err2 != nil {
+		return -1, -1
+	}
+	return major, minor
+}
+
+// mongotVersionOk returns true if the given major.minor satisfies the mongot
+// minimum requirement of mongod >= 8.2.
+func mongotVersionOk(major, minor int) bool {
+	return major > 8 || (major == 8 && minor >= 2)
+}
+
+// mongotVersionFromImage extracts the version string from a Docker image
+// reference like "percona/percona-server-mongodb:8.2.1" (returns "8.2.1").
+func mongotVersionFromImage(image string) string {
+	if idx := strings.LastIndex(image, ":"); idx >= 0 && idx < len(image)-1 {
+		return image[idx+1:]
+	}
+	return ""
+}
+
+// validateMongotVersionCompatibility checks that every cluster/replset that
+// has mongot enabled is running mongod >= 8.2. For Docker environments the
+// version is derived from the PsmdbImage tag; for all other platforms it is
+// taken from MongoVersion.
+func validateMongotVersionCompatibility(platform string, cfg *Config) error {
+	type entry struct {
+		kind         string
+		name         string
+		enableMongot *bool
+		mongoVersion string
+		psmdbImage   string
+	}
+
+	var entries []entry
+	for name, c := range cfg.Clusters {
+		entries = append(entries, entry{"cluster", name, c.EnableMongot, c.MongoVersion, c.PsmdbImage})
+	}
+	for name, r := range cfg.Replsets {
+		entries = append(entries, entry{"replica set", name, r.EnableMongot, r.MongoVersion, r.PsmdbImage})
+	}
+
+	for _, e := range entries {
+		if e.enableMongot == nil || !*e.enableMongot {
+			continue
+		}
+		var versionStr string
+		if platform == "docker" {
+			versionStr = mongotVersionFromImage(e.psmdbImage)
+		} else {
+			versionStr = e.mongoVersion
+		}
+		if versionStr == "" {
+			// Cannot determine version — skip (other validators will catch missing fields).
+			continue
+		}
+		major, minor := parseMajorMinor(versionStr)
+		if major < 0 {
+			continue // unparseable — skip
+		}
+		if !mongotVersionOk(major, minor) {
+			return fmt.Errorf("%s %q: mongot requires mongod 8.2+, but version %s is selected", e.kind, e.name, versionStr)
+		}
+	}
+	return nil
+}
+
 func validatePackageBlock(kind, name string, distribution, release string, enableAudit bool) error {
 	distribution = normalizePackageDistribution(distribution)
 	if distribution == "" {
@@ -1169,6 +1246,11 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if err := normalizeAndValidatePackageConfig(payload.Platform, &payload.Config); err != nil {
+		jsonError(w, 400, err.Error())
+		return
+	}
+
+	if err := validateMongotVersionCompatibility(payload.Platform, &payload.Config); err != nil {
 		jsonError(w, 400, err.Error())
 		return
 	}

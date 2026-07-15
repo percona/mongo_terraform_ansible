@@ -3379,6 +3379,60 @@ function getBlockImageValue(block, name, imageName) {
   return tag ? `${dockerImageRepoForSelect(field, imageName)}:${tag}` : '';
 }
 
+// Returns a {major, minor} object parsed from a version string like "8.2.1",
+// or null if the string cannot be parsed.
+function parseMajorMinor(versionStr) {
+  if (!versionStr) return null;
+  const m = versionStr.match(/^(\d+)\.(\d+)/);
+  if (!m) return null;
+  return { major: parseInt(m[1], 10), minor: parseInt(m[2], 10) };
+}
+
+// Returns true when the version satisfies the mongot requirement (>= 8.2).
+function mongotVersionOk(v) {
+  if (!v) return false;
+  return v.major > 8 || (v.major === 8 && v.minor >= 2);
+}
+
+// Validates that every cluster/replset with mongot enabled has mongod >= 8.2.
+// Returns an array of human-readable error strings (empty = all good).
+function validateMongotVersions() {
+  const errors = [];
+
+  function checkBlock(block, prefix, label) {
+    const enabledCb = block.querySelector(`input[name="${prefix}_enable_mongot[]"]`);
+    if (!enabledCb || !enabledCb.checked) return;
+
+    let version = null;
+    if (PLATFORM === 'docker') {
+      // Extract version from the PSMDB image tag, e.g. "percona/percona-server-mongodb:8.2.1"
+      const imageSel = block.querySelector(`select[name="${prefix}_psmdb_image[]"]`);
+      if (imageSel) {
+        const tag = imageSel.value.split(':').pop();
+        version = parseMajorMinor(tag);
+      }
+    } else {
+      const versionSel = block.querySelector(`select[name="${prefix}_mongo_version[]"]`);
+      if (versionSel) version = parseMajorMinor(versionSel.value);
+    }
+
+    if (!mongotVersionOk(version)) {
+      const versionDisplay = version ? `${version.major}.${version.minor}` : 'unknown';
+      const name = block.querySelector(`input[name="${prefix}_name[]"]`)?.value || label;
+      errors.push(`${label} "${name}": mongot requires mongod 8.2+, but ${versionDisplay} is selected.`);
+    }
+  }
+
+  document.querySelectorAll('#clusters-container > .component-block').forEach(block => {
+    checkBlock(block, 'cluster', 'Cluster');
+  });
+  document.querySelectorAll('#replsets-container > .component-block').forEach(block => {
+    checkBlock(block, 'replset', 'Replica set');
+  });
+
+  return errors;
+}
+
 function copyPackageOverrides(block, target, prefix) {
   if (PLATFORM === 'docker') return;
   [
@@ -3456,6 +3510,17 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 	  if (ycsbOsImage) config.ycsb_os_image = ycsbOsImage;
 	  if (ycsbContainerSuffix) config.ycsb_container_suffix = ycsbContainerSuffix;
 	}
+  // Validate mongot version compatibility before sending to server.
+  {
+    const mongotErrors = validateMongotVersions();
+    if (mongotErrors.length > 0) {
+      alert('Cannot save: mongot requires mongod 8.2 or higher.\n\n' + mongotErrors.join('\n'));
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save & Configure';
+      return;
+    }
+  }
+
 	if (PLATFORM !== 'docker') {
     const anyPmmAgent = Array.from(document.querySelectorAll('input[name="cluster_enable_pmm[]"], input[name="replset_enable_pmm[]"]')).some(cb => cb.checked);
     if (anyPmmAgent && !fd.has('enable_pmm')) {

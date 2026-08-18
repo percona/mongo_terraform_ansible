@@ -86,6 +86,23 @@ resource "null_resource" "initiate_replset" {
     EOT
   }
 
+  # Create user for mongot on rs servers
+  provisioner "local-exec" {
+    command = <<-EOT
+      if test "${var.enable_mongot}" = "true"; then
+        docker exec -i ${docker_container.rs[local.replset_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${docker_container.rs[local.replset_member_keys[0]].ports[0].internal} --eval '
+          if (!db.getUser("${var.mongodb_mongot_user}")) {
+            db.createUser({
+              user: "${var.mongodb_mongot_user}",
+              pwd: "${var.mongodb_mongot_password}",
+              roles: [ { role: "searchCoordinator", db: "admin" } ]
+            });
+          }
+        '
+      fi
+    EOT
+  }
+
   # Create user for PMM on rs servers
   provisioner "local-exec" {
     command = <<-EOT

@@ -20,6 +20,8 @@ variable "clusters" {
     bind_to_localhost     = optional(bool, true) # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0    
     enable_audit          = optional(bool, false)
     audit_filter          = optional(string, "{ atype: \"authCheck\", \"param.command\": { $in: [ \"insert\", \"update\", \"delete\", \"findandmodify\" ] }, \"users.user\": { $not: /^__/ } }")
+    enable_mongot         = optional(bool, false)
+    mongot_image          = optional(string, "mongodb/mongodb-community-search:1.70.1")
     # PMM
     enable_pmm       = optional(bool, true)
     pmm_host         = optional(string, "pmm-server")
@@ -86,6 +88,8 @@ variable "replsets" {
     bind_to_localhost      = optional(bool, true) # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
     enable_audit           = optional(bool, false)
     audit_filter           = optional(string, "{ atype: \"authCheck\", \"param.command\": { $in: [ \"insert\", \"update\", \"delete\", \"findandmodify\" ] }, \"users.user\": { $not: /^__/ } }")
+    enable_mongot          = optional(bool, false)
+    mongot_image           = optional(string, "mongodb/mongodb-community-search:1.70.1")
     # PMM
     enable_pmm       = optional(bool, true)
     pmm_host         = optional(string, "pmm-server")

@@ -53,6 +53,13 @@ resource "docker_container" "rs" {
       "--auditFilter", "${var.audit_filter}",
       "--setParameter", "auditAuthorizationSuccess=true"
     ] : [],
+    var.enable_mongot ? [
+      "--setParameter", "searchIndexManagementHostAndPort=${var.rs_name}-${var.replset_tag}${each.value.member_index}-mongot:${var.mongot_port}",
+      "--setParameter", "mongotHost=${var.rs_name}-${var.replset_tag}${each.value.member_index}-mongot:${var.mongot_port}",
+      "--setParameter", "skipAuthenticationToSearchIndexManagementServer=false",
+      "--setParameter", "useGrpcForSearch=true",
+      "--setParameter", "searchTLSMode=disabled"
+    ] : [],
     var.enable_ldap ? [
       "--setParameter", "authenticationMechanisms=PLAIN,SCRAM-SHA-256",
       "--ldapQueryUser", "${var.ldap_bind_dn}",

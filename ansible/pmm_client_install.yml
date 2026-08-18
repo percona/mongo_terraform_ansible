@@ -99,3 +99,31 @@
         --enable-all-collectors
         {% endif %}
       when: pmm_enabled | bool
+
+    - name: Add mongot metrics collector
+      uri:
+        url: "http://127.0.0.1:{{ mongot_metrics_port }}/metrics"
+        method: GET
+        status_code: 200
+      register: mongot_metrics_health
+      until: mongot_metrics_health.status == 200
+      retries: 12
+      delay: 5
+      when:
+        - pmm_enabled | bool
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+        - "'shards' in group_names or 'replsets' in group_names"
+
+    - name: Register mongot metrics collector
+      shell: >
+        pmm-admin add external
+        --service-name={{ inventory_hostname }}-mongot
+        --listen-port={{ mongot_metrics_port }}
+        --metrics-path=/metrics
+        --scheme=http
+      when:
+        - pmm_enabled | bool
+        - enable_mongot_effective | bool
+        - arbiter is not defined
+        - "'shards' in group_names or 'replsets' in group_names"

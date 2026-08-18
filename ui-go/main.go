@@ -26,7 +26,7 @@ var ansiRe = regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
 var safeFilenameRe = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
 
 // defaultPSMDBVersions is used as a fallback when the Percona repo is unreachable.
-var defaultPSMDBVersions = []string{"psmdb-80", "psmdb-70", "psmdb-60", "psmdb-50", "psmdb-44", "psmdb-42", "psmdb-40", "psmdb-36"}
+var defaultPSMDBVersions = []string{"psmdb-83", "psmdb-80", "psmdb-70", "psmdb-60", "psmdb-50", "psmdb-44", "psmdb-42", "psmdb-40", "psmdb-36"}
 var defaultMongoDBOfficialVersions = []string{"8.3", "8.2", "8.0", "7.0", "6.0"}
 
 // Default Docker image tags used when Docker Hub is unreachable.
@@ -43,6 +43,7 @@ var defaultPMMServerImages = []string{
 var defaultPMMClientImages = []string{
 	"3.3.0", "3.2.0", "3.1.0", "3.0.0", "2.43.2", "2.43.1", "latest",
 }
+var defaultMongotImages = []string{"1.70.3-1", "latest"}
 
 const defaultAuditFilter = `{ atype: "authCheck", "param.command": { $in: [ "insert", "update", "delete", "findandmodify" ] }, "users.user": { $not: /^__/ } }`
 
@@ -488,6 +489,7 @@ func main() {
 	mux.HandleFunc("GET /api/environment/{env_id}/status", envStatusHandler)
 	mux.HandleFunc("POST /api/environment/{env_id}/action", environmentActionHandler)
 	mux.HandleFunc("POST /api/environment/{env_id}/ycsb", environmentYCSBActionHandler)
+	mux.HandleFunc("PUT /api/environment/{env_id}/ycsb/config", environmentYCSBConfigHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/ycsb/status", environmentYCSBStatusHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/status", jobStatusHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/stream", jobStreamHandler)

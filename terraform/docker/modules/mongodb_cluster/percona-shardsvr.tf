@@ -78,6 +78,13 @@ resource "docker_container" "shard" {
       "--auditFilter", "${var.audit_filter}",
       "--setParameter", "auditAuthorizationSuccess=true"
     ] : [],
+    var.enable_mongot ? [
+      "--setParameter", "searchIndexManagementHostAndPort=${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}-mongot:${var.mongot_port}",
+      "--setParameter", "mongotHost=${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}-mongot:${var.mongot_port}",
+      "--setParameter", "skipAuthenticationToSearchIndexManagementServer=false",
+      "--setParameter", "useGrpcForSearch=true",
+      "--setParameter", "searchTLSMode=disabled"
+    ] : [],
     var.enable_ldap ? [
       "--setParameter", "authenticationMechanisms=PLAIN,SCRAM-SHA-256",
       "--ldapQueryUser", "${var.ldap_bind_dn}",

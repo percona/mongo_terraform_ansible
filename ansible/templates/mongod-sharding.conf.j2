@@ -74,9 +74,18 @@ operationProfiling:
    rateLimit: 100
 {% endif %}
 
-{% if enable_audit %}
+{% if enable_audit or (enable_mongot_effective | bool and arbiter is not defined) %}
 setParameter:
+{% if enable_audit %}
   auditAuthorizationSuccess: true
+{% endif %}
+{% if enable_mongot_effective | bool and arbiter is not defined %}
+  searchIndexManagementHostAndPort: localhost:{{ mongot_port }}
+  mongotHost: localhost:{{ mongot_port }}
+  skipAuthenticationToSearchIndexManagementServer: false
+  useGrpcForSearch: true
+  searchTLSMode: disabled
+{% endif %}
 {% endif %}
 
 replication:

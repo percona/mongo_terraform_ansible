@@ -34,6 +34,9 @@ variable "clusters" {
     pmm_client_repo      = optional(string, "")
     enable_pmm           = optional(bool, true)
     enable_pbm           = optional(bool, true)
+    enable_mongot        = optional(bool, false)
+    mongot_source        = optional(string, "")
+    mongot_version       = optional(string, "")
   }))
   default = {
     ig-cl01 = {
@@ -61,6 +64,9 @@ variable "replsets" {
     pmm_client_repo        = optional(string, "")
     enable_pmm             = optional(bool, true)
     enable_pbm             = optional(bool, true)
+    enable_mongot          = optional(bool, false)
+    mongot_source          = optional(string, "")
+    mongot_version         = optional(string, "")
   }))
   default = {
     #     ig-rs01 = {
@@ -74,7 +80,7 @@ variable "replsets" {
 ################
 
 variable "my_ssh_user" {
-  default     = "ivan_groenewold"
+  default     = "your_ssh_username"
   description = "User for SSH and configuration"
 }
 
@@ -88,7 +94,7 @@ variable "ssh_users" {
   description = "User and public key map"
   type        = map(string)
   default = {
-    ivan_groenewold = "ivan.pub"
+    your_ssh_username = "your_ssh_username.pub"
   }
 }
 

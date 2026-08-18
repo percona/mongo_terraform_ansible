@@ -217,7 +217,7 @@
           </div>
         </div>
         <div class="customize-body" style="display:none">
-          <div class="form-row">
+           <div class="form-row">
             <div class="form-group">
               <label>Environment <span class="field-tip" data-tip="Environment for the resources created. Examples: dev, qa, prod.">ⓘ</span></label>
               <input type="text" name="cluster_env_tag[]" value="{{strDefault .Config.EnvTag "test"}}" placeholder="test">
@@ -299,7 +299,7 @@
           </div>
           {{end}}
           {{if ne $p "docker"}}
-          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo}}
+          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo .Config.MongotVersion}}
           <div class="subsection-header">
             <span class="subsection-title">Package Overrides</span>
             <button type="button" class="btn btn-outline btn-sm package-toggle-btn"
@@ -396,6 +396,25 @@
               </select>
             </div>
           </div>
+          <div class="form-row" data-mongot-options {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
+            <div class="form-group">
+              <label>Search Implementation <span class="field-tip" data-tip="Auto selects Percona Search for PSMDB 8.3 and upstream Community mongot otherwise.">ⓘ</span></label>
+              <select name="cluster_mongot_source[]">
+                <option value="auto" selected>Auto</option>
+                <option value="percona_package">Percona Search package</option>
+                <option value="community_tarball">MongoDB Community tarball</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Percona Search Version <span class="field-tip" data-tip="Percona Search for MongoDB package version. Requires PSMDB 8.3 and runs as a separate mongot process beside data-bearing mongod nodes.">ⓘ</span></label>
+              <select name="cluster_mongot_version[]">
+                {{$curMongotVer := .Config.MongotVersion}}
+                {{range $.MongotImages}}
+                <option value="{{.}}" {{if eq $curMongotVer .}}selected{{end}}>{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
           </div>
           <div class="form-row">
             <div class="form-group form-group-checkbox">
@@ -409,6 +428,12 @@
                             {{if boolDefault .Config.EnablePbm false}}checked{{end}}
                             onchange="onPbmAgentFeatureToggle(this)">
                 Install PBM agent</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="cluster_enable_mongot[]" value="1"
+                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}
+                            onchange="onMongotFeatureToggle(this)">
+                Install Search/Vector Search</label>
             </div>
           </div>
           {{end}}
@@ -425,6 +450,12 @@
                             {{if boolDefault .Config.EnablePbm false}}checked{{end}}
                             onchange="onDockerPbmFeatureToggle(this)">
                 Enable PBM backups</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="cluster_enable_mongot[]" value="1"
+                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}
+                            onchange="onDockerMongotFeatureToggle(this)">
+                Enable mongot</label>
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="cluster_bind_to_localhost[]" value="1"
@@ -488,6 +519,25 @@
                 {{range $.PMMClientImages}}
                 <option value="{{.}}" {{if tagSelected $curPmmc (printf "%s/pmm-client" $pmmcNs) .}}selected{{end}}>
                   {{$pmmcNs}}/pmm-client:{{.}}
+                </option>
+                {{end}}
+                <option value="__custom__">Custom image…</option>
+              </select>
+            </div>
+            <div class="form-group image-field" data-image-group="mongot" data-image-repo="mongodb-community-search" {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
+              <label>mongot Image <span class="field-tip" data-tip="MongoDB Search / Vector Search Docker image tag used for mongot sidecars on shard data-bearing nodes.">ⓘ</span></label>
+              {{$curMongot := .Config.MongotImage}}{{$mongotNs := imageNamespace $curMongot "mongodb"}}
+              <div class="image-namespace-row">
+                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                  <option value="mongodb" {{if eq $mongotNs "mongodb"}}selected{{end}}>mongodb</option>
+                  <option value="__custom__" {{if namespaceCustom $mongotNs}}selected{{end}}>custom</option>
+                </select>
+                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $mongotNs}}{{$mongotNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $mongotNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+              </div>
+              <select name="cluster_mongot_image[]" class="docker-tag-select" data-image-repo="mongodb-community-search">
+                {{range $.MongotImages}}
+                <option value="{{.}}" {{if tagSelected $curMongot (printf "%s/mongodb-community-search" $mongotNs) .}}selected{{end}}>
+                  {{$mongotNs}}/mongodb-community-search:{{.}}
                 </option>
                 {{end}}
                 <option value="__custom__">Custom image…</option>
@@ -693,7 +743,7 @@
           </div>
         </div>
         <div class="customize-body" style="display:none">
-          <div class="form-row">
+           <div class="form-row">
             <div class="form-group">
               <label>Environment <span class="field-tip" data-tip="Environment for the resources created. Examples: dev, qa, prod.">ⓘ</span></label>
               <input type="text" name="replset_env_tag[]" value="{{strDefault .Config.EnvTag "test"}}">
@@ -758,7 +808,7 @@
           </div>
           {{end}}
           {{if ne $p "docker"}}
-          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo}}
+          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo .Config.MongotVersion}}
           <div class="subsection-header">
             <span class="subsection-title">Package Overrides</span>
             <button type="button" class="btn btn-outline btn-sm package-toggle-btn"
@@ -855,6 +905,25 @@
               </select>
             </div>
           </div>
+          <div class="form-row" data-mongot-options {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
+            <div class="form-group">
+              <label>Search Implementation <span class="field-tip" data-tip="Auto selects Percona Search for PSMDB 8.3 and upstream Community mongot otherwise.">ⓘ</span></label>
+              <select name="replset_mongot_source[]">
+                <option value="auto" selected>Auto</option>
+                <option value="percona_package">Percona Search package</option>
+                <option value="community_tarball">MongoDB Community tarball</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Percona Search Version <span class="field-tip" data-tip="Percona Search for MongoDB package version. Requires PSMDB 8.3 and runs as a separate mongot process beside data-bearing mongod nodes.">ⓘ</span></label>
+              <select name="replset_mongot_version[]">
+                {{$curMongotVer := .Config.MongotVersion}}
+                {{range $.MongotImages}}
+                <option value="{{.}}" {{if eq $curMongotVer .}}selected{{end}}>{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
           </div>
           <div class="form-row">
             <div class="form-group form-group-checkbox">
@@ -868,6 +937,12 @@
                             {{if boolDefault .Config.EnablePbm false}}checked{{end}}
                             onchange="onPbmAgentFeatureToggle(this)">
                 Install PBM agent</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="replset_enable_mongot[]" value="1"
+                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}
+                            onchange="onMongotFeatureToggle(this)">
+                Install Search/Vector Search</label>
             </div>
           </div>
           {{end}}
@@ -884,6 +959,12 @@
                             {{if boolDefault .Config.EnablePbm false}}checked{{end}}
                             onchange="onDockerPbmFeatureToggle(this)">
                 Enable PBM backups</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="replset_enable_mongot[]" value="1"
+                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}
+                            onchange="onDockerMongotFeatureToggle(this)">
+                Enable mongot</label>
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="replset_bind_to_localhost[]" value="1"
@@ -947,6 +1028,25 @@
                 {{range $.PMMClientImages}}
                 <option value="{{.}}" {{if tagSelected $curPmmc (printf "%s/pmm-client" $pmmcNs) .}}selected{{end}}>
                   {{$pmmcNs}}/pmm-client:{{.}}
+                </option>
+                {{end}}
+                <option value="__custom__">Custom image…</option>
+              </select>
+            </div>
+            <div class="form-group image-field" data-image-group="mongot" data-image-repo="mongodb-community-search" {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
+              <label>mongot Image <span class="field-tip" data-tip="MongoDB Search / Vector Search Docker image tag used for mongot sidecars.">ⓘ</span></label>
+              {{$curMongot := .Config.MongotImage}}{{$mongotNs := imageNamespace $curMongot "mongodb"}}
+              <div class="image-namespace-row">
+                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                  <option value="mongodb" {{if eq $mongotNs "mongodb"}}selected{{end}}>mongodb</option>
+                  <option value="__custom__" {{if namespaceCustom $mongotNs}}selected{{end}}>custom</option>
+                </select>
+                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $mongotNs}}{{$mongotNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $mongotNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+              </div>
+              <select name="replset_mongot_image[]" class="docker-tag-select" data-image-repo="mongodb-community-search">
+                {{range $.MongotImages}}
+                <option value="{{.}}" {{if tagSelected $curMongot (printf "%s/mongodb-community-search" $mongotNs) .}}selected{{end}}>
+                  {{$mongotNs}}/mongodb-community-search:{{.}}
                 </option>
                 {{end}}
                 <option value="__custom__">Custom image…</option>
@@ -1689,6 +1789,7 @@ const PSMDB_IMAGES    = {{json .PSMDBImages}};
 const PBM_IMAGES      = {{json .PBMImages}};
 const PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
 const PMM_SERVER_IMAGES = {{json .PMMImages}};
+const MONGOT_IMAGES = {{json .MongotImages}};
 const PSMDB_VERSIONS  = {{json .PSMDBVersions}};
 const OFFICIAL_MONGODB_VERSIONS = ['8.3', '8.2', '8.0', '7.0', '6.0'];
 const PBM_VERSIONS    = {{json .PBMVersions}};
@@ -1835,6 +1936,18 @@ function onDockerPbmFeatureToggle(checkbox) {
   toggleImageGroup(checkbox, 'pbm');
   if (checkbox.checked) ensureDockerMinioServer();
   syncDockerMinioServerToggle();
+}
+
+function onDockerMongotFeatureToggle(checkbox) {
+  toggleImageGroup(checkbox, 'mongot');
+}
+
+function onMongotFeatureToggle(checkbox) {
+  const block = checkbox.closest('.component-block');
+  if (!block) return;
+  block.querySelectorAll('[data-mongot-options]').forEach(el => {
+    el.style.display = checkbox.checked ? '' : 'none';
+  });
 }
 
 // Show or hide a credential row inside the Credentials section based on whether
@@ -2503,16 +2616,18 @@ function selectedPmmServerImageValue() {
 
 function buildDockerImageRows(type) {
   if (type !== 'cluster' && type !== 'replset') return '';
-  const namespaceControl = `<div class="image-namespace-row"><select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)"><option value="percona" selected>percona</option><option value="perconalab">perconalab</option><option value="__custom__">custom</option></select><input type="text" class="docker-namespace-custom" placeholder="namespace" style="display:none" oninput="onDockerImageNamespaceChange(this)"></div>`;
+  const namespaceControl = (defaultNs = 'percona') => `<div class="image-namespace-row"><select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)"><option value="percona"${defaultNs === 'percona' ? ' selected' : ''}>percona</option><option value="perconalab"${defaultNs === 'perconalab' ? ' selected' : ''}>perconalab</option><option value="mongodb"${defaultNs === 'mongodb' ? ' selected' : ''}>mongodb</option><option value="__custom__">custom</option></select><input type="text" class="docker-namespace-custom" placeholder="namespace" style="display:none" oninput="onDockerImageNamespaceChange(this)"></div>`;
   const psmdbSel = PSMDB_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/percona-server-mongodb:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
   const pbmSel   = PBM_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/percona-backup-mongodb:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
   const pmmcSel  = PMM_CLIENT_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/pmm-client:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
+  const mongotSel = MONGOT_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>mongodb/mongodb-community-search:${escHtml(t)}</option>`).join('') +
+    `<option value="__custom__">Custom…</option>`;
   const makeImageGroup = (label, tip, selectName, options, dataGroup, repo) => `
     <div class="form-group image-field" data-image-repo="${repo}"${dataGroup ? ` data-image-group="${dataGroup}" style="display:none"` : ''}><label>${label} <span class="field-tip" data-tip="${tip}">ⓘ</span></label>
-      ${namespaceControl}
+      ${namespaceControl(repo === 'mongodb-community-search' ? 'mongodb' : 'percona')}
       <div class="image-select-wrapper">
         <select name="${type}_${selectName}" class="docker-tag-select" data-image-repo="${repo}" onchange="toggleCustomImageInput(this)">${options}</select>
         <input type="text" class="custom-image-input" name="${type}_${selectName}_custom"
@@ -2529,12 +2644,16 @@ function buildDockerImageRows(type) {
         <label><input type="checkbox" name="${type}_enable_pbm[]" value="1"
           onchange="onDockerPbmFeatureToggle(this)"> Enable PBM backups</label></div>
       <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="${type}_enable_mongot[]" value="1"
+          onchange="onDockerMongotFeatureToggle(this)"> Enable mongot</label></div>
+      <div class="form-group form-group-checkbox">
         <label><input type="checkbox" name="${type}_bind_to_localhost[]" value="1"> Bind ports to localhost only</label></div>
     </div>
     <div class="form-row">
       ${makeImageGroup('PSMDB Image', 'Percona Server for MongoDB Docker image tag for nodes in this block.', 'psmdb_image[]', psmdbSel, null, 'percona-server-mongodb')}
       ${makeImageGroup('PBM Image', 'Percona Backup for MongoDB Docker image tag for backup agents.', 'pbm_image[]', pbmSel, 'pbm', 'percona-backup-mongodb')}
       ${makeImageGroup('PMM Client Image', 'PMM Client Docker image tag for monitoring nodes.', 'pmm_client_image[]', pmmcSel, 'pmm', 'pmm-client')}
+      ${makeImageGroup('mongot Image', 'MongoDB Search / Vector Search Docker image tag for mongot sidecars.', 'mongot_image[]', mongotSel, 'mongot', 'mongodb-community-search')}
     </div>`;
 }
 
@@ -2543,6 +2662,7 @@ function buildPackageOverrideRows(type) {
   const mongoReleaseOptions = PSMDB_VERSIONS.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('');
   const pbmVersionOptions = PBM_VERSIONS.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('');
   const pmmClientVersionOptions = PMM_CLIENT_IMAGES.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('');
+  const mongotVersionOptions = MONGOT_IMAGES.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('');
   const repoOptions = '<option value="release" selected>release (GA)</option><option value="testing">testing</option><option value="experimental">experimental</option>';
   const label = type === 'cluster' ? 'cluster' : 'replica set';
   const osImageRows = PLATFORM === 'chaos' ? `
@@ -2570,6 +2690,10 @@ function buildPackageOverrideRows(type) {
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" name="${type}_enable_pbm[]" value="1" onchange="onPbmAgentFeatureToggle(this)">
           Install PBM agent</label>
+      </div>
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="${type}_enable_mongot[]" value="1" onchange="onMongotFeatureToggle(this)">
+          Install Search/Vector Search</label>
       </div>
     </div>
     <div class="subsection-header">
@@ -2606,6 +2730,12 @@ function buildPackageOverrideRows(type) {
         <select name="${type}_pmm_client_major[]" onchange="onPackageMajorChange(this, 'pmm_client')"></select></div>
       <div class="form-group"><label>PMM Client Minor Version <span class="field-tip" data-tip="PMM client package version pin for this ${label}. Defaults to the newest client package from the selected channel. The PMM server remains environment-wide.">ⓘ</span></label>
         <select name="${type}_pmm_client_version[]">${pmmClientVersionOptions}</select></div>
+    </div>
+    <div class="form-row" data-mongot-options style="display:none">
+      <div class="form-group"><label>Search Implementation</label>
+        <select name="${type}_mongot_source[]"><option value="auto" selected>Auto</option><option value="percona_package">Percona Search package</option><option value="community_tarball">MongoDB Community tarball</option></select></div>
+      <div class="form-group"><label>mongot Version <span class="field-tip" data-tip="Search implementation version. Percona package versions include the package release suffix; Community versions use upstream version syntax.">ⓘ</span></label>
+        <select name="${type}_mongot_version[]">${mongotVersionOptions}</select></div>
     </div>
     </div>`;
 }
@@ -3206,6 +3336,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Existing per-resource PBM selects are populated server-side; newly
         // added blocks use PBM_VERSIONS from the initial page payload.
       }
+      if (data.mongot_images && data.mongot_images.length) {
+        MONGOT_IMAGES.splice(0, MONGOT_IMAGES.length, ...data.mongot_images);
+      }
     })
     .catch(() => {}); // silently ignore if offline
 });
@@ -3274,6 +3407,60 @@ function getBlockImageValue(block, name, imageName) {
   return tag ? `${dockerImageRepoForSelect(field, imageName)}:${tag}` : '';
 }
 
+// Returns a {major, minor} object parsed from a version string like "8.2.1",
+// or null if the string cannot be parsed.
+function parseMajorMinor(versionStr) {
+  if (!versionStr) return null;
+  const m = versionStr.match(/^(\d+)\.(\d+)/);
+  if (!m) return null;
+  return { major: parseInt(m[1], 10), minor: parseInt(m[2], 10) };
+}
+
+// Returns true when the version satisfies the mongot requirement (>= 8.2).
+function mongotVersionOk(v) {
+  if (!v) return false;
+  return v.major > 8 || (v.major === 8 && v.minor >= 2);
+}
+
+// Validates that every cluster/replset with mongot enabled has mongod >= 8.2.
+// Returns an array of human-readable error strings (empty = all good).
+function validateMongotVersions() {
+  const errors = [];
+
+  function checkBlock(block, prefix, label) {
+    const enabledCb = block.querySelector(`input[name="${prefix}_enable_mongot[]"]`);
+    if (!enabledCb || !enabledCb.checked) return;
+
+    let version = null;
+    if (PLATFORM === 'docker') {
+      // Extract version from the PSMDB image tag, e.g. "percona/percona-server-mongodb:8.2.1"
+      const imageSel = block.querySelector(`select[name="${prefix}_psmdb_image[]"]`);
+      if (imageSel) {
+        const tag = imageSel.value.split(':').pop();
+        version = parseMajorMinor(tag);
+      }
+    } else {
+      const versionSel = block.querySelector(`select[name="${prefix}_mongo_version[]"]`);
+      if (versionSel) version = parseMajorMinor(versionSel.value);
+    }
+
+    if (!mongotVersionOk(version)) {
+      const versionDisplay = version ? `${version.major}.${version.minor}` : 'unknown';
+      const name = block.querySelector(`input[name="${prefix}_name[]"]`)?.value || label;
+      errors.push(`${label} "${name}": mongot requires mongod 8.2+, but ${versionDisplay} is selected.`);
+    }
+  }
+
+  document.querySelectorAll('#clusters-container > .component-block').forEach(block => {
+    checkBlock(block, 'cluster', 'Cluster');
+  });
+  document.querySelectorAll('#replsets-container > .component-block').forEach(block => {
+    checkBlock(block, 'replset', 'Replica set');
+  });
+
+  return errors;
+}
+
 function copyPackageOverrides(block, target, prefix) {
   if (PLATFORM === 'docker') return;
   [
@@ -3285,6 +3472,7 @@ function copyPackageOverrides(block, target, prefix) {
     'pbm_repo',
     'pmm_client_version',
     'pmm_client_repo',
+    'mongot_source',
     'os_image',
   ].forEach(field => {
     const value = getBlockFieldValue(block, `${prefix}_${field}[]`).trim();
@@ -3351,6 +3539,17 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 	  if (ycsbOsImage) config.ycsb_os_image = ycsbOsImage;
 	  if (ycsbContainerSuffix) config.ycsb_container_suffix = ycsbContainerSuffix;
 	}
+  // Validate mongot version compatibility before sending to server.
+  {
+    const mongotErrors = validateMongotVersions();
+    if (mongotErrors.length > 0) {
+      alert('Cannot save: mongot requires mongod 8.2 or higher.\n\n' + mongotErrors.join('\n'));
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save & Configure';
+      return;
+    }
+  }
+
 	if (PLATFORM !== 'docker') {
     const anyPmmAgent = Array.from(document.querySelectorAll('input[name="cluster_enable_pmm[]"], input[name="replset_enable_pmm[]"]')).some(cb => cb.checked);
     if (anyPmmAgent && !fd.has('enable_pmm')) {
@@ -3433,16 +3632,24 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     if (PLATFORM !== 'docker') {
       c.enable_pmm = getBlockChecked(block, 'cluster_enable_pmm[]');
       c.enable_pbm = getBlockChecked(block, 'cluster_enable_pbm[]');
+      c.enable_mongot = getBlockChecked(block, 'cluster_enable_mongot[]');
+      const mongotVersion = getBlockFieldValue(block, 'cluster_mongot_version[]').trim();
+      const mongotSource = getBlockFieldValue(block, 'cluster_mongot_source[]').trim();
+      if (mongotSource) c.mongot_source = mongotSource;
+      if (c.enable_mongot && mongotVersion) c.mongot_version = mongotVersion;
     }
     if (PLATFORM === 'docker') {
       const psmdbImage = getBlockImageValue(block, 'cluster_psmdb_image[]', 'percona-server-mongodb');
       const pbmImage = getBlockImageValue(block, 'cluster_pbm_image[]', 'percona-backup-mongodb');
       const pmmClientImage = getBlockImageValue(block, 'cluster_pmm_client_image[]', 'pmm-client');
+      const mongotImage = getBlockImageValue(block, 'cluster_mongot_image[]', 'mongodb-community-search');
       c.enable_pmm = getBlockChecked(block, 'cluster_enable_pmm[]');
       c.enable_pbm = getBlockChecked(block, 'cluster_enable_pbm[]');
+      c.enable_mongot = getBlockChecked(block, 'cluster_enable_mongot[]');
       if (psmdbImage) c.psmdb_image = psmdbImage;
       if (c.enable_pbm && pbmImage) c.pbm_image = pbmImage;
       if (c.enable_pmm && pmmClientImage) c.pmm_client_image = pmmClientImage;
+      if (c.enable_mongot && mongotImage) c.mongot_image = mongotImage;
       c.bind_to_localhost = getBlockChecked(block, 'cluster_bind_to_localhost[]');
     }
     config.clusters[name] = c;
@@ -3465,6 +3672,11 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     if (PLATFORM !== 'docker') {
       r.enable_pmm = getBlockChecked(block, 'replset_enable_pmm[]');
       r.enable_pbm = getBlockChecked(block, 'replset_enable_pbm[]');
+      r.enable_mongot = getBlockChecked(block, 'replset_enable_mongot[]');
+      const mongotVersion = getBlockFieldValue(block, 'replset_mongot_version[]').trim();
+      const mongotSource = getBlockFieldValue(block, 'replset_mongot_source[]').trim();
+      if (mongotSource) r.mongot_source = mongotSource;
+      if (r.enable_mongot && mongotVersion) r.mongot_version = mongotVersion;
     }
     if (PLATFORM === 'docker') {
       const port = parseInt(getBlockFieldValue(block, 'replset_port[]'));
@@ -3472,11 +3684,14 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       const psmdbImage = getBlockImageValue(block, 'replset_psmdb_image[]', 'percona-server-mongodb');
       const pbmImage = getBlockImageValue(block, 'replset_pbm_image[]', 'percona-backup-mongodb');
       const pmmClientImage = getBlockImageValue(block, 'replset_pmm_client_image[]', 'pmm-client');
+      const mongotImage = getBlockImageValue(block, 'replset_mongot_image[]', 'mongodb-community-search');
       r.enable_pmm = getBlockChecked(block, 'replset_enable_pmm[]');
       r.enable_pbm = getBlockChecked(block, 'replset_enable_pbm[]');
+      r.enable_mongot = getBlockChecked(block, 'replset_enable_mongot[]');
       if (psmdbImage) r.psmdb_image = psmdbImage;
       if (r.enable_pbm && pbmImage) r.pbm_image = pbmImage;
       if (r.enable_pmm && pmmClientImage) r.pmm_client_image = pmmClientImage;
+      if (r.enable_mongot && mongotImage) r.mongot_image = mongotImage;
       r.bind_to_localhost = getBlockChecked(block, 'replset_bind_to_localhost[]');
     }
     config.replsets[name] = r;

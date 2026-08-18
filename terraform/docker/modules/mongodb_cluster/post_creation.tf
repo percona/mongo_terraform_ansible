@@ -86,6 +86,23 @@ resource "null_resource" "initiate_cfg_replset" {
     EOT
   }
 
+  # Create user for mongot router authentication on config servers
+  provisioner "local-exec" {
+    command = <<-EOT
+      if test "${var.enable_mongot}" = "true"; then
+        docker exec -i ${docker_container.cfg[local.cfg_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.configsvr_port} --eval '
+          if (!db.getUser("${var.mongodb_mongot_user}")) {
+            db.createUser({
+              user: "${var.mongodb_mongot_user}",
+              pwd: "${var.mongodb_mongot_password}",
+              roles: [ { role: "searchCoordinator", db: "admin" } ]
+            });
+          }
+        '
+      fi
+    EOT
+  }
+
   # Create user for PMM on config servers
   provisioner "local-exec" {
     command = <<-EOT
@@ -223,6 +240,23 @@ resource "null_resource" "create_users" {
           ]
         });
       '
+    EOT
+  }
+
+  # Create user for mongot on the shards
+  provisioner "local-exec" {
+    command = <<-EOT
+      if test "${var.enable_mongot}" = "true"; then
+        docker exec -i ${docker_container.shard["shard${each.key}svr0"].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${var.shardsvr_port} --eval '
+          if (!db.getUser("${var.mongodb_mongot_user}")) {
+            db.createUser({
+              user: "${var.mongodb_mongot_user}",
+              pwd: "${var.mongodb_mongot_password}",
+              roles: [ { role: "searchCoordinator", db: "admin" } ]
+            });
+          }
+        '
+      fi
     EOT
   }
 

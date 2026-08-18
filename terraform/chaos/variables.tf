@@ -30,6 +30,9 @@ variable "clusters" {
     pmm_client_repo      = optional(string, "")
     enable_pmm           = optional(bool, true)
     enable_pbm           = optional(bool, true)
+    enable_mongot        = optional(bool, false)
+    mongot_source        = optional(string, "")
+    mongot_version       = optional(string, "")
     os_image             = optional(string, "")
   }))
 
@@ -64,6 +67,9 @@ variable "replsets" {
     pmm_client_repo        = optional(string, "")
     enable_pmm             = optional(bool, true)
     enable_pbm             = optional(bool, true)
+    enable_mongot          = optional(bool, false)
+    mongot_source          = optional(string, "")
+    mongot_version         = optional(string, "")
     os_image               = optional(string, "")
   }))
 
@@ -79,7 +85,7 @@ variable "replsets" {
 
 
 variable "my_ssh_user" {
-  default     = "ivan_groenewold"
+  default     = "your_ssh_username"
   description = "Used to auto-generate the ssh_config file. Each person running this code should set it to its own SSH user name"
 }
 

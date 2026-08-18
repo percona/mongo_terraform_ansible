@@ -1,0 +1,36 @@
+syncSource:
+  replicaSet:
+    hostAndPort: "127.0.0.1:{{ mongo_port }}"
+    scramAuth:
+      username: "{{ mongodb_mongot_user }}"
+      passwordFile: "{{ mongot_password_file }}"
+      authSource: "admin"
+      tls:
+        enabled: false
+{% if 'shards' in group_names and (groups['mongos'] | default([]) | length) > 0 %}
+  router:
+    hostAndPort: "{{ hostvars[groups['mongos'][0]].ansible_facts['fqdn'] }}:{{ mongos_port }}"
+    scramAuth:
+      username: "{{ mongodb_mongot_user }}"
+      passwordFile: "{{ mongot_password_file }}"
+      authSource: "admin"
+      tls:
+        enabled: false
+{% endif %}
+  replicationReader:
+    readPreference: "secondaryPreferred"
+storage:
+  dataPath: "{{ mongot_data_path }}"
+server:
+  grpc:
+    address: "localhost:{{ mongot_port }}"
+    tls:
+      mode: "disabled"
+metrics:
+  enabled: true
+  address: "localhost:{{ mongot_metrics_port }}"
+healthCheck:
+  address: "localhost:{{ mongot_health_port }}"
+logging:
+  verbosity: INFO
+  logPath: "{{ mongot_log_path }}"

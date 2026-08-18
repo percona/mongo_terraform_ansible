@@ -314,6 +314,13 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			if platform != "docker" {
 				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(boolDefault(c.EnablePmm, false))))
 				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(boolDefault(c.EnablePbm, false))))
+				write(fmt.Sprintf("    enable_mongot = %s", formatHCLVal(boolDefault(c.EnableMongot, false))))
+				if c.MongotSource != "" {
+					write(fmt.Sprintf("    mongot_source = %s", formatHCLVal(c.MongotSource)))
+				}
+				if c.MongotVersion != "" {
+					write(fmt.Sprintf("    mongot_version = %s", formatHCLVal(c.MongotVersion)))
+				}
 				if platform == "chaos" && c.OsImage != "" {
 					write(fmt.Sprintf("    os_image = %s", formatHCLVal(c.OsImage)))
 				}
@@ -352,8 +359,12 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				if c.PmmClientImage != "" {
 					write(fmt.Sprintf("    pmm_client_image = %s", formatHCLVal(c.PmmClientImage)))
 				}
+				if c.MongotImage != "" {
+					write(fmt.Sprintf("    mongot_image = %s", formatHCLVal(c.MongotImage)))
+				}
 				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(boolDefault(c.EnablePmm, false))))
 				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(boolDefault(c.EnablePbm, false))))
+				write(fmt.Sprintf("    enable_mongot = %s", formatHCLVal(boolDefault(c.EnableMongot, false))))
 				write(fmt.Sprintf("    bind_to_localhost = %s", formatHCLVal(c.BindToLocalhost)))
 				if dockerMongoRootPassword != "" {
 					write(fmt.Sprintf("    mongodb_root_password = %s", formatHCLVal(dockerMongoRootPassword)))
@@ -384,6 +395,13 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			if platform != "docker" {
 				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(boolDefault(r.EnablePmm, false))))
 				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(boolDefault(r.EnablePbm, false))))
+				write(fmt.Sprintf("    enable_mongot = %s", formatHCLVal(boolDefault(r.EnableMongot, false))))
+				if r.MongotSource != "" {
+					write(fmt.Sprintf("    mongot_source = %s", formatHCLVal(r.MongotSource)))
+				}
+				if r.MongotVersion != "" {
+					write(fmt.Sprintf("    mongot_version = %s", formatHCLVal(r.MongotVersion)))
+				}
 				if platform == "chaos" && r.OsImage != "" {
 					write(fmt.Sprintf("    os_image = %s", formatHCLVal(r.OsImage)))
 				}
@@ -431,8 +449,12 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				if r.PmmClientImage != "" {
 					write(fmt.Sprintf("    pmm_client_image = %s", formatHCLVal(r.PmmClientImage)))
 				}
+				if r.MongotImage != "" {
+					write(fmt.Sprintf("    mongot_image = %s", formatHCLVal(r.MongotImage)))
+				}
 				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(boolDefault(r.EnablePmm, false))))
 				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(boolDefault(r.EnablePbm, false))))
+				write(fmt.Sprintf("    enable_mongot = %s", formatHCLVal(boolDefault(r.EnableMongot, false))))
 				write(fmt.Sprintf("    bind_to_localhost = %s", formatHCLVal(r.BindToLocalhost)))
 				if dockerMongoRootPassword != "" {
 					write(fmt.Sprintf("    mongodb_root_password = %s", formatHCLVal(dockerMongoRootPassword)))

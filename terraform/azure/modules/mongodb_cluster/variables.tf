@@ -21,12 +21,12 @@ variable "env_tag" {
 variable "ssh_users" {
   description = "SSH user names, and the path to public key files on your machine to be added to authorized_keys"
   default = {
-    ivan_groenewold = "ivan.pub"
+    your_ssh_username = "your_ssh_username.pub"
   }
 }
 
 variable "my_ssh_user" {
-  default     = "ivan_groenewold"
+  default     = "your_ssh_username"
   description = "Used to auto-generate the ssh_config file. Each person running this code should set it to their own SSH user name"
 }
 

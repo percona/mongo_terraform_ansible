@@ -85,6 +85,43 @@ variable "audit_filter" {
   description = "Audit filter applied to mongod and mongos containers"
 }
 
+variable "enable_mongot" {
+  type        = bool
+  description = "Enable mongot sidecars for MongoDB Search and Vector Search on shard data-bearing nodes"
+  default     = false
+}
+
+variable "mongot_image" {
+  description = "MongoDB Search Community Docker image"
+  default     = "mongodb/mongodb-community-search:1.70.1"
+}
+
+variable "mongot_port" {
+  description = "mongot gRPC port"
+  default     = "27028"
+}
+
+variable "mongot_metrics_port" {
+  description = "mongot Prometheus metrics port"
+  default     = "9946"
+}
+
+variable "mongot_health_port" {
+  description = "mongot health check port"
+  default     = "8080"
+}
+
+variable "mongodb_mongot_user" {
+  default     = "mongotUser"
+  description = "MongoDB user for mongot sync"
+}
+
+variable "mongodb_mongot_password" {
+  default     = "percona"
+  description = "MongoDB mongot sync user password"
+  sensitive   = true
+}
+
 ################
 # Shards
 ################

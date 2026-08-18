@@ -133,7 +133,7 @@
     <table>
       <thead>
         <tr><th>Name</th><th>Env</th><th>Cfg Svrs</th><th>Shards</th>
-            <th>Replicas/Shard</th><th>Arbiters/Shard</th><th>Mongos</th>{{if .YcsbEnabled}}<th>Load Generation</th>{{end}}<th>Connect</th></tr>
+            <th>Replicas/Shard</th><th>Arbiters/Shard</th><th>Mongos</th><th>Connect</th></tr>
       </thead>
       <tbody>
         {{range .SortedClusters}}
@@ -145,15 +145,6 @@
           <td>{{intDefault .Config.ShardsvrReplicas 2}}</td>
           <td>{{intPtrDefault .Config.ArbitersPerReplset 1}}</td>
           <td>{{intDefault .Config.MongosCount 2}}</td>
-          {{if $.YcsbEnabled}}
-          <td>
-            <div class="action-buttons ycsb-actions" data-ycsb-kind="cluster" data-ycsb-target="{{.Name}}" style="gap:.35rem; flex-wrap:wrap">
-              <button class="btn btn-outline btn-xs ycsb-load-btn" onclick="runYcsbAction('cluster', {{json .Name}}, 'load')" title="{{if $.YcsbAvailable}}Insert the initial YCSB dataset for this cluster{{else}}Provision or start the environment before using YCSB{{end}}" {{if not $.YcsbAvailable}}disabled{{end}}>Insert Data</button>
-              <button class="btn btn-outline btn-xs ycsb-start-btn" onclick="runYcsbAction('cluster', {{json .Name}}, 'start')" title="{{if $.YcsbAvailable}}Start YCSB workload generation for this cluster{{else}}Provision or start the environment before using YCSB{{end}}" {{if not $.YcsbAvailable}}disabled{{end}}>Start Load</button>
-              <button class="btn btn-outline btn-xs ycsb-stop-btn" onclick="runYcsbAction('cluster', {{json .Name}}, 'stop')" title="Stop the running YCSB workload for this cluster" disabled>Stop Load</button>
-            </div>
-          </td>
-          {{end}}
           <td>
             <button class="btn btn-outline btn-xs mongo-conn-btn" data-mongo-kind="cluster" data-mongo-name="{{.Name}}" onclick="openConnectionStringModalFromButton(this)" disabled title="Connection string not available yet">Connect</button>
           </td>
@@ -168,7 +159,7 @@
   <h3>Standalone Replica Sets</h3>
   <div class="table-wrapper">
     <table>
-      <thead><tr><th>Name</th><th>Env</th><th>Data Nodes</th><th>Arbiters</th>{{if .YcsbEnabled}}<th>Load Generation</th>{{end}}<th>Connect</th></tr></thead>
+       <thead><tr><th>Name</th><th>Env</th><th>Data Nodes</th><th>Arbiters</th><th>Connect</th></tr></thead>
       <tbody>
         {{range .SortedReplsets}}
         <tr>
@@ -176,15 +167,6 @@
           <td>{{strDefault .Config.EnvTag "test"}}</td>
           <td>{{intDefault .Config.DataNodesPerReplset 2}}</td>
           <td>{{intPtrDefault .Config.ArbitersPerReplset 1}}</td>
-          {{if $.YcsbEnabled}}
-          <td>
-            <div class="action-buttons ycsb-actions" data-ycsb-kind="replset" data-ycsb-target="{{.Name}}" style="gap:.35rem; flex-wrap:wrap">
-              <button class="btn btn-outline btn-xs ycsb-load-btn" onclick="runYcsbAction('replset', {{json .Name}}, 'load')" title="{{if $.YcsbAvailable}}Insert the initial YCSB dataset for this replica set{{else}}Provision or start the environment before using YCSB{{end}}" {{if not $.YcsbAvailable}}disabled{{end}}>Insert Data</button>
-              <button class="btn btn-outline btn-xs ycsb-start-btn" onclick="runYcsbAction('replset', {{json .Name}}, 'start')" title="{{if $.YcsbAvailable}}Start YCSB workload generation for this replica set{{else}}Provision or start the environment before using YCSB{{end}}" {{if not $.YcsbAvailable}}disabled{{end}}>Start Load</button>
-              <button class="btn btn-outline btn-xs ycsb-stop-btn" onclick="runYcsbAction('replset', {{json .Name}}, 'stop')" title="Stop the running YCSB workload for this replica set" disabled>Stop Load</button>
-            </div>
-          </td>
-          {{end}}
           <td>
             <button class="btn btn-outline btn-xs mongo-conn-btn" data-mongo-kind="replset" data-mongo-name="{{.Name}}" onclick="openConnectionStringModalFromButton(this)" disabled title="Connection string not available yet">Connect</button>
           </td>
@@ -206,6 +188,29 @@
     <p style="color:var(--color-muted)">Loading…</p>
   </div>
 </div>
+
+{{if .YcsbEnabled}}
+<section class="form-section ycsb-panel" id="ycsb-panel">
+  <div class="section-header"><h2>YCSB Load Generator</h2><span class="field-tip" data-tip="Shared settings for the selected cluster or replica set.">ⓘ</span></div>
+  <div class="form-row">
+    <div class="form-group"><label for="ycsb-target">Target</label><select id="ycsb-target" onchange="refreshYcsbStatus()">{{range .SortedClusters}}<option value="cluster:{{.Name}}" {{if and (eq $.YcsbLoad.TargetKind "cluster") (eq $.YcsbLoad.Target .Name)}}selected{{end}}>Cluster: {{.Name}}</option>{{end}}{{range .SortedReplsets}}<option value="replset:{{.Name}}" {{if and (eq $.YcsbLoad.TargetKind "replset") (eq $.YcsbLoad.Target .Name)}}selected{{end}}>Replica set: {{.Name}}</option>{{end}}</select></div>
+    <div class="form-group"><label for="ycsb-workload">Workload</label><select id="ycsb-workload"><option value="workloade" {{if eq .YcsbLoad.Workload "workloade"}}selected{{end}}>Workload E (scan-heavy)</option><option value="workloada" {{if eq .YcsbLoad.Workload "workloada"}}selected{{end}}>Workload A (read/update)</option></select></div>
+    <div class="form-group"><label for="ycsb-record-count">Records</label><input id="ycsb-record-count" type="number" min="1" max="100000000" value="{{.YcsbLoad.RecordCount}}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label for="ycsb-max-scan">Max scan length</label><input id="ycsb-max-scan" type="number" min="1" max="1000000" value="{{.YcsbLoad.MaxScanLength}}"></div>
+    <div class="form-group"><label for="ycsb-scan-distribution">Scan distribution</label><select id="ycsb-scan-distribution"><option value="uniform" {{if eq .YcsbLoad.ScanLengthDistribution "uniform"}}selected{{end}}>Uniform</option><option value="constant" {{if eq .YcsbLoad.ScanLengthDistribution "constant"}}selected{{end}}>Constant</option></select></div>
+    <div class="form-group"><label for="ycsb-threads">Threads</label><input id="ycsb-threads" type="number" min="1" max="256" value="{{.YcsbLoad.Threads}}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label for="ycsb-rate">Target ops/sec</label><input id="ycsb-rate" type="number" min="1" max="1000000" value="{{.YcsbLoad.TargetOpsPerSecond}}"></div>
+    <div class="form-group"><label for="ycsb-duration">Duration (seconds)</label><input id="ycsb-duration" type="number" min="1" max="86400" value="{{.YcsbLoad.DurationSeconds}}"></div>
+    <div class="form-group"><label><input id="ycsb-reset" type="checkbox" {{if .YcsbLoad.ResetBeforeLoad}}checked{{end}}> Reset before Insert Data</label></div>
+  </div>
+  <div class="action-buttons" style="margin-top:.5rem"><button class="btn btn-outline" id="ycsb-save-config" onclick="saveYcsbConfig()">Save Settings</button><button class="btn btn-outline ycsb-load-btn" id="ycsb-load-button" onclick="runSelectedYcsbAction('load')" {{if not .YcsbAvailable}}disabled{{end}}>Insert Data</button><button class="btn btn-outline ycsb-start-btn" id="ycsb-start-button" onclick="runSelectedYcsbAction('start')" {{if not .YcsbAvailable}}disabled{{end}}>Start Load</button><button class="btn btn-outline ycsb-stop-btn" id="ycsb-stop-button" onclick="runSelectedYcsbAction('stop')" disabled>Stop Load</button></div>
+  <div id="ycsb-config-message" class="status-meta" style="margin-top:.5rem"></div>
+</section>
+{{end}}
 
 <!-- Last-job logs modal -->
 <div class="modal-backdrop" id="logs-modal" style="display:none" onclick="closeLogsModal(event)">
@@ -344,6 +349,48 @@ const PLATFORM = {{json .Env.Platform}};
 let activeEventSource = null;
 let currentJobId = null;
 const CHAOS_GUARDED_ACTIONS = new Set(['deploy', 'stop', 'restart', 'destroy']);
+
+function selectedYcsbTarget() {
+  const [kind, ...name] = document.getElementById('ycsb-target').value.split(':');
+  return { kind, target: name.join(':') };
+}
+function ycsbProfile() {
+  const target = selectedYcsbTarget();
+  return {
+    target_kind: target.kind, target: target.target,
+    record_count: Number(document.getElementById('ycsb-record-count').value),
+    workload: document.getElementById('ycsb-workload').value,
+    max_scan_length: Number(document.getElementById('ycsb-max-scan').value),
+    scan_length_distribution: document.getElementById('ycsb-scan-distribution').value,
+    threads: Number(document.getElementById('ycsb-threads').value),
+    target_ops_per_second: Number(document.getElementById('ycsb-rate').value),
+    duration_seconds: Number(document.getElementById('ycsb-duration').value),
+    reset_before_load: document.getElementById('ycsb-reset').checked,
+  };
+}
+async function saveYcsbConfig() {
+  const message = document.getElementById('ycsb-config-message');
+  try {
+    const resp = await fetch(`/api/environment/${ENV_ID}/ycsb/config`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(ycsbProfile()) });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Could not save YCSB settings');
+    message.textContent = 'YCSB settings saved.';
+    return true;
+  } catch (err) { message.textContent = err.message; alert(err.message); return false; }
+}
+function setSelectedYcsbButtonState(running) {
+  const available = isYcsbAvailable();
+  document.getElementById('ycsb-load-button').disabled = !available || running;
+  document.getElementById('ycsb-start-button').disabled = !available || running;
+  document.getElementById('ycsb-start-button').textContent = running ? 'Load Running' : 'Start Load';
+  document.getElementById('ycsb-stop-button').disabled = !running;
+}
+async function runSelectedYcsbAction(action) {
+  if (action === 'load' && document.getElementById('ycsb-reset').checked && !confirm('Insert Data will drop the selected YCSB database and recreate it. Continue?')) return;
+  if (!await saveYcsbConfig()) return;
+  const target = selectedYcsbTarget();
+  await runYcsbAction(target.kind, target.target, action);
+}
 
 function confirmDestroy() { document.getElementById('destroy-modal').style.display = 'flex'; }
 function closeDestroyModal() { document.getElementById('destroy-modal').style.display = 'none'; }
@@ -826,6 +873,11 @@ async function refreshEnvStatus() {
 }
 
 function setYcsbButtonState(kind, target, running) {
+  if (document.getElementById('ycsb-panel')) {
+    const selected = selectedYcsbTarget();
+    if (selected.kind === kind && selected.target === target) setSelectedYcsbButtonState(running);
+    return;
+  }
   const selector = `.ycsb-actions[data-ycsb-kind="${CSS.escape(kind)}"][data-ycsb-target="${CSS.escape(target)}"]`;
   const container = document.querySelector(selector);
   if (!container) return;
@@ -848,14 +900,17 @@ function setYcsbButtonState(kind, target, running) {
 
 async function refreshYcsbStatus() {
   if (!isYcsbAvailable()) {
-    document.querySelectorAll('.ycsb-actions').forEach(container => {
-      setYcsbButtonState(container.dataset.ycsbKind, container.dataset.ycsbTarget, false);
-    });
+    if (document.getElementById('ycsb-panel')) setSelectedYcsbButtonState(false);
     return;
   }
   try {
     const data = await apiFetch(`/api/environment/${ENV_ID}/ycsb/status`);
     const running = data.running || {};
+    if (document.getElementById('ycsb-panel')) {
+      const selected = selectedYcsbTarget();
+      setSelectedYcsbButtonState(!!running[`${selected.kind}:${selected.target}`]);
+      return;
+    }
     document.querySelectorAll('.ycsb-actions').forEach(container => {
       const kind = container.dataset.ycsbKind;
       const target = container.dataset.ycsbTarget;
@@ -971,8 +1026,6 @@ async function runYcsbAction(kind, target, action) {
   setButtonsDisabled(true);
   appendToTerminal(`▶ Running YCSB ${action} for ${kind} ${target}…`);
   setJobBadge('running');
-  if (action === 'start') setYcsbButtonState(kind, target, true);
-  if (action === 'stop') setYcsbButtonState(kind, target, false);
 
   try {
     const resp = await fetch(`/api/environment/${ENV_ID}/ycsb`, {
@@ -983,7 +1036,11 @@ async function runYcsbAction(kind, target, action) {
     const data = await resp.json();
     if (!resp.ok) {
       appendToTerminal(`Error: ${data.error || 'Unknown error'}`);
+      if (resp.status === 409 && action === 'start') {
+        alert(data.error || 'YCSB workload is already running');
+      }
       setButtonsDisabled(false);
+      await refreshYcsbStatus();
       hideProgressIndicator();
       return;
     }
@@ -1013,6 +1070,7 @@ async function runYcsbAction(kind, target, action) {
   } catch (err) {
     appendToTerminal(`Network error: ${err.message}`);
     setButtonsDisabled(false);
+    if (action === 'start') await refreshYcsbStatus();
     hideProgressIndicator();
     refreshYcsbStatus();
   }

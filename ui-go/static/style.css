@@ -922,6 +922,10 @@ tr:last-child td { border-bottom: none; }
   margin-bottom: 1.2rem;
 }
 
+.ycsb-panel {
+  margin-top: 1.5rem;
+}
+
 .hosts-header {
   display: flex;
   align-items: center;

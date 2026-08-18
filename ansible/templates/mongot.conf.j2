@@ -3,7 +3,7 @@ syncSource:
     hostAndPort: "127.0.0.1:{{ mongo_port }}"
     scramAuth:
       username: "{{ mongodb_mongot_user }}"
-      passwordFile: "{{ mongot_config_dir }}/passwordFile"
+      passwordFile: "{{ mongot_password_file }}"
       authSource: "admin"
       tls:
         enabled: false
@@ -12,7 +12,7 @@ syncSource:
     hostAndPort: "{{ hostvars[groups['mongos'][0]].ansible_facts['fqdn'] }}:{{ mongos_port }}"
     scramAuth:
       username: "{{ mongodb_mongot_user }}"
-      passwordFile: "{{ mongot_config_dir }}/passwordFile"
+      passwordFile: "{{ mongot_password_file }}"
       authSource: "admin"
       tls:
         enabled: false

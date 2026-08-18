@@ -37,6 +37,7 @@ variable "clusters" {
     enable_pmm           = optional(bool, true)
     enable_pbm           = optional(bool, true)
     enable_mongot        = optional(bool, false)
+    mongot_source        = optional(string, "")
     mongot_version       = optional(string, "")
   }))
 
@@ -72,6 +73,7 @@ variable "replsets" {
     enable_pmm             = optional(bool, true)
     enable_pbm             = optional(bool, true)
     enable_mongot          = optional(bool, false)
+    mongot_source          = optional(string, "")
     mongot_version         = optional(string, "")
   }))
 

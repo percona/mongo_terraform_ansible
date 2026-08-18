@@ -176,15 +176,11 @@ func getPMMClientImages() []string {
 }
 
 func getMongotImages() []string {
-	tags := getDockerHubTags("mongodb", "mongodb-community-search", 50)
-	if len(tags) == 0 {
-		return defaultMongotImages
-	}
-	return filterMongotTags(tags)
+	return defaultMongotImages
 }
 
 func filterMongotTags(tags []string) []string {
-	re := regexp.MustCompile(`^(latest|\d+\.\d+\.\d+)$`)
+	re := regexp.MustCompile(`^(latest|\d+\.\d+\.\d+(?:-\d+)?)$`)
 	filtered := make([]string, 0, len(tags))
 	for _, tag := range tags {
 		if re.MatchString(tag) {

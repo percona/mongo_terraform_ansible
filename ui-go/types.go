@@ -31,6 +31,7 @@ type ClusterConfig struct {
 	EnablePmm     *bool  `json:"enable_pmm,omitempty"`
 	EnablePbm     *bool  `json:"enable_pbm,omitempty"`
 	EnableMongot  *bool  `json:"enable_mongot,omitempty"`
+	MongotSource  string `json:"mongot_source,omitempty"`
 	MongotVersion string `json:"mongot_version,omitempty"`
 	// Docker-only
 	PsmdbImage      string `json:"psmdb_image,omitempty"`
@@ -66,6 +67,7 @@ type ReplsetConfig struct {
 	EnablePmm     *bool  `json:"enable_pmm,omitempty"`
 	EnablePbm     *bool  `json:"enable_pbm,omitempty"`
 	EnableMongot  *bool  `json:"enable_mongot,omitempty"`
+	MongotSource  string `json:"mongot_source,omitempty"`
 	MongotVersion string `json:"mongot_version,omitempty"`
 	// Docker-only
 	PsmdbImage      string `json:"psmdb_image,omitempty"`
@@ -245,7 +247,54 @@ type Environment struct {
 	// HostIPs caches the last-known IP address for each Docker container so
 	// that the UI can continue to display addresses even when containers are
 	// stopped (and docker inspect returns an empty IP).
-	HostIPs map[string]string `json:"host_ips,omitempty"`
+	HostIPs  map[string]string `json:"host_ips,omitempty"`
+	YcsbLoad YcsbLoadConfig    `json:"ycsb_load,omitempty"`
+}
+
+type YcsbLoadConfig struct {
+	RecordCount            int    `json:"record_count"`
+	Workload               string `json:"workload"`
+	MaxScanLength          int    `json:"max_scan_length"`
+	ScanLengthDistribution string `json:"scan_length_distribution"`
+	Threads                int    `json:"threads"`
+	TargetOpsPerSecond     int    `json:"target_ops_per_second"`
+	DurationSeconds        int    `json:"duration_seconds"`
+	TargetKind             string `json:"target_kind"`
+	Target                 string `json:"target"`
+	ResetBeforeLoad        bool   `json:"reset_before_load"`
+}
+
+func defaultYcsbLoadConfig() YcsbLoadConfig {
+	return YcsbLoadConfig{RecordCount: 1000000, Workload: "workloade", MaxScanLength: 10000, ScanLengthDistribution: "uniform", Threads: 4, TargetOpsPerSecond: 1000, DurationSeconds: 600, ResetBeforeLoad: true}
+}
+
+func normalizedYcsbLoadConfig(cfg YcsbLoadConfig) YcsbLoadConfig {
+	d := defaultYcsbLoadConfig()
+	if cfg.RecordCount == 0 && cfg.Workload == "" && cfg.MaxScanLength == 0 && cfg.Threads == 0 && cfg.TargetOpsPerSecond == 0 && cfg.DurationSeconds == 0 {
+		return d
+	}
+	if cfg.RecordCount <= 0 {
+		cfg.RecordCount = d.RecordCount
+	}
+	if cfg.Workload != "workloada" && cfg.Workload != "workloade" {
+		cfg.Workload = d.Workload
+	}
+	if cfg.MaxScanLength <= 0 {
+		cfg.MaxScanLength = d.MaxScanLength
+	}
+	if cfg.ScanLengthDistribution != "uniform" && cfg.ScanLengthDistribution != "constant" {
+		cfg.ScanLengthDistribution = d.ScanLengthDistribution
+	}
+	if cfg.Threads <= 0 {
+		cfg.Threads = d.Threads
+	}
+	if cfg.TargetOpsPerSecond <= 0 {
+		cfg.TargetOpsPerSecond = d.TargetOpsPerSecond
+	}
+	if cfg.DurationSeconds <= 0 {
+		cfg.DurationSeconds = d.DurationSeconds
+	}
+	return cfg
 }
 
 // ─── Named pair helpers (sorted map iteration for templates) ──────────────────
@@ -411,6 +460,7 @@ type EnvironmentData struct {
 	ServiceURLs    []ServiceURL
 	YcsbEnabled    bool
 	YcsbAvailable  bool
+	YcsbLoad       YcsbLoadConfig
 }
 
 // HostInfo describes a single running host or container.

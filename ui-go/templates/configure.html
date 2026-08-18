@@ -217,7 +217,7 @@
           </div>
         </div>
         <div class="customize-body" style="display:none">
-          <div class="form-row">
+           <div class="form-row">
             <div class="form-group">
               <label>Environment <span class="field-tip" data-tip="Environment for the resources created. Examples: dev, qa, prod.">ⓘ</span></label>
               <input type="text" name="cluster_env_tag[]" value="{{strDefault .Config.EnvTag "test"}}" placeholder="test">
@@ -396,9 +396,17 @@
               </select>
             </div>
           </div>
-          <div class="form-row">
+          <div class="form-row" data-mongot-options {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
             <div class="form-group">
-              <label>mongot Version <span class="field-tip" data-tip="MongoDB Search / Vector Search tarball version. Experimental combinations are allowed. Requires separate mongot process beside data-bearing mongod nodes.">ⓘ</span></label>
+              <label>Search Implementation <span class="field-tip" data-tip="Auto selects Percona Search for PSMDB 8.3 and upstream Community mongot otherwise.">ⓘ</span></label>
+              <select name="cluster_mongot_source[]">
+                <option value="auto" selected>Auto</option>
+                <option value="percona_package">Percona Search package</option>
+                <option value="community_tarball">MongoDB Community tarball</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Percona Search Version <span class="field-tip" data-tip="Percona Search for MongoDB package version. Requires PSMDB 8.3 and runs as a separate mongot process beside data-bearing mongod nodes.">ⓘ</span></label>
               <select name="cluster_mongot_version[]">
                 {{$curMongotVer := .Config.MongotVersion}}
                 {{range $.MongotImages}}
@@ -423,8 +431,9 @@
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="cluster_enable_mongot[]" value="1"
-                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}>
-                Install mongot</label>
+                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}
+                            onchange="onMongotFeatureToggle(this)">
+                Install Search/Vector Search</label>
             </div>
           </div>
           {{end}}
@@ -734,7 +743,7 @@
           </div>
         </div>
         <div class="customize-body" style="display:none">
-          <div class="form-row">
+           <div class="form-row">
             <div class="form-group">
               <label>Environment <span class="field-tip" data-tip="Environment for the resources created. Examples: dev, qa, prod.">ⓘ</span></label>
               <input type="text" name="replset_env_tag[]" value="{{strDefault .Config.EnvTag "test"}}">
@@ -896,9 +905,17 @@
               </select>
             </div>
           </div>
-          <div class="form-row">
+          <div class="form-row" data-mongot-options {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
             <div class="form-group">
-              <label>mongot Version <span class="field-tip" data-tip="MongoDB Search / Vector Search tarball version. Experimental combinations are allowed.">ⓘ</span></label>
+              <label>Search Implementation <span class="field-tip" data-tip="Auto selects Percona Search for PSMDB 8.3 and upstream Community mongot otherwise.">ⓘ</span></label>
+              <select name="replset_mongot_source[]">
+                <option value="auto" selected>Auto</option>
+                <option value="percona_package">Percona Search package</option>
+                <option value="community_tarball">MongoDB Community tarball</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Percona Search Version <span class="field-tip" data-tip="Percona Search for MongoDB package version. Requires PSMDB 8.3 and runs as a separate mongot process beside data-bearing mongod nodes.">ⓘ</span></label>
               <select name="replset_mongot_version[]">
                 {{$curMongotVer := .Config.MongotVersion}}
                 {{range $.MongotImages}}
@@ -923,8 +940,9 @@
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="replset_enable_mongot[]" value="1"
-                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}>
-                Install mongot</label>
+                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}
+                            onchange="onMongotFeatureToggle(this)">
+                Install Search/Vector Search</label>
             </div>
           </div>
           {{end}}
@@ -1924,6 +1942,14 @@ function onDockerMongotFeatureToggle(checkbox) {
   toggleImageGroup(checkbox, 'mongot');
 }
 
+function onMongotFeatureToggle(checkbox) {
+  const block = checkbox.closest('.component-block');
+  if (!block) return;
+  block.querySelectorAll('[data-mongot-options]').forEach(el => {
+    el.style.display = checkbox.checked ? '' : 'none';
+  });
+}
+
 // Show or hide a credential row inside the Credentials section based on whether
 // the corresponding server type (PMM/Minio/LDAP) is included.
 function toggleCredentialRow(rowId, show) {
@@ -2666,8 +2692,8 @@ function buildPackageOverrideRows(type) {
           Install PBM agent</label>
       </div>
       <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_enable_mongot[]" value="1">
-          Install mongot</label>
+        <label><input type="checkbox" name="${type}_enable_mongot[]" value="1" onchange="onMongotFeatureToggle(this)">
+          Install Search/Vector Search</label>
       </div>
     </div>
     <div class="subsection-header">
@@ -2705,8 +2731,10 @@ function buildPackageOverrideRows(type) {
       <div class="form-group"><label>PMM Client Minor Version <span class="field-tip" data-tip="PMM client package version pin for this ${label}. Defaults to the newest client package from the selected channel. The PMM server remains environment-wide.">ⓘ</span></label>
         <select name="${type}_pmm_client_version[]">${pmmClientVersionOptions}</select></div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><label>mongot Version <span class="field-tip" data-tip="MongoDB Search / Vector Search tarball version. Experimental combinations are allowed.">ⓘ</span></label>
+    <div class="form-row" data-mongot-options style="display:none">
+      <div class="form-group"><label>Search Implementation</label>
+        <select name="${type}_mongot_source[]"><option value="auto" selected>Auto</option><option value="percona_package">Percona Search package</option><option value="community_tarball">MongoDB Community tarball</option></select></div>
+      <div class="form-group"><label>mongot Version <span class="field-tip" data-tip="Search implementation version. Percona package versions include the package release suffix; Community versions use upstream version syntax.">ⓘ</span></label>
         <select name="${type}_mongot_version[]">${mongotVersionOptions}</select></div>
     </div>
     </div>`;
@@ -3444,6 +3472,7 @@ function copyPackageOverrides(block, target, prefix) {
     'pbm_repo',
     'pmm_client_version',
     'pmm_client_repo',
+    'mongot_source',
     'os_image',
   ].forEach(field => {
     const value = getBlockFieldValue(block, `${prefix}_${field}[]`).trim();
@@ -3605,6 +3634,8 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       c.enable_pbm = getBlockChecked(block, 'cluster_enable_pbm[]');
       c.enable_mongot = getBlockChecked(block, 'cluster_enable_mongot[]');
       const mongotVersion = getBlockFieldValue(block, 'cluster_mongot_version[]').trim();
+      const mongotSource = getBlockFieldValue(block, 'cluster_mongot_source[]').trim();
+      if (mongotSource) c.mongot_source = mongotSource;
       if (c.enable_mongot && mongotVersion) c.mongot_version = mongotVersion;
     }
     if (PLATFORM === 'docker') {
@@ -3643,6 +3674,8 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       r.enable_pbm = getBlockChecked(block, 'replset_enable_pbm[]');
       r.enable_mongot = getBlockChecked(block, 'replset_enable_mongot[]');
       const mongotVersion = getBlockFieldValue(block, 'replset_mongot_version[]').trim();
+      const mongotSource = getBlockFieldValue(block, 'replset_mongot_source[]').trim();
+      if (mongotSource) r.mongot_source = mongotSource;
       if (r.enable_mongot && mongotVersion) r.mongot_version = mongotVersion;
     }
     if (PLATFORM === 'docker') {

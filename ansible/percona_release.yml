@@ -36,6 +36,14 @@
         fail_msg: "MongoDB Community packages do not support audit logging or encryption at rest. Use psmdb/enterprise or disable those features."
       when: mongodb_distribution_effective == 'community'
 
+    - name: Validate Percona Search compatibility
+      assert:
+        that:
+          - mongodb_distribution_effective == 'psmdb'
+          - mongo_release_effective == 'psmdb-83'
+        fail_msg: "Percona Search currently requires mongodb_distribution=psmdb and mongo_release=psmdb-83. Use mongot_source=community_tarball for other MongoDB releases."
+      when: percona_search_effective | bool
+
     - name: Load OS-specific variables
       include_vars: "vars/{{ ansible_facts['os_family'] }}.yml"
 
@@ -122,6 +130,12 @@
     - name: Enable MongoDB repository
       command: "/usr/bin/percona-release enable {{ mongo_release_effective }} {{ mongo_repo_effective }}"
       when: mongodb_distribution_effective == 'psmdb'
+
+    - name: Enable Percona Search repository
+      command: "/usr/bin/percona-release enable ps4m release"
+      when:
+        - percona_search_effective | bool
+        - "'shards' in group_names or 'replsets' in group_names"
 
     - name: Enable PBM repository
       command: "/usr/bin/percona-release enable pbm {{ pbm_repo | default('release') }}"

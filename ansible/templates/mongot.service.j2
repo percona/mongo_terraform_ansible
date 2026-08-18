@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 User={{ mongot_user }}
 Group={{ mongot_group }}
-ExecStart={{ mongot_install_dir }}/mongot --config {{ mongot_config_dir }}/config.yml
+ExecStart={{ mongot_binary }} --config {{ mongot_config_file }}
 Restart=always
 RestartSec=5
 LimitNOFILE=64000

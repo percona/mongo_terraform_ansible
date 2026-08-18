@@ -330,7 +330,64 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		ServiceURLs:    configServiceURLs(envID, env),
 		YcsbEnabled:    env.Config.EnableYcsb,
 		YcsbAvailable:  env.Status != "configured",
+		YcsbLoad:       normalizedYcsbLoadConfig(env.YcsbLoad),
 	})
+}
+
+// PUT /api/environment/{env_id}/ycsb/config
+func environmentYCSBConfigHandler(w http.ResponseWriter, r *http.Request) {
+	envID := r.PathValue("env_id")
+	if !envIDRe.MatchString(envID) {
+		jsonError(w, 400, "invalid environment ID")
+		return
+	}
+	state, _ := loadState()
+	env, ok := state[envID]
+	if !ok {
+		jsonError(w, 404, "environment not found")
+		return
+	}
+	var cfg YcsbLoadConfig
+	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+		jsonError(w, 400, "invalid JSON: "+err.Error())
+		return
+	}
+	if cfg.RecordCount < 1 || cfg.RecordCount > 100000000 || cfg.MaxScanLength < 1 || cfg.MaxScanLength > 1000000 || cfg.Threads < 1 || cfg.Threads > 256 || cfg.TargetOpsPerSecond < 1 || cfg.TargetOpsPerSecond > 1000000 || cfg.DurationSeconds < 1 || cfg.DurationSeconds > 86400 {
+		jsonError(w, 400, "YCSB values are outside the allowed range")
+		return
+	}
+	if cfg.Workload != "workloada" && cfg.Workload != "workloade" {
+		jsonError(w, 400, "workload must be workloada or workloade")
+		return
+	}
+	if cfg.ScanLengthDistribution != "uniform" && cfg.ScanLengthDistribution != "constant" {
+		jsonError(w, 400, "invalid scan length distribution")
+		return
+	}
+	if cfg.TargetKind != "cluster" && cfg.TargetKind != "replset" {
+		jsonError(w, 400, "target kind must be cluster or replset")
+		return
+	}
+	if cfg.TargetKind == "cluster" {
+		if _, ok := env.Config.Clusters[cfg.Target]; !ok {
+			jsonError(w, 400, "unknown cluster target")
+			return
+		}
+	}
+	if cfg.TargetKind == "replset" {
+		if _, ok := env.Config.Replsets[cfg.Target]; !ok {
+			jsonError(w, 400, "unknown replica set target")
+			return
+		}
+	}
+	env.YcsbLoad = cfg
+	env.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	state[envID] = env
+	if err := saveState(state); err != nil {
+		jsonError(w, 500, "state save failed: "+err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]interface{}{"config": cfg})
 }
 
 type ycsbActionRequest struct {
@@ -349,6 +406,14 @@ func ycsbDockerContainerName(envID string, env *Environment) string {
 		prefix = envID
 	}
 	return prefix + "-ycsb"
+}
+
+func ycsbDockerMongoContainerName(envID string, env *Environment, kind, target string) string {
+	prefix := strDefault(env.Config.Prefix, envID)
+	if kind == "cluster" {
+		return fmt.Sprintf("%s-%s-mongos00", prefix, target)
+	}
+	return fmt.Sprintf("%s-%s-svr0", prefix, target)
 }
 
 func ycsbCloudHost(envID string, env *Environment) string {
@@ -454,30 +519,59 @@ func ycsbCloudMongoURL(envID string, env *Environment, kind, target string) (str
 	return "", fmt.Errorf("unknown target kind %q", kind)
 }
 
-func ycsbStartCommand(binary, workloadPath, mongoURL string) string {
-	operationCount := ycsbMinLoadDurationSeconds * ycsbTargetOpsPerSecond
-	workload := fmt.Sprintf("%s run mongodb -s -P %s -p operationcount=%d -target %d -threads 4 -p mongodb.url=%s", binary, workloadPath, operationCount, ycsbTargetOpsPerSecond, shellQuote(mongoURL))
-	wrapper := fmt.Sprintf(`child=""; cleanup(){ if [ -n "$child" ]; then kill "$child" 2>/dev/null || true; fi; rm -f /tmp/ycsb-run.pid /tmp/ycsb-child.pid; }; echo $$ > /tmp/ycsb-run.pid; trap cleanup INT TERM EXIT; %s & child=$!; echo "$child" > /tmp/ycsb-child.pid; wait "$child"`, workload)
-	return fmt.Sprintf("rm -f /tmp/ycsb-run.log /tmp/ycsb-run.pid /tmp/ycsb-child.pid; nohup sh -c %s > /tmp/ycsb-run.log 2>&1 < /dev/null & echo 'YCSB workload started (minimum 10 minutes)'; sleep 1; tail -n 20 /tmp/ycsb-run.log || true", shellQuote(wrapper))
+func ycsbWorkloadArgs(binary, action, workloadPath, mongoURL string, cfg YcsbLoadConfig) string {
+	cfg = normalizedYcsbLoadConfig(cfg)
+	common := fmt.Sprintf("%s %s mongodb -P %s -p recordcount=%d -p mongodb.url=%s -p maxscanlength=%d -p scanlengthdistribution=%s", binary, action, workloadPath, cfg.RecordCount, shellQuote(mongoURL), cfg.MaxScanLength, cfg.ScanLengthDistribution)
+	if action == "run" {
+		operationCount := cfg.DurationSeconds * cfg.TargetOpsPerSecond
+		return fmt.Sprintf("%s -s -p operationcount=%d -target %d -threads %d", common, operationCount, cfg.TargetOpsPerSecond, cfg.Threads)
+	}
+	return common
+}
+
+func ycsbStartCommand(binary, workloadPath, mongoURL string, cfg YcsbLoadConfig) string {
+	workload := ycsbWorkloadArgs(binary, "run", workloadPath, mongoURL, cfg)
+	wrapper := fmt.Sprintf(`child=""; cleanup(){ if [ -n "$child" ]; then kill "$child" 2>/dev/null || true; fi; rm -f /tmp/ycsb-run.pid /tmp/ycsb-child.pid; }; echo $$ > /tmp/ycsb-run.pid; trap cleanup INT TERM; %s & child=$!; echo "$child" > /tmp/ycsb-child.pid; i=0; while [ "$i" -lt 20 ]; do if kill -0 "$child" 2>/dev/null; then break; fi; i=$((i+1)); sleep 0.25; done; if ! kill -0 "$child" 2>/dev/null; then echo 'YCSB workload failed to start'; cleanup; exit 1; fi`, workload)
+	return fmt.Sprintf(`rm -f /tmp/ycsb-run.log /tmp/ycsb-run.pid /tmp/ycsb-child.pid; nohup sh -c %s > /tmp/ycsb-run.log 2>&1 < /dev/null & launcher=$!; echo "$launcher" > /tmp/ycsb-run.pid; i=0; while [ "$i" -lt 20 ]; do if [ -f /tmp/ycsb-child.pid ] && kill -0 "$(cat /tmp/ycsb-child.pid 2>/dev/null)" 2>/dev/null; then echo 'YCSB workload started (minimum 10 minutes)'; exit 0; fi; if ! kill -0 "$launcher" 2>/dev/null; then echo 'YCSB workload failed to start'; tail -n 20 /tmp/ycsb-run.log || true; exit 1; fi; i=$((i+1)); sleep 0.25; done; echo 'YCSB workload failed to start'; tail -n 20 /tmp/ycsb-run.log || true; exit 1`, shellQuote(wrapper))
+}
+
+func ycsbResetCommand(envID string, env *Environment, kind, target, mongoURL string) string {
+	if env.Platform == "docker" {
+		mongoContainer := ycsbDockerMongoContainerName(envID, env, kind, target)
+		user, pass := mongoAdminCredentials(env)
+		port := 27017
+		if kind == "replset" {
+			if cfg, ok := env.Config.Replsets[target]; ok && cfg.ReplsetPort > 0 {
+				port = cfg.ReplsetPort
+			}
+		}
+		resetURL := fmt.Sprintf("mongodb://%s:%s@127.0.0.1:%d/?authSource=admin", urlQueryEscape(user), urlQueryEscape(pass), port)
+		return fmt.Sprintf("docker exec %s mongosh %s --quiet --eval %s", shellQuote(mongoContainer), shellQuote(resetURL), shellQuote("db.getSiblingDB('ycsb').dropDatabase()"))
+	}
+	return ""
+}
+
+func ycsbLoadCommand(binary, workloadPath, mongoURL string, cfg YcsbLoadConfig) string {
+	load := ycsbWorkloadArgs(binary, "load", workloadPath, mongoURL, cfg)
+	// YCSB can report insert errors while still exiting zero. Preserve its output
+	// and make those errors visible to the job runner as a failed command.
+	return fmt.Sprintf("rm -f /tmp/ycsb-load.log; %s > /tmp/ycsb-load.log 2>&1; rc=$?; cat /tmp/ycsb-load.log; if [ \"$rc\" -ne 0 ] || grep -Eq 'Return=ERROR|INSERT-FAILED|Exception while trying bulk insert|Error inserting' /tmp/ycsb-load.log; then exit 1; fi", load)
 }
 
 func ycsbProcessPattern() string {
-	return "[s]ite.ycsb.Client"
+	return "site.ycsb.Client"
 }
 
 func ycsbStopCommand() string {
-	return fmt.Sprintf(`is_ycsb_pid(){ pid="$1"; [ -n "$pid" ] || return 1; cmd="$(ps -p "$pid" -o args= 2>/dev/null || true)"; [ -n "$cmd" ] && printf '%%s' "$cmd" | grep -Eq 'site\.ycsb\.Client|/opt/ycsb/bin/ycsb run mongodb|/ycsb/bin/ycsb run mongodb'; }; if [ -f /tmp/ycsb-child.pid ]; then child="$(cat /tmp/ycsb-child.pid)"; if ! is_ycsb_pid "$child"; then rm -f /tmp/ycsb-child.pid; fi; fi; if [ -f /tmp/ycsb-run.pid ]; then pid="$(cat /tmp/ycsb-run.pid)"; if ! is_ycsb_pid "$pid"; then rm -f /tmp/ycsb-run.pid; fi; fi; stopped=0; if [ -f /tmp/ycsb-child.pid ]; then child="$(cat /tmp/ycsb-child.pid)"; if is_ycsb_pid "$child" && kill "$child" 2>/dev/null; then stopped=1; fi; fi; if [ -f /tmp/ycsb-run.pid ]; then pid="$(cat /tmp/ycsb-run.pid)"; if is_ycsb_pid "$pid" && kill "$pid" 2>/dev/null; then stopped=1; fi; fi; if pgrep -f %q >/dev/null 2>&1; then pkill -TERM -f %q >/dev/null 2>&1 || true; stopped=1; sleep 1; fi; if pgrep -f %q >/dev/null 2>&1; then pkill -KILL -f %q >/dev/null 2>&1 || true; stopped=1; sleep 1; fi; rm -f /tmp/ycsb-run.pid /tmp/ycsb-child.pid; if pgrep -f %q >/dev/null 2>&1; then echo 'Failed to stop YCSB workload'; exit 1; fi; if [ "$stopped" -eq 1 ]; then echo 'YCSB workload stopped'; else echo 'YCSB workload already stopped'; fi; exit 0`, ycsbProcessPattern(), ycsbProcessPattern(), ycsbProcessPattern(), ycsbProcessPattern(), ycsbProcessPattern())
+	return `ycsb='site.ycsb.'; client='Client'; is_ycsb_pid(){ pid="$1"; [ -r "/proc/$pid/cmdline" ] || return 1; cmd="$(tr '\000' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"; case "$cmd" in *"$ycsb$client"*) return 0;; esac; return 1; }; ycsb_pids(){ for proc in /proc/[0-9]*; do pid="${proc##*/}"; if is_ycsb_pid "$pid"; then printf '%s\n' "$pid"; fi; done; }; stopped=0; if [ -f /tmp/ycsb-child.pid ]; then child="$(cat /tmp/ycsb-child.pid 2>/dev/null || true)"; if is_ycsb_pid "$child" && kill "$child" 2>/dev/null; then stopped=1; fi; fi; if [ -f /tmp/ycsb-run.pid ]; then pid="$(cat /tmp/ycsb-run.pid 2>/dev/null || true)"; if kill "$pid" 2>/dev/null; then stopped=1; fi; fi; for pid in $(ycsb_pids); do if kill -TERM "$pid" 2>/dev/null; then stopped=1; fi; done; sleep 1; for pid in $(ycsb_pids); do kill -KILL "$pid" 2>/dev/null || true; stopped=1; done; rm -f /tmp/ycsb-run.pid /tmp/ycsb-child.pid; if [ -n "$(ycsb_pids)" ]; then echo 'Failed to stop YCSB workload'; exit 1; fi; if [ "$stopped" -eq 1 ]; then echo 'YCSB workload stopped'; else echo 'YCSB workload already stopped'; fi; exit 0`
 }
 
 func ycsbStatusCheckCommand() string {
-	return fmt.Sprintf(`is_ycsb_pid(){ pid="$1"; [ -n "$pid" ] || return 1; cmd="$(ps -p "$pid" -o args= 2>/dev/null || true)"; [ -n "$cmd" ] && printf '%%s' "$cmd" | grep -Eq 'site\.ycsb\.Client|/opt/ycsb/bin/ycsb run mongodb|/ycsb/bin/ycsb run mongodb'; }; pid=""; if [ -f /tmp/ycsb-child.pid ]; then pid="$(cat /tmp/ycsb-child.pid)"; elif [ -f /tmp/ycsb-run.pid ]; then pid="$(cat /tmp/ycsb-run.pid)"; fi; if is_ycsb_pid "$pid"; then printf '{"running":true}
-'; elif pgrep -f %q >/dev/null 2>&1; then printf '{"running":true}
-'; else rm -f /tmp/ycsb-run.pid /tmp/ycsb-child.pid; printf '{"running":false}
-'; fi`, ycsbProcessPattern())
+	return `ycsb='site.ycsb.'; client='Client'; is_ycsb_pid(){ pid="$1"; [ -r "/proc/$pid/cmdline" ] || return 1; cmd="$(tr '\000' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"; case "$cmd" in *"$ycsb$client"*) return 0;; esac; return 1; }; running=0; for proc in /proc/[0-9]*; do pid="${proc##*/}"; if is_ycsb_pid "$pid"; then running=1; break; fi; done; if [ "$running" -eq 1 ]; then printf '{"running":true}\n'; else rm -f /tmp/ycsb-run.pid /tmp/ycsb-child.pid; printf '{"running":false}\n'; fi`
 }
 
 func ycsbStartGuardCommand() string {
-	return fmt.Sprintf(`is_ycsb_pid(){ pid="$1"; [ -n "$pid" ] || return 1; cmd="$(ps -p "$pid" -o args= 2>/dev/null || true)"; [ -n "$cmd" ] && printf '%%s' "$cmd" | grep -Eq 'site\.ycsb\.Client|/opt/ycsb/bin/ycsb run mongodb|/ycsb/bin/ycsb run mongodb'; }; pid=""; if [ -f /tmp/ycsb-child.pid ]; then pid="$(cat /tmp/ycsb-child.pid 2>/dev/null || true)"; elif [ -f /tmp/ycsb-run.pid ]; then pid="$(cat /tmp/ycsb-run.pid 2>/dev/null || true)"; fi; if is_ycsb_pid "$pid" || pgrep -f %q >/dev/null 2>&1; then echo 'YCSB workload is already running'; exit 1; fi; rm -f /tmp/ycsb-run.pid /tmp/ycsb-child.pid`, ycsbProcessPattern())
+	return `ycsb='site.ycsb.'; client='Client'; is_ycsb_pid(){ pid="$1"; [ -r "/proc/$pid/cmdline" ] || return 1; cmd="$(tr '\000' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"; case "$cmd" in *"$ycsb$client"*) return 0;; esac; return 1; }; for proc in /proc/[0-9]*; do pid="${proc##*/}"; if is_ycsb_pid "$pid"; then echo 'YCSB workload is already running'; exit 1; fi; done; rm -f /tmp/ycsb-run.pid /tmp/ycsb-child.pid`
 }
 
 func ycsbCloudInstallPath() string {
@@ -514,14 +608,20 @@ func ycsbActionShell(envID string, env *Environment, req ycsbActionRequest) (str
 	}
 
 	if env.Platform == "docker" {
-		container := shellQuote(ycsbDockerContainerName(envID, env))
+		containerName := ycsbDockerContainerName(envID, env)
+		container := shellQuote(containerName)
 		binary := ycsbDockerInstallPath()
 		var inner string
 		switch req.Action {
 		case "load":
-			inner = fmt.Sprintf("%s load mongodb -P /ycsb/workloads/workloada -p mongodb.url=%s", binary, shellQuote(mongoURL))
+			cfg := normalizedYcsbLoadConfig(env.YcsbLoad)
+			load := ycsbLoadCommand(binary, "/ycsb/workloads/"+cfg.Workload, mongoURL, cfg)
+			if cfg.ResetBeforeLoad {
+				return ycsbResetCommand(envID, env, req.Kind, req.Target, mongoURL) + " && docker exec " + container + " sh -lc " + shellQuote(load), nil
+			}
+			inner = load
 		case "start":
-			inner = ycsbStartGuardCommand() + "; " + ycsbStartCommand(binary, "/ycsb/workloads/workloada", mongoURL)
+			inner = ycsbStartGuardCommand() + "; " + ycsbStartCommand(binary, "/ycsb/workloads/"+normalizedYcsbLoadConfig(env.YcsbLoad).Workload, mongoURL, env.YcsbLoad)
 		case "stop":
 			inner = ycsbStopCommand()
 		}
@@ -536,9 +636,14 @@ func ycsbActionShell(envID string, env *Environment, req ycsbActionRequest) (str
 	var remote string
 	switch req.Action {
 	case "load":
-		remote = fmt.Sprintf("%s load mongodb -P /opt/ycsb/workloads/workloada -p mongodb.url=%s", binary, shellQuote(mongoURL))
+		cfg := normalizedYcsbLoadConfig(env.YcsbLoad)
+		remote = ycsbLoadCommand(binary, "/opt/ycsb/workloads/"+cfg.Workload, mongoURL, cfg)
+		if cfg.ResetBeforeLoad {
+			remote = "echo 'Reset before load is only supported for Docker environments'; " + remote
+		}
 	case "start":
-		remote = ycsbStartGuardCommand() + "; " + ycsbStartCommand(binary, "/opt/ycsb/workloads/workloada", mongoURL)
+		cfg := normalizedYcsbLoadConfig(env.YcsbLoad)
+		remote = ycsbStartGuardCommand() + "; " + ycsbStartCommand(binary, "/opt/ycsb/workloads/"+cfg.Workload, mongoURL, cfg)
 	case "stop":
 		remote = ycsbStopCommand()
 	}
@@ -623,6 +728,13 @@ func environmentYCSBActionHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonError(w, 400, "invalid JSON")
 		return
+	}
+	if body.Action == "start" {
+		status := ycsbStatus(envID, env)
+		if status.Running[ycsbRunningTargetKey(body.Kind, body.Target)] {
+			jsonError(w, 409, "YCSB workload is already running")
+			return
+		}
 	}
 	shellCmd, err := ycsbActionShell(envID, env, body)
 	if err != nil {
@@ -759,6 +871,8 @@ func apiDockerTagsHandler(w http.ResponseWriter, r *http.Request) {
 		case "pmm-server":
 			tags = defaultPMMServerImages
 		case "mongodb-community-search":
+			tags = defaultMongotImages
+		case "percona-server-mongodb-mongot":
 			tags = defaultMongotImages
 		}
 	}
@@ -1011,24 +1125,44 @@ func mongotVersionFromImage(image string) string {
 // taken from MongoVersion.
 func validateMongotVersionCompatibility(platform string, cfg *Config) error {
 	type entry struct {
-		kind         string
-		name         string
-		enableMongot *bool
-		mongoVersion string
-		psmdbImage   string
+		kind          string
+		name          string
+		enableMongot  *bool
+		mongoVersion  string
+		mongoRelease  string
+		distribution  string
+		mongotSource  string
+		mongotVersion string
+		psmdbImage    string
 	}
 
 	var entries []entry
 	for name, c := range cfg.Clusters {
-		entries = append(entries, entry{"cluster", name, c.EnableMongot, c.MongoVersion, c.PsmdbImage})
+		entries = append(entries, entry{"cluster", name, c.EnableMongot, c.MongoVersion, c.MongoRelease, c.MongoDBDistribution, c.MongotSource, c.MongotVersion, c.PsmdbImage})
 	}
 	for name, r := range cfg.Replsets {
-		entries = append(entries, entry{"replica set", name, r.EnableMongot, r.MongoVersion, r.PsmdbImage})
+		entries = append(entries, entry{"replica set", name, r.EnableMongot, r.MongoVersion, r.MongoRelease, r.MongoDBDistribution, r.MongotSource, r.MongotVersion, r.PsmdbImage})
 	}
 
 	for _, e := range entries {
 		if e.enableMongot == nil || !*e.enableMongot {
 			continue
+		}
+		source := strings.TrimSpace(e.mongotSource)
+		if source == "" {
+			source = "auto"
+		}
+		if source != "auto" && source != "percona_package" && source != "community_tarball" {
+			return fmt.Errorf("%s %q has invalid mongot_source %q", e.kind, e.name, source)
+		}
+		perconaSearch := source == "percona_package" || (source == "auto" && normalizePackageDistribution(e.distribution) == "psmdb" && e.mongoRelease == "psmdb-83")
+		if platform != "docker" && perconaSearch && (normalizePackageDistribution(e.distribution) != "psmdb" || e.mongoRelease != "psmdb-83") {
+			return fmt.Errorf("%s %q: Percona Search requires PSMDB 8.3 (psmdb-83), but release %s is selected", e.kind, e.name, e.mongoRelease)
+		}
+		if platform != "docker" && perconaSearch && e.mongoRelease == "psmdb-83" {
+			if e.mongotVersion != "" && e.mongotVersion != "latest" && e.mongotVersion != "1.70.3-1" {
+				return fmt.Errorf("%s %q: PSMDB 8.3 requires Percona Search 1.70.3-1, but version %s is selected", e.kind, e.name, e.mongotVersion)
+			}
 		}
 		var versionStr string
 		if platform == "docker" {
@@ -1320,6 +1454,7 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		env.LastAppliedConfig = existing.LastAppliedConfig
 		env.HostIPs = existing.HostIPs
 		env.History = existing.History
+		env.YcsbLoad = existing.YcsbLoad
 	}
 	state[payload.EnvID] = env
 	if err := saveState(state); err != nil {

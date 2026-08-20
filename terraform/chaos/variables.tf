@@ -34,6 +34,7 @@ variable "clusters" {
     mongot_source        = optional(string, "")
     mongot_version       = optional(string, "")
     os_image             = optional(string, "")
+    ldap_server          = optional(string, "")
   }))
 
   default = {
@@ -71,6 +72,7 @@ variable "replsets" {
     mongot_source          = optional(string, "")
     mongot_version         = optional(string, "")
     os_image               = optional(string, "")
+    ldap_server            = optional(string, "")
   }))
 
   default = {
@@ -81,6 +83,20 @@ variable "replsets" {
     #      env_tag = "prod"
     #    }
   }
+}
+
+variable "ldap_servers" {
+  description = "LDAP servers to deploy. MongoDB clusters and replica sets select one with ldap_server."
+  type = map(object({
+    domain         = optional(string, "example.com")
+    organization   = optional(string, "Example Inc")
+    admin_password = optional(string, "admin")
+    cpu_cores      = optional(number, 2)
+    memory_gb      = optional(number, 4)
+    users          = optional(list(object({ uid = string, cn = string, sn = string, password = string })), [])
+    mongodb_users  = optional(list(object({ user = string, roles = list(string) })), [])
+  }))
+  default = {}
 }
 
 

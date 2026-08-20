@@ -10,12 +10,6 @@ ssh_config
 *.tfvars
 .ansible_facts_cache/
 
-# Web UI runtime artifacts
-ui/environments.json
-ui/jobs/
-ui/__pycache__/
-ui/*.pyc
-
 # Go UI runtime artifacts
 environments.json
 ui-go/environments.json

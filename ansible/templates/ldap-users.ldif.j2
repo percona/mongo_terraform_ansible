@@ -1,0 +1,13 @@
+dn: {{ ldap_users_dn }}
+objectClass: organizationalUnit
+ou: people
+
+{% for user in ldap_users %}
+dn: uid={{ user.uid }},{{ ldap_users_dn }}
+objectClass: inetOrgPerson
+uid: {{ user.uid }}
+cn: {{ user.cn }}
+sn: {{ user.sn }}
+userPassword: {{ user.password }}
+
+{% endfor %}

@@ -3,11 +3,9 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"os/user"
@@ -21,6 +19,7 @@ import (
 const dockerReplsetPortStep = 20
 const ycsbMinLoadDurationSeconds = 600
 const ycsbTargetOpsPerSecond = 1000
+const defaultChaosAPIURL = "https://chaos.int.percona.com/api/compute/proxmox-instances"
 
 func chaosTokenSecretsDir() string {
 	return filepath.Join(baseDir, "secrets", "chaos")
@@ -183,10 +182,15 @@ func chaosAPIReachabilityError() string {
 }
 
 func chaosAPIProbeURL() string {
+	// Match the Terraform provider's API URL so a publicly reachable web UI
+	// cannot make the deployment preflight pass while the private API is down.
+	if v := strings.TrimSpace(os.Getenv("CHAOS_API_URL")); v != "" {
+		return v
+	}
 	if v := strings.TrimSpace(os.Getenv("CHAOS_API_PROBE_URL")); v != "" {
 		return v
 	}
-	return "https://chaos.percona.com"
+	return defaultChaosAPIURL
 }
 
 func canReachChaosAPI() error {
@@ -197,10 +201,6 @@ func canReachChaosAPI() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		var dnsErr *net.DNSError
-		if errors.As(err, &dnsErr) {
-			return dnsErr
-		}
 		return err
 	}
 	defer resp.Body.Close()

@@ -1,0 +1,129 @@
+---
+- name: Install and configure LDAP
+  hosts: ldap
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
+  become: yes
+  tags: ldap
+  tasks:
+    - name: Install Debian debconf utilities
+      apt:
+        name: debconf-utils
+        state: present
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Preseed OpenLDAP configuration on Debian hosts
+      debconf:
+        name: slapd
+        question: "{{ item.question }}"
+        value: "{{ item.value }}"
+        vtype: "{{ item.vtype }}"
+      loop:
+        - { question: 'slapd/no_configuration', value: 'false', vtype: 'boolean' }
+        - { question: 'slapd/domain', value: '{{ ldap_domain }}', vtype: 'string' }
+        - { question: 'shared/organization', value: '{{ ldap_org }}', vtype: 'string' }
+        - { question: 'slapd/password1', value: '{{ ldap_admin_password }}', vtype: 'password' }
+        - { question: 'slapd/password2', value: '{{ ldap_admin_password }}', vtype: 'password' }
+        - { question: 'slapd/backend', value: 'MDB', vtype: 'select' }
+      no_log: true
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install LDAP packages on Debian hosts
+      apt:
+        name:
+          - slapd
+          - ldap-utils
+          - apache2
+          - phpldapadmin
+        state: present
+        update_cache: yes
+        cache_valid_time: 3600
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install LDAP packages on RedHat hosts
+      package:
+        name:
+          - openldap-servers
+          - openldap-clients
+          - httpd
+          - php
+          - php-ldap
+          - git
+        state: present
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Install phpLDAPadmin on RedHat hosts
+      git:
+        repo: https://github.com/leenooks/phpLDAPadmin.git
+        dest: /var/www/html/phpldapadmin
+        version: master
+      when: ansible_facts['os_family'] == 'RedHat'
+      notify: restart httpd
+
+    - name: Enable LDAP and web services
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop: "{{ ['slapd', 'apache2'] if ansible_facts['os_family'] == 'Debian' else ['slapd', 'httpd'] }}"
+
+    - name: Generate OpenLDAP root password hash on RedHat hosts
+      command: "slappasswd -s {{ ldap_admin_password }}"
+      register: ldap_admin_password_hash
+      changed_when: false
+      no_log: true
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Configure OpenLDAP database on RedHat hosts
+      template:
+        src: templates/redhat-slapd-config.ldif.j2
+        dest: /tmp/redhat-slapd-config.ldif
+        mode: '0600'
+      no_log: true
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Apply OpenLDAP database configuration on RedHat hosts
+      command: ldapmodify -Y EXTERNAL -H ldapi:/// -f /tmp/redhat-slapd-config.ldif
+      no_log: true
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Create LDAP base DN LDIF
+      template:
+        src: templates/ldap-base.ldif.j2
+        dest: /tmp/ldap-base.ldif
+        mode: '0600'
+      no_log: true
+
+    - name: Create LDAP users LDIF
+      template:
+        src: templates/ldap-users.ldif.j2
+        dest: /tmp/ldap-users.ldif
+        mode: '0600'
+      no_log: true
+
+    - name: Create LDAP base DN
+      shell: >-
+        ldapadd -x -H ldap://127.0.0.1 -D '{{ ldap_admin_dn }}'
+        -w '{{ ldap_admin_password }}' -f /tmp/ldap-base.ldif
+      register: ldap_base_result
+      changed_when: ldap_base_result.rc == 0
+      failed_when: ldap_base_result.rc != 0 and 'Already exists' not in ldap_base_result.stderr
+      no_log: true
+
+    - name: Create LDAP people and user entries
+      shell: >-
+        ldapadd -c -x -H ldap://127.0.0.1 -D '{{ ldap_admin_dn }}'
+        -w '{{ ldap_admin_password }}' -f /tmp/ldap-users.ldif
+      register: ldapadd_result
+      changed_when: ldapadd_result.rc == 0
+      failed_when: ldapadd_result.rc != 0 and 'Already exists' not in ldapadd_result.stderr
+      no_log: true
+
+  handlers:
+    - name: restart httpd
+      service:
+        name: httpd
+        state: restarted

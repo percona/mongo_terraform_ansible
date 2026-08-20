@@ -410,6 +410,42 @@ func TestGuessDockerRole(t *testing.T) {
 	}
 }
 
+func TestParseInventoryHostsClassifiesLDAP(t *testing.T) {
+	hosts := parseInventoryHosts(`
+[ldap]
+test-ldap ansible_host=10.30.0.10
+
+[all:vars]
+ansible_ssh_user=test
+`, "rs01", "test", "")
+	if len(hosts) != 1 {
+		t.Fatalf("expected one host, got %d", len(hosts))
+	}
+	if hosts[0].Role != "ldap" || hosts[0].Group != "LDAP" || hosts[0].Port != "389" {
+		t.Fatalf("LDAP host = %+v, want role ldap, group LDAP, port 389", hosts[0])
+	}
+}
+
+func TestConfigServiceURLsIncludesDockerLDAPConsole(t *testing.T) {
+	env := &Environment{
+		Platform: "docker",
+		Config: Config{
+			Prefix:      "test",
+			LdapServers: map[string]LdapServerConfig{"directory": {}},
+		},
+	}
+	urls := configServiceURLs("test", env)
+	if len(urls) != 1 || urls[0].Label != "LDAP Console: directory" || urls[0].URL != "http://localhost:80" {
+		t.Fatalf("LDAP service URLs = %+v, want phpLDAPadmin console URL", urls)
+	}
+}
+
+func TestPhpLDAPadminURL(t *testing.T) {
+	if got, want := phpLDAPadminURL("10.30.0.10"), "http://10.30.0.10:80/phpldapadmin"; got != want {
+		t.Errorf("phpLDAPadminURL() = %q, want %q", got, want)
+	}
+}
+
 func TestGuessDockerGroup(t *testing.T) {
 	prefix := "myenv"
 	tests := []struct {

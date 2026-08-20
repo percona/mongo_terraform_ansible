@@ -29,7 +29,8 @@ resource "docker_image" "ycsb_os" {
 resource "docker_image" "ycsb" {
   count = var.enable_ycsb ? 1 : 0
   depends_on = [
-    docker_image.ycsb_os
+    docker_image.ycsb_os,
+    local_file.ycsb_dockerfile_content,
   ]
   name         = var.ycsb_image
   keep_locally = true

@@ -48,6 +48,16 @@ net:
 
 security:
   authorization: enabled
+{% if enable_ldap | default(false) | bool %}
+  authenticationMechanisms: [SCRAM-SHA-256, PLAIN]
+  ldap:
+    servers: {{ ldap_server }}:{{ ldap_port | default(389) }}
+    bind:
+      queryUser: {{ ldap_admin_dn }}
+      queryPassword: {{ ldap_admin_password }}
+    userToDNMapping: '[ { match : "(.+)", substitution : "uid={0},{{ ldap_users_dn }}" } ]'
+    transportSecurity: none
+{% endif %}
 {% if use_tls %}
   clusterAuthMode: x509
 {% else %}

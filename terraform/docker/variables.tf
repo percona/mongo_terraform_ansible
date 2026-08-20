@@ -215,7 +215,7 @@ variable "ldap_servers" {
     ldap_admin_image    = optional(string, "osixia/phpldapadmin:0.9.0")
     ldap_port           = optional(number, 389)
     ldap_admin_port     = optional(number, 80)
-    ldap_domain         = optional(string, "example.org")
+    ldap_domain         = optional(string, "example.com")
     ldap_org            = optional(string, "Example Inc")
     ldap_admin_password = optional(string, "admin")
     ldap_users = optional(list(object({

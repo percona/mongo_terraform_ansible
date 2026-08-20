@@ -41,6 +41,7 @@ type ClusterConfig struct {
 	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
 	EnableAudit     *bool  `json:"enable_audit,omitempty"`
 	AuditFilter     string `json:"audit_filter,omitempty"`
+	LdapServer      string `json:"ldap_server,omitempty"`
 }
 
 // ReplsetConfig maps to the Terraform "replsets" map object type.
@@ -77,6 +78,7 @@ type ReplsetConfig struct {
 	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
 	EnableAudit     *bool  `json:"enable_audit,omitempty"`
 	AuditFilter     string `json:"audit_filter,omitempty"`
+	LdapServer      string `json:"ldap_server,omitempty"`
 }
 
 // PmmServerConfig maps to the Docker pmm_servers map object type.
@@ -103,7 +105,7 @@ type MinioServerConfig struct {
 	BindToLocalhost  bool   `json:"bind_to_localhost,omitempty"`
 }
 
-// LdapServerConfig maps to the Docker ldap_servers map object type.
+// LdapServerConfig maps to the ldap_servers map object type.
 type LdapServerConfig struct {
 	EnvTag            string `json:"env_tag"`
 	LdapImage         string `json:"ldap_image,omitempty"`
@@ -473,7 +475,7 @@ type HostInfo struct {
 	Group      string `json:"group"`
 }
 
-// ServiceURL describes an HTTP service (PMM, Minio console) with an openable URL.
+// ServiceURL describes a web service console with an openable URL.
 type ServiceURL struct {
 	Name  string `json:"name"`
 	Label string `json:"label"`

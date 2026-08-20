@@ -39,6 +39,11 @@ ${hostname_ycsb} ansible_host=${ip_ycsb}
 ${minio_hostname} ansible_host=${minio_ip}
 
 %{ endif ~}
+%{ if enable_ldap ~}
+[ldap]
+${ldap_hostname} ansible_host=${ldap_ip}
+
+%{ endif ~}
 [all:vars]
 ansible_ssh_user=${my_ssh_user}
 %{ if ssh_private_key_path != "" ~}
@@ -92,6 +97,18 @@ pmm_client_version=${pmm_client_version}
 pmm_client_repo=${pmm_client_repo}
 %{ endif ~}
 enable_audit=${enable_audit}
+enable_ldap=${enable_ldap}
+%{ if enable_ldap ~}
+ldap_server=${ldap_endpoint}
+ldap_domain=${ldap_domain}
+ldap_org=${ldap_org}
+ldap_base_dn=${ldap_base_dn}
+ldap_users_dn=${ldap_users_dn}
+ldap_admin_dn=${ldap_admin_dn}
+ldap_admin_password=${ldap_admin_password}
+ldap_users=${ldap_users}
+ldap_mongodb_users=${ldap_mongodb_users}
+%{ endif ~}
 %{ if audit_filter != "" ~}
 audit_filter=${audit_filter}
 %{ endif ~}

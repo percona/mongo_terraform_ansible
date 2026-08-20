@@ -36,6 +36,13 @@
         fail_msg: "MongoDB Community packages do not support audit logging or encryption at rest. Use psmdb/enterprise or disable those features."
       when: mongodb_distribution_effective == 'community'
 
+    - name: Validate MongoDB LDAP feature compatibility
+      assert:
+        that:
+          - mongodb_distribution_effective in ['psmdb', 'enterprise']
+        fail_msg: "LDAP authentication requires Percona Server for MongoDB or MongoDB Enterprise; MongoDB Community is not supported."
+      when: enable_ldap | default(false) | bool
+
     - name: Validate Percona Search compatibility
       assert:
         that:

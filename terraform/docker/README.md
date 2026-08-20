@@ -307,9 +307,9 @@ docker exec -it cl01-pbm-cli pbm status
 
 ## LDAP
 
-- Access the LDAP management interface at `http://127.0.0.1:8080` with `cn=admin,dc=example,dc=org`. Default password: `admin`.
+- Access the LDAP management interface at `http://127.0.0.1:8080` with `cn=admin,dc=example,dc=com`. Default password: `admin`.
 
-- By default, the `example.org` organization is created. You can pre-create users with Terraform or add them manually in the management UI.
+- By default, the `example.com` organization is created. You can pre-create users with Terraform or add them manually in the management UI.
 
 - Create the LDAP users in MongoDB and assign them a role. For example:
 

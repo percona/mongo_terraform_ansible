@@ -51,6 +51,18 @@ resource "local_file" "AnsibleInventoryCluster" {
     mongot_version       = var.clusters[each.key].mongot_version
     enable_audit         = each.value.enable_audit
     audit_filter         = each.value.audit_filter
+    enable_ldap          = var.clusters[each.key].ldap_server != ""
+    ldap_hostname        = var.clusters[each.key].ldap_server != "" ? local.ldap_hosts[var.clusters[each.key].ldap_server] : ""
+    ldap_ip              = var.clusters[each.key].ldap_server != "" ? aws_instance.ldap[var.clusters[each.key].ldap_server].public_ip : ""
+    ldap_endpoint        = var.clusters[each.key].ldap_server != "" ? aws_instance.ldap[var.clusters[each.key].ldap_server].private_ip : ""
+    ldap_domain          = var.clusters[each.key].ldap_server != "" ? var.ldap_servers[var.clusters[each.key].ldap_server].domain : ""
+    ldap_org             = var.clusters[each.key].ldap_server != "" ? var.ldap_servers[var.clusters[each.key].ldap_server].organization : ""
+    ldap_base_dn         = var.clusters[each.key].ldap_server != "" ? "dc=${replace(var.ldap_servers[var.clusters[each.key].ldap_server].domain, ".", ",dc=")}" : ""
+    ldap_users_dn        = var.clusters[each.key].ldap_server != "" ? "ou=people,dc=${replace(var.ldap_servers[var.clusters[each.key].ldap_server].domain, ".", ",dc=")}" : ""
+    ldap_admin_dn        = var.clusters[each.key].ldap_server != "" ? "cn=admin,dc=${replace(var.ldap_servers[var.clusters[each.key].ldap_server].domain, ".", ",dc=")}" : ""
+    ldap_admin_password  = var.clusters[each.key].ldap_server != "" ? var.ldap_servers[var.clusters[each.key].ldap_server].admin_password : ""
+    ldap_users           = var.clusters[each.key].ldap_server != "" ? jsonencode(var.ldap_servers[var.clusters[each.key].ldap_server].users) : "[]"
+    ldap_mongodb_users   = var.clusters[each.key].ldap_server != "" ? jsonencode(var.ldap_servers[var.clusters[each.key].ldap_server].mongodb_users) : "[]"
 
     access_key           = aws_iam_access_key.mongo_backup_access_key.id
     secret_access_key    = aws_iam_access_key.mongo_backup_access_key.secret
@@ -124,6 +136,18 @@ resource "local_file" "AnsibleInventoryRS" {
     mongot_version       = var.replsets[each.key].mongot_version
     enable_audit         = each.value.enable_audit
     audit_filter         = each.value.audit_filter
+    enable_ldap          = var.replsets[each.key].ldap_server != ""
+    ldap_hostname        = var.replsets[each.key].ldap_server != "" ? local.ldap_hosts[var.replsets[each.key].ldap_server] : ""
+    ldap_ip              = var.replsets[each.key].ldap_server != "" ? aws_instance.ldap[var.replsets[each.key].ldap_server].public_ip : ""
+    ldap_endpoint        = var.replsets[each.key].ldap_server != "" ? aws_instance.ldap[var.replsets[each.key].ldap_server].private_ip : ""
+    ldap_domain          = var.replsets[each.key].ldap_server != "" ? var.ldap_servers[var.replsets[each.key].ldap_server].domain : ""
+    ldap_org             = var.replsets[each.key].ldap_server != "" ? var.ldap_servers[var.replsets[each.key].ldap_server].organization : ""
+    ldap_base_dn         = var.replsets[each.key].ldap_server != "" ? "dc=${replace(var.ldap_servers[var.replsets[each.key].ldap_server].domain, ".", ",dc=")}" : ""
+    ldap_users_dn        = var.replsets[each.key].ldap_server != "" ? "ou=people,dc=${replace(var.ldap_servers[var.replsets[each.key].ldap_server].domain, ".", ",dc=")}" : ""
+    ldap_admin_dn        = var.replsets[each.key].ldap_server != "" ? "cn=admin,dc=${replace(var.ldap_servers[var.replsets[each.key].ldap_server].domain, ".", ",dc=")}" : ""
+    ldap_admin_password  = var.replsets[each.key].ldap_server != "" ? var.ldap_servers[var.replsets[each.key].ldap_server].admin_password : ""
+    ldap_users           = var.replsets[each.key].ldap_server != "" ? jsonencode(var.ldap_servers[var.replsets[each.key].ldap_server].users) : "[]"
+    ldap_mongodb_users   = var.replsets[each.key].ldap_server != "" ? jsonencode(var.ldap_servers[var.replsets[each.key].ldap_server].mongodb_users) : "[]"
 
     region        = aws_s3_bucket.mongo_backups.region
     hostname_pmm  = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""

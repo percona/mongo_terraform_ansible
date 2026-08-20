@@ -1594,8 +1594,8 @@
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Domain <span class="field-tip" data-tip="LDAP base domain (e.g. example.org).">ⓘ</span></label>
-              <input type="text" name="ldap_domain[]" value="{{strDefault .Config.LdapDomain "example.org"}}">
+              <label>Domain <span class="field-tip" data-tip="LDAP base domain (e.g. example.com).">ⓘ</span></label>
+              <input type="text" name="ldap_domain[]" value="{{strDefault .Config.LdapDomain "example.com"}}">
             </div>
             <div class="form-group form-group-checkbox">
               <label><input type="checkbox" name="ldap_bind_localhost[]" value="1"
@@ -1658,6 +1658,36 @@
     </div>
     {{end}}
   </section>
+
+  {{if ne $p "docker"}}
+  <section class="form-section">
+    <div class="section-header">
+      <h2>LDAP Server</h2>
+      <label class="toggle-label">
+        <input type="checkbox" id="enable_ldap" name="enable_ldap" value="true"
+               {{if .SortedLdap}}checked{{end}}
+               onchange="toggleCloudLdapSection(this)">
+        Include LDAP <span class="field-tip" data-tip="Creates one OpenLDAP server and phpLDAPadmin host. All MongoDB clusters and replica sets in this environment use it for PLAIN authentication.">ⓘ</span>
+      </label>
+    </div>
+    <div id="ldap-cloud-body" style="{{if .SortedLdap}}{{else}}display:none{{end}}">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="ldap_server_name">Server Name</label>
+          <input type="text" id="ldap_server_name" name="ldap_server_name" value="{{if .SortedLdap}}{{(index .SortedLdap 0).Name}}{{else}}ldap{{end}}" placeholder="ldap">
+        </div>
+        <div class="form-group">
+          <label for="ldap_domain">Domain <span class="field-tip" data-tip="LDAP base domain, such as example.com.">ⓘ</span></label>
+          <input type="text" id="ldap_domain" name="ldap_domain" value="{{if .SortedLdap}}{{strDefault (index .SortedLdap 0).Config.LdapDomain "example.com"}}{{else}}example.com{{end}}">
+        </div>
+        <div class="form-group">
+          <label for="ldap_admin_password">Admin Password</label>
+          <input type="password" id="ldap_admin_password" name="ldap_admin_password" value="{{if .SortedLdap}}{{(index .SortedLdap 0).Config.LdapAdminPassword}}{{end}}" placeholder="admin" autocomplete="new-password">
+        </div>
+      </div>
+    </div>
+  </section>
+  {{end}}
 
   <!-- ──────────── Credentials ──────────── -->
   <section class="form-section">
@@ -3110,13 +3140,17 @@ function addLdapServer() {
           <input type="number" name="ldap_port[]" value="389"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Domain <span class="field-tip" data-tip="LDAP base domain (e.g. example.org).">ⓘ</span></label>
-          <input type="text" name="ldap_domain[]" value="example.org"></div>
+        <div class="form-group"><label>Domain <span class="field-tip" data-tip="LDAP base domain (e.g. example.com).">ⓘ</span></label>
+          <input type="text" name="ldap_domain[]" value="example.com"></div>
         <div class="form-group form-group-checkbox">
           <label><input type="checkbox" name="ldap_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
       </div>
     </div>`;
   container.appendChild(c);
+}
+
+function toggleCloudLdapSection(cb) {
+  document.getElementById('ldap-cloud-body').style.display = cb.checked ? '' : 'none';
 }
 
 // Integer fields – send as numbers in JSON (not strings) so Go unmarshal works cleanly.
@@ -3531,6 +3565,19 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   }
 	config.use_spot_instances = fd.has('use_spot_instances');
 	config.enable_ycsb = fd.has('enable_ycsb');
+  if (PLATFORM !== 'docker' && fd.has('enable_ldap')) {
+    const ldapName = (fd.get('ldap_server_name') || 'ldap').trim();
+    if (!/^[a-zA-Z0-9_-]+$/.test(ldapName)) {
+      alert('LDAP server name may only use letters, numbers, underscores, and hyphens.');
+      return;
+    }
+    config.ldap_servers = {
+      [ldapName]: {
+        ldap_domain: (fd.get('ldap_domain') || 'example.com').trim() || 'example.com',
+        ldap_admin_password: (fd.get('ldap_admin_password') || 'admin').trim() || 'admin',
+      },
+    };
+  }
 	if (PLATFORM === 'docker') {
 	  const ycsbImage = (fd.get('ycsb_image') || '').trim();
 	  const ycsbOsImage = (fd.get('ycsb_os_image') || '').trim();
@@ -3637,6 +3684,9 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       const mongotSource = getBlockFieldValue(block, 'cluster_mongot_source[]').trim();
       if (mongotSource) c.mongot_source = mongotSource;
       if (c.enable_mongot && mongotVersion) c.mongot_version = mongotVersion;
+      if (config.ldap_servers) {
+        c.ldap_server = Object.keys(config.ldap_servers)[0];
+      }
     }
     if (PLATFORM === 'docker') {
       const psmdbImage = getBlockImageValue(block, 'cluster_psmdb_image[]', 'percona-server-mongodb');
@@ -3677,6 +3727,9 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       const mongotSource = getBlockFieldValue(block, 'replset_mongot_source[]').trim();
       if (mongotSource) r.mongot_source = mongotSource;
       if (r.enable_mongot && mongotVersion) r.mongot_version = mongotVersion;
+      if (config.ldap_servers) {
+        r.ldap_server = Object.keys(config.ldap_servers)[0];
+      }
     }
     if (PLATFORM === 'docker') {
       const port = parseInt(getBlockFieldValue(block, 'replset_port[]'));
@@ -3755,7 +3808,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
         env_tag: 'test',
         ldap_image:          lImages[i]  || 'osixia/openldap:latest',
         ldap_port:           parseInt(lPorts[i]) || 389,
-        ldap_domain:         lDomains[i] || 'example.org',
+        ldap_domain:         lDomains[i] || 'example.com',
         ldap_admin_password: credLdapPwd || 'admin',
         bind_to_localhost:   lBind.some((v,idx) => idx === i && v === '1'),
       };

@@ -7,6 +7,55 @@
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
+    - name: Remove conflicting Percona mongosh before installing MongoDB Enterprise
+      command: dpkg --remove --force-depends percona-mongodb-mongosh
+      register: remove_percona_mongosh
+      changed_when: remove_percona_mongosh.rc == 0
+      failed_when: >-
+        remove_percona_mongosh.rc != 0 and
+        'is not installed' not in remove_percona_mongosh.stderr
+      when:
+        - mongodb_distribution_effective == 'enterprise'
+        - ansible_facts['os_family'] == 'Debian'
+
+    - name: Repair package dependencies before installing MongoDB Enterprise
+      apt:
+        state: fixed
+      when:
+        - mongodb_distribution_effective == 'enterprise'
+        - ansible_facts['os_family'] == 'Debian'
+
+    - name: Remove MongoDB mongosh before installing Percona Server for MongoDB
+      command: dpkg --remove --force-depends mongodb-mongosh
+      register: remove_mongodb_mongosh
+      changed_when: remove_mongodb_mongosh.rc == 0
+      failed_when: >-
+        remove_mongodb_mongosh.rc != 0 and
+        'is not installed' not in remove_mongodb_mongosh.stderr
+      when:
+        - mongodb_distribution_effective == 'psmdb'
+        - ansible_facts['os_family'] == 'Debian'
+
+    - name: Remove MongoDB Enterprise packages before installing Percona Server for MongoDB
+      shell: >-
+        for package in mongodb-enterprise mongodb-enterprise-database
+        mongodb-enterprise-server mongodb-enterprise-mongos mongodb-enterprise-tools
+        mongodb-enterprise-shell mongodb-enterprise-cryptd
+        mongodb-enterprise-database-tools-extra mongodb-database-tools; do
+        dpkg --purge --force-depends "$package" 2>/dev/null || true;
+        done
+      changed_when: false
+      when:
+        - mongodb_distribution_effective == 'psmdb'
+        - ansible_facts['os_family'] == 'Debian'
+
+    - name: Repair package dependencies before installing Percona Server for MongoDB
+      apt:
+        state: fixed
+      when:
+        - mongodb_distribution_effective == 'psmdb'
+        - ansible_facts['os_family'] == 'Debian'
+
     - name: Install mongod packages from repository (latest)
       package:
         name: "{{ mongod_packages }}"
@@ -85,9 +134,19 @@
         group: "{{ mongo_os_group }}"
         mode: '0750'
         state: directory
+        recurse: yes
       with_items:
         - "{{ mongod_path }}"
         - "{{ mongod_log_path }}"
+
+    - name: Ensure MongoDB log file ownership
+      become: yes
+      file:
+        path: "{{ mongod_log_path }}/mongod.log"
+        state: touch
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
+        mode: '0640'
 
     - name: Ensure audit log directory exists
       become: yes
@@ -187,21 +246,34 @@
         timeout: 60
 
     - name: Initialize replica set
+      shell: >
+        mongosh {{ mongo_tls_flags }}
+        --port {{ mongo_port }}
+        --host 127.0.0.1
+        --quiet
+        --eval 'db.hello().setName || ""'
+      register: replica_set_name
+      changed_when: false
+      when: mongodb_primary | default(false)
+
+    - name: Initialize an uninitialized replica set
       command: >
         mongosh {{ mongo_tls_flags }}
         --port {{ mongo_port }}
         --host 127.0.0.1
         /tmp/init-rs.js
-      when: mongodb_primary | default(false)
+      when:
+        - mongodb_primary | default(false)
+        - replica_set_name.stdout | trim == ''
 
     - name: Wait for PRIMARY
       shell: >
-        mongosh admin {{ mongo_tls_flags }}
+        mongosh {{ mongo_tls_flags }}
         --port {{ mongo_port }}
         --host 127.0.0.1
         --quiet
-        --eval 'rs.status().members.filter(m => m.stateStr=="PRIMARY").length'
-        | grep -q 1
+        --eval 'db.hello().isWritablePrimary'
+        | grep -q true
       register: primary_check
       retries: 30
       delay: 1
@@ -245,6 +317,9 @@
         --host 127.0.0.1
         --eval 'db.createUser({user:"{{ mongo_admin_user }}",pwd:"{{ mongo_admin_password }}",roles:["root"]})'
       no_log: true
+      register: root_user_result
+      changed_when: root_user_result.rc == 0
+      failed_when: root_user_result.rc != 0 and 'requires authentication' not in root_user_result.stderr
       when: mongodb_primary | default(false)
 
     - name: Prepare the commands to create the PBM and PMM users and roles
@@ -264,6 +339,30 @@
         < /tmp/createUsers.js
       no_log: true
       when: mongodb_primary | default(false)
+
+    - name: Prepare LDAP external users
+      template:
+        src: templates/createLdapUsers.js.j2
+        dest: /tmp/createLdapUsers.js
+        mode: 0600
+      when:
+        - mongodb_primary | default(false)
+        - enable_ldap | default(false) | bool
+        - ldap_mongodb_users | default([]) | length > 0
+
+    - name: Create LDAP external users
+      shell: >
+        mongosh admin {{ mongo_tls_flags }}
+        -u {{ mongo_admin_user }}
+        -p {{ mongo_admin_password }}
+        --port {{ mongo_port }}
+        --host {{ ansible_facts['fqdn'] }}
+        < /tmp/createLdapUsers.js
+      no_log: true
+      when:
+        - mongodb_primary | default(false)
+        - enable_ldap | default(false) | bool
+        - ldap_mongodb_users | default([]) | length > 0
 
     - name: Configure mongo shell alias
       lineinfile:

@@ -272,6 +272,21 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				write("}")
 			}
 		}
+
+		if len(cfg.LdapServers) > 0 {
+			write("")
+			write("ldap_servers = {")
+			for _, ns := range sortedLdapServers(cfg.LdapServers) {
+				n, s := ns.Name, ns.Config
+				write(fmt.Sprintf("  %q = {", n))
+				write(fmt.Sprintf("    domain = %s", formatHCLVal(strDefault(s.LdapDomain, "example.com"))))
+				if s.LdapAdminPassword != "" {
+					write(fmt.Sprintf("    admin_password = %s", formatHCLVal(s.LdapAdminPassword)))
+				}
+				write("  }")
+			}
+			write("}")
+		}
 	} else {
 		// Docker-only
 		writeOptStr("network_name", cfg.NetworkName)
@@ -347,6 +362,9 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				}
 				if c.PmmClientRepo != "" {
 					write(fmt.Sprintf("    pmm_client_repo = %s", formatHCLVal(c.PmmClientRepo)))
+				}
+				if c.LdapServer != "" {
+					write(fmt.Sprintf("    ldap_server = %s", formatHCLVal(c.LdapServer)))
 				}
 			}
 			if platform == "docker" {
@@ -428,6 +446,9 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				}
 				if r.PmmClientRepo != "" {
 					write(fmt.Sprintf("    pmm_client_repo = %s", formatHCLVal(r.PmmClientRepo)))
+				}
+				if r.LdapServer != "" {
+					write(fmt.Sprintf("    ldap_server = %s", formatHCLVal(r.LdapServer)))
 				}
 			}
 			if platform == "docker" {

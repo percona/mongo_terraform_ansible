@@ -134,6 +134,27 @@ Note: The PMM user and password are used to login to PMM UI via the web browser.
 
 The generated inventories may include `enable_audit` and `audit_filter` values from Terraform. Review `group_vars` and the inventory if you want to enable or customize PSMDB audit logging.
 
+### LDAP
+
+AWS, GCP, Azure, and CHAOS can provision one or more LDAP hosts using `ldap_servers`. Select an LDAP host for a cluster or replica set by setting its `ldap_server` to the corresponding map key. The generated inventory adds the LDAP host, installs OpenLDAP and phpLDAPadmin on the same OS image as the MongoDB hosts, seeds the configured LDAP users, and enables MongoDB `PLAIN` authentication.
+
+```hcl
+ldap_servers = {
+  ldap = {
+    domain         = "example.com"
+    admin_password = "admin"
+    users = [{ uid = "alice", cn = "Alice", sn = "Admin", password = "secret123" }]
+    mongodb_users = [{ user = "alice", roles = ["readWriteAnyDatabase"] }]
+  }
+}
+
+replsets = {
+  rs1 = { ldap_server = "ldap" }
+}
+```
+
+LDAP traffic is deliberately unencrypted to match the Docker deployment and is intended only for non-production use. phpLDAPadmin listens on port 80 within the deployment network.
+
 ## Running
 
 * The playbook is meant to handle a deployment from scratch, unless ran with some specific tags. Be extra careful if you are running it against servers that already have data. Examples:

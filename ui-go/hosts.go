@@ -426,6 +426,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			role = "minio"
 		case strings.Contains(sec, "ycsb"):
 			role = "ycsb"
+		case strings.Contains(sec, "ldap"):
+			role = "ldap"
 		}
 		// Service hosts (minio, pmm) get their own logical group so they appear in
 		// a separate subsection rather than inside the replica-set/cluster group.
@@ -437,6 +439,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			hostGroup = "PMM"
 		case "ycsb":
 			hostGroup = "YCSB"
+		case "ldap":
+			hostGroup = "LDAP"
 		}
 		sshCmd := fmt.Sprintf("ssh %s@%s", sshUser, ip)
 		if sshPrivateKeyPath != "" {
@@ -469,6 +473,8 @@ func cloudHostPort(role, section string) string {
 		return "8443"
 	case "minio":
 		return "9000, 9001"
+	case "ldap":
+		return "389"
 	default:
 		return "—"
 	}
@@ -508,8 +514,11 @@ func hostsWithRole(hosts []HostInfo, group, role string) []HostInfo {
 	return out
 }
 
-// configServiceURLs derives PMM and Minio console URLs from the environment
-// configuration.
+func phpLDAPadminURL(host string) string {
+	return fmt.Sprintf("http://%s:%d/phpldapadmin", host, 80)
+}
+
+// configServiceURLs derives web console URLs from the environment configuration.
 func configServiceURLs(envID string, env *Environment) []ServiceURL {
 	prefix := strDefault(env.Config.Prefix, envID)
 	var urls []ServiceURL
@@ -541,6 +550,13 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 				URL:   fmt.Sprintf("http://%s:%d", host, consolePort),
 			})
 		}
+		for svcName := range env.Config.LdapServers {
+			urls = append(urls, ServiceURL{
+				Name:  prefix + "-" + svcName,
+				Label: "LDAP Console: " + svcName,
+				URL:   fmt.Sprintf("http://%s:%d", host, 80),
+			})
+		}
 	} else if env.Platform == "chaos" {
 		// CHAOS service URLs should point at the real instance addresses rather
 		// than localhost SSH forwards, so derive them from the inventory files.
@@ -557,6 +573,8 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 		minioIP := ""
 		pmmHost := ""
 		pmmIP := ""
+		ldapHost := ""
+		ldapIP := ""
 		filePrefix2 := strDefault(env.Config.Prefix, envID)
 		for _, name := range names {
 			p := filepath.Join(tfDir, filePrefix2+"_inventory_"+name)
@@ -566,21 +584,31 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 			}
 			inMinio := false
 			inPmm := false
+			inLDAP := false
 			for _, line := range strings.Split(string(content), "\n") {
 				line = strings.TrimSpace(line)
 				if line == "[minio]" {
 					inMinio = true
 					inPmm = false
+					inLDAP = false
 					continue
 				}
 				if line == "[pmm]" {
 					inPmm = true
 					inMinio = false
+					inLDAP = false
+					continue
+				}
+				if line == "[ldap]" {
+					inLDAP = true
+					inMinio = false
+					inPmm = false
 					continue
 				}
 				if strings.HasPrefix(line, "[") {
 					inMinio = false
 					inPmm = false
+					inLDAP = false
 					continue
 				}
 				if inMinio && line != "" {
@@ -601,8 +629,17 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 						}
 					}
 				}
+				if inLDAP && line != "" {
+					parts := strings.Fields(line)
+					ldapHost = parts[0]
+					for _, kv := range parts[1:] {
+						if strings.HasPrefix(kv, "ansible_host=") {
+							ldapIP = strings.TrimPrefix(kv, "ansible_host=")
+						}
+					}
+				}
 			}
-			if (minioHost != "" || minioIP != "") && (pmmHost != "" || pmmIP != "") {
+			if (minioHost != "" || minioIP != "") && (pmmHost != "" || pmmIP != "") && (ldapHost != "" || ldapIP != "") {
 				break
 			}
 		}
@@ -638,6 +675,17 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 				})
 			}
 		}
+		if ldapHost != "" || ldapIP != "" {
+			host := ldapIP
+			if host == "" {
+				host = ldapHost
+			}
+			urls = append(urls, ServiceURL{
+				Name:  "ldap",
+				Label: "LDAP Console",
+				URL:   phpLDAPadminURL(host),
+			})
+		}
 	} else {
 		// Cloud deployments: PMM port is restricted to the internal subnet by the
 		// firewall (source_ranges = subnet CIDR), so it cannot be reached from the
@@ -655,6 +703,20 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 				Label: "PMM",
 				URL:   fmt.Sprintf("https://127.0.0.1:%s", portStr),
 			})
+		}
+		// phpLDAPadmin is exposed directly on the LDAP server's public HTTP port.
+		// Use the generated inventory to obtain the provisioned address.
+		hosts, _, _ := collectCloudHosts(envID, env)
+		for _, host := range hosts {
+			if host.Role != "ldap" || host.IP == "" || host.IP == "—" {
+				continue
+			}
+			urls = append(urls, ServiceURL{
+				Name:  "ldap",
+				Label: "LDAP Console",
+				URL:   phpLDAPadminURL(host.IP),
+			})
+			break
 		}
 	}
 	return urls

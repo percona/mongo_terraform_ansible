@@ -386,6 +386,64 @@ func TestWriteTfvarsDockerYcsbSettings(t *testing.T) {
 	}
 }
 
+func TestWriteTfvarsCloudLDAP(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{
+		LdapServers: map[string]LdapServerConfig{
+			"directory": {LdapDomain: "example.org", LdapAdminPassword: "secret"},
+		},
+		Clusters: map[string]ClusterConfig{
+			"cl01": {EnvTag: "test", LdapServer: "directory"},
+		},
+		Replsets: map[string]ReplsetConfig{
+			"rs01": {EnvTag: "test", LdapServer: "directory"},
+		},
+	}
+
+	if err := writeTfvars("cloud-ldap", "gcp", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+	content, err := os.ReadFile(tfvarsPath("cloud-ldap", "gcp"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	tfvars := string(content)
+	for _, want := range []string{
+		`ldap_servers = {`,
+		`"directory" = {`,
+		`domain = "example.org"`,
+		`admin_password = "secret"`,
+		`ldap_server = "directory"`,
+	} {
+		if !strings.Contains(tfvars, want) {
+			t.Fatalf("expected %q in tfvars:\n%s", want, tfvars)
+		}
+	}
+}
+
+func TestWriteTfvarsCloudLDAPDefaultsDomainToExampleCom(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{LdapServers: map[string]LdapServerConfig{"directory": {}}}
+	if err := writeTfvars("cloud-ldap-default-domain", "gcp", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+	content, err := os.ReadFile(tfvarsPath("cloud-ldap-default-domain", "gcp"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	if !strings.Contains(string(content), `domain = "example.com"`) {
+		t.Fatalf("expected default LDAP domain in tfvars:\n%s", content)
+	}
+}
+
 func TestAssignDockerReplsetPortsAvoidsServicePorts(t *testing.T) {
 	cfg := &Config{
 		Replsets: map[string]ReplsetConfig{

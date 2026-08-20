@@ -124,6 +124,13 @@ mongo_admin_user: root
 # Warning! This is just an example, replace with your own for prod use!
 mongo_admin_password: percona
 
+########################
+## LDAP Authentication
+########################
+
+# LDAP values are supplied by a generated inventory when a topology selects an
+# LDAP server. Keeping them out of group_vars lets the inventory take effect.
+
 mongod_log_path: /var/log/mongo/
 mongod_path: /var/lib/mongo/
 mongod_pid_path: "{{ '/var/run/mongodb/mongod.pid' if mongodb_distribution_effective in ['community', 'enterprise'] else '/var/run/mongod.pid' }}"
@@ -137,7 +144,7 @@ mongot_version_default: "1.70.3-1"
 mongot_version_effective: "{{ mongot_version | default(mongot_version_default, true) | trim }}"
 mongot_source_requested: "{{ mongot_source | default('auto', true) | trim }}"
 mongot_source_effective: "{{ 'percona_package' if mongot_source_requested == 'percona_package' or (mongot_source_requested == 'auto' and mongodb_distribution_effective == 'psmdb' and mongo_release_effective == 'psmdb-83') else 'community_tarball' }}"
-percona_search_effective: "{{ mongot_source_effective == 'percona_package' }}"
+percona_search_effective: "{{ enable_mongot_effective | bool and mongot_source_effective == 'percona_package' }}"
 mongot_package: percona-search-mongodb
 mongot_port: 27028
 mongot_metrics_port: 9946

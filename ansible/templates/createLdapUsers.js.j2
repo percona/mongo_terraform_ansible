@@ -1,0 +1,8 @@
+{% for user in ldap_mongodb_users %}
+const external = db.getSiblingDB("$external");
+if (external.getUser("{{ user.user }}")) {
+  external.updateUser("{{ user.user }}", {roles: {{ user.roles | to_json }}});
+} else {
+  external.createUser({user: "{{ user.user }}", roles: {{ user.roles | to_json }}});
+}
+{% endfor %}

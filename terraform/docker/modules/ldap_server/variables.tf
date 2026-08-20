@@ -50,7 +50,7 @@ variable "env_tag" {
 }
 
 variable "ldap_domain" {
-  default = "example.org"
+  default = "example.com"
 }
 
 variable "ldap_org" {

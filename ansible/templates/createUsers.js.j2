@@ -1,4 +1,5 @@
-db.createRole({ "role": "pmmMonitor", "privileges": [ {
+const admin = db.getSiblingDB("admin");
+const pmmMonitor = { "privileges": [ {
          "resource": {
             "db": "", "collection":"" },
          "actions": [
@@ -23,47 +24,59 @@ db.createRole({ "role": "pmmMonitor", "privileges": [ {
             "indexStats"
          ]
       }
-   ],
-   "roles": []
-});
+   ], "roles": [] };
+if (admin.getRole("pmmMonitor")) {
+  admin.updateRole("pmmMonitor", pmmMonitor);
+} else {
+  admin.createRole({ "role": "pmmMonitor", ...pmmMonitor });
+}
 
-db.getSiblingDB("admin").createRole({ "role": "pbmAnyAction",
-      "privileges": [
-         { "resource": { "anyResource": true },
-           "actions": [ "anyAction" ]
-         }
-      ],
-      "roles": []
-   });
+const pbmAnyAction = { "privileges": [
+  { "resource": { "anyResource": true }, "actions": [ "anyAction" ] }
+], "roles": [] };
+if (admin.getRole("pbmAnyAction")) {
+  admin.updateRole("pbmAnyAction", pbmAnyAction);
+} else {
+  admin.createRole({ "role": "pbmAnyAction", ...pbmAnyAction });
+}
 
-db.getSiblingDB("admin").createUser({
-    "user": "{{ mongodb_pmm_user }}",
-    "pwd": "{{ mongodb_pmm_user_pwd }}",
-    "roles": [
-        { "role": "pmmMonitor", "db": "admin" },
-        { "role": "clusterMonitor", "db": "admin" },
-        { "role": "read", "db": "local" },
-        { "db" : "admin", "role" : "readWrite", "collection": "" },
-        { "db" : "admin", "role" : "backup" },
-        { "db" : "admin", "role" : "clusterMonitor" },
-        { "db" : "admin", "role" : "restore" },
-        { "db" : "admin", "role" : "pbmAnyAction" }
+const pmmUser = {
+  "pwd": "{{ mongodb_pmm_user_pwd }}",
+  "roles": [
+    { "role": "pmmMonitor", "db": "admin" },
+    { "role": "clusterMonitor", "db": "admin" },
+    { "role": "read", "db": "local" },
+    { "db" : "admin", "role" : "readWrite", "collection": "" },
+    { "db" : "admin", "role" : "backup" },
+    { "db" : "admin", "role" : "clusterMonitor" },
+    { "db" : "admin", "role" : "restore" },
+    { "db" : "admin", "role" : "pbmAnyAction" }
 {% if mongo_release is defined and (mongo_release | regex_search('[0-9]+$') | int) > 70 %}
-         ,{ "db": "admin", "role": "directShardOperations" }
-{% endif %}         
-    ]
-});
+     ,{ "db": "admin", "role": "directShardOperations" }
+{% endif %}
+  ]
+};
+if (admin.getUser("{{ mongodb_pmm_user }}")) {
+  admin.updateUser("{{ mongodb_pmm_user }}", pmmUser);
+} else {
+  admin.createUser({ "user": "{{ mongodb_pmm_user }}", ...pmmUser });
+}
 
-db.getSiblingDB("admin").createUser({"user": "{{ pbmuser }}",
-       "pwd": "{{ pbmpwd }}",
-       "roles" : [
-          { "db" : "admin", "role" : "readWrite", "collection": "" },
-          { "db" : "admin", "role" : "backup" },
-          { "db" : "admin", "role" : "clusterMonitor" },
-          { "db" : "admin", "role" : "restore" },
-          { "db" : "admin", "role" : "pbmAnyAction" }
-       ]
-    });
+const pbmUser = {
+  "pwd": "{{ pbmpwd }}",
+  "roles": [
+    { "db" : "admin", "role" : "readWrite", "collection": "" },
+    { "db" : "admin", "role" : "backup" },
+    { "db" : "admin", "role" : "clusterMonitor" },
+    { "db" : "admin", "role" : "restore" },
+    { "db" : "admin", "role" : "pbmAnyAction" }
+  ]
+};
+if (admin.getUser("{{ pbmuser }}")) {
+  admin.updateUser("{{ pbmuser }}", pbmUser);
+} else {
+  admin.createUser({ "user": "{{ pbmuser }}", ...pbmUser });
+}
 
 {% if enable_mongot_effective | bool and arbiter is not defined %}
 if (!db.getSiblingDB("admin").getUser("{{ mongodb_mongot_user }}")) {

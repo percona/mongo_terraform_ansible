@@ -282,6 +282,7 @@ docker exec -it cl01-pbm-cli pbm status
 ## Simulating a workload with YCSB
 
 - When `enable_ycsb = true`, a dedicated YCSB container is created.
+- The YCSB MongoDB binding is built from a pinned upstream source revision, rather than the legacy 0.17 release archive, to use a modern MongoDB Java driver compatible with PSMDB 8.3.
 - For sharded clusters, a sharded `ycsb.usertable` collection is created automatically with `{_id: hashed}` as the shard key.
 
 - To run a YCSB workload:

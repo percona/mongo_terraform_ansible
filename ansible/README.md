@@ -167,7 +167,7 @@ ansible-playbook main.yml -i inventory --tags backup
 
 ## YCSB Workloads
 
-If the inventory contains a `ycsb` host, `main.yml` installs YCSB through `ycsb_install.yml`. Use it to generate test load against a deployed cluster or replica set.
+If the inventory contains a `ycsb` host, `main.yml` installs YCSB through `ycsb_install.yml`. The MongoDB binding is built from a pinned upstream YCSB source revision so it includes the modern MongoDB Java driver required by PSMDB 8.3. Change `ycsb_source_revision` in `group_vars/all.yml` to upgrade the build; the revision marker causes YCSB to be rebuilt automatically.
 
 Example initial load:
 

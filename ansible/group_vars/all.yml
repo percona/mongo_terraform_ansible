@@ -111,6 +111,11 @@ pmm_client_package:
 
 disable_telemetry: false
 
+# Pinned upstream YCSB source revision. The current 0.17 release bundles a
+# MongoDB Java driver too old for PSMDB 8.3 authentication behavior.
+ycsb_source_revision: 66302f301b13f60d4bcb2f29f478586bb1d6f2e0
+ycsb_maven_version: 3.6.3
+
 ##########
 # MongoDB 
 ##########

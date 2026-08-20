@@ -66,6 +66,23 @@ go build -o mongodeploy .
 | `UI_HOST`     | `127.0.0.1`       | Bind address; use `0.0.0.0` to listen on all interfaces        |
 | `UI_BASE_DIR` | current directory | Override the base directory; must contain `templates/` and `static/` |
 
+## Screenshots
+
+### Environment list
+
+The environment list shows the platform, topology counts, component version,
+location, creation time, and available management actions. **Settings** opens
+provider credentials and SSH configuration.
+
+![Environment list](static/readme/environment-list.png)
+
+### Environment detail
+
+The environment detail page provides deployment actions, topology summary,
+Hosts & Connections, and YCSB controls when enabled.
+
+![Environment detail](static/readme/environment-detail.png)
+
 ## State transition diagrams
 
 ### Docker

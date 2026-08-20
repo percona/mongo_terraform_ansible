@@ -94,4 +94,13 @@ The root README is a starting point. Detailed operational guidance lives with th
 - Workload generation with YCSB: [UI workflow](./ui-go/README.md#ycsb-workloads), [cloud Ansible notes](./ansible/README.md#ycsb-workloads), and [Docker workflow](./terraform/docker/README.md#simulating-a-workload-with-ycsb).
 - TLS, Vault-backed encryption, PBM, PMM, stopping, restarting, and reset playbooks: [Ansible README](./ansible/README.md).
 
+## Verification
+
+Run the Go UI test suite after changing the UI or its generated Terraform configuration:
+
+```bash
+cd ui-go
+go test ./...
+```
+
 ## Disclaimer: This code is not supported by Percona. It has been provided solely as a community-contributed example and is not covered under any Percona services agreement.

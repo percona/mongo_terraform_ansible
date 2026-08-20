@@ -16,6 +16,20 @@ Supported platforms:
 - CHAOS
 - Docker
 
+## Search and Vector Search
+
+Clusters and replica sets can enable MongoDB Search / Vector Search from the configuration wizard.
+
+- Docker deployments run `mongot` sidecars from the selected
+  `mongodb/mongodb-community-search` image.
+- Cloud and CHAOS deployments support the Percona Search package and the MongoDB
+  Community `mongot` tarball. **Auto** selects Percona Search for PSMDB 8.3 and
+  the Community implementation otherwise.
+- `mongot` requires MongoDB 8.2 or later. Percona Search requires PSMDB 8.3;
+  PSMDB 8.3 currently requires Percona Search version `1.70.3-1` (or `latest`).
+- The UI validates these combinations before it writes the environment
+  configuration.
+
 ## Requirements
 
 - **Go 1.22+**
@@ -51,22 +65,6 @@ go build -o mongodeploy .
 | `PORT`        | `5001`            | TCP port to listen on                                          |
 | `UI_HOST`     | `127.0.0.1`       | Bind address; use `0.0.0.0` to listen on all interfaces        |
 | `UI_BASE_DIR` | current directory | Override the base directory; must contain `templates/` and `static/` |
-
-## Screenshots
-
-### Environment list — multiple clusters at a glance
-
-![Environment list](static/readme/environment-list.png)
-
-### Environment detail — current management view
-
-The environment detail page shows the current status, primary actions,
-configuration summary, service links, and automatically loads the
-**Hosts & Connections** panel after infrastructure is available.
-
-![Environment detail](static/readme/environment-detail.png)
-
----
 
 ## State transition diagrams
 
@@ -151,8 +149,7 @@ stateDiagram-v2
 | **Provisioned**           | cloud only      | Infra exists but Ansible has not run yet. Set after `Reset` or configure failure — run `Install` to continue.     |
 | **Configure In Progress** | cloud only      | Ansible playbooks running. On success → **Running** (there is no `Configure Success` state).                      |
 | **Destroy In Progress**   | all             | `terraform destroy` running.                                                                                      |
-| **Destroy Success**       | all             | All resources destroyed. Record kept until manually purged.                                                       |
-| **Deleted**               | all             | Record removed from the UI list.                                                                                  |
+| **Deleted**               | all             | All resources were destroyed. The record remains in the list until **Cleanup Deleted** permanently purges it.     |
 | **\*\_Failed**            | all             | Any action may fail; the status becomes `<action>_failed`. Re-run the action to retry.                            |
 
 ## How it works
@@ -180,8 +177,9 @@ stateDiagram-v2
 5. **Stop / Restart** – for Docker environments, uses `docker stop` / `docker restart`
    filtered by the environment prefix; for cloud environments, runs the Ansible
    `stop.yml` / `restart.yml` playbooks.
-6. **Destroy** – runs `terraform destroy`. On success the environment is automatically
-   removed from the inventory and the browser redirects to the environments list.
+6. **Destroy** – runs `terraform destroy`. On success, the environment is marked
+   **Deleted** and its Terraform files are removed. Use **Cleanup Deleted** from the
+   environments list to permanently remove the record.
 7. **Hosts & Connections** – after a successful deploy the environment detail page shows
    every host or container with its IP address, a copy-pasteable connect command
    (`ssh user@host` or `docker exec -it <name> bash`), MongoDB connection strings for
@@ -238,20 +236,17 @@ Use **Deploy** for topology expansion. **Provision** is intentionally refused fo
 
 ```
 ui-go/
-├── main.go         Constants, globals, template helpers, HTTP routes, main()
-├── types.go        All Go struct/type definitions and sorted-list helpers
-├── state.go        Environment state persistence (load/save environments.json)
-├── cache.go        In-memory TTL cache (Docker Hub tags, etc.)
-├── versions.go     Docker Hub image tag fetching; Percona repo version discovery
-├── tfvars.go       Terraform .tfvars file generation
-├── jobs.go         Background job runner (start, stream, cancel, PID tracking)
-├── regions.go      Cloud region and machine-image discovery (AWS / GCP / Azure)
-├── hosts.go        Host & connection-string discovery (Docker + cloud inventory)
-├── handlers.go     All HTTP handlers (environment CRUD, actions, API endpoints)
-├── exec_helper.go  os/exec wrapper
-├── go.mod          Go module (standard library only)
-├── environments.json  Runtime state (auto-created)
-├── jobs/              Background job logs (auto-created)
+├── main.go, types.go              Application entry point and data models
+├── handlers.go, jobs.go           HTTP handlers and background job execution
+├── state.go, cache.go             Persistent UI state and in-memory cache
+├── tfvars.go, topology_changes.go Terraform configuration and scale-out planning
+├── provider_auth.go, ssh_config.go Provider credentials and managed SSH config
+├── prereqs.go, regions.go         Prerequisite and provider metadata discovery
+├── versions.go, hosts.go          Version discovery and connection details
+├── *_test.go                      Colocated Go unit and integration-style tests
+├── go.mod                         Go module (standard library only)
+├── environments.json, settings.json Runtime state (auto-created)
+├── jobs/                          Background job logs (auto-created)
 ├── templates/
 │   ├── layout.html
 │   ├── index.html
@@ -262,6 +257,9 @@ ui-go/
     ├── style.css
     └── app.js
 ```
+
+Tests remain next to the code they exercise, following standard Go conventions.
+Add reusable input or expected-output fixtures under `testdata/` when needed.
 
 ## Security note
 

@@ -16,6 +16,17 @@ This Terraform module creates:
 
 1. Install [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+.
 2. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+
+Example of AWS permissions for the user:
+
+- AmazonEC2FullAccess
+- AmazonRoute53FullAccess
+- AmazonS3FullAccess
+- AmazonVPCFUllAccess
+- IAMFullAccess
+
+Less broad permissions may work but have not been tested.
+
 3. Authenticate in your shell when running Terraform manually:
 
 ```bash

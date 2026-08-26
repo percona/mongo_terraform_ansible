@@ -333,6 +333,9 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				if c.MongotSource != "" {
 					write(fmt.Sprintf("    mongot_source = %s", formatHCLVal(c.MongotSource)))
 				}
+				if c.MongotRepo != "" {
+					write(fmt.Sprintf("    mongot_repo = %s", formatHCLVal(c.MongotRepo)))
+				}
 				if c.MongotVersion != "" {
 					write(fmt.Sprintf("    mongot_version = %s", formatHCLVal(c.MongotVersion)))
 				}
@@ -416,6 +419,9 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				write(fmt.Sprintf("    enable_mongot = %s", formatHCLVal(boolDefault(r.EnableMongot, false))))
 				if r.MongotSource != "" {
 					write(fmt.Sprintf("    mongot_source = %s", formatHCLVal(r.MongotSource)))
+				}
+				if r.MongotRepo != "" {
+					write(fmt.Sprintf("    mongot_repo = %s", formatHCLVal(r.MongotRepo)))
 				}
 				if r.MongotVersion != "" {
 					write(fmt.Sprintf("    mongot_version = %s", formatHCLVal(r.MongotVersion)))

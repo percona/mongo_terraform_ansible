@@ -259,6 +259,12 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	envID := r.URL.Query().Get("env_id")
+	if envID == "" && (platform == "aws" || platform == "gcp" || platform == "azure") {
+		if err := requireProviderAuth(platform); err != nil {
+			http.Redirect(w, r, "/?settings="+platform, http.StatusFound)
+			return
+		}
+	}
 	var cfg Config
 	dockerDefaultPmmExternalPort := 8443
 	dockerDefaultMinioPort := 9000
@@ -842,8 +848,10 @@ func apiPackageVersionsHandler(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]interface{}{"versions": getPBMVersionsFor(channel, osImage)})
 	case "pmm_client":
 		writeJSON(w, 200, map[string]interface{}{"versions": getPMMClientVersionsFor(channel, osImage)})
+	case "ps4m":
+		writeJSON(w, 200, map[string]interface{}{"versions": getPerconaSearchVersionsFor(channel, osImage)})
 	default:
-		jsonError(w, 400, "product must be one of: psmdb, pbm, pmm_client")
+		jsonError(w, 400, "product must be one of: psmdb, pbm, pmm_client, ps4m")
 	}
 }
 
@@ -1132,16 +1140,17 @@ func validateMongotVersionCompatibility(platform string, cfg *Config) error {
 		mongoRelease  string
 		distribution  string
 		mongotSource  string
+		mongotRepo    string
 		mongotVersion string
 		psmdbImage    string
 	}
 
 	var entries []entry
 	for name, c := range cfg.Clusters {
-		entries = append(entries, entry{"cluster", name, c.EnableMongot, c.MongoVersion, c.MongoRelease, c.MongoDBDistribution, c.MongotSource, c.MongotVersion, c.PsmdbImage})
+		entries = append(entries, entry{"cluster", name, c.EnableMongot, c.MongoVersion, c.MongoRelease, c.MongoDBDistribution, c.MongotSource, c.MongotRepo, c.MongotVersion, c.PsmdbImage})
 	}
 	for name, r := range cfg.Replsets {
-		entries = append(entries, entry{"replica set", name, r.EnableMongot, r.MongoVersion, r.MongoRelease, r.MongoDBDistribution, r.MongotSource, r.MongotVersion, r.PsmdbImage})
+		entries = append(entries, entry{"replica set", name, r.EnableMongot, r.MongoVersion, r.MongoRelease, r.MongoDBDistribution, r.MongotSource, r.MongotRepo, r.MongotVersion, r.PsmdbImage})
 	}
 
 	for _, e := range entries {
@@ -1156,6 +1165,10 @@ func validateMongotVersionCompatibility(platform string, cfg *Config) error {
 			return fmt.Errorf("%s %q has invalid mongot_source %q", e.kind, e.name, source)
 		}
 		perconaSearch := source == "percona_package" || (source == "auto" && normalizePackageDistribution(e.distribution) == "psmdb" && e.mongoRelease == "psmdb-83")
+		mongotRepo := strings.TrimSpace(e.mongotRepo)
+		if perconaSearch && mongotRepo != "" && normalizedRepoChannel(mongotRepo) != mongotRepo {
+			return fmt.Errorf("%s %q has invalid mongot_repo %q", e.kind, e.name, e.mongotRepo)
+		}
 		if platform != "docker" && perconaSearch && (normalizePackageDistribution(e.distribution) != "psmdb" || e.mongoRelease != "psmdb-83") {
 			return fmt.Errorf("%s %q: Percona Search requires PSMDB 8.3 (psmdb-83), but release %s is selected", e.kind, e.name, e.mongoRelease)
 		}

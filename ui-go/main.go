@@ -135,6 +135,20 @@ var funcMap = template.FuncMap{
 		}
 		return def
 	},
+	"imageRepository": func(image, def string) string {
+		if image == "" {
+			return def
+		}
+		withoutTag := image
+		if idx := strings.LastIndex(withoutTag, ":"); idx >= 0 && idx > strings.LastIndex(withoutTag, "/") {
+			withoutTag = withoutTag[:idx]
+		}
+		withoutTag = strings.TrimPrefix(withoutTag, "docker.io/")
+		if idx := strings.LastIndex(withoutTag, "/"); idx >= 0 && idx < len(withoutTag)-1 {
+			return withoutTag[idx+1:]
+		}
+		return def
+	},
 	"imageSource": func(image, def string) string {
 		if image == "" {
 			return def
@@ -165,6 +179,9 @@ var funcMap = template.FuncMap{
 	"mongodbPackageLabel": mongodbPackageLabel,
 	"namespaceCustom": func(ns string) bool {
 		return ns != "" && ns != "percona" && ns != "perconalab"
+	},
+	"mongotNamespaceCustom": func(ns string) bool {
+		return ns != "" && ns != "percona" && ns != "perconalab" && ns != "mongodb"
 	},
 	"formatDate": func(value string) string {
 		if value == "" {

@@ -577,6 +577,10 @@ func getPMMClientVersionsFor(channel, osImage string) []string {
 	return versions
 }
 
+func getPerconaSearchVersionsFor(channel, osImage string) []string {
+	return perconaPackageVersions("ps4m", "percona-search-mongodb", channel, osImage)
+}
+
 // getPSMDBMinorVersionsByMajor returns a map from major release key (e.g. "psmdb-70")
 // to a sorted-descending list of specific minor versions (e.g. ["7.0.12", "7.0.11"]).
 // Versions are pulled from the Percona APT repository index for each major release.

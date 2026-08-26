@@ -38,6 +38,7 @@ variable "clusters" {
     enable_pbm           = optional(bool, true)
     enable_mongot        = optional(bool, false)
     mongot_source        = optional(string, "")
+    mongot_repo          = optional(string, "")
     mongot_version       = optional(string, "")
     ldap_server          = optional(string, "")
   }))
@@ -75,6 +76,7 @@ variable "replsets" {
     enable_pbm             = optional(bool, true)
     enable_mongot          = optional(bool, false)
     mongot_source          = optional(string, "")
+    mongot_repo            = optional(string, "")
     mongot_version         = optional(string, "")
     ldap_server            = optional(string, "")
   }))
@@ -360,6 +362,12 @@ variable "pbm_release" {
   type        = string
   default     = ""
   description = "Percona release channel for PBM (e.g. pbm). Empty string uses the default from group_vars."
+}
+
+variable "mongot_repo" {
+  type        = string
+  default     = ""
+  description = "Percona repository channel for Percona Search packages (release, testing, experimental). Empty string uses group_vars default."
 }
 
 variable "pbm_version" {

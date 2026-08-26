@@ -4,7 +4,7 @@
   <div>
     <a href="/" class="back-link">← Environments</a>
     <h1>Choose a Platform</h1>
-    <p class="subtitle">Only platforms enabled in Settings are shown here.</p>
+    <p class="subtitle">Only platforms enabled in Settings are shown here. Cloud credentials must also be configured before creating an environment.</p>
   </div>
 </div>
 
@@ -43,6 +43,7 @@
     <div class="modal-actions">
       <button type="button" class="btn btn-primary" id="prereq-continue-btn"
               style="display:none" onclick="prereqContinue()">Continue anyway</button>
+      <a class="btn btn-primary" id="configure-settings-btn" style="display:none">Open Settings</a>
       <button type="button" class="btn btn-outline" onclick="closePrereqModal()">Cancel</button>
     </div>
   </div>
@@ -99,10 +100,57 @@
   padding: 0;
 }
 .copy-btn:hover { color: var(--color-primary); }
+.platform-card-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 </style>
 
 <script>
 let prereqTargetHref = '';
+const providerAuthReady = {};
+
+function requiresProviderAuth(platform) {
+  return ['aws', 'gcp', 'azure'].includes(platform);
+}
+
+async function checkProviderAuth(platform) {
+  try {
+    const resp = await fetch(`/api/provider-auth/${platform}/status`);
+    if (!resp.ok) return false;
+    const status = await resp.json();
+    return !!status.ok;
+  } catch (_) {
+    return false;
+  }
+}
+
+function setProviderAuthCardState(platform, ready) {
+  const card = document.querySelector(`.platform-card[data-platform="${platform}"]`);
+  if (!card) return;
+  card.classList.toggle('platform-card-disabled', !ready);
+  card.title = ready ? '' : 'Configure cloud credentials in Settings first.';
+}
+
+async function loadProviderAuthStatus() {
+  await Promise.all(['aws', 'gcp', 'azure'].map(async platform => {
+    const card = document.querySelector(`.platform-card[data-platform="${platform}"]`);
+    if (!card || card.style.display === 'none') return;
+    providerAuthReady[platform] = await checkProviderAuth(platform);
+    setProviderAuthCardState(platform, providerAuthReady[platform]);
+  }));
+}
+
+function showProviderSettingsMessage(platform) {
+  const modal = document.getElementById('prereq-modal');
+  document.getElementById('prereq-modal-title').textContent = `${platform.toUpperCase()} is not configured`;
+  document.getElementById('prereq-modal-body').innerHTML = '<p>Configure cloud credentials through <strong>Settings</strong> before creating an environment on this platform.</p>';
+  document.getElementById('prereq-continue-btn').style.display = 'none';
+  const settingsBtn = document.getElementById('configure-settings-btn');
+  settingsBtn.href = `/?settings=${platform}`;
+  settingsBtn.style.display = '';
+  modal.style.display = 'flex';
+}
 
 function applyPlatformVisibility() {
   const settings = getPlatformSettings();
@@ -116,13 +164,21 @@ function applyPlatformVisibility() {
 }
 
 applyPlatformVisibility();
+loadProviderAuthStatus();
 
-function checkPrereqs(event, platform) {
+async function checkPrereqs(event, platform) {
+  event.preventDefault();
   if (!isPlatformEnabled(platform)) {
-    event.preventDefault();
     return false;
   }
-  event.preventDefault();
+  if (requiresProviderAuth(platform)) {
+    providerAuthReady[platform] = await checkProviderAuth(platform);
+    setProviderAuthCardState(platform, providerAuthReady[platform]);
+    if (!providerAuthReady[platform]) {
+      showProviderSettingsMessage(platform);
+      return false;
+    }
+  }
   prereqTargetHref = '/configure/' + platform;
   const modal = document.getElementById('prereq-modal');
   const title = document.getElementById('prereq-modal-title');
@@ -215,6 +271,7 @@ function renderPrereqResult(data) {
 
 function closePrereqModal() {
   document.getElementById('prereq-modal').style.display = 'none';
+  document.getElementById('configure-settings-btn').style.display = 'none';
 }
 
 function prereqContinue() {

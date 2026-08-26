@@ -42,6 +42,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       enable_pbm           = var.clusters[each.key].enable_pbm
       enable_mongot        = var.clusters[each.key].enable_mongot
       mongot_source        = var.clusters[each.key].mongot_source
+      mongot_repo          = var.clusters[each.key].mongot_repo != "" ? var.clusters[each.key].mongot_repo : var.mongot_repo
       mongot_version       = var.clusters[each.key].mongot_version
       enable_audit         = each.value.enable_audit
       audit_filter         = each.value.audit_filter
@@ -133,6 +134,7 @@ resource "local_file" "AnsibleInventoryRS" {
       enable_pbm           = var.replsets[each.key].enable_pbm
       enable_mongot        = var.replsets[each.key].enable_mongot
       mongot_source        = var.replsets[each.key].mongot_source
+      mongot_repo          = var.replsets[each.key].mongot_repo != "" ? var.replsets[each.key].mongot_repo : var.mongot_repo
       mongot_version       = var.replsets[each.key].mongot_version
       enable_audit         = each.value.enable_audit
       audit_filter         = each.value.audit_filter

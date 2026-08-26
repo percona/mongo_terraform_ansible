@@ -32,6 +32,7 @@ type ClusterConfig struct {
 	EnablePbm     *bool  `json:"enable_pbm,omitempty"`
 	EnableMongot  *bool  `json:"enable_mongot,omitempty"`
 	MongotSource  string `json:"mongot_source,omitempty"`
+	MongotRepo    string `json:"mongot_repo,omitempty"`
 	MongotVersion string `json:"mongot_version,omitempty"`
 	// Docker-only
 	PsmdbImage      string `json:"psmdb_image,omitempty"`
@@ -69,6 +70,7 @@ type ReplsetConfig struct {
 	EnablePbm     *bool  `json:"enable_pbm,omitempty"`
 	EnableMongot  *bool  `json:"enable_mongot,omitempty"`
 	MongotSource  string `json:"mongot_source,omitempty"`
+	MongotRepo    string `json:"mongot_repo,omitempty"`
 	MongotVersion string `json:"mongot_version,omitempty"`
 	// Docker-only
 	PsmdbImage      string `json:"psmdb_image,omitempty"`

@@ -39,3 +39,22 @@ func TestValidateMongotVersionCompatibilityRejectsOldPerconaSearch(t *testing.T)
 		t.Fatal("expected old Search version to be rejected")
 	}
 }
+
+func TestValidateMongotVersionCompatibilityRejectsInvalidPerconaSearchChannel(t *testing.T) {
+	cfg := &Config{
+		Clusters: map[string]ClusterConfig{
+			"cluster": {
+				EnableMongot:        mongotBoolPtr(true),
+				MongoDBDistribution: "psmdb",
+				MongoRelease:        "psmdb-83",
+				MongotSource:        "percona_package",
+				MongotRepo:          "nightly",
+				MongoVersion:        "8.3.7-1",
+				MongotVersion:       "1.70.3-1",
+			},
+		},
+	}
+	if err := validateMongotVersionCompatibility("aws", cfg); err == nil {
+		t.Fatal("expected invalid Percona Search channel to be rejected")
+	}
+}

@@ -130,8 +130,9 @@
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" name="use_spot_instances"
                       {{if .Config.UseSpotInstances}}checked{{end}}>
-          Use Spot Instances</label>
-        <small class="field-tip" data-tip="Spot instances are cheaper but may be reclaimed by AWS with short notice.">ⓘ</small>
+          Use Spot Instances
+          <small class="field-tip" data-tip="Spot instances are cheaper but may be reclaimed by AWS with short notice.">ⓘ</small>
+        </label>
       </div>
     </div>
   </section>
@@ -159,38 +160,6 @@
         <label><input type="checkbox" name="use_spot_instances"
                       {{if .Config.UseSpotInstances}}checked{{end}}>
           Use Spot Instances <span class="field-tip" data-tip="Use Azure Spot VMs. Cheaper but can be evicted by Azure with short notice.">ⓘ</span></label>
-      </div>
-    </div>
-  </section>
-  {{else if eq $p "chaos"}}
-  <section class="form-section">
-    <h2>CHAOS Settings</h2>
-    <!-- Firewall rules: multiple per-rule entries (CIDR + port) -->
-    <div class="form-row">
-      <div class="form-group form-group-full">
-        <label>Firewall Access Rules <span class="field-tip" data-tip="Define ingress rules: each specifies a source CIDR and destination port. Leave empty for no restrictions.">ⓘ</span></label>
-        <div id="firewall-rules-container" style="margin-top:0.5rem">
-          {{range .Config.FirewallRules}}
-          <div class="firewall-rule-row" style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.4rem">
-            <input type="text" name="fw_cidr[]" value="{{.CIDR}}" placeholder="0.0.0.0/0" style="flex:2">
-            <input type="text" name="fw_port[]" value="{{.Port}}" placeholder="22" style="flex:1">
-            <input type="text" name="fw_comment[]" value="{{.Comment}}" placeholder="Comment (optional)" style="flex:3">
-            <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.firewall-rule-row').remove()">✕</button>
-          </div>
-          {{end}}
-        </div>
-        <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.4rem" onclick="addFirewallRule()">+ Add Rule</button>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="delete_after_days">Delete After <span class="field-tip" data-tip="CHAOS will automatically delete instances after the selected retention. Choose Never to omit delete_after_days from the Terraform provider request.">ⓘ</span></label>
-        <select id="delete_after_days" name="delete_after_days">
-          <option value="7" {{if eq .Config.DeleteAfterDays 7}}selected{{end}}>7 days</option>
-          <option value="14" {{if eq .Config.DeleteAfterDays 14}}selected{{end}}>14 days</option>
-          <option value="30" {{if eq .Config.DeleteAfterDays 30}}selected{{end}}>30 days</option>
-          <option value="" {{if eq .Config.DeleteAfterDays 0}}selected{{end}}>Never</option>
-        </select>
       </div>
     </div>
   </section>
@@ -299,7 +268,7 @@
           </div>
           {{end}}
           {{if ne $p "docker"}}
-          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo .Config.MongotVersion}}
+          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo .Config.MongotRepo .Config.MongotVersion}}
           <div class="subsection-header">
             <span class="subsection-title">Package Overrides</span>
             <button type="button" class="btn btn-outline btn-sm package-toggle-btn"
@@ -316,7 +285,7 @@
                 <option value="enterprise" {{if eq $mongoDist "enterprise"}}selected{{end}}>MongoDB Enterprise</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-mongodb-repo>
               <label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this cluster. Defaults to release (GA).">ⓘ</span></label>
               {{$mongoRepo := strDefault .Config.MongoRepo "release"}}
               <select name="cluster_mongo_repo[]" onchange="onPackageRepoChange(this, 'psmdb')">
@@ -399,10 +368,20 @@
           <div class="form-row" data-mongot-options {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
             <div class="form-group">
               <label>Search Implementation <span class="field-tip" data-tip="Auto selects Percona Search for PSMDB 8.3 and upstream Community mongot otherwise.">ⓘ</span></label>
-              <select name="cluster_mongot_source[]">
-                <option value="auto" selected>Auto</option>
-                <option value="percona_package">Percona Search package</option>
-                <option value="community_tarball">MongoDB Community tarball</option>
+              {{$mongotSource := strDefault .Config.MongotSource "auto"}}
+              <select name="cluster_mongot_source[]" onchange="onMongotSourceChange(this)">
+                <option value="auto" {{if eq $mongotSource "auto"}}selected{{end}}>Auto</option>
+                <option value="percona_package" {{if eq $mongotSource "percona_package"}}selected{{end}}>Percona Search package</option>
+                <option value="community_tarball" {{if eq $mongotSource "community_tarball"}}selected{{end}}>MongoDB Community tarball</option>
+              </select>
+            </div>
+            <div class="form-group" data-percona-search-repo>
+              <label>Percona Search Repository Channel <span class="field-tip" data-tip="Channel used when Percona Search is selected. Defaults to release (GA).">ⓘ</span></label>
+              {{$mongotRepo := strDefault .Config.MongotRepo "release"}}
+              <select name="cluster_mongot_repo[]" onchange="onPackageRepoChange(this, 'ps4m')">
+                <option value="release" {{if eq $mongotRepo "release"}}selected{{end}}>release (GA)</option>
+                <option value="testing" {{if eq $mongotRepo "testing"}}selected{{end}}>testing</option>
+                <option value="experimental" {{if eq $mongotRepo "experimental"}}selected{{end}}>experimental</option>
               </select>
             </div>
             <div class="form-group">
@@ -526,18 +505,21 @@
             </div>
             <div class="form-group image-field" data-image-group="mongot" data-image-repo="mongodb-community-search" {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
               <label>mongot Image <span class="field-tip" data-tip="MongoDB Search / Vector Search Docker image tag used for mongot sidecars on shard data-bearing nodes.">ⓘ</span></label>
-              {{$curMongot := .Config.MongotImage}}{{$mongotNs := imageNamespace $curMongot "mongodb"}}
+              {{$curMongot := .Config.MongotImage}}{{$mongotNs := imageNamespace $curMongot "percona"}}{{$mongotRepo := imageRepository $curMongot "percona-search-mongodb"}}
               <div class="image-namespace-row">
-                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                <select class="docker-namespace-select" onchange="onDockerMongotNamespaceChange(this)">
+                  <option value="percona" {{if eq $mongotNs "percona"}}selected{{end}}>percona</option>
+                  <option value="perconalab" {{if eq $mongotNs "perconalab"}}selected{{end}}>perconalab</option>
                   <option value="mongodb" {{if eq $mongotNs "mongodb"}}selected{{end}}>mongodb</option>
-                  <option value="__custom__" {{if namespaceCustom $mongotNs}}selected{{end}}>custom</option>
+                  <option value="__custom__" {{if mongotNamespaceCustom $mongotNs}}selected{{end}}>custom</option>
                 </select>
-                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $mongotNs}}{{$mongotNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $mongotNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+                <input type="text" class="docker-namespace-custom" value="{{if mongotNamespaceCustom $mongotNs}}{{$mongotNs}}{{end}}" placeholder="namespace" {{if not (mongotNamespaceCustom $mongotNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
               </div>
+              <input type="text" class="docker-image-repository" value="{{$mongotRepo}}" placeholder="repository" aria-label="mongot image repository" {{if not (mongotNamespaceCustom $mongotNs)}}style="display:none"{{end}} onchange="onDockerImageRepositoryChange(this)">
               <select name="cluster_mongot_image[]" class="docker-tag-select" data-image-repo="mongodb-community-search">
                 {{range $.MongotImages}}
-                <option value="{{.}}" {{if tagSelected $curMongot (printf "%s/mongodb-community-search" $mongotNs) .}}selected{{end}}>
-                  {{$mongotNs}}/mongodb-community-search:{{.}}
+                <option value="{{.}}" {{if tagSelected $curMongot (printf "%s/%s" $mongotNs $mongotRepo) .}}selected{{end}}>
+                  {{$mongotNs}}/{{$mongotRepo}}:{{.}}
                 </option>
                 {{end}}
                 <option value="__custom__">Custom image…</option>
@@ -808,7 +790,7 @@
           </div>
           {{end}}
           {{if ne $p "docker"}}
-          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo .Config.MongotVersion}}
+          {{$packageConfigured := or .Config.MongoDBDistribution .Config.MongoRelease .Config.MongoVersion .Config.MongoRepo .Config.PbmVersion .Config.PbmRepo .Config.PmmClientVersion .Config.PmmClientRepo .Config.MongotRepo .Config.MongotVersion}}
           <div class="subsection-header">
             <span class="subsection-title">Package Overrides</span>
             <button type="button" class="btn btn-outline btn-sm package-toggle-btn"
@@ -825,7 +807,7 @@
                 <option value="enterprise" {{if eq $mongoDist "enterprise"}}selected{{end}}>MongoDB Enterprise</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-mongodb-repo>
               <label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this replica set. Defaults to release (GA).">ⓘ</span></label>
               {{$mongoRepo := strDefault .Config.MongoRepo "release"}}
               <select name="replset_mongo_repo[]" onchange="onPackageRepoChange(this, 'psmdb')">
@@ -908,10 +890,20 @@
           <div class="form-row" data-mongot-options {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
             <div class="form-group">
               <label>Search Implementation <span class="field-tip" data-tip="Auto selects Percona Search for PSMDB 8.3 and upstream Community mongot otherwise.">ⓘ</span></label>
-              <select name="replset_mongot_source[]">
-                <option value="auto" selected>Auto</option>
-                <option value="percona_package">Percona Search package</option>
-                <option value="community_tarball">MongoDB Community tarball</option>
+              {{$mongotSource := strDefault .Config.MongotSource "auto"}}
+              <select name="replset_mongot_source[]" onchange="onMongotSourceChange(this)">
+                <option value="auto" {{if eq $mongotSource "auto"}}selected{{end}}>Auto</option>
+                <option value="percona_package" {{if eq $mongotSource "percona_package"}}selected{{end}}>Percona Search package</option>
+                <option value="community_tarball" {{if eq $mongotSource "community_tarball"}}selected{{end}}>MongoDB Community tarball</option>
+              </select>
+            </div>
+            <div class="form-group" data-percona-search-repo>
+              <label>Percona Search Repository Channel <span class="field-tip" data-tip="Channel used when Percona Search is selected. Defaults to release (GA).">ⓘ</span></label>
+              {{$mongotRepo := strDefault .Config.MongotRepo "release"}}
+              <select name="replset_mongot_repo[]" onchange="onPackageRepoChange(this, 'ps4m')">
+                <option value="release" {{if eq $mongotRepo "release"}}selected{{end}}>release (GA)</option>
+                <option value="testing" {{if eq $mongotRepo "testing"}}selected{{end}}>testing</option>
+                <option value="experimental" {{if eq $mongotRepo "experimental"}}selected{{end}}>experimental</option>
               </select>
             </div>
             <div class="form-group">
@@ -1035,18 +1027,21 @@
             </div>
             <div class="form-group image-field" data-image-group="mongot" data-image-repo="mongodb-community-search" {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
               <label>mongot Image <span class="field-tip" data-tip="MongoDB Search / Vector Search Docker image tag used for mongot sidecars.">ⓘ</span></label>
-              {{$curMongot := .Config.MongotImage}}{{$mongotNs := imageNamespace $curMongot "mongodb"}}
+              {{$curMongot := .Config.MongotImage}}{{$mongotNs := imageNamespace $curMongot "percona"}}{{$mongotRepo := imageRepository $curMongot "percona-search-mongodb"}}
               <div class="image-namespace-row">
-                <select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)">
+                <select class="docker-namespace-select" onchange="onDockerMongotNamespaceChange(this)">
+                  <option value="percona" {{if eq $mongotNs "percona"}}selected{{end}}>percona</option>
+                  <option value="perconalab" {{if eq $mongotNs "perconalab"}}selected{{end}}>perconalab</option>
                   <option value="mongodb" {{if eq $mongotNs "mongodb"}}selected{{end}}>mongodb</option>
-                  <option value="__custom__" {{if namespaceCustom $mongotNs}}selected{{end}}>custom</option>
+                  <option value="__custom__" {{if mongotNamespaceCustom $mongotNs}}selected{{end}}>custom</option>
                 </select>
-                <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $mongotNs}}{{$mongotNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $mongotNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
+                <input type="text" class="docker-namespace-custom" value="{{if mongotNamespaceCustom $mongotNs}}{{$mongotNs}}{{end}}" placeholder="namespace" {{if not (mongotNamespaceCustom $mongotNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
               </div>
+              <input type="text" class="docker-image-repository" value="{{$mongotRepo}}" placeholder="repository" aria-label="mongot image repository" {{if not (mongotNamespaceCustom $mongotNs)}}style="display:none"{{end}} onchange="onDockerImageRepositoryChange(this)">
               <select name="replset_mongot_image[]" class="docker-tag-select" data-image-repo="mongodb-community-search">
                 {{range $.MongotImages}}
-                <option value="{{.}}" {{if tagSelected $curMongot (printf "%s/mongodb-community-search" $mongotNs) .}}selected{{end}}>
-                  {{$mongotNs}}/mongodb-community-search:{{.}}
+                <option value="{{.}}" {{if tagSelected $curMongot (printf "%s/%s" $mongotNs $mongotRepo) .}}selected{{end}}>
+                  {{$mongotNs}}/{{$mongotRepo}}:{{.}}
                 </option>
                 {{end}}
                 <option value="__custom__">Custom image…</option>
@@ -1415,7 +1410,6 @@
           Deploy Minio backup storage VM <span class="field-tip" data-tip="Deploy a dedicated Minio S3-compatible storage VM for backups.">ⓘ</span></label>
       </div>
     </div>
-    <p class="hint">Optional: deploy a dedicated VM running <a href="https://min.io" target="_blank">Minio</a> for S3-compatible backup storage, provisioned via Ansible.</p>
     <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio false)}}style="display:none"{{end}}>
       <div id="minio-details-body" {{if not $minioDetailsConfigured}}style="display:none"{{end}}>
         <span class="subsection-title">VM Details</span>
@@ -1632,12 +1626,16 @@
   <section class="form-section">
     <div class="section-header">
       <h2>Workload Generator</h2>
+    </div>
+    <div class="form-row" style="margin-bottom:0.5rem">
+      <div class="form-group form-group-checkbox">
       <label class="toggle-label">
         <input type="checkbox" id="enable_ycsb" name="enable_ycsb" value="true"
-               {{if .Config.EnableYcsb}}checked{{end}}
-               {{if eq $p "docker"}}onchange="toggleDockerYcsbSection(this)"{{end}}>
+                {{if .Config.EnableYcsb}}checked{{end}}
+                {{if eq $p "docker"}}onchange="toggleDockerYcsbSection(this)"{{end}}>
         Include YCSB <span class="field-tip" data-tip="Creates a dedicated YCSB workload generator for this environment. Available for Docker and all VM-based deployment types.">ⓘ</span>
       </label>
+      </div>
     </div>
     {{if eq $p "docker"}}
     <div id="ycsb-docker-body" style="{{if .Config.EnableYcsb}}{{else}}display:none{{end}}">
@@ -1663,12 +1661,16 @@
   <section class="form-section">
     <div class="section-header">
       <h2>LDAP Server</h2>
+    </div>
+    <div class="form-row" style="margin-bottom:0.5rem">
+      <div class="form-group form-group-checkbox">
       <label class="toggle-label">
         <input type="checkbox" id="enable_ldap" name="enable_ldap" value="true"
-               {{if .SortedLdap}}checked{{end}}
-               onchange="toggleCloudLdapSection(this)">
+                {{if .SortedLdap}}checked{{end}}
+                onchange="toggleCloudLdapSection(this)">
         Include LDAP <span class="field-tip" data-tip="Creates one OpenLDAP server and phpLDAPadmin host. All MongoDB clusters and replica sets in this environment use it for PLAIN authentication.">ⓘ</span>
       </label>
+      </div>
     </div>
     <div id="ldap-cloud-body" style="{{if .SortedLdap}}{{else}}display:none{{end}}">
       <div class="form-row">
@@ -1753,6 +1755,45 @@
       </div>
     </div>
   </section>
+
+  {{if eq $p "chaos"}}
+  <section class="form-section">
+    <div class="section-header">
+      <h2>CHAOS Settings</h2>
+      <button type="button" class="btn btn-outline btn-sm" id="chaos-settings-toggle"
+              onclick="toggleChaosSettings(this)">▼ Customize</button>
+    </div>
+    <div id="chaos-settings-body" style="display:none">
+      <div class="form-row">
+        <div class="form-group form-group-full">
+          <label>Firewall Access Rules <span class="field-tip" data-tip="Define ingress rules: each specifies a source CIDR and destination port. Leave empty for no restrictions.">ⓘ</span></label>
+          <div id="firewall-rules-container" style="margin-top:0.5rem">
+            {{range .Config.FirewallRules}}
+            <div class="firewall-rule-row" style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.4rem">
+              <input type="text" name="fw_cidr[]" value="{{.CIDR}}" placeholder="0.0.0.0/0" style="flex:2">
+              <input type="text" name="fw_port[]" value="{{.Port}}" placeholder="22" style="flex:1">
+              <input type="text" name="fw_comment[]" value="{{.Comment}}" placeholder="Comment (optional)" style="flex:3">
+              <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.firewall-rule-row').remove()">✕</button>
+            </div>
+            {{end}}
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.4rem" onclick="addFirewallRule()">+ Add Rule</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="delete_after_days">Delete After <span class="field-tip" data-tip="CHAOS will automatically delete instances after the selected retention. Choose Never to omit delete_after_days from the Terraform provider request.">ⓘ</span></label>
+          <select id="delete_after_days" name="delete_after_days">
+            <option value="7" {{if eq .Config.DeleteAfterDays 7}}selected{{end}}>7 days</option>
+            <option value="14" {{if eq .Config.DeleteAfterDays 14}}selected{{end}}>14 days</option>
+            <option value="30" {{if eq .Config.DeleteAfterDays 30}}selected{{end}}>30 days</option>
+            <option value="" {{if eq .Config.DeleteAfterDays 0}}selected{{end}}>Never</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+  {{end}}
 
   <!-- ──────────── Ansible Variable Overrides (cloud only) ──────────── -->
   {{if ne $p "docker"}}
@@ -1970,6 +2011,10 @@ function onDockerPbmFeatureToggle(checkbox) {
 
 function onDockerMongotFeatureToggle(checkbox) {
   toggleImageGroup(checkbox, 'mongot');
+  if (!checkbox.checked) return;
+  const group = checkbox.closest('.component-block')?.querySelector('[data-image-group="mongot"]');
+  const namespace = group?.querySelector('.docker-namespace-select');
+  if (namespace) onDockerImageNamespaceChange(namespace);
 }
 
 function onMongotFeatureToggle(checkbox) {
@@ -1978,6 +2023,19 @@ function onMongotFeatureToggle(checkbox) {
   block.querySelectorAll('[data-mongot-options]').forEach(el => {
     el.style.display = checkbox.checked ? '' : 'none';
   });
+  syncPerconaSearchRepoControl(block);
+}
+
+function syncPerconaSearchRepoControl(block) {
+  const source = block.querySelector('select[name="cluster_mongot_source[]"], select[name="replset_mongot_source[]"]');
+  block.querySelectorAll('[data-percona-search-repo]').forEach(el => {
+    el.style.display = source?.value === 'community_tarball' ? 'none' : '';
+  });
+}
+
+function onMongotSourceChange(select) {
+  const block = select.closest('.component-block');
+  if (block) syncPerconaSearchRepoControl(block);
 }
 
 // Show or hide a credential row inside the Credentials section based on whether
@@ -2063,6 +2121,14 @@ function toggleMinioDetails(btn) {
 
 function toggleCredentials(btn) {
   const body = document.getElementById('credentials-body');
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
+}
+
+function toggleChaosSettings(btn) {
+  const body = document.getElementById('chaos-settings-body');
   if (!body) return;
   const hidden = body.style.display === 'none';
   body.style.display = hidden ? '' : 'none';
@@ -2162,6 +2228,7 @@ function syncMongoDBDistributionControls(block, prefix) {
   const distribution = selectedMongoDBDistribution(block, prefix);
   const repoSel = packageSelect(block, prefix, 'mongo_repo');
   if (repoSel) {
+    repoSel.closest('[data-mongodb-repo]')?.style.setProperty('display', distribution === 'psmdb' ? '' : 'none');
     repoSel.disabled = distribution !== 'psmdb';
     if (distribution !== 'psmdb') repoSel.value = 'release';
   }
@@ -2200,7 +2267,7 @@ function packageMajorField(product) {
 }
 
 function packageVersionField(product) {
-  return product === 'pbm' ? 'pbm_version' : 'pmm_client_version';
+  return product === 'ps4m' ? 'mongot_version' : product === 'pbm' ? 'pbm_version' : 'pmm_client_version';
 }
 
 let packageVersionRefreshDepth = 0;
@@ -2256,7 +2323,7 @@ function refreshPackageMinorOptions(block, prefix, product) {
 
 async function refreshPackageVersions(block, prefix, product) {
   if (!block || !prefix || PLATFORM === 'docker') return;
-  const repoField = product === 'psmdb' ? 'mongo_repo' : product === 'pbm' ? 'pbm_repo' : 'pmm_client_repo';
+  const repoField = product === 'psmdb' ? 'mongo_repo' : product === 'pbm' ? 'pbm_repo' : product === 'ps4m' ? 'mongot_repo' : 'pmm_client_repo';
   const channel = packageSelect(block, prefix, repoField)?.value || 'release';
   const osImage = selectedPackageOsImage(block, prefix);
   const distribution = product === 'psmdb' ? selectedMongoDBDistribution(block, prefix) : 'psmdb';
@@ -2266,6 +2333,8 @@ async function refreshPackageVersions(block, prefix, product) {
 
   const affected = product === 'psmdb'
     ? [packageSelect(block, prefix, 'mongo_release'), packageSelect(block, prefix, 'mongo_version')]
+    : product === 'ps4m'
+      ? [packageSelect(block, prefix, 'mongot_version')]
     : [packageSelect(block, prefix, packageMajorField(product)), packageSelect(block, prefix, packageVersionField(product))];
   const affectedStates = affected.map(sel => [sel, sel ? sel.disabled : false]);
   affected.forEach(sel => { if (sel) sel.disabled = true; });
@@ -2284,6 +2353,8 @@ async function refreshPackageVersions(block, prefix, product) {
         setSelectOptionsNoEmpty(releaseSel, data.major_versions || []);
         onMongoReleaseChange(releaseSel);
       }
+    } else if (product === 'ps4m') {
+      setSelectOptions(packageSelect(block, prefix, 'mongot_version'), data.versions || []);
     } else {
       const majorSel = packageSelect(block, prefix, packageMajorField(product));
       const versions = data.versions || [];
@@ -2325,7 +2396,7 @@ function onPackageMajorChange(sel, product) {
 function onPackageOsImageChange(sel) {
   const block = packageBlockForField(sel);
   const prefix = packageFieldPrefix(sel);
-  withPackageVersionDialog(() => Promise.all(['psmdb', 'pbm', 'pmm_client'].map(product => refreshPackageVersions(block, prefix, product))));
+  withPackageVersionDialog(() => Promise.all(['psmdb', 'pbm', 'pmm_client', 'ps4m'].map(product => refreshPackageVersions(block, prefix, product))));
 }
 
 function refreshAllPackageVersions(block) {
@@ -2333,7 +2404,7 @@ function refreshAllPackageVersions(block) {
   const prefix = packageFieldPrefix(marker);
   if (!prefix) return;
   syncMongoDBDistributionControls(block, prefix);
-  return Promise.all(['psmdb', 'pbm', 'pmm_client'].map(product => refreshPackageVersions(block, prefix, product)));
+  return Promise.all(['psmdb', 'pbm', 'pmm_client', 'ps4m'].map(product => refreshPackageVersions(block, prefix, product)));
 }
 
 // Cascade: when the major MongoDB release (psmdb-70, psmdb-80…) changes,
@@ -2446,8 +2517,19 @@ function dockerImageNamespaceForField(field) {
   return sel?.value || 'percona';
 }
 
+function dockerImageRepositoryForField(field, fallback = '') {
+  const group = field.closest('.image-field');
+  const namespace = group?.querySelector('.docker-namespace-select');
+  const custom = group?.querySelector('.docker-image-repository');
+  if (group?.dataset.imageGroup === 'mongot') {
+    if (namespace?.value === '__custom__') return custom?.value.trim() || defaultMongotImageRepository('');
+    return defaultMongotImageRepository(namespace?.value || 'mongodb');
+  }
+  return (custom?.value || group?.dataset.imageRepo || fallback).trim();
+}
+
 function setDockerImageOptions(tagSelect, tags, selectedTag) {
-  const repo = tagSelect.dataset.imageRepo || tagSelect.closest('.image-field')?.dataset.imageRepo || '';
+  const repo = dockerImageRepositoryForField(tagSelect);
   const ns = dockerImageNamespaceForField(tagSelect);
   const current = selectedTag || tagSelect.value || 'latest';
   tagSelect.innerHTML = '';
@@ -2471,26 +2553,56 @@ async function onDockerImageNamespaceChange(el) {
   if (custom) {
     custom.style.display = nsSel && nsSel.value === '__custom__' ? '' : 'none';
   }
+  syncDockerMongotRepositoryControl(group);
   const tagSelect = group.querySelector('.docker-tag-select');
   if (!tagSelect) return;
-  const repo = tagSelect.dataset.imageRepo || group.dataset.imageRepo;
+  const repo = dockerImageRepositoryForField(tagSelect);
   const namespace = dockerImageNamespaceForField(group);
   const previous = tagSelect.value;
   if (!repo || !namespace) return;
+  const request = String((Number(group.dataset.dockerTagRequest) || 0) + 1);
+  group.dataset.dockerTagRequest = request;
   tagSelect.disabled = true;
   try {
     const resp = await fetch(`/api/docker-tags?namespace=${encodeURIComponent(namespace)}&repo=${encodeURIComponent(repo)}`);
     const data = await resp.json();
+    if (group.dataset.dockerTagRequest !== request) return;
     setDockerImageOptions(tagSelect, data.tags || [], previous);
   } catch (_) {
+    if (group.dataset.dockerTagRequest !== request) return;
     setDockerImageOptions(tagSelect, Array.from(tagSelect.options).map(o => o.value).filter(v => v && v !== '__custom__'), previous);
   } finally {
-    tagSelect.disabled = false;
+    if (group.dataset.dockerTagRequest === request) tagSelect.disabled = false;
   }
 }
 
+function defaultMongotImageRepository(namespace) {
+  return namespace === 'mongodb' ? 'mongodb-community-search' : 'percona-search-mongodb';
+}
+
+function syncDockerMongotRepositoryControl(group) {
+  if (group?.dataset.imageGroup !== 'mongot') return;
+  const namespace = group.querySelector('.docker-namespace-select');
+  const repository = group.querySelector('.docker-image-repository');
+  if (!repository) return;
+  const custom = namespace?.value === '__custom__';
+  repository.style.display = custom ? '' : 'none';
+  if (custom && !repository.value.trim()) repository.value = defaultMongotImageRepository('');
+}
+
+function onDockerMongotNamespaceChange(el) {
+  const group = el.closest('.image-field');
+  const repository = group?.querySelector('.docker-image-repository');
+  if (repository && el.value === '__custom__') repository.value = defaultMongotImageRepository('');
+  onDockerImageNamespaceChange(el);
+}
+
+function onDockerImageRepositoryChange(el) {
+  onDockerImageNamespaceChange(el);
+}
+
 function dockerImageRepoForSelect(tagSelect, imageName) {
-  return `${dockerImageNamespaceForField(tagSelect)}/${imageName}`;
+  return `${dockerImageNamespaceForField(tagSelect)}/${dockerImageRepositoryForField(tagSelect, imageName)}`;
 }
 
 function pmmServerImageSource() {
@@ -2646,18 +2758,19 @@ function selectedPmmServerImageValue() {
 
 function buildDockerImageRows(type) {
   if (type !== 'cluster' && type !== 'replset') return '';
-  const namespaceControl = (defaultNs = 'percona') => `<div class="image-namespace-row"><select class="docker-namespace-select" onchange="onDockerImageNamespaceChange(this)"><option value="percona"${defaultNs === 'percona' ? ' selected' : ''}>percona</option><option value="perconalab"${defaultNs === 'perconalab' ? ' selected' : ''}>perconalab</option><option value="mongodb"${defaultNs === 'mongodb' ? ' selected' : ''}>mongodb</option><option value="__custom__">custom</option></select><input type="text" class="docker-namespace-custom" placeholder="namespace" style="display:none" oninput="onDockerImageNamespaceChange(this)"></div>`;
+  const namespaceControl = (defaultNs = 'percona', mongot = false) => `<div class="image-namespace-row"><select class="docker-namespace-select" onchange="${mongot ? 'onDockerMongotNamespaceChange' : 'onDockerImageNamespaceChange'}(this)"><option value="percona"${defaultNs === 'percona' ? ' selected' : ''}>percona</option><option value="perconalab"${defaultNs === 'perconalab' ? ' selected' : ''}>perconalab</option><option value="mongodb"${defaultNs === 'mongodb' ? ' selected' : ''}>mongodb</option><option value="__custom__">custom</option></select><input type="text" class="docker-namespace-custom" placeholder="namespace" style="display:none" oninput="onDockerImageNamespaceChange(this)"></div>`;
   const psmdbSel = PSMDB_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/percona-server-mongodb:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
   const pbmSel   = PBM_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/percona-backup-mongodb:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
   const pmmcSel  = PMM_CLIENT_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/pmm-client:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
-  const mongotSel = MONGOT_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>mongodb/mongodb-community-search:${escHtml(t)}</option>`).join('') +
+  const mongotSel = MONGOT_IMAGES.map(t => `<option value="${escHtml(t)}"${t === 'latest' ? ' selected' : ''}>percona/percona-search-mongodb:${escHtml(t)}</option>`).join('') +
     `<option value="__custom__">Custom…</option>`;
   const makeImageGroup = (label, tip, selectName, options, dataGroup, repo) => `
     <div class="form-group image-field" data-image-repo="${repo}"${dataGroup ? ` data-image-group="${dataGroup}" style="display:none"` : ''}><label>${label} <span class="field-tip" data-tip="${tip}">ⓘ</span></label>
-      ${namespaceControl(repo === 'mongodb-community-search' ? 'mongodb' : 'percona')}
+      ${namespaceControl(dataGroup === 'mongot' ? 'percona' : repo === 'mongodb-community-search' ? 'mongodb' : 'percona', dataGroup === 'mongot')}
+      ${dataGroup === 'mongot' ? `<input type="text" class="docker-image-repository" value="${escHtml(repo)}" placeholder="repository" aria-label="mongot image repository" style="display:none" onchange="onDockerImageRepositoryChange(this)">` : ''}
       <div class="image-select-wrapper">
         <select name="${type}_${selectName}" class="docker-tag-select" data-image-repo="${repo}" onchange="toggleCustomImageInput(this)">${options}</select>
         <input type="text" class="custom-image-input" name="${type}_${selectName}_custom"
@@ -2738,7 +2851,7 @@ function buildPackageOverrideRows(type) {
           <option value="community">MongoDB Community</option>
           <option value="enterprise">MongoDB Enterprise</option>
         </select></div>
-      <div class="form-group"><label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this ${label}. Defaults to release (GA).">ⓘ</span></label>
+      <div class="form-group" data-mongodb-repo><label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this ${label}. Defaults to release (GA).">ⓘ</span></label>
         <select name="${type}_mongo_repo[]" onchange="onPackageRepoChange(this, 'psmdb')">${repoOptions}</select></div>
       <div class="form-group"><label>MongoDB Major Version <span class="field-tip" data-tip="PSMDB major release line for this ${label}. Defaults to the latest listed release line.">ⓘ</span></label>
         <select name="${type}_mongo_release[]" onchange="onMongoReleaseChange(this)">${mongoReleaseOptions}</select></div>
@@ -2763,7 +2876,9 @@ function buildPackageOverrideRows(type) {
     </div>
     <div class="form-row" data-mongot-options style="display:none">
       <div class="form-group"><label>Search Implementation</label>
-        <select name="${type}_mongot_source[]"><option value="auto" selected>Auto</option><option value="percona_package">Percona Search package</option><option value="community_tarball">MongoDB Community tarball</option></select></div>
+        <select name="${type}_mongot_source[]" onchange="onMongotSourceChange(this)"><option value="auto" selected>Auto</option><option value="percona_package">Percona Search package</option><option value="community_tarball">MongoDB Community tarball</option></select></div>
+      <div class="form-group" data-percona-search-repo><label>Percona Search Repository Channel <span class="field-tip" data-tip="Channel used when Percona Search is selected. Defaults to release (GA).">ⓘ</span></label>
+        <select name="${type}_mongot_repo[]" onchange="onPackageRepoChange(this, 'ps4m')">${repoOptions}</select></div>
       <div class="form-group"><label>mongot Version <span class="field-tip" data-tip="Search implementation version. Percona package versions include the package release suffix; Community versions use upstream version syntax.">ⓘ</span></label>
         <select name="${type}_mongot_version[]">${mongotVersionOptions}</select></div>
     </div>
@@ -3002,6 +3117,7 @@ function addCluster() {
     </div>`;
   document.getElementById('clusters-container').appendChild(c);
   c.querySelectorAll('select[name="cluster_mongo_release[]"]').forEach(onMongoReleaseChange);
+  syncPerconaSearchRepoControl(c);
   if (PLATFORM !== 'docker') refreshAllPackageVersions(c);
   syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
   syncDockerMinioDependencies(document.getElementById('enable-minio-docker')?.checked);
@@ -3041,6 +3157,7 @@ function addReplset() {
     </div>`;
   document.getElementById('replsets-container').appendChild(c);
   c.querySelectorAll('select[name="replset_mongo_release[]"]').forEach(onMongoReleaseChange);
+  syncPerconaSearchRepoControl(c);
   if (PLATFORM !== 'docker') refreshAllPackageVersions(c);
   syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
   syncDockerMinioDependencies(document.getElementById('enable-minio-docker')?.checked);
@@ -3343,7 +3460,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('pmm_image_source')?.addEventListener('change', onPmmServerImageSourceChange);
     document.getElementById('pmm_image_channel')?.addEventListener('change', onPmmServerImageChannelChange);
     document.getElementById('pmm_image_source_custom')?.addEventListener('input', onPmmServerImageSourceChange);
-    document.querySelectorAll('#clusters-container > .component-block, #replsets-container > .component-block').forEach(refreshAllPackageVersions);
+    document.querySelectorAll('#clusters-container > .component-block, #replsets-container > .component-block').forEach(block => {
+      syncPerconaSearchRepoControl(block);
+      refreshAllPackageVersions(block);
+    });
     refreshPmmServerImageTags({ preserveUnmatched: true });
   }
 
@@ -3507,6 +3627,7 @@ function copyPackageOverrides(block, target, prefix) {
     'pmm_client_version',
     'pmm_client_repo',
     'mongot_source',
+    'mongot_repo',
     'os_image',
   ].forEach(field => {
     const value = getBlockFieldValue(block, `${prefix}_${field}[]`).trim();

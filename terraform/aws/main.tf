@@ -43,7 +43,7 @@ module "mongodb_clusters" {
   mongos_type           = var.mongos_type
   arbiter_type          = var.arbiter_type
 
-  depends_on = [aws_s3_bucket.mongo_backups, aws_subnet.vpc-subnet, aws_key_pair.my_key_pair]
+  depends_on = [aws_s3_bucket.mongo_backups, aws_subnet.vpc-subnet, aws_key_pair.my_key_pair, aws_route53_zone.private_zone]
 }
 
 module "mongodb_replsets" {
@@ -70,5 +70,5 @@ module "mongodb_replsets" {
   replsetsvr_volume_size = var.replsetsvr_volume_size
   arbiter_type           = var.arbiter_type
 
-  depends_on = [aws_s3_bucket.mongo_backups, aws_subnet.vpc-subnet, aws_key_pair.my_key_pair]
+  depends_on = [aws_s3_bucket.mongo_backups, aws_subnet.vpc-subnet, aws_key_pair.my_key_pair, aws_route53_zone.private_zone]
 }

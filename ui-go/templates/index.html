@@ -275,6 +275,16 @@ function openPlatformSettings() {
   ['aws', 'gcp', 'azure'].forEach(platform => testProviderAuth(platform, false));
 }
 
+function openRequestedSettings() {
+  const platform = new URLSearchParams(window.location.search).get('settings');
+  if (!['aws', 'gcp', 'azure', 'chaos', 'docker'].includes(platform)) return;
+  openPlatformSettings();
+  switchSettingsTab(platform);
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+openRequestedSettings();
+
 function closePlatformSettings() {
   document.getElementById('platform-settings-modal').style.display = 'none';
 }

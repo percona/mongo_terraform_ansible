@@ -20,8 +20,10 @@ Supported platforms:
 
 Clusters and replica sets can enable MongoDB Search / Vector Search from the configuration wizard.
 
-- Docker deployments run `mongot` sidecars from the selected
-  `mongodb/mongodb-community-search` image.
+- Docker deployments run `mongot` sidecars from a selectable Docker Hub
+  namespace and repository. The UI queries tags for the selected image, with
+  `mongodb/mongodb-community-search` and
+  `perconalab/percona-search-mongodb` available by default.
 - Cloud and CHAOS deployments support the Percona Search package and the MongoDB
   Community `mongot` tarball. **Auto** selects Percona Search for PSMDB 8.3 and
   the Community implementation otherwise.

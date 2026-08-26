@@ -48,7 +48,8 @@
         that:
           - mongodb_distribution_effective == 'psmdb'
           - mongo_release_effective == 'psmdb-83'
-        fail_msg: "Percona Search currently requires mongodb_distribution=psmdb and mongo_release=psmdb-83. Use mongot_source=community_tarball for other MongoDB releases."
+          - mongot_repo_effective in ['release', 'testing', 'experimental']
+        fail_msg: "Percona Search requires mongodb_distribution=psmdb, mongo_release=psmdb-83, and mongot_repo=release, testing, or experimental. Use mongot_source=community_tarball for other MongoDB releases."
       when: percona_search_effective | bool
 
     - name: Load OS-specific variables
@@ -139,7 +140,7 @@
       when: mongodb_distribution_effective == 'psmdb'
 
     - name: Enable Percona Search repository
-      command: "/usr/bin/percona-release enable ps4m release"
+      command: "/usr/bin/percona-release enable ps4m {{ mongot_repo_effective }}"
       when:
         - percona_search_effective | bool
         - "'shards' in group_names or 'replsets' in group_names"

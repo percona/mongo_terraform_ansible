@@ -145,6 +145,8 @@ mongot_version_effective: "{{ mongot_version | default(mongot_version_default, t
 mongot_source_requested: "{{ mongot_source | default('auto', true) | trim }}"
 mongot_source_effective: "{{ 'percona_package' if mongot_source_requested == 'percona_package' or (mongot_source_requested == 'auto' and mongodb_distribution_effective == 'psmdb' and mongo_release_effective == 'psmdb-83') else 'community_tarball' }}"
 percona_search_effective: "{{ enable_mongot_effective | bool and mongot_source_effective == 'percona_package' }}"
+mongot_repo_default: release
+mongot_repo_effective: "{{ mongot_repo | default(mongot_repo_default, true) | trim }}"
 mongot_package: percona-search-mongodb
 mongot_port: 27028
 mongot_metrics_port: 9946

@@ -35,8 +35,8 @@ resource "local_file" "AnsibleInventoryCluster" {
     ssh_private_key_path = var.ssh_private_key_path
     hostname_pmm         = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
     ip_pmm               = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
-    hostname_ca          = var.enable_tls ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
-    ip_ca                = var.enable_tls ? (var.ca_placement == "dedicated" ? try(aws_instance.ca[0].public_ip, "") : try(aws_instance.pmm[0].public_ip, "")) : ""
+    hostname_ca          = var.enable_ca ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
+    ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(aws_instance.ca[0].public_ip, "") : try(aws_instance.pmm[0].public_ip, "")) : ""
     hostname_ycsb        = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
     ip_ycsb              = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
     bucket               = aws_s3_bucket.mongo_backups.bucket
@@ -45,7 +45,7 @@ resource "local_file" "AnsibleInventoryCluster" {
     cluster              = each.value.cluster
     env_tag              = each.value.env_tag
     enable_pmm           = var.enable_pmm
-    enable_tls           = var.clusters[each.key].enable_tls
+    use_tls              = var.clusters[each.key].use_tls
     ca_placement         = var.ca_placement
     enable_pmm_agent     = var.enable_pmm && var.clusters[each.key].enable_pmm
     pmm_image            = var.pmm_image
@@ -133,7 +133,7 @@ resource "local_file" "AnsibleInventoryRS" {
     rs_name              = each.value.rs_name
     env_tag              = each.value.env_tag
     enable_pmm           = var.enable_pmm
-    enable_tls           = var.replsets[each.key].enable_tls
+    use_tls              = var.replsets[each.key].use_tls
     ca_placement         = var.ca_placement
     enable_pmm_agent     = var.enable_pmm && var.replsets[each.key].enable_pmm
     pmm_image            = var.pmm_image
@@ -160,8 +160,8 @@ resource "local_file" "AnsibleInventoryRS" {
     region        = aws_s3_bucket.mongo_backups.region
     hostname_pmm  = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
     ip_pmm        = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
-    hostname_ca   = var.enable_tls ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
-    ip_ca         = var.enable_tls ? (var.ca_placement == "dedicated" ? try(aws_instance.ca[0].public_ip, "") : try(aws_instance.pmm[0].public_ip, "")) : ""
+    hostname_ca   = var.enable_ca ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
+    ip_ca         = var.enable_ca ? (var.ca_placement == "dedicated" ? try(aws_instance.ca[0].public_ip, "") : try(aws_instance.pmm[0].public_ip, "")) : ""
     hostname_ycsb = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
     ip_ycsb       = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
     bucket        = aws_s3_bucket.mongo_backups.bucket

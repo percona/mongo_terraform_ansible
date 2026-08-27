@@ -49,13 +49,13 @@ func TestCloudTLSConfigurationFields(t *testing.T) {
 	}
 	page := string(content)
 	for _, want := range []string{
-		`name="cluster_enable_tls[]"`,
-		`name="replset_enable_tls[]"`,
+		`name="cluster_use_tls[]"`,
+		`name="replset_use_tls[]"`,
 		`name="ca_placement"`,
 		`name="enable_ca"`,
 		`id="ca-settings-body"`,
 		`config.enable_ca = fd.has('enable_ca')`,
-		`config.enable_tls = [...Object.values(config.clusters), ...Object.values(config.replsets)].some(item => item.enable_tls)`,
+		`config.use_tls = [...Object.values(config.clusters), ...Object.values(config.replsets)].some(item => item.use_tls)`,
 		`config.ca_placement = fd.get('ca_placement') || 'dedicated'`,
 		`<h2>Certificate Authority</h2>`,
 		`['aws', 'gcp', 'azure', 'chaos'].includes(PLATFORM)`,
@@ -88,13 +88,27 @@ func TestMongoTemplatesPreferTLS(t *testing.T) {
 			t.Errorf("%s still configures requireTLS", name)
 		}
 	}
+}
 
-	mainPlaybook, err := os.ReadFile(filepath.Join("..", "ansible", "main.yml"))
-	if err != nil {
-		t.Fatalf("read main playbook: %v", err)
-	}
-	if !strings.Contains(string(mainPlaybook), "TLS variable mismatch") {
-		t.Error("main playbook is missing the TLS precedence guard")
+func TestCloudInventoriesUseCanonicalTLSVariable(t *testing.T) {
+	for _, platform := range []string{"aws", "gcp", "azure", "chaos"} {
+		for _, topology := range []string{"cluster", "replset"} {
+			name := platform + "/" + topology
+			t.Run(name, func(t *testing.T) {
+				path := filepath.Join("..", "terraform", platform, topology+"_inventory.tmpl")
+				content, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatalf("read %s: %v", path, err)
+				}
+				template := string(content)
+				if strings.Count(template, "use_tls=${use_tls}") != 1 {
+					t.Errorf("%s must emit exactly one canonical use_tls variable", path)
+				}
+				if strings.Contains(template, "enable_tls") {
+					t.Errorf("%s still emits legacy enable_tls", path)
+				}
+			})
+		}
 	}
 }
 

@@ -23,7 +23,7 @@ variable "clusters" {
     mongos_count         = optional(number, 2)
     bind_to_localhost    = optional(bool, false)
     enable_audit         = optional(bool, false)
-    enable_tls           = optional(bool, false)
+    use_tls              = optional(bool, false)
     audit_filter         = optional(string, "")
     mongodb_distribution = optional(string, "")
     mongo_release        = optional(string, "")
@@ -56,7 +56,7 @@ variable "replsets" {
     arbiters_per_replset   = optional(number, 1)
     bind_to_localhost      = optional(bool, false)
     enable_audit           = optional(bool, false)
-    enable_tls             = optional(bool, false)
+    use_tls                = optional(bool, false)
     audit_filter           = optional(string, "")
     mongodb_distribution   = optional(string, "")
     mongo_release          = optional(string, "")
@@ -184,10 +184,10 @@ variable "enable_pmm" {
 # TLS CA
 ################
 
-variable "enable_tls" {
+variable "enable_ca" {
   type        = bool
   default     = false
-  description = "Enable TLS and add a certificate authority host to generated inventories."
+  description = "Provision a certificate authority host and add it to generated inventories."
 }
 
 variable "ca_placement" {
@@ -201,8 +201,8 @@ variable "ca_placement" {
   }
 
   validation {
-    condition     = !var.enable_tls || var.ca_placement != "pmm" || var.enable_pmm
-    error_message = "enable_pmm must be true when TLS is enabled with ca_placement set to pmm."
+    condition     = !var.enable_ca || var.ca_placement != "pmm" || var.enable_pmm
+    error_message = "enable_pmm must be true when CA provisioning is enabled with ca_placement set to pmm."
   }
 }
 

@@ -396,7 +396,7 @@ variable "ldap_user_search_base" {
 # Encryption
 ############
 
-variable "enable_tls" {
+variable "use_tls" {
   type    = bool
   default = true
 }

@@ -37,7 +37,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       cluster              = each.value.cluster
       env_tag              = each.value.env_tag
       enable_pmm           = var.enable_pmm
-      enable_tls           = var.clusters[each.key].enable_tls
+      use_tls              = var.clusters[each.key].use_tls
       ca_placement         = var.ca_placement
       enable_pmm_agent     = var.enable_pmm && var.clusters[each.key].enable_pmm
       pmm_image            = var.pmm_image
@@ -63,8 +63,8 @@ resource "local_file" "AnsibleInventoryCluster" {
 
       hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
       ip_pmm               = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
-      hostname_ca          = var.enable_tls ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
-      ip_ca                = var.enable_tls ? (var.ca_placement == "dedicated" ? try(google_compute_instance.ca[0].network_interface.0.access_config.0.nat_ip, "") : try(google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip, "")) : ""
+      hostname_ca          = var.enable_ca ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
+      ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(google_compute_instance.ca[0].network_interface.0.access_config.0.nat_ip, "") : try(google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
       bucket               = google_storage_bucket.mongo-backups.name
@@ -133,7 +133,7 @@ resource "local_file" "AnsibleInventoryRS" {
       rs_name              = each.value.rs_name
       env_tag              = each.value.env_tag
       enable_pmm           = var.enable_pmm
-      enable_tls           = var.replsets[each.key].enable_tls
+      use_tls              = var.replsets[each.key].use_tls
       ca_placement         = var.ca_placement
       enable_pmm_agent     = var.enable_pmm && var.replsets[each.key].enable_pmm
       pmm_image            = var.pmm_image
@@ -158,8 +158,8 @@ resource "local_file" "AnsibleInventoryRS" {
       ldap_mongodb_users   = var.replsets[each.key].ldap_server != "" ? jsonencode(var.ldap_servers[var.replsets[each.key].ldap_server].mongodb_users) : "[]"
       hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
       ip_pmm               = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
-      hostname_ca          = var.enable_tls ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
-      ip_ca                = var.enable_tls ? (var.ca_placement == "dedicated" ? try(google_compute_instance.ca[0].network_interface.0.access_config.0.nat_ip, "") : try(google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip, "")) : ""
+      hostname_ca          = var.enable_ca ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
+      ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(google_compute_instance.ca[0].network_interface.0.access_config.0.nat_ip, "") : try(google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
       bucket               = google_storage_bucket.mongo-backups.name

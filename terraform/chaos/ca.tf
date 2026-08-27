@@ -1,5 +1,5 @@
 resource "chaos_instance" "ca" {
-  count             = var.enable_tls && var.ca_placement == "dedicated" ? 1 : 0
+  count             = var.enable_ca && var.ca_placement == "dedicated" ? 1 : 0
   name              = local.ca_host
   os                = var.os_image
   cpu_cores         = var.ca_cpu_cores

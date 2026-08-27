@@ -37,7 +37,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       cluster              = each.value.cluster
       env_tag              = each.value.env_tag
       enable_pmm           = var.enable_pmm
-      enable_tls           = var.clusters[each.key].enable_tls
+      use_tls              = var.clusters[each.key].use_tls
       ca_placement         = var.ca_placement
       enable_pmm_agent     = var.enable_pmm && var.clusters[each.key].enable_pmm
       pmm_image            = var.pmm_image
@@ -64,8 +64,8 @@ resource "local_file" "AnsibleInventoryCluster" {
       location             = each.value.location
       hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
       ip_pmm               = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
-      hostname_ca          = var.enable_tls ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
-      ip_ca                = var.enable_tls ? (var.ca_placement == "dedicated" ? try(azurerm_linux_virtual_machine.ca[0].public_ip_address, "") : try(azurerm_linux_virtual_machine.pmm[0].public_ip_address, "")) : ""
+      hostname_ca          = var.enable_ca ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
+      ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(azurerm_linux_virtual_machine.ca[0].public_ip_address, "") : try(azurerm_linux_virtual_machine.pmm[0].public_ip_address, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
       bucket               = azurerm_storage_container.mongo_backups_container.name
@@ -135,7 +135,7 @@ resource "local_file" "AnsibleInventoryRS" {
       rs_name              = each.value.rs_name
       env_tag              = each.value.env_tag
       enable_pmm           = var.enable_pmm
-      enable_tls           = var.replsets[each.key].enable_tls
+      use_tls              = var.replsets[each.key].use_tls
       ca_placement         = var.ca_placement
       enable_pmm_agent     = var.enable_pmm && var.replsets[each.key].enable_pmm
       pmm_image            = var.pmm_image
@@ -161,8 +161,8 @@ resource "local_file" "AnsibleInventoryRS" {
       location             = each.value.location
       hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
       ip_pmm               = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
-      hostname_ca          = var.enable_tls ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
-      ip_ca                = var.enable_tls ? (var.ca_placement == "dedicated" ? try(azurerm_linux_virtual_machine.ca[0].public_ip_address, "") : try(azurerm_linux_virtual_machine.pmm[0].public_ip_address, "")) : ""
+      hostname_ca          = var.enable_ca ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
+      ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(azurerm_linux_virtual_machine.ca[0].public_ip_address, "") : try(azurerm_linux_virtual_machine.pmm[0].public_ip_address, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
       bucket               = azurerm_storage_container.mongo_backups_container.name

@@ -1,5 +1,5 @@
 resource "aws_instance" "ca" {
-  count             = var.enable_tls && var.ca_placement == "dedicated" ? 1 : 0
+  count             = var.enable_ca && var.ca_placement == "dedicated" ? 1 : 0
   ami               = lookup(var.image, var.region)
   instance_type     = var.ca_type
   availability_zone = aws_subnet.vpc-subnet[0].availability_zone
@@ -28,7 +28,7 @@ resource "aws_instance" "ca" {
 }
 
 resource "aws_security_group" "ca" {
-  count       = var.enable_tls && var.ca_placement == "dedicated" ? 1 : 0
+  count       = var.enable_ca && var.ca_placement == "dedicated" ? 1 : 0
   name        = "${local.ca_host}-sg"
   description = "Allow SSH access to the dedicated CA instance"
   vpc_id      = aws_vpc.vpc-network.id
@@ -39,7 +39,7 @@ resource "aws_security_group" "ca" {
 }
 
 resource "aws_security_group_rule" "ca_ssh_inbound" {
-  count             = var.enable_tls && var.ca_placement == "dedicated" ? 1 : 0
+  count             = var.enable_ca && var.ca_placement == "dedicated" ? 1 : 0
   type              = "ingress"
   from_port         = 22
   to_port           = 22
@@ -50,7 +50,7 @@ resource "aws_security_group_rule" "ca_ssh_inbound" {
 }
 
 resource "aws_security_group_rule" "ca_egress" {
-  count             = var.enable_tls && var.ca_placement == "dedicated" ? 1 : 0
+  count             = var.enable_ca && var.ca_placement == "dedicated" ? 1 : 0
   type              = "egress"
   from_port         = 0
   to_port           = 0
@@ -61,7 +61,7 @@ resource "aws_security_group_rule" "ca_egress" {
 }
 
 resource "aws_route53_record" "ca" {
-  count   = var.enable_tls && var.ca_placement == "dedicated" ? 1 : 0
+  count   = var.enable_ca && var.ca_placement == "dedicated" ? 1 : 0
   zone_id = aws_route53_zone.private_zone.zone_id
   name    = local.ca_host
   type    = "A"

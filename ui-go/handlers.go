@@ -279,7 +279,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 			cfg = env.Config
 		}
 	}
-	normalizeTopologyTLS(&cfg)
+	normalizeTopologyUseTLS(&cfg)
 	normalizeCAProvisioning(&cfg)
 	if platform == "chaos" && envID == "" {
 		cfg.DeleteAfterDays = 7
@@ -1341,8 +1341,8 @@ func settingsSSHUserForPlatform(settings AppSettings, platform string) string {
 	}
 }
 
-func normalizeAndValidateTLSConfig(platform string, cfg *Config) error {
-	normalizeTopologyTLS(cfg)
+func normalizeAndValidateUseTLSConfig(platform string, cfg *Config) error {
+	normalizeTopologyUseTLS(cfg)
 	normalizeCAProvisioning(cfg)
 	if cfg.CAPlacement == "" {
 		cfg.CAPlacement = "dedicated"
@@ -1358,7 +1358,7 @@ func normalizeAndValidateTLSConfig(platform string, cfg *Config) error {
 	caEnabled := boolDefault(cfg.EnableCA, false)
 	if !caEnabled {
 		cfg.CAPlacement = "dedicated"
-		if cfg.EnableTLS {
+		if cfg.UseTLS {
 			return fmt.Errorf("provision a certificate authority when TLS is enabled for a cluster or replica set")
 		}
 		return nil
@@ -1366,7 +1366,7 @@ func normalizeAndValidateTLSConfig(platform string, cfg *Config) error {
 	if platform != "aws" && platform != "gcp" && platform != "azure" && platform != "chaos" {
 		return fmt.Errorf("managed TLS is supported only for AWS, GCP, Azure, and CHAOS environments")
 	}
-	if cfg.EnableTLS && cfg.EnableYcsb {
+	if cfg.UseTLS && cfg.EnableYcsb {
 		return fmt.Errorf("YCSB cannot be enabled with managed TLS yet")
 	}
 	if cfg.CAPlacement == "pmm" && !boolDefault(cfg.EnablePmm, false) {
@@ -1387,53 +1387,53 @@ func normalizeAndValidateTLSConfig(platform string, cfg *Config) error {
 		}
 	}
 	for name, cluster := range cfg.Clusters {
-		if boolDefault(cluster.EnableTLS, false) && boolDefault(cluster.EnableMongot, false) {
+		if boolDefault(cluster.UseTLS, false) && boolDefault(cluster.EnableMongot, false) {
 			return fmt.Errorf("cluster %q: mongot cannot be enabled with managed TLS yet", name)
 		}
 	}
 	for name, replset := range cfg.Replsets {
-		if boolDefault(replset.EnableTLS, false) && boolDefault(replset.EnableMongot, false) {
+		if boolDefault(replset.UseTLS, false) && boolDefault(replset.EnableMongot, false) {
 			return fmt.Errorf("replica set %q: mongot cannot be enabled with managed TLS yet", name)
 		}
 	}
 	return nil
 }
 
-func normalizeTopologyTLS(cfg *Config) {
-	legacyTLS := cfg.EnableTLS
-	anyTLS := false
+func normalizeTopologyUseTLS(cfg *Config) {
+	defaultUseTLS := cfg.UseTLS
+	anyUsesTLS := false
 	for name, cluster := range cfg.Clusters {
-		if cluster.EnableTLS == nil {
-			enabled := legacyTLS
-			cluster.EnableTLS = &enabled
+		if cluster.UseTLS == nil {
+			useTLS := defaultUseTLS
+			cluster.UseTLS = &useTLS
 		}
-		anyTLS = anyTLS || *cluster.EnableTLS
+		anyUsesTLS = anyUsesTLS || *cluster.UseTLS
 		cfg.Clusters[name] = cluster
 	}
 	for name, replset := range cfg.Replsets {
-		if replset.EnableTLS == nil {
-			enabled := legacyTLS
-			replset.EnableTLS = &enabled
+		if replset.UseTLS == nil {
+			useTLS := defaultUseTLS
+			replset.UseTLS = &useTLS
 		}
-		anyTLS = anyTLS || *replset.EnableTLS
+		anyUsesTLS = anyUsesTLS || *replset.UseTLS
 		cfg.Replsets[name] = replset
 	}
-	cfg.EnableTLS = anyTLS
+	cfg.UseTLS = anyUsesTLS
 }
 
 func normalizeCAProvisioning(cfg *Config) {
 	if cfg.EnableCA == nil {
-		enabled := cfg.EnableTLS
+		enabled := cfg.UseTLS
 		cfg.EnableCA = &enabled
 	}
 }
 
-func topologyTLSEnabled(cfg Config, name string) bool {
+func topologyUsesTLS(cfg Config, name string) bool {
 	if cluster, ok := cfg.Clusters[name]; ok {
-		return boolDefault(cluster.EnableTLS, cfg.EnableTLS)
+		return boolDefault(cluster.UseTLS, cfg.UseTLS)
 	}
 	if replset, ok := cfg.Replsets[name]; ok {
-		return boolDefault(replset.EnableTLS, cfg.EnableTLS)
+		return boolDefault(replset.UseTLS, cfg.UseTLS)
 	}
 	return false
 }
@@ -1450,7 +1450,7 @@ func topologyAnsibleVars(cfg Config, platform, name string, extraVars map[string
 		vars[key] = value
 	}
 	if platform == "aws" || platform == "gcp" || platform == "azure" || platform == "chaos" {
-		vars["use_tls"] = topologyTLSEnabled(cfg, name)
+		vars["use_tls"] = topologyUsesTLS(cfg, name)
 	}
 	return vars
 }
@@ -1524,7 +1524,7 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 400, err.Error())
 		return
 	}
-	if err := normalizeAndValidateTLSConfig(payload.Platform, &payload.Config); err != nil {
+	if err := normalizeAndValidateUseTLSConfig(payload.Platform, &payload.Config); err != nil {
 		jsonError(w, 400, err.Error())
 		return
 	}
@@ -1572,19 +1572,19 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if baseline != nil {
 			prior := *baseline
-			normalizeTopologyTLS(&prior)
-			if prior.EnableTLS && payload.Config.EnableTLS && prior.CAPlacement != payload.Config.CAPlacement {
+			normalizeTopologyUseTLS(&prior)
+			if prior.UseTLS && payload.Config.UseTLS && prior.CAPlacement != payload.Config.CAPlacement {
 				jsonError(w, 400, "changing CA placement after deployment is not supported; create a new environment")
 				return
 			}
 			for name, cluster := range prior.Clusters {
-				if desired, ok := payload.Config.Clusters[name]; ok && boolDefault(cluster.EnableTLS, false) != boolDefault(desired.EnableTLS, false) {
+				if desired, ok := payload.Config.Clusters[name]; ok && boolDefault(cluster.UseTLS, false) != boolDefault(desired.UseTLS, false) {
 					jsonError(w, 400, fmt.Sprintf("changing TLS for cluster %q after deployment is not supported; create a new environment", name))
 					return
 				}
 			}
 			for name, replset := range prior.Replsets {
-				if desired, ok := payload.Config.Replsets[name]; ok && boolDefault(replset.EnableTLS, false) != boolDefault(desired.EnableTLS, false) {
+				if desired, ok := payload.Config.Replsets[name]; ok && boolDefault(replset.UseTLS, false) != boolDefault(desired.UseTLS, false) {
 					jsonError(w, 400, fmt.Sprintf("changing TLS for replica set %q after deployment is not supported; create a new environment", name))
 					return
 				}
@@ -1948,7 +1948,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	cloudCertificateCmdFor := func(names []string, waitForSSH bool) string {
 		steps := make([]string, 0, len(names))
 		for _, name := range names {
-			if !topologyTLSEnabled(env.Config, name) {
+			if !topologyUsesTLS(env.Config, name) {
 				continue
 			}
 			stagingDir := filepath.Join("/tmp/mongo_terraform_ansible", envID, name, "cert_setup")

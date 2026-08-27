@@ -96,7 +96,7 @@ func TestWriteTfvarsChaosIncludesTLS(t *testing.T) {
 
 	cfg := Config{
 		CAPlacement: "dedicated",
-		Clusters:    map[string]ClusterConfig{"cl01": {EnvTag: "test", EnableTLS: boolPtr(true)}},
+		Clusters:    map[string]ClusterConfig{"cl01": {EnvTag: "test", UseTLS: boolPtr(true)}},
 	}
 	if err := writeTfvars("chaos-tls", "chaos", cfg); err != nil {
 		t.Fatalf("writeTfvars failed: %v", err)
@@ -105,7 +105,7 @@ func TestWriteTfvarsChaosIncludesTLS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read tfvars failed: %v", err)
 	}
-	for _, want := range []string{"enable_tls = true", `ca_placement = "dedicated"`} {
+	for _, want := range []string{"enable_ca = true", "use_tls = true", `ca_placement = "dedicated"`} {
 		if !strings.Contains(string(content), want) {
 			t.Fatalf("expected %q in tfvars:\n%s", want, content)
 		}

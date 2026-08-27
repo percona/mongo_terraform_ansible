@@ -331,7 +331,7 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 				}
 				connStr := fmt.Sprintf("mongodb://%s:%s@%s/?authSource=admin",
 					url.QueryEscape(user), encodedPass, strings.Join(members, ","))
-				if topologyTLSEnabled(env.Config, name) {
+				if topologyUsesTLS(env.Config, name) {
 					connStr += "&tls=true&tlsAllowInvalidCertificates=true"
 				}
 				mongoConns = append(mongoConns, MongoConnInfo{
@@ -351,7 +351,7 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 				}
 				connStr := fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=%s&authSource=admin",
 					url.QueryEscape(user), encodedPass, strings.Join(members, ","), cloudReplsetName(env, name))
-				if topologyTLSEnabled(env.Config, name) {
+				if topologyUsesTLS(env.Config, name) {
 					connStr += "&tls=true&tlsAllowInvalidCertificates=true"
 				}
 				mongoConns = append(mongoConns, MongoConnInfo{

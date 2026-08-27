@@ -31,7 +31,7 @@ type ClusterConfig struct {
 	EnablePmm     *bool  `json:"enable_pmm,omitempty"`
 	EnablePbm     *bool  `json:"enable_pbm,omitempty"`
 	EnableMongot  *bool  `json:"enable_mongot,omitempty"`
-	EnableTLS     *bool  `json:"enable_tls,omitempty"`
+	UseTLS        *bool  `json:"use_tls,omitempty"`
 	MongotSource  string `json:"mongot_source,omitempty"`
 	MongotRepo    string `json:"mongot_repo,omitempty"`
 	MongotVersion string `json:"mongot_version,omitempty"`
@@ -70,7 +70,7 @@ type ReplsetConfig struct {
 	EnablePmm     *bool  `json:"enable_pmm,omitempty"`
 	EnablePbm     *bool  `json:"enable_pbm,omitempty"`
 	EnableMongot  *bool  `json:"enable_mongot,omitempty"`
-	EnableTLS     *bool  `json:"enable_tls,omitempty"`
+	UseTLS        *bool  `json:"use_tls,omitempty"`
 	MongotSource  string `json:"mongot_source,omitempty"`
 	MongotRepo    string `json:"mongot_repo,omitempty"`
 	MongotVersion string `json:"mongot_version,omitempty"`
@@ -133,7 +133,7 @@ type Config struct {
 	PmmClientVersion    string `json:"pmm_client_version,omitempty"`
 	PmmClientRepo       string `json:"pmm_client_repo,omitempty"`
 	EnableYcsb          bool   `json:"enable_ycsb,omitempty"`
-	EnableTLS           bool   `json:"enable_tls,omitempty"`
+	UseTLS              bool   `json:"use_tls,omitempty"`
 	EnableCA            *bool  `json:"enable_ca,omitempty"`
 	CAPlacement         string `json:"ca_placement,omitempty"`
 	YcsbImage           string `json:"ycsb_image,omitempty"`

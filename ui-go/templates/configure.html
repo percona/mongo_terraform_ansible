@@ -415,8 +415,8 @@
                 Install Search/Vector Search</label>
             </div>
             <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_enable_tls[]" value="1"
-                            {{if boolDefault .Config.EnableTLS false}}checked{{end}}>
+              <label><input type="checkbox" name="cluster_use_tls[]" value="1"
+                            {{if boolDefault .Config.UseTLS false}}checked{{end}}>
                 Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label>
             </div>
           </div>
@@ -942,8 +942,8 @@
                 Install Search/Vector Search</label>
             </div>
             <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_enable_tls[]" value="1"
-                            {{if boolDefault .Config.EnableTLS false}}checked{{end}}>
+              <label><input type="checkbox" name="replset_use_tls[]" value="1"
+                            {{if boolDefault .Config.UseTLS false}}checked{{end}}>
                 Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label>
             </div>
           </div>
@@ -2912,7 +2912,7 @@ function buildPackageOverrideRows(type) {
           Install Search/Vector Search</label>
       </div>
       <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_enable_tls[]" value="1">
+        <label><input type="checkbox" name="${type}_use_tls[]" value="1">
           Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label>
       </div>
     </div>
@@ -3896,7 +3896,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       c.enable_pmm = getBlockChecked(block, 'cluster_enable_pmm[]');
       c.enable_pbm = getBlockChecked(block, 'cluster_enable_pbm[]');
       c.enable_mongot = getBlockChecked(block, 'cluster_enable_mongot[]');
-      c.enable_tls = getBlockChecked(block, 'cluster_enable_tls[]');
+      c.use_tls = getBlockChecked(block, 'cluster_use_tls[]');
       const mongotVersion = getBlockFieldValue(block, 'cluster_mongot_version[]').trim();
       const mongotSource = getBlockFieldValue(block, 'cluster_mongot_source[]').trim();
       if (mongotSource) c.mongot_source = mongotSource;
@@ -3940,7 +3940,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       r.enable_pmm = getBlockChecked(block, 'replset_enable_pmm[]');
       r.enable_pbm = getBlockChecked(block, 'replset_enable_pbm[]');
       r.enable_mongot = getBlockChecked(block, 'replset_enable_mongot[]');
-      r.enable_tls = getBlockChecked(block, 'replset_enable_tls[]');
+      r.use_tls = getBlockChecked(block, 'replset_use_tls[]');
       const mongotVersion = getBlockFieldValue(block, 'replset_mongot_version[]').trim();
       const mongotSource = getBlockFieldValue(block, 'replset_mongot_source[]').trim();
       if (mongotSource) r.mongot_source = mongotSource;
@@ -3969,8 +3969,8 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   });
 
   if (['aws', 'gcp', 'azure', 'chaos'].includes(PLATFORM)) {
-    config.enable_tls = [...Object.values(config.clusters), ...Object.values(config.replsets)].some(item => item.enable_tls);
-    if (config.enable_tls && !config.enable_ca) {
+    config.use_tls = [...Object.values(config.clusters), ...Object.values(config.replsets)].some(item => item.use_tls);
+    if (config.use_tls && !config.enable_ca) {
       alert('Provision a certificate authority before enabling TLS on a cluster or replica set.');
       return;
     }

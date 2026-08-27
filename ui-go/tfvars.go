@@ -47,7 +47,7 @@ func formatHCLVal(v interface{}) string {
 
 // writeTfvars generates the <env_id>.tfvars file in the platform's terraform directory.
 func writeTfvars(envID, platform string, cfg Config) error {
-	normalizeTopologyTLS(&cfg)
+	normalizeTopologyUseTLS(&cfg)
 	normalizeCAProvisioning(&cfg)
 	dir := filepath.Join(terraformDir, platform)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -82,7 +82,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 
 	if platform != "docker" {
 		if platform == "aws" || platform == "gcp" || platform == "azure" || platform == "chaos" {
-			writeVar("enable_tls", boolDefault(cfg.EnableCA, false))
+			writeVar("enable_ca", boolDefault(cfg.EnableCA, false))
 			writeVar("ca_placement", strDefault(cfg.CAPlacement, "dedicated"))
 		}
 		writeOptStr("mongodb_distribution", cfg.MongoDBDistribution)
@@ -338,7 +338,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				write(fmt.Sprintf("    audit_filter = %s", formatHCLVal(c.AuditFilter)))
 			}
 			if platform != "docker" {
-				write(fmt.Sprintf("    enable_tls = %s", formatHCLVal(boolDefault(c.EnableTLS, cfg.EnableTLS))))
+				write(fmt.Sprintf("    use_tls = %s", formatHCLVal(boolDefault(c.UseTLS, cfg.UseTLS))))
 				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(boolDefault(c.EnablePmm, false))))
 				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(boolDefault(c.EnablePbm, false))))
 				write(fmt.Sprintf("    enable_mongot = %s", formatHCLVal(boolDefault(c.EnableMongot, false))))
@@ -426,7 +426,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				write(fmt.Sprintf("    audit_filter = %s", formatHCLVal(r.AuditFilter)))
 			}
 			if platform != "docker" {
-				write(fmt.Sprintf("    enable_tls = %s", formatHCLVal(boolDefault(r.EnableTLS, cfg.EnableTLS))))
+				write(fmt.Sprintf("    use_tls = %s", formatHCLVal(boolDefault(r.UseTLS, cfg.UseTLS))))
 				write(fmt.Sprintf("    enable_pmm = %s", formatHCLVal(boolDefault(r.EnablePmm, false))))
 				write(fmt.Sprintf("    enable_pbm = %s", formatHCLVal(boolDefault(r.EnablePbm, false))))
 				write(fmt.Sprintf("    enable_mongot = %s", formatHCLVal(boolDefault(r.EnableMongot, false))))

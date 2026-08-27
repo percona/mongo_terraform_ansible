@@ -10,14 +10,21 @@ This module creates:
 
 ## Prerequisites
 
-### 1. Install KVM/Libvirt
+### 1. Install Terraform and KVM/Libvirt
 
 Tested on Debian 12 (Bookworm) and Ubuntu 24.04 LTS.
 
 ```bash
-sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients virtinst genisoimage
+./scripts/install-prerequisites.sh --libvirt
+```
+
+Run this command from the repository root. The installer supports Debian- and
+RHEL-family Linux only; KVM/Libvirt deployments are not supported on macOS.
+It enables the Libvirt service. Add yourself to the `libvirt` group and begin a
+new login session before using the target without `sudo`:
+
+```bash
 sudo usermod -aG libvirt $USER
-# log out and back in for group membership to take effect
 ```
 
 ### 2. ARM (aarch64) guests — additional packages
@@ -54,9 +61,10 @@ EOF
 
 Replace `/path/to/your/terraform/libvirt/pool/` with the absolute path to this directory's `pool/` folder. The change takes effect immediately for new domains — no service restart needed.
 
-### 4. Install OpenTofu or Terraform
+### 4. Terraform
 
-[OpenTofu install guide](https://opentofu.org/docs/intro/install/)
+The installer above installs Terraform. This module's examples use `terraform`;
+OpenTofu may work but is not installed or tested by the repository installer.
 
 ## Quick Guide
 
@@ -118,8 +126,8 @@ Replace `/path/to/your/terraform/libvirt/pool/` with the absolute path to this d
 
    x86_64 (default):
    ```bash
-   tofu init
-   tofu apply
+terraform init
+terraform apply
    ```
 
    aarch64 — see the [ARM example](#arm-aarch64-example) below.
@@ -132,7 +140,7 @@ ssh -i ./ssh_keys/opentofu admin@192.168.100.10
 
 Default credentials: user `admin`, password `admin`, SSH key from `ssh_keys/opentofu`.
 
-VMs start automatically after `tofu apply`. On first boot cloud-init runs `package_update` and `package_upgrade`, so allow a few minutes before SSH is ready. On aarch64 guests running under software emulation, allow 10–30 minutes — see [Monitoring ARM boot progress](#monitoring-arm-boot-progress).
+VMs start automatically after `terraform apply`. On first boot cloud-init runs `package_update` and `package_upgrade`, so allow a few minutes before SSH is ready. On aarch64 guests running under software emulation, allow 10-30 minutes; see [Monitoring ARM boot progress](#monitoring-arm-boot-progress).
 
 ## Variables
 
@@ -156,8 +164,8 @@ After completing the ARM prerequisites above:
 
 **Ubuntu 24.04 host:**
 ```bash
-tofu init
-tofu apply \
+terraform init
+terraform apply \
   -var 'arch=aarch64' \
   -var 'source_vm=sources/debian13-arm64.qcow2' \
   -var 'interface=enp1s0' \
@@ -167,8 +175,8 @@ tofu apply \
 
 **Debian 12 host:**
 ```bash
-tofu init
-tofu apply \
+terraform init
+terraform apply \
   -var 'arch=aarch64' \
   -var 'source_vm=sources/debian13-arm64.qcow2' \
   -var 'interface=enp1s0' \
@@ -196,7 +204,7 @@ Pass the same `-var` flags used during apply so the plan is consistent:
 
 ```bash
 # aarch64
-tofu apply \
+terraform apply \
   -var 'vm_condition_poweron=false' \
   -var 'arch=aarch64' \
   -var 'source_vm=sources/debian13-arm64.qcow2' \
@@ -205,7 +213,7 @@ tofu apply \
   -var 'nvram_template=/usr/share/AAVMF/AAVMF_VARS.fd'
 
 # x86_64
-tofu apply -var 'vm_condition_poweron=false'
+terraform apply -var 'vm_condition_poweron=false'
 ```
 
 ## Destroy
@@ -214,7 +222,7 @@ Pass the same `-var` flags used during apply:
 
 ```bash
 # aarch64
-tofu destroy \
+terraform destroy \
   -var 'arch=aarch64' \
   -var 'source_vm=sources/debian13-arm64.qcow2' \
   -var 'interface=enp1s0' \
@@ -222,12 +230,12 @@ tofu destroy \
   -var 'nvram_template=/usr/share/AAVMF/AAVMF_VARS.fd'
 
 # x86_64
-tofu destroy
+terraform destroy
 ```
 
-> **Note:** The storage pool directory (`pool/`) contains a `.gitkeep` placeholder file, so `tofu destroy` will fail to delete the pool with "Directory not empty". If that happens, remove the pool from state and undefine it manually:
+> **Note:** The storage pool directory (`pool/`) contains a `.gitkeep` placeholder file, so `terraform destroy` will fail to delete the pool with "Directory not empty". If that happens, remove the pool from state and undefine it manually:
 > ```bash
-> tofu state rm libvirt_pool.k8s
+> terraform state rm libvirt_pool.k8s
 > virsh -c qemu:///system pool-undefine k8s
 > ```
 

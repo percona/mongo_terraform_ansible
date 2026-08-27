@@ -12,9 +12,15 @@ This Terraform module creates:
 
 ## Prerequisites
 
-1. Install [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+.
-2. Install [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
-3. Log in when running Terraform manually:
+1. From the repository root, install Terraform, Ansible, and the Azure CLI:
+
+   ```bash
+   ./scripts/install-prerequisites.sh --azure
+   ```
+
+   The CLI is required by the Web UI. Manual Terraform usage can use standard Azure
+   provider credentials instead.
+2. Log in when running Terraform manually:
 
 ```bash
 az login

@@ -12,9 +12,15 @@ This Terraform module creates:
 
 ## Prerequisites
 
-1. Install [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+.
-2. Install the [Google Cloud SDK](https://cloud.google.com/sdk/docs/install).
-3. Authenticate in your shell when running Terraform manually:
+1. From the repository root, install Terraform, Ansible, and the Google Cloud CLI:
+
+   ```bash
+   ./scripts/install-prerequisites.sh --gcp
+   ```
+
+   The CLI is required by the Web UI. Manual Terraform usage can use standard Google
+   provider credentials instead.
+2. Authenticate in your shell when running Terraform manually:
 
 ```bash
 gcloud auth application-default login

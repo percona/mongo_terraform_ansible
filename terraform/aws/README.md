@@ -14,8 +14,14 @@ This Terraform module creates:
 
 ## Prerequisites
 
-1. Install [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+.
-2. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+1. From the repository root, install Terraform, Ansible, and the AWS CLI:
+
+   ```bash
+   ./scripts/install-prerequisites.sh --aws
+   ```
+
+   The AWS CLI is required by the Web UI. For manual Terraform usage, standard AWS
+   provider credentials are sufficient.
 
 Example of AWS permissions for the user:
 
@@ -27,7 +33,7 @@ Example of AWS permissions for the user:
 
 Less broad permissions may work but have not been tested.
 
-3. Authenticate in your shell when running Terraform manually:
+2. Authenticate in your shell when running Terraform manually:
 
 ```bash
 aws configure

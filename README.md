@@ -17,27 +17,42 @@ configuration. Docker and Libvirt deployments are Terraform-only.
 
 ## Prerequisites
 
-Install the tools that match your target platform:
+The controller machine needs `git`, Terraform 1.0 or newer, OpenSSH, and, for
+cloud or CHAOS deployments, Ansible. Install these common tools with:
 
-- `git`
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+
-- [Go 1.22+](https://go.dev/doc/install) if you want to use the Web UI
-- [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/) for AWS, GCP, Azure, and CHAOS deployments
-- [Docker](https://docs.docker.com/get-docker/) for local Docker environments
-- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), [Google Cloud SDK](https://cloud.google.com/sdk/docs/install), or [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) for the corresponding cloud provider
-- KVM/Libvirt plus `genisoimage` for local Libvirt deployments
+```bash
+./scripts/install-prerequisites.sh
+```
+
+The installer supports macOS with an existing Homebrew installation, Debian-family
+Linux, and RHEL-family Linux. It uses `apt` or `dnf`/`yum` as appropriate and
+requires `sudo` on Linux. It does not bootstrap Homebrew, configure credentials,
+or create SSH keys.
+
+Add only the tools for the target you intend to use:
+
+```bash
+./scripts/install-prerequisites.sh --docker  # Docker Engine/Desktop
+./scripts/install-prerequisites.sh --aws     # AWS CLI v2
+./scripts/install-prerequisites.sh --gcp     # Google Cloud CLI
+./scripts/install-prerequisites.sh --azure   # Azure CLI
+./scripts/install-prerequisites.sh --ui      # Go 1.22+ for ui-go
+./scripts/install-prerequisites.sh --libvirt # Linux KVM/Libvirt and genisoimage
+```
+
+Use `--all` to install every applicable target dependency, or `--dry-run` to
+inspect the commands. Libvirt/KVM is Linux-only. The CHAOS target also requires
+the privately distributed `percona/chaos` Terraform provider in the standard
+Terraform plugin directory; the installer cannot obtain it.
+
+Cloud and CHAOS deployments additionally require network access, provider account
+permissions, and SSH key access to the instances. The cloud CLIs are required by
+the Web UI; manual Terraform workflows can instead use their provider's standard
+credential environment variables or profiles. Docker must be running after its
+installation. Linux users must add themselves to the Docker or Libvirt group and
+start a new login session before using those targets without `sudo`.
 
 When using the Web UI, configure provider credentials in **Settings**. The UI stores them under `ui-go/secrets/cloud/` and passes isolated credential environment variables to Terraform. Manual CLI usage still requires provider credentials configured in your shell.
-
-### Quickstart for Mac
-
-```
-git clone https://github.com/percona/mongo_terraform_ansible.git
-brew tap hashicorp/tap
-brew install hashicorp/tap/terraform
-brew install go
-brew install ansible
-```
 
 ## Web UI (Recommended)
 

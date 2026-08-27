@@ -34,14 +34,17 @@ Clusters and replica sets can enable MongoDB Search / Vector Search from the con
 
 ## Requirements
 
-- **Go 1.22+**
+- **Go 1.22+** (install with `./scripts/install-prerequisites.sh --ui` from the repository root)
 
 Optional, depending on the environment type you want to deploy:
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+
-- [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/) for AWS, GCP, Azure, and CHAOS
-- [Docker](https://docs.docker.com/get-docker/) for Docker environments
-- Cloud CLIs for the target platform. Provider credentials can be configured in the UI Settings using isolated key/service-account credentials.
+- Terraform 1.0+ and Ansible for AWS, GCP, Azure, and CHAOS (`./scripts/install-prerequisites.sh`)
+- Docker for Docker environments (`./scripts/install-prerequisites.sh --docker`)
+- The corresponding cloud CLI for AWS, GCP, or Azure (`--aws`, `--gcp`, or `--azure`); the UI uses these commands to configure and validate credentials
+
+The installer supports macOS with Homebrew already installed plus Debian- and
+RHEL-family Linux. It does not configure provider credentials. See the root
+[prerequisites](../README.md#prerequisites) for all target flags and requirements.
 
 ## Quick Start
 

@@ -183,8 +183,9 @@ keyfile_content: |
   8pYcxvCqoe89kcp33KuTtKVf5MoHGEFjTnudrq5BosvWRoIxLowmdjrmUpVfAivh
   CHjqM6w0zVBytAxH1lW+7teMYe6eDn2S/O/1YlRRiW57bWU3zjliW3VdguJar5i9
 
-# The next 2 options are only relevant if use_tls: true
+# The next 3 options are only relevant if use_tls: true
 certificateKeyFile: /etc/ssl/server.pem
+clientCertificateKeyFile: /etc/ssl/client.pem
 CAFile: /etc/ssl/test-ca.pem
 
 ##########################

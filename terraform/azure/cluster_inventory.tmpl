@@ -29,6 +29,11 @@ ${hostname_mongos[index]} ansible_host=${ip_mongos[index]}
 ${hostname_pmm} ansible_host=${ip_pmm}
 
 %{ endif ~}
+%{ if hostname_ca != "" ~}
+[ca]
+${hostname_ca} ansible_host=${ip_ca}
+
+%{ endif ~}
 %{ if hostname_ycsb != "" ~}
 [ycsb]
 ${hostname_ycsb} ansible_host=${ip_ycsb}
@@ -40,7 +45,7 @@ ${ldap_hostname} ansible_host=${ldap_ip}
 
 %{ endif ~}
 [all:vars]
-ansible_ssh_user=${my_ssh_user}
+ansible_user=${my_ssh_user}
 %{ if ssh_private_key_path != "" ~}
 ansible_ssh_private_key_file=${ssh_private_key_path}
 %{ endif ~}
@@ -51,6 +56,9 @@ endpointUrl=${endpointUrl}
 cluster=${cluster}
 env_tag=${env_tag}
 enable_pmm=${enable_pmm}
+enable_tls=${enable_tls}
+use_tls=${enable_tls}
+ca_placement=${ca_placement}
 enable_pmm_agent=${enable_pmm_agent}
 pmm_image=${pmm_image}
 enable_pbm=${enable_pbm}

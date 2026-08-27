@@ -38,13 +38,21 @@ Clusters and replica sets can enable MongoDB Search / Vector Search from the con
 
 Optional, depending on the environment type you want to deploy:
 
-- Terraform 1.0+ and Ansible for AWS, GCP, Azure, and CHAOS (`./scripts/install-prerequisites.sh`)
+- Terraform 1.9+ and Ansible for AWS, GCP, Azure, and CHAOS (`./scripts/install-prerequisites.sh`)
 - Docker for Docker environments (`./scripts/install-prerequisites.sh --docker`)
 - The corresponding cloud CLI for AWS, GCP, or Azure (`--aws`, `--gcp`, or `--azure`); the UI uses these commands to configure and validate credentials
 
 The installer supports macOS with Homebrew already installed plus Debian- and
 RHEL-family Linux. It does not configure provider credentials. See the root
 [prerequisites](../README.md#prerequisites) for all target flags and requirements.
+
+## Managed TLS
+
+AWS, GCP, Azure, and CHAOS clusters and replica sets can independently enable TLS with x.509 member authentication. Enable **Provision certificate authority** to configure one shared CA for the environment, then select TLS on the required topologies. A dedicated CA VM is the default; the PMM host can be used instead, in which case the same host belongs to both `[pmm]` and `[ca]`.
+
+TLS-enabled topologies use `preferTLS`: internal members authenticate with x.509, while SCRAM clients may connect with or without TLS.
+
+Deploy runs `cert_setup.yml` after Terraform provisioning and then runs `main.yml` once with TLS enabled. The bundled CA is intended for test environments. Existing CA and leaf certificates are retained on retries and topology expansion.
 
 ## Quick Start
 

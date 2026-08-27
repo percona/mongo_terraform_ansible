@@ -28,7 +28,7 @@
 
     - name: Figure out the Mongo TLS options
       set_fact:
-        mongo_uri_tls: "/?tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}"
+        mongo_uri_tls: "/?tls=true&tlsCertificateKeyFile={{ clientCertificateKeyFile }}&tlsCAFile={{ CAFile }}"
       when: use_tls | bool
 
 - hosts: mongos
@@ -52,7 +52,7 @@
     - block:
         - name: generate PBM_MONGODB_URI
           set_fact:
-            mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[replset_group] %}{{ h }}:{{ mongo_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ replset_name }}&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
+            mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[replset_group] %}{{ h }}:{{ mongo_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ replset_name }}&authSource=admin{% if use_tls | bool %}&tls=true&tlsCertificateKeyFile={{ clientCertificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
 
         - name: Resync pbm storage
           shell: pbm config --force-resync --mongodb-uri '{{ mongodb_uri }}'
@@ -70,7 +70,7 @@
     - block:
         - name: generate PBM_MONGODB_URI
           set_fact:
-            mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups['cfg'] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-cfg&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
+            mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups['cfg'] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-cfg&authSource=admin{% if use_tls | bool %}&tls=true&tlsCertificateKeyFile={{ clientCertificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
 
         - name: Resync pbm storage
           shell: pbm config --force-resync --mongodb-uri '{{ mongodb_uri }}'

@@ -279,8 +279,13 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 			cfg = env.Config
 		}
 	}
+	normalizeTopologyTLS(&cfg)
+	normalizeCAProvisioning(&cfg)
 	if platform == "chaos" && envID == "" {
 		cfg.DeleteAfterDays = 7
+	}
+	if cfg.CAPlacement == "" {
+		cfg.CAPlacement = "dedicated"
 	}
 	if platform == "docker" {
 		occupied := dockerOccupiedServicePorts(state, envID)
@@ -1336,6 +1341,129 @@ func settingsSSHUserForPlatform(settings AppSettings, platform string) string {
 	}
 }
 
+func normalizeAndValidateTLSConfig(platform string, cfg *Config) error {
+	normalizeTopologyTLS(cfg)
+	normalizeCAProvisioning(cfg)
+	if cfg.CAPlacement == "" {
+		cfg.CAPlacement = "dedicated"
+	}
+	if cfg.CAPlacement != "dedicated" && cfg.CAPlacement != "pmm" {
+		return fmt.Errorf("CA placement must be dedicated or pmm")
+	}
+	for _, key := range []string{"use_tls", "certificateKeyFile", "CAFile", "ca_staging_dir"} {
+		if _, exists := cfg.AnsibleVars[key]; exists {
+			return fmt.Errorf("Ansible variable %q is managed by the TLS configuration and cannot be overridden", key)
+		}
+	}
+	caEnabled := boolDefault(cfg.EnableCA, false)
+	if !caEnabled {
+		cfg.CAPlacement = "dedicated"
+		if cfg.EnableTLS {
+			return fmt.Errorf("provision a certificate authority when TLS is enabled for a cluster or replica set")
+		}
+		return nil
+	}
+	if platform != "aws" && platform != "gcp" && platform != "azure" && platform != "chaos" {
+		return fmt.Errorf("managed TLS is supported only for AWS, GCP, Azure, and CHAOS environments")
+	}
+	if cfg.EnableTLS && cfg.EnableYcsb {
+		return fmt.Errorf("YCSB cannot be enabled with managed TLS yet")
+	}
+	if cfg.CAPlacement == "pmm" && !boolDefault(cfg.EnablePmm, false) {
+		return fmt.Errorf("the PMM server must be enabled when CA placement is pmm")
+	}
+	if platform == "chaos" && cfg.CAPlacement == "dedicated" {
+		cfg.CACpuCores = intDefault(cfg.CACpuCores, 2)
+		cfg.CAMemoryGb = intDefault(cfg.CAMemoryGb, 4)
+		cfg.CAVolumeSize = intDefault(cfg.CAVolumeSize, 20)
+		if !containsInt([]int{2, 4, 8, 16, 32}, cfg.CACpuCores) {
+			return fmt.Errorf("CHAOS CA vCPU must be one of 2, 4, 8, 16, or 32")
+		}
+		if !containsInt([]int{4, 8, 16}, cfg.CAMemoryGb) {
+			return fmt.Errorf("CHAOS CA memory must be one of 4, 8, or 16 GB")
+		}
+		if !containsInt([]int{20, 40, 60, 80, 100}, cfg.CAVolumeSize) {
+			return fmt.Errorf("CHAOS CA disk must be one of 20, 40, 60, 80, or 100 GB")
+		}
+	}
+	for name, cluster := range cfg.Clusters {
+		if boolDefault(cluster.EnableTLS, false) && boolDefault(cluster.EnableMongot, false) {
+			return fmt.Errorf("cluster %q: mongot cannot be enabled with managed TLS yet", name)
+		}
+	}
+	for name, replset := range cfg.Replsets {
+		if boolDefault(replset.EnableTLS, false) && boolDefault(replset.EnableMongot, false) {
+			return fmt.Errorf("replica set %q: mongot cannot be enabled with managed TLS yet", name)
+		}
+	}
+	return nil
+}
+
+func normalizeTopologyTLS(cfg *Config) {
+	legacyTLS := cfg.EnableTLS
+	anyTLS := false
+	for name, cluster := range cfg.Clusters {
+		if cluster.EnableTLS == nil {
+			enabled := legacyTLS
+			cluster.EnableTLS = &enabled
+		}
+		anyTLS = anyTLS || *cluster.EnableTLS
+		cfg.Clusters[name] = cluster
+	}
+	for name, replset := range cfg.Replsets {
+		if replset.EnableTLS == nil {
+			enabled := legacyTLS
+			replset.EnableTLS = &enabled
+		}
+		anyTLS = anyTLS || *replset.EnableTLS
+		cfg.Replsets[name] = replset
+	}
+	cfg.EnableTLS = anyTLS
+}
+
+func normalizeCAProvisioning(cfg *Config) {
+	if cfg.EnableCA == nil {
+		enabled := cfg.EnableTLS
+		cfg.EnableCA = &enabled
+	}
+}
+
+func topologyTLSEnabled(cfg Config, name string) bool {
+	if cluster, ok := cfg.Clusters[name]; ok {
+		return boolDefault(cluster.EnableTLS, cfg.EnableTLS)
+	}
+	if replset, ok := cfg.Replsets[name]; ok {
+		return boolDefault(replset.EnableTLS, cfg.EnableTLS)
+	}
+	return false
+}
+
+func topologyAnsibleVars(cfg Config, platform, name string, extraVars map[string]string) map[string]interface{} {
+	vars := make(map[string]interface{}, len(cfg.AnsibleVars)+len(extraVars)+2)
+	for key, value := range cfg.AnsibleVars {
+		vars[key] = value
+	}
+	if strings.TrimSpace(cfg.PmmImage) != "" {
+		vars["pmm_image"] = strings.TrimSpace(cfg.PmmImage)
+	}
+	for key, value := range extraVars {
+		vars[key] = value
+	}
+	if platform == "aws" || platform == "gcp" || platform == "azure" || platform == "chaos" {
+		vars["use_tls"] = topologyTLSEnabled(cfg, name)
+	}
+	return vars
+}
+
+func containsInt(values []int, value int) bool {
+	for _, candidate := range values {
+		if candidate == value {
+			return true
+		}
+	}
+	return false
+}
+
 // POST /api/environment
 func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
@@ -1396,6 +1524,10 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 400, err.Error())
 		return
 	}
+	if err := normalizeAndValidateTLSConfig(payload.Platform, &payload.Config); err != nil {
+		jsonError(w, 400, err.Error())
+		return
+	}
 
 	if err := validateMongotVersionCompatibility(payload.Platform, &payload.Config); err != nil {
 		jsonError(w, 400, err.Error())
@@ -1439,7 +1571,25 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 			baseline = &existing.Config
 		}
 		if baseline != nil {
-			_, unsupported := analyseTopologyChange(*baseline, payload.Config)
+			prior := *baseline
+			normalizeTopologyTLS(&prior)
+			if prior.EnableTLS && payload.Config.EnableTLS && prior.CAPlacement != payload.Config.CAPlacement {
+				jsonError(w, 400, "changing CA placement after deployment is not supported; create a new environment")
+				return
+			}
+			for name, cluster := range prior.Clusters {
+				if desired, ok := payload.Config.Clusters[name]; ok && boolDefault(cluster.EnableTLS, false) != boolDefault(desired.EnableTLS, false) {
+					jsonError(w, 400, fmt.Sprintf("changing TLS for cluster %q after deployment is not supported; create a new environment", name))
+					return
+				}
+			}
+			for name, replset := range prior.Replsets {
+				if desired, ok := payload.Config.Replsets[name]; ok && boolDefault(replset.EnableTLS, false) != boolDefault(desired.EnableTLS, false) {
+					jsonError(w, 400, fmt.Sprintf("changing TLS for replica set %q after deployment is not supported; create a new environment", name))
+					return
+				}
+			}
+			_, unsupported := analyseTopologyChange(prior, payload.Config)
 			if len(unsupported) > 0 {
 				jsonError(w, 400, "unsupported topology change: "+strings.Join(unsupported, "; "))
 				return
@@ -1755,43 +1905,14 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	filePrefix := strDefault(env.Config.Prefix, envID)
 
 	cloudAnsibleCmdFor := func(playbookPath string, waitForSSH bool, names []string, extraVars map[string]string) string {
-		effectiveVars := make(map[string]string)
-		// Package source/version variables are written into each generated inventory.
-		// Do not pass them as --extra-vars; extra-vars would override per-resource
-		// inventory values and break mixed-version environments.
-		for k, v := range env.Config.AnsibleVars {
-			effectiveVars[k] = v
-		}
-		if strings.TrimSpace(env.Config.PmmImage) != "" {
-			effectiveVars["pmm_image"] = strings.TrimSpace(env.Config.PmmImage)
-		}
-		for k, v := range extraVars {
-			effectiveVars[k] = v
-		}
-
-		extraVarsArg := ""
-		if len(effectiveVars) > 0 {
-			type kv struct{ K, V string }
-			kvs := make([]kv, 0, len(effectiveVars))
-			keys := make([]string, 0, len(effectiveVars))
-			for k := range effectiveVars {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			for _, k := range keys {
-				kvs = append(kvs, kv{k, effectiveVars[k]})
-			}
-			parts := make([]string, 0, len(kvs))
-			for _, p := range kvs {
-				kb, _ := json.Marshal(p.K)
-				vb, _ := json.Marshal(p.V)
-				parts = append(parts, string(kb)+":"+string(vb))
-			}
-			extraVarsArg = " --extra-vars " + shellQuote("{"+strings.Join(parts, ",")+"}")
-		}
-
 		var b strings.Builder
 		for _, name := range names {
+			extraVarsArg := ""
+			effectiveVars := topologyAnsibleVars(env.Config, platform, name, extraVars)
+			if len(effectiveVars) > 0 {
+				encoded, _ := json.Marshal(effectiveVars)
+				extraVarsArg = " --extra-vars " + shellQuote(string(encoded))
+			}
 			inv := shellQuote(filePrefix + "_inventory_" + name)
 			b.WriteString(fmt.Sprintf(
 				`{ [ -f %[1]s ] || { printf "ERROR: inventory file %%s not found\n" %[1]s; exit 1; }; `,
@@ -1823,6 +1944,27 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	cloudAnsibleCmd := func(playbookPath string, waitForSSH bool) string {
 		return cloudAnsibleCmdFor(playbookPath, waitForSSH, invNames, nil)
+	}
+	cloudCertificateCmdFor := func(names []string, waitForSSH bool) string {
+		steps := make([]string, 0, len(names))
+		for _, name := range names {
+			if !topologyTLSEnabled(env.Config, name) {
+				continue
+			}
+			stagingDir := filepath.Join("/tmp/mongo_terraform_ansible", envID, name, "cert_setup")
+			steps = append(steps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "cert_setup.yml"), waitForSSH, []string{name}, map[string]string{
+				"ca_staging_dir": stagingDir,
+			}))
+		}
+		return strings.Join(steps, " && ")
+	}
+	cloudConfigureCmdFor := func(names []string, waitForSSH bool) string {
+		steps := make([]string, 0, 2)
+		if certCmd := cloudCertificateCmdFor(names, waitForSSH); certCmd != "" {
+			steps = append(steps, certCmd)
+		}
+		steps = append(steps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "main.yml"), waitForSSH, names, nil))
+		return strings.Join(steps, " && ")
 	}
 
 	sshConfigInjectShell := func() string {
@@ -1919,10 +2061,10 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 					shellCmd += sshConfigInjectShell()
 					var ansibleSteps []string
 					for _, name := range plan.NewClusters {
-						ansibleSteps = append(ansibleSteps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "main.yml"), true, []string{name}, nil))
+						ansibleSteps = append(ansibleSteps, cloudConfigureCmdFor([]string{name}, true))
 					}
 					for _, name := range plan.NewReplsets {
-						ansibleSteps = append(ansibleSteps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "main.yml"), true, []string{name}, nil))
+						ansibleSteps = append(ansibleSteps, cloudConfigureCmdFor([]string{name}, true))
 					}
 					clusterNames := make([]string, 0, len(plan.AddedShards))
 					for name := range plan.AddedShards {
@@ -1930,6 +2072,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 					}
 					sort.Strings(clusterNames)
 					for _, name := range clusterNames {
+						if certCmd := cloudCertificateCmdFor([]string{name}, true); certCmd != "" {
+							ansibleSteps = append(ansibleSteps, certCmd)
+						}
 						for _, shardIndex := range plan.AddedShards[name] {
 							ansibleSteps = append(ansibleSteps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "add_shard.yml"), true, []string{name}, map[string]string{
 								"new_shard_group": fmt.Sprintf("shard%d", shardIndex),
@@ -1942,6 +2087,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 					}
 					sort.Strings(replsetNames)
 					for _, name := range replsetNames {
+						if certCmd := cloudCertificateCmdFor([]string{name}, true); certCmd != "" {
+							ansibleSteps = append(ansibleSteps, certCmd)
+						}
 						ansibleSteps = append(ansibleSteps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "add_replset_member.yml"), true, []string{name}, map[string]string{
 							"target_replset": name,
 						}))
@@ -1951,11 +2099,11 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 					}
 				} else {
 					shellCmd += sshConfigInjectShell()
-					shellCmd += " && " + cloudAnsibleCmd(filepath.Join(ansibleDir, "main.yml"), true)
+					shellCmd += " && " + cloudConfigureCmdFor(invNames, true)
 				}
 			} else {
 				shellCmd += sshConfigInjectShell()
-				shellCmd += " && " + cloudAnsibleCmd(filepath.Join(ansibleDir, "main.yml"), true)
+				shellCmd += " && " + cloudConfigureCmdFor(invNames, true)
 			}
 		} else if appliedConfig != nil {
 			_, unsupported := analyseTopologyChange(*appliedConfig, env.Config)
@@ -1997,7 +2145,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		cmd = []string{"bash", "-c",
-			cloudAnsibleCmd(filepath.Join(ansibleDir, "main.yml"), true),
+			cloudConfigureCmdFor(invNames, true),
 		}
 
 	case "reset":

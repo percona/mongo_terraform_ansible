@@ -10,13 +10,14 @@
           "setDefaultRWConcern" : 1,
           "defaultWriteConcern" : { "w" : 1 },
           "defaultReadConcern" : { "level" : "local" }
-        })' | mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }}
+        })' | mongosh admin {% if use_tls | bool %}--tls --tlsCertificateKeyFile {{ clientCertificateKeyFile }} --tlsCAFile {{ CAFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }}
+      no_log: true
       delegate_to: "{{ groups.mongos | first }}"
       run_once: true
 
     - name: Add the shards to the cluster
       shell: |
-        mongosh admin {% if use_tls %}--tls --tlsCertificateKeyFile {{ certificateKeyFile }} --tlsCAFile {{ certificateKeyFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} --eval '
+        mongosh admin {% if use_tls | bool %}--tls --tlsCertificateKeyFile {{ clientCertificateKeyFile }} --tlsCAFile {{ CAFile }} --tlsAllowInvalidCertificates{% endif %} -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --port {{ mongos_port }} --host {{ groups.mongos | first }} --eval '
           const shardName = "{{ cluster }}-{{ group_names[0] }}";
           const shardConn = shardName + "/{{ ansible_facts["fqdn"] }}:{{ mongo_port }}";
           if (!db.adminCommand({ listShards: 1 }).shards.some(s => s._id === shardName)) {
@@ -25,5 +26,6 @@
             print("Shard " + shardName + " is already registered, skipping.");
           }
         '
+      no_log: true
       delegate_to: "{{ groups.mongos | first }}"
       when: mongodb_primary is defined and mongodb_primary

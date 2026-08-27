@@ -23,6 +23,7 @@ variable "clusters" {
     mongos_count         = optional(number, 2)
     bind_to_localhost    = optional(bool, false)
     enable_audit         = optional(bool, false)
+    enable_tls           = optional(bool, false)
     audit_filter         = optional(string, "")
     mongodb_distribution = optional(string, "")
     mongo_release        = optional(string, "")
@@ -55,6 +56,7 @@ variable "replsets" {
     arbiters_per_replset   = optional(number, 1)
     bind_to_localhost      = optional(bool, false)
     enable_audit           = optional(bool, false)
+    enable_tls             = optional(bool, false)
     audit_filter           = optional(string, "")
     mongodb_distribution   = optional(string, "")
     mongo_release          = optional(string, "")
@@ -176,6 +178,48 @@ variable "enable_pmm" {
   type        = bool
   default     = true
   description = "Deploy a PMM monitoring server. Set to false to skip PMM entirely."
+}
+
+################
+# TLS CA
+################
+
+variable "enable_tls" {
+  type        = bool
+  default     = false
+  description = "Enable TLS and add a certificate authority host to generated inventories."
+}
+
+variable "ca_placement" {
+  type        = string
+  default     = "dedicated"
+  description = "Place the TLS certificate authority on a dedicated VM or the PMM host."
+
+  validation {
+    condition     = contains(["dedicated", "pmm"], var.ca_placement)
+    error_message = "ca_placement must be either dedicated or pmm."
+  }
+
+  validation {
+    condition     = !var.enable_tls || var.ca_placement != "pmm" || var.enable_pmm
+    error_message = "enable_pmm must be true when TLS is enabled with ca_placement set to pmm."
+  }
+}
+
+variable "default_ca_host" {
+  type        = string
+  default     = "ca-server"
+  description = "Base hostname for the dedicated CA VM."
+}
+
+variable "ca_type" {
+  type        = string
+  default     = "Standard_B1s"
+  description = "Azure VM size for the dedicated CA VM."
+}
+
+locals {
+  ca_host = "${var.prefix}-${var.default_ca_host}"
 }
 
 variable "enable_ycsb" {

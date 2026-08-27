@@ -12,6 +12,14 @@
         skip_repeated_facts: true
       tags: always
 
+    - name: Verify requested TLS mode reached Ansible
+      assert:
+        that:
+          - (enable_tls | bool) == (use_tls | bool)
+        fail_msg: "TLS variable mismatch: inventory enable_tls={{ enable_tls }} but resolved use_tls={{ use_tls }}"
+      when: enable_tls is defined
+      tags: always
+
 - import_playbook: os_conf.yml
 
 - import_playbook: percona_release.yml

@@ -34,6 +34,7 @@
         name: "{{ pmm_client_package | map('regex_replace', '^pmm-client$', 'pmm-client=' ~ pmm_client_version ~ '*') | list }}"
         state: present
         allow_downgrade: true
+        lock_timeout: 300
       when:
         - pmm_enabled | bool
         - pmm_client_version is defined and pmm_client_version != ''

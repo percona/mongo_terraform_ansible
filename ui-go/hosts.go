@@ -331,6 +331,9 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 				}
 				connStr := fmt.Sprintf("mongodb://%s:%s@%s/?authSource=admin",
 					url.QueryEscape(user), encodedPass, strings.Join(members, ","))
+				if topologyTLSEnabled(env.Config, name) {
+					connStr += "&tls=true&tlsAllowInvalidCertificates=true"
+				}
 				mongoConns = append(mongoConns, MongoConnInfo{
 					Name:       name,
 					Type:       "cluster",
@@ -348,6 +351,9 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 				}
 				connStr := fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=%s&authSource=admin",
 					url.QueryEscape(user), encodedPass, strings.Join(members, ","), cloudReplsetName(env, name))
+				if topologyTLSEnabled(env.Config, name) {
+					connStr += "&tls=true&tlsAllowInvalidCertificates=true"
+				}
 				mongoConns = append(mongoConns, MongoConnInfo{
 					Name:       name,
 					Type:       "replset",
@@ -422,6 +428,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			role = "arbiter"
 		case strings.Contains(sec, "pmm"):
 			role = "pmm"
+		case sec == "ca":
+			role = "ca"
 		case strings.Contains(sec, "minio"):
 			role = "minio"
 		case strings.Contains(sec, "ycsb"):
@@ -437,6 +445,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			hostGroup = "Minio"
 		case "pmm":
 			hostGroup = "PMM"
+		case "ca":
+			hostGroup = "CA"
 		case "ycsb":
 			hostGroup = "YCSB"
 		case "ldap":

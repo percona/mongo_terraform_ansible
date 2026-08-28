@@ -6,12 +6,16 @@ variable "prefix" {
   type        = string
   default     = "ig"
   description = "Prefix to be applied to the resources created, make sure to change it to avoid collisions with other users projects"
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9]{0,13}$", var.prefix))
+    error_message = "prefix must start with a lowercase letter and contain only lowercase letters and digits (max 14 characters)."
+  }
 }
 
 variable "project_id" {
   type        = string
-  default     = "gs-techleads"
-  description = "GCP project name. Replace with the project your GCP account belongs to"
+  description = "GCP project where resources are created"
 }
 
 # By default we deploy 1 sharded cluster, named ig01-s01. Make sure to change the default name and prefix (ig-cl01) to avoid duplicates. The configuration can be customized by adding the optional values listed.

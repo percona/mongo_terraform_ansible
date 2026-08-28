@@ -17,8 +17,8 @@
       <div class="form-group">
         <label for="env_id_field">Name <span class="field-tip" data-tip="Unique identifier for this environment. Leave blank to auto-generate. Also used as the resource prefix and tfvars filename prefix.">ⓘ</span></label>
         <input type="text" id="env_id_field" name="env_id" placeholder="e.g. dev01"
-               value="{{.EnvID}}" maxlength="16" pattern="[a-z0-9]+"
-               title="Lowercase letters and digits only, max 16 characters">
+               value="{{.EnvID}}" maxlength="{{if eq $p "gcp"}}14{{else}}16{{end}}" pattern="{{if eq $p "gcp"}}[a-z][a-z0-9]*{{else}}[a-z0-9]+{{end}}"
+               title="{{if eq $p "gcp"}}Must start with a lowercase letter; lowercase letters and digits only, max 14 characters{{else}}Lowercase letters and digits only, max 16 characters{{end}}">
       </div>
     </div>
 
@@ -29,11 +29,6 @@
   <section class="form-section">
     <h2>GCP Settings</h2>
     <div class="form-row">
-      <div class="form-group">
-        <label for="project_id">GCP Project ID <span class="field-tip" data-tip="Your GCP project ID used for all Terraform resources.">ⓘ</span></label>
-        <input type="text" id="project_id" name="project_id"
-               value="{{.Config.ProjectID}}" placeholder="my-gcp-project">
-      </div>
       <div class="form-group">
         <label for="region">Region <span class="field-tip" data-tip="GCP region where all resources will be deployed.">ⓘ</span></label>
         <select id="region" name="region" onchange="onRegionChange()">
@@ -3735,7 +3730,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 
   // Simple scalar fields
   const simpleFields = [
-    'project_id','region','location',
+    'region','location',
     'subnet_cidr','subnet_count','source_ranges','default_vpc_name',
     'enable_ssh_gateway','ssh_gateway_name','port_to_forward',
     'pmm_type','pmm_volume_size','pmm_port','pmm_image','pmm_image_channel','pmm_disk_type',
@@ -4048,6 +4043,10 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   const envId = ((fd.get('env_id') || document.querySelector('[data-env-id]').dataset.envId || '') + '').trim();
   if (envId && !/^[a-z0-9]{1,16}$/.test(envId)) {
     alert('Environment name must use lowercase letters and digits only, up to 16 characters.');
+    return;
+  }
+  if (PLATFORM === 'gcp' && envId && !/^[a-z][a-z0-9]{0,13}$/.test(envId)) {
+    alert('GCP environment name must start with a lowercase letter and be at most 14 characters.');
     return;
   }
   if (envId) config.prefix = envId;

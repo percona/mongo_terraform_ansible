@@ -747,3 +747,124 @@ func TestSaveEnvironmentHandlerDetectsRunningDockerEnvironmentPortConflicts(t *t
 		t.Fatal("conflicting environment should not be saved")
 	}
 }
+
+func TestSaveEnvironmentHandlerGeneratedNameStartsWithLetter(t *testing.T) {
+	dir := t.TempDir()
+	origStateFile := stateFile
+	origTerraformDir := terraformDir
+	stateFile = dir + "/environments.json"
+	terraformDir = dir
+	t.Cleanup(func() {
+		stateFile = origStateFile
+		terraformDir = origTerraformDir
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/environment", strings.NewReader(`{"platform":"docker","config":{}}`))
+	rec := httptest.NewRecorder()
+	saveEnvironmentHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var resp struct {
+		EnvID string `json:"env_id"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response failed: %v", err)
+	}
+	if !gcpEnvNameRe.MatchString(resp.EnvID) {
+		t.Fatalf("generated environment name must be valid for GCP, got %q", resp.EnvID)
+	}
+}
+
+func TestSaveEnvironmentHandlerRejectsDigitPrefixedGCPName(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/environment", strings.NewReader(`{"env_id":"41bec196","platform":"gcp","config":{}}`))
+	rec := httptest.NewRecorder()
+	saveEnvironmentHandler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "must start with a lowercase letter") {
+		t.Fatalf("expected GCP naming error, got %s", rec.Body.String())
+	}
+}
+
+func TestGCPEnvironmentNameLengthLimit(t *testing.T) {
+	if !gcpEnvNameRe.MatchString("abcdefghijklmn") {
+		t.Fatal("expected 14-character GCP environment name to be valid")
+	}
+	if gcpEnvNameRe.MatchString("abcdefghijklmno") {
+		t.Fatal("expected 15-character GCP environment name to be invalid")
+	}
+}
+
+func TestSaveEnvironmentHandlerUsesGlobalGCPProject(t *testing.T) {
+	dir := t.TempDir()
+	origStateFile := stateFile
+	origSettingsFile := settingsFile
+	origTerraformDir := terraformDir
+	stateFile = dir + "/environments.json"
+	settingsFile = dir + "/settings.json"
+	terraformDir = dir
+	t.Cleanup(func() {
+		stateFile = origStateFile
+		settingsFile = origSettingsFile
+		terraformDir = origTerraformDir
+	})
+
+	publicKey := dir + "/id_test.pub"
+	if err := os.WriteFile(publicKey, []byte("ssh-ed25519 test"), 0600); err != nil {
+		t.Fatalf("write public key: %v", err)
+	}
+	if err := saveAppSettings(AppSettings{
+		GCPProjectID:     "global-project",
+		GCPSSHUser:       "test-user",
+		SSHPublicKeyPath: publicKey,
+	}); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/environment", strings.NewReader(`{"env_id":"gcptest","platform":"gcp","config":{"project_id":"ignored-project"}}`))
+	rec := httptest.NewRecorder()
+	saveEnvironmentHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	state, err := loadState()
+	if err != nil {
+		t.Fatalf("load state: %v", err)
+	}
+	if got := state["gcptest"].Config.ProjectID; got != "global-project" {
+		t.Fatalf("expected global GCP project, got %q", got)
+	}
+	tfvars, err := os.ReadFile(tfvarsPath("gcptest", "gcp"))
+	if err != nil {
+		t.Fatalf("read tfvars: %v", err)
+	}
+	if !strings.Contains(string(tfvars), `project_id = "global-project"`) {
+		t.Fatalf("expected global project in tfvars, got:\n%s", tfvars)
+	}
+}
+
+func TestSaveEnvironmentHandlerRequiresGlobalGCPProject(t *testing.T) {
+	dir := t.TempDir()
+	origSettingsFile := settingsFile
+	settingsFile = dir + "/settings.json"
+	t.Cleanup(func() { settingsFile = origSettingsFile })
+
+	if err := saveAppSettings(AppSettings{}); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/environment", strings.NewReader(`{"env_id":"gcptest","platform":"gcp","config":{}}`))
+	rec := httptest.NewRecorder()
+	saveEnvironmentHandler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "GCP project ID is required in Settings") {
+		t.Fatalf("expected missing project settings error, got %s", rec.Body.String())
+	}
+}

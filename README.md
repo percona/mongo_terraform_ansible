@@ -17,7 +17,7 @@ configuration. Docker and Libvirt deployments are Terraform-only.
 
 ## Prerequisites
 
-The controller machine needs `git`, Terraform 1.0 or newer, OpenSSH, and, for
+The controller machine needs `git`, Terraform 1.9 or newer, OpenSSH, and, for
 cloud or CHAOS deployments, Ansible. Install these common tools with:
 
 ```bash

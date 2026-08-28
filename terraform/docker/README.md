@@ -95,38 +95,25 @@ ldap_servers = {}
 
 ## Prerequisites
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+
-- [Docker](https://docs.docker.com/get-docker/)
+- Terraform 1.0+
+- Docker Engine or Docker Desktop, running and accessible to the current user
 
-### Mac
+On supported macOS, Debian-family Linux, or RHEL-family Linux controllers, install
+both with the repository installer from the root directory:
 
-- It is recommended to use Homebrew. From a Terminal run the following to install it:
-  
-  ```
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  ```
+```bash
+./scripts/install-prerequisites.sh --docker
+```
 
-- Install Terraform. If using Homebrew you can do:
-  
-  ```
-  brew install terraform
-  ```
-  
-  See the [Terraform installation documentation](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli#install-terraform) for detailed instructions.
-
-- Install Docker Desktop. Using Homebrew run:
-  
-  ```
-  brew install docker --cask
-  ```
-
-You can check the [Docker installation documentation](https://docs.docker.com/engine/install/) for detailed instructions.
-
-- Start Docker Desktop by opening the Docker app using the Finder.
-
-- Go to Settings -> Advanced. Make sure you have ticked the option `Allow the default Docker socket to be used (requires password)`
+macOS requires Homebrew to be installed beforehand. Start Docker Desktop after
+installation. On Linux, start a new login session after adding yourself to the
+`docker` group. See the root [prerequisites](../../README.md#prerequisites) for
+installer scope and limitations.
 
 ### Windows
+
+The repository installer does not support Windows. Use WSL and install Terraform
+and Docker Desktop manually as described below.
 
 - Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
   Open PowerShell or Windows Command Prompt in administrator mode by right-clicking and selecting "Run as Administrator".

@@ -47,6 +47,16 @@
         - pbm_enabled | bool
         - disable_telemetry | bool
 
+    - name: Grant PBM access to the client TLS certificate
+      file:
+        path: "{{ clientCertificateKeyFile }}"
+        group: "{{ pbm_os_user }}"
+        mode: "0640"
+      when:
+        - pbm_enabled | bool
+        - use_tls | bool
+        - arbiter is not defined
+
 - name: Figure out backup URI for replica sets
   hosts: replsets
   gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
@@ -59,7 +69,7 @@
   tasks:
     - name: generate PBM_MONGODB_URI
       set_fact:
-        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[replset_group] %}{{ h }}:{{ mongo_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ replset_name }}&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[replset_group] %}{{ h }}:{{ mongo_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ replset_name }}&authSource=admin{% if use_tls | bool %}&tls=true&tlsCertificateKeyFile={{ clientCertificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
       when: pbm_enabled | bool
 
 - name: Figure out backup URI for sharded cluster
@@ -72,7 +82,7 @@
   tasks:
     - name: generate PBM_MONGODB_URI
       set_fact:
-        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-cfg&authSource=admin{% if use_tls %}&tls=true&tlsCertificateKeyFile={{ certificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
+        mongodb_uri: "mongodb://{{ pbmuser }}:{{ pbmpwd }}@{% for h in groups[ 'cfg' ] %}{{ h }}:{{ cfg_server_port }}{% if not loop.last %},{% endif %}{% endfor %}/?replicaSet={{ cluster }}-cfg&authSource=admin{% if use_tls | bool %}&tls=true&tlsCertificateKeyFile={{ clientCertificateKeyFile }}&tlsCAFile={{ CAFile }}{% endif %}"
       when: pbm_enabled | bool
 
 - name: Configure PBM agent and CLI

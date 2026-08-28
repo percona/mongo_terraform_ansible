@@ -177,6 +177,7 @@ var funcMap = template.FuncMap{
 		return withoutTag != "percona/pmm-server" && withoutTag != "perconalab/pmm-server"
 	},
 	"mongodbPackageLabel": mongodbPackageLabel,
+	"pbmPackageLabel":     pbmPackageLabel,
 	"namespaceCustom": func(ns string) bool {
 		return ns != "" && ns != "percona" && ns != "perconalab"
 	},
@@ -350,6 +351,43 @@ func mongodbPackageLabel(cfg Config) string {
 	}
 	if len(labels) == 0 {
 		return mongodbPackageLabelFor("", "", "", cfg.MongoDBDistribution, cfg.MongoRelease, cfg.MongoVersion)
+	}
+	if len(labels) == 1 {
+		for label := range labels {
+			return label
+		}
+	}
+	parts := make([]string, 0, len(labels))
+	for label := range labels {
+		parts = append(parts, label)
+	}
+	sort.Strings(parts)
+	return "Mixed: " + strings.Join(parts, ", ")
+}
+
+func pbmPackageLabel(cfg Config) string {
+	labels := map[string]bool{}
+	addVersion := func(enabled *bool, version string) {
+		if !boolDefault(enabled, false) {
+			return
+		}
+		version = strings.TrimSpace(version)
+		if version == "" {
+			version = strings.TrimSpace(cfg.PbmVersion)
+		}
+		if version == "" {
+			version = "latest"
+		}
+		labels[version] = true
+	}
+	for _, rc := range cfg.Replsets {
+		addVersion(rc.EnablePbm, rc.PbmVersion)
+	}
+	for _, cc := range cfg.Clusters {
+		addVersion(cc.EnablePbm, cc.PbmVersion)
+	}
+	if len(labels) == 0 {
+		return "—"
 	}
 	if len(labels) == 1 {
 		for label := range labels {

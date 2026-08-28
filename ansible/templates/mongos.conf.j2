@@ -28,11 +28,12 @@ processManagement:
 net:
   port: {{ mongo_port }}
   bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}
-{% if use_tls %}
+{% if use_tls | bool %}
   tls:
-    mode: requireTLS
+    mode: preferTLS
     certificateKeyFile: {{ certificateKeyFile }}
     CAFile: {{ CAFile }}
+    allowConnectionsWithoutCertificates: true
 
 security:
 {% if enable_ldap | default(false) | bool %}

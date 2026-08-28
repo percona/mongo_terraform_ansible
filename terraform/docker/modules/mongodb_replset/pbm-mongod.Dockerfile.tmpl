@@ -3,12 +3,6 @@ FROM ${ pbm_image } AS pbm
 
 FROM ${ base_os_image }
 
-# Upstream digests are embedded so Terraform rebuilds this derived image when a
-# mutable tag such as :latest starts pointing at a different image.
-# psmdb_digest=${ psmdb_digest }
-# pbm_digest=${ pbm_digest }
-# base_os_digest=${ base_os_digest }
-
 RUN mkdir -p /data/db /data/configdb
 
 COPY --from=mdb /usr/bin/mongod /usr/bin/

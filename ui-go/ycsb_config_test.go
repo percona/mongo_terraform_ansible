@@ -33,3 +33,27 @@ func TestYcsbWorkloadArgs(t *testing.T) {
 		}
 	}
 }
+
+func TestYcsbDeploymentReady(t *testing.T) {
+	applied := Config{}
+	tests := []struct {
+		name string
+		env  *Environment
+		want bool
+	}{
+		{name: "not deployed", env: &Environment{Status: "configured"}},
+		{name: "failed first deploy", env: &Environment{Status: "deploy_failed"}},
+		{name: "successful deploy", env: &Environment{Status: "running", LastAppliedConfig: &applied}, want: true},
+		{name: "successful deploy history", env: &Environment{Status: "ycsb_load_failed", History: []HistoryEvent{{Action: "deploy", Status: "success"}}}, want: true},
+		{name: "legacy running environment", env: &Environment{Status: "running"}, want: true},
+		{name: "deleted environment", env: &Environment{Status: "deleted", LastAppliedConfig: &applied}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ycsbDeploymentReady(tt.env); got != tt.want {
+				t.Fatalf("ycsbDeploymentReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

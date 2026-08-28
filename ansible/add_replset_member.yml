@@ -13,9 +13,9 @@
     mongodb_repo_product: "{{ 'mongodb-org' if mongodb_distribution_effective == 'community' else 'mongodb-enterprise' }}"
     mongodb_repo_host: "{{ 'repo.mongodb.org' if mongodb_distribution_effective == 'community' else 'repo.mongodb.com' }}"
     mongo_tls_flags: >-
-      {% if use_tls %}
+      {% if use_tls | bool %}
       --tls
-      --tlsCertificateKeyFile {{ certificateKeyFile }}
+      --tlsCertificateKeyFile {{ clientCertificateKeyFile }}
       --tlsCAFile {{ CAFile }}
       --tlsAllowInvalidCertificates
       {% endif %}
@@ -205,6 +205,17 @@
       when:
         - disable_telemetry | bool
         - mongodb_distribution_effective == 'psmdb'
+        - replset_member_to_add | bool
+        - not arbiter | default(false)
+
+    - name: Grant MongoDB access to its TLS certificate
+      file:
+        path: "{{ certificateKeyFile }}"
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
+        mode: "0600"
+      when:
+        - use_tls | bool
         - replset_member_to_add | bool
         - not arbiter | default(false)
 

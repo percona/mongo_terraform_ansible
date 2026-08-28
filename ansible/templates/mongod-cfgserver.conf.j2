@@ -38,9 +38,9 @@ processManagement:
 net:
   port: {{ mongo_port }}
   bindIp: localhost,{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}
-{% if use_tls %}
+{% if use_tls | bool %}
   tls:
-    mode: requireTLS
+    mode: preferTLS
     certificateKeyFile: {{ certificateKeyFile }}
     CAFile: {{ CAFile }}
     allowConnectionsWithoutCertificates: true    
@@ -58,7 +58,7 @@ security:
     userToDNMapping: '[ { match : "(.+)", substitution : "uid={0},{{ ldap_users_dn }}" } ]'
     transportSecurity: none
 {% endif %}
-{% if use_tls %}
+{% if use_tls | bool %}
   clusterAuthMode: x509
 {% else %}
   keyFile: {{ keyFile_location }}

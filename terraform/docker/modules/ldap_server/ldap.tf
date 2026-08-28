@@ -3,8 +3,13 @@ data "docker_registry_image" "ldap" {
   name = var.ldap_image
 }
 
+locals {
+  ldap_repository       = replace(data.docker_registry_image.ldap.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+  ldap_admin_repository = replace(data.docker_registry_image.ldap_admin.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+}
+
 resource "docker_image" "ldap" {
-  name          = data.docker_registry_image.ldap.name
+  name          = "${local.ldap_repository}@${data.docker_registry_image.ldap.sha256_digest}"
   pull_triggers = [data.docker_registry_image.ldap.sha256_digest]
   keep_locally  = true
 }
@@ -78,7 +83,7 @@ data "docker_registry_image" "ldap_admin" {
 }
 
 resource "docker_image" "ldap_admin" {
-  name          = data.docker_registry_image.ldap_admin.name
+  name          = "${local.ldap_admin_repository}@${data.docker_registry_image.ldap_admin.sha256_digest}"
   pull_triggers = [data.docker_registry_image.ldap_admin.sha256_digest]
   keep_locally  = true
 }

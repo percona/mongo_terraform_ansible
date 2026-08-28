@@ -416,7 +416,7 @@ func TestParseInventoryHostsClassifiesLDAP(t *testing.T) {
 test-ldap ansible_host=10.30.0.10
 
 [all:vars]
-ansible_ssh_user=test
+ansible_user=test
 `, "rs01", "test", "")
 	if len(hosts) != 1 {
 		t.Fatalf("expected one host, got %d", len(hosts))

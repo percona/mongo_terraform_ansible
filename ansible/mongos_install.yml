@@ -19,9 +19,9 @@
 
   vars:
     mongo_tls_flags: >-
-      {% if use_tls %}
+      {% if use_tls | bool %}
       --tls
-      --tlsCertificateKeyFile {{ certificateKeyFile }}
+      --tlsCertificateKeyFile {{ clientCertificateKeyFile }}
       --tlsCAFile {{ CAFile }}
       --tlsAllowInvalidCertificates
       {% endif %}
@@ -60,6 +60,14 @@
       when:
         - disable_telemetry | bool
         - mongodb_distribution_effective == 'psmdb'
+
+    - name: Grant mongos access to its TLS certificate
+      file:
+        path: "{{ certificateKeyFile }}"
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
+        mode: "0600"
+      when: use_tls | bool
 
     - name: Create logs directory for mongos 
       file:
@@ -126,12 +134,14 @@
 
     - name: Set SELinux to disabled until reboot
       command: /usr/sbin/setenforce 0
-      when: ansible_selinux.status == "enabled"
+      when:
+        - ansible_facts['selinux'] is defined
+        - ansible_facts['selinux']['status'] | default('disabled') == 'enabled'
       ignore_errors: yes
 
     - name: Disable SELinux permanently
       lineinfile:
-        path: ansible_facts['selinux']['config_file']
+        path: "{{ ansible_facts['selinux']['config_file'] }}"
         regexp: '^SELINUX='
         line: 'SELINUX=disabled'
       when: ansible_facts['selinux'] is defined and ansible_facts['selinux']['config_file'] is defined

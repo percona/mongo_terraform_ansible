@@ -1,12 +1,14 @@
 # Prepare the template for PBM docker image with the MongoDB binary of the version in use (required for physical restore)
 locals {
+  psmdb_repository   = replace(data.docker_registry_image.psmdb.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+  pbm_repository     = replace(data.docker_registry_image.pbm.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+  base_os_repository = replace(data.docker_registry_image.base_os.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+  mongot_repository  = replace(data.docker_registry_image.mongot.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+
   pbm_mongod_image_dockerfile_content = templatefile("${path.module}/pbm-mongod.Dockerfile.tmpl", {
-    psmdb_image    = var.psmdb_image
-    pbm_image      = var.pbm_image
-    base_os_image  = var.base_os_image
-    psmdb_digest   = data.docker_registry_image.psmdb.sha256_digest
-    pbm_digest     = data.docker_registry_image.pbm.sha256_digest
-    base_os_digest = data.docker_registry_image.base_os.sha256_digest
+    psmdb_image   = "${local.psmdb_repository}@${data.docker_registry_image.psmdb.sha256_digest}"
+    pbm_image     = "${local.pbm_repository}@${data.docker_registry_image.pbm.sha256_digest}"
+    base_os_image = "${local.base_os_repository}@${data.docker_registry_image.base_os.sha256_digest}"
   })
 }
 
@@ -15,7 +17,7 @@ data "docker_registry_image" "psmdb" {
 }
 
 resource "docker_image" "psmdb" {
-  name          = data.docker_registry_image.psmdb.name
+  name          = "${local.psmdb_repository}@${data.docker_registry_image.psmdb.sha256_digest}"
   pull_triggers = [data.docker_registry_image.psmdb.sha256_digest]
   keep_locally  = true
 }
@@ -25,7 +27,7 @@ data "docker_registry_image" "pbm" {
 }
 
 resource "docker_image" "pbm" {
-  name          = data.docker_registry_image.pbm.name
+  name          = "${local.pbm_repository}@${data.docker_registry_image.pbm.sha256_digest}"
   pull_triggers = [data.docker_registry_image.pbm.sha256_digest]
   keep_locally  = true
 }
@@ -35,7 +37,7 @@ data "docker_registry_image" "base_os" {
 }
 
 resource "docker_image" "base_os" {
-  name          = data.docker_registry_image.base_os.name
+  name          = "${local.base_os_repository}@${data.docker_registry_image.base_os.sha256_digest}"
   pull_triggers = [data.docker_registry_image.base_os.sha256_digest]
   keep_locally  = true
 }
@@ -45,7 +47,7 @@ data "docker_registry_image" "mongot" {
 }
 
 resource "docker_image" "mongot" {
-  name          = data.docker_registry_image.mongot.name
+  name          = "${local.mongot_repository}@${data.docker_registry_image.mongot.sha256_digest}"
   pull_triggers = [data.docker_registry_image.mongot.sha256_digest]
   keep_locally  = true
 }
@@ -65,6 +67,11 @@ resource "docker_image" "pbm_mongod_rs" {
     docker_image.base_os
   ]
   name = "${var.rs_name}-${var.pbm_mongod_image}"
+  triggers = {
+    psmdb_digest   = data.docker_registry_image.psmdb.sha256_digest
+    pbm_digest     = data.docker_registry_image.pbm.sha256_digest
+    base_os_digest = data.docker_registry_image.base_os.sha256_digest
+  }
   build {
     context    = path.module
     dockerfile = "${var.rs_name}-${replace(var.pbm_mongod_image, "/", "-")}.Dockerfile"

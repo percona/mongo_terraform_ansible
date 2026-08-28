@@ -3,8 +3,13 @@ data "docker_registry_image" "minio" {
   name = var.minio_image
 }
 
+locals {
+  minio_repository    = replace(data.docker_registry_image.minio.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+  minio_mc_repository = replace(data.docker_registry_image.minio_mc.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+}
+
 resource "docker_image" "minio" {
-  name          = data.docker_registry_image.minio.name
+  name          = "${local.minio_repository}@${data.docker_registry_image.minio.sha256_digest}"
   pull_triggers = [data.docker_registry_image.minio.sha256_digest]
   keep_locally  = true
 }
@@ -14,9 +19,13 @@ data "docker_registry_image" "minio_mc" {
   name = var.minio_mc_image
 }
 resource "docker_image" "minio_mc" {
-  name          = data.docker_registry_image.minio_mc.name
+  name          = "${local.minio_mc_repository}@${data.docker_registry_image.minio_mc.sha256_digest}"
   pull_triggers = [data.docker_registry_image.minio_mc.sha256_digest]
   keep_locally  = true
+}
+
+resource "docker_volume" "minio_data" {
+  name = "${var.minio_server}-data"
 }
 
 resource "docker_container" "minio" {
@@ -31,6 +40,10 @@ resource "docker_container" "minio" {
     "MINIO_CONSOLE_ADDRESS=:${var.minio_console_port}"
   ]
   command = ["server", "/data"]
+  volumes {
+    volume_name    = docker_volume.minio_data.name
+    container_path = "/data"
+  }
   ports {
     internal = var.minio_port
     external = var.minio_port
@@ -65,22 +78,21 @@ resource "null_resource" "minio_bucket" {
   depends_on = [docker_container.minio]
 
   triggers = {
-    minio_mc_image_id = docker_image.minio_mc.image_id
+    minio_data_volume_id = docker_volume.minio_data.id
   }
 
   provisioner "local-exec" {
     command = <<-EOT
-      docker run --rm --network ${var.network_name} \
-        -e MC_HOST_minio="http://${var.minio_access_key}:${var.minio_secret_key}@${docker_container.minio.name}:${var.minio_port}" \
-        ${var.minio_mc_image} mb minio/${var.bucket_name} --region=${var.minio_region}
-    EOT
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      docker run --rm --network ${var.network_name} \
-        -e MC_HOST_minio="http://${var.minio_access_key}:${var.minio_secret_key}@${docker_container.minio.name}:${var.minio_port}" \
-        ${var.minio_mc_image} ilm rule add --expire-days ${var.backup_retention} minio/${var.bucket_name} 
+      if ! docker run --rm --network ${var.network_name} \
+          -e MC_HOST_minio="http://${var.minio_access_key}:${var.minio_secret_key}@${docker_container.minio.name}:${var.minio_port}" \
+          ${docker_image.minio_mc.image_id} stat minio/${var.bucket_name} >/dev/null 2>&1; then
+        docker run --rm --network ${var.network_name} \
+          -e MC_HOST_minio="http://${var.minio_access_key}:${var.minio_secret_key}@${docker_container.minio.name}:${var.minio_port}" \
+          ${docker_image.minio_mc.image_id} mb minio/${var.bucket_name} --region=${var.minio_region}
+        docker run --rm --network ${var.network_name} \
+          -e MC_HOST_minio="http://${var.minio_access_key}:${var.minio_secret_key}@${docker_container.minio.name}:${var.minio_port}" \
+          ${docker_image.minio_mc.image_id} ilm rule add --expire-days ${var.backup_retention} minio/${var.bucket_name}
+      fi
     EOT
   }
 }

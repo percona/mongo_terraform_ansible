@@ -23,18 +23,18 @@ resource "local_file" "AnsibleInventoryCluster" {
     hostname_mongos      = each.value.hostname_mongos
     ip_mongos            = each.value.ip_mongos
 
-    ansible_group_arbiters  = each.value.ansible_group_arbiters
-    ansible_group_arb_index = each.value.ansible_group_arb_index
-    hostname_arbiters       = each.value.hostname_arbiters
-    ip_arbiters             = each.value.ip_arbiters
+    ansible_group_arbiters = each.value.ansible_group_arbiters
+    hostname_arbiters      = each.value.hostname_arbiters
+    ip_arbiters            = each.value.ip_arbiters
 
-    number_of_shards     = each.value.number_of_shards
-    arbiters_per_replset = range(each.value.arbiters_per_replset)
+    number_of_shards = each.value.number_of_shards
 
     my_ssh_user          = var.my_ssh_user
     ssh_private_key_path = var.ssh_private_key_path
     hostname_pmm         = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
     ip_pmm               = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
+    hostname_ca          = var.enable_ca ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
+    ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(aws_instance.ca[0].public_ip, "") : try(aws_instance.pmm[0].public_ip, "")) : ""
     hostname_ycsb        = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
     ip_ycsb              = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
     bucket               = aws_s3_bucket.mongo_backups.bucket
@@ -43,6 +43,7 @@ resource "local_file" "AnsibleInventoryCluster" {
     cluster              = each.value.cluster
     env_tag              = each.value.env_tag
     enable_pmm           = var.enable_pmm
+    use_tls              = var.clusters[each.key].use_tls
     enable_pmm_agent     = var.enable_pmm && var.clusters[each.key].enable_pmm
     pmm_image            = var.pmm_image
     enable_pbm           = var.clusters[each.key].enable_pbm
@@ -71,7 +72,6 @@ resource "local_file" "AnsibleInventoryCluster" {
     mongo_release        = var.clusters[each.key].mongo_release != "" ? var.clusters[each.key].mongo_release : var.mongo_release
     mongo_version        = var.clusters[each.key].mongo_version != "" ? var.clusters[each.key].mongo_version : var.mongo_version
     mongo_repo           = var.clusters[each.key].mongo_repo != "" ? var.clusters[each.key].mongo_repo : var.mongo_repo
-    pbm_release          = var.pbm_release
     pbm_version          = var.clusters[each.key].pbm_version != "" ? var.clusters[each.key].pbm_version : var.pbm_version
     pbm_repo             = var.clusters[each.key].pbm_repo != "" ? var.clusters[each.key].pbm_repo : var.pbm_repo
     pmm_client_version   = var.clusters[each.key].pmm_client_version != "" ? var.clusters[each.key].pmm_client_version : var.pmm_client_version
@@ -129,6 +129,7 @@ resource "local_file" "AnsibleInventoryRS" {
     rs_name              = each.value.rs_name
     env_tag              = each.value.env_tag
     enable_pmm           = var.enable_pmm
+    use_tls              = var.replsets[each.key].use_tls
     enable_pmm_agent     = var.enable_pmm && var.replsets[each.key].enable_pmm
     pmm_image            = var.pmm_image
     enable_pbm           = var.replsets[each.key].enable_pbm
@@ -154,6 +155,8 @@ resource "local_file" "AnsibleInventoryRS" {
     region        = aws_s3_bucket.mongo_backups.region
     hostname_pmm  = var.enable_pmm ? aws_instance.pmm[0].tags["Name"] : ""
     ip_pmm        = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
+    hostname_ca   = var.enable_ca ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
+    ip_ca         = var.enable_ca ? (var.ca_placement == "dedicated" ? try(aws_instance.ca[0].public_ip, "") : try(aws_instance.pmm[0].public_ip, "")) : ""
     hostname_ycsb = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
     ip_ycsb       = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
     bucket        = aws_s3_bucket.mongo_backups.bucket
@@ -165,7 +168,6 @@ resource "local_file" "AnsibleInventoryRS" {
     mongo_release        = var.replsets[each.key].mongo_release != "" ? var.replsets[each.key].mongo_release : var.mongo_release
     mongo_version        = var.replsets[each.key].mongo_version != "" ? var.replsets[each.key].mongo_version : var.mongo_version
     mongo_repo           = var.replsets[each.key].mongo_repo != "" ? var.replsets[each.key].mongo_repo : var.mongo_repo
-    pbm_release          = var.pbm_release
     pbm_version          = var.replsets[each.key].pbm_version != "" ? var.replsets[each.key].pbm_version : var.pbm_version
     pbm_repo             = var.replsets[each.key].pbm_repo != "" ? var.replsets[each.key].pbm_repo : var.pbm_repo
     pmm_client_version   = var.replsets[each.key].pmm_client_version != "" ? var.replsets[each.key].pmm_client_version : var.pmm_client_version

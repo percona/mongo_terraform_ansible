@@ -19,6 +19,7 @@ variable "clusters" {
     arbiters_per_replset = optional(number, 1)      # Number of arbiters per replica set
     mongos_count         = optional(number, 2)      # Number of mongos to provision
     enable_audit         = optional(bool, false)    # Enable audit logging
+    use_tls              = optional(bool, false)    # Use TLS for this cluster
     audit_filter         = optional(string, "")     # Optional audit filter override
     mongodb_distribution = optional(string, "")
     mongo_release        = optional(string, "")
@@ -58,6 +59,7 @@ variable "replsets" {
     data_nodes_per_replset = optional(number, 2)      # Number of data bearing members per replset
     arbiters_per_replset   = optional(number, 1)      # Number of arbiters per replica set
     enable_audit           = optional(bool, false)    # Enable audit logging
+    use_tls                = optional(bool, false)    # Use TLS for this replica set
     audit_filter           = optional(string, "")     # Optional audit filter override
     mongodb_distribution   = optional(string, "")
     mongo_release          = optional(string, "")
@@ -175,6 +177,75 @@ variable "enable_pmm" {
   type        = bool
   default     = true
   description = "Deploy a PMM monitoring server. Set to false to skip PMM entirely."
+}
+
+#############
+# TLS CA
+#############
+
+variable "enable_ca" {
+  type        = bool
+  default     = false
+  description = "Provision a certificate authority host and add it to generated inventories."
+}
+
+variable "ca_placement" {
+  type        = string
+  default     = "dedicated"
+  description = "Place the TLS certificate authority on a dedicated VM or the PMM host."
+
+  validation {
+    condition     = contains(["dedicated", "pmm"], var.ca_placement)
+    error_message = "ca_placement must be either dedicated or pmm."
+  }
+
+  validation {
+    condition     = !var.enable_ca || var.ca_placement != "pmm" || var.enable_pmm
+    error_message = "enable_pmm must be true when CA provisioning is enabled with ca_placement set to pmm."
+  }
+}
+
+variable "default_ca_host" {
+  type        = string
+  default     = "ca-server"
+  description = "Base hostname for the dedicated CA VM."
+}
+
+locals {
+  ca_host = "${var.prefix}-${var.default_ca_host}"
+}
+
+variable "ca_cpu_cores" {
+  type        = number
+  default     = 2
+  description = "Number of CPU cores for the dedicated CA instance."
+
+  validation {
+    condition     = contains([2, 4, 8, 16, 32], var.ca_cpu_cores)
+    error_message = "ca_cpu_cores must be one of 2, 4, 8, 16, or 32."
+  }
+}
+
+variable "ca_memory_gb" {
+  type        = number
+  default     = 4
+  description = "Memory in GB for the dedicated CA instance."
+
+  validation {
+    condition     = contains([4, 8, 16], var.ca_memory_gb)
+    error_message = "ca_memory_gb must be one of 4, 8, or 16."
+  }
+}
+
+variable "ca_volume_size" {
+  type        = number
+  default     = 20
+  description = "Root disk size in GB for the dedicated CA instance."
+
+  validation {
+    condition     = contains([20, 40, 60, 80, 100], var.ca_volume_size)
+    error_message = "ca_volume_size must be one of 20, 40, 60, 80, or 100."
+  }
 }
 
 variable "enable_ycsb" {
@@ -429,12 +500,6 @@ variable "mongo_repo" {
   type        = string
   default     = ""
   description = "Percona repository channel for MongoDB packages (release, testing, experimental). Empty string uses group_vars default."
-}
-
-variable "pbm_release" {
-  type        = string
-  default     = ""
-  description = "Percona release channel for PBM (e.g. pbm). Empty string uses the default from group_vars."
 }
 
 variable "mongot_repo" {

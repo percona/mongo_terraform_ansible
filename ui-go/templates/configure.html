@@ -414,6 +414,11 @@
                             onchange="onMongotFeatureToggle(this)">
                 Install Search/Vector Search</label>
             </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="cluster_use_tls[]" value="1"
+                            {{if boolDefault .Config.UseTLS false}}checked{{end}}>
+                Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label>
+            </div>
           </div>
           {{end}}
           {{if eq $p "docker"}}
@@ -935,6 +940,11 @@
                             {{if boolDefault .Config.EnableMongot false}}checked{{end}}
                             onchange="onMongotFeatureToggle(this)">
                 Install Search/Vector Search</label>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="replset_use_tls[]" value="1"
+                            {{if boolDefault .Config.UseTLS false}}checked{{end}}>
+                Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label>
             </div>
           </div>
           {{end}}
@@ -1619,6 +1629,69 @@
         <input type="number" id="backup_retention" name="backup_retention"
                value="{{intDefault .Config.BackupRetention 2}}" min="1">
       </div>
+    </div>
+  </section>
+  {{end}}
+
+  {{if or (eq $p "aws") (eq $p "gcp") (eq $p "azure") (eq $p "chaos")}}
+  <section class="form-section">
+    <div class="section-header">
+      <h2>Certificate Authority</h2>
+    </div>
+    <div class="form-row" style="margin-bottom:0.5rem">
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" id="enable_ca" name="enable_ca"
+                      {{if boolDefault .Config.EnableCA false}}checked{{end}}
+                      onchange="toggleCAProvisioning(this)">
+          Provision certificate authority <span class="field-tip" data-tip="Creates and manages the CA used by TLS-enabled clusters and replica sets.">ⓘ</span></label>
+      </div>
+    </div>
+    <div id="ca-settings-body" {{if not (boolDefault .Config.EnableCA false)}}style="display:none"{{end}}>
+    <div class="form-row">
+      <div class="form-group" id="ca-placement-group">
+        <label for="ca_placement">Certificate authority host</label>
+        <select id="ca_placement" name="ca_placement" onchange="toggleCASettings()">
+          <option value="dedicated" {{if eq .Config.CAPlacement "dedicated"}}selected{{end}}>Dedicated CA server</option>
+          <option value="pmm" {{if eq .Config.CAPlacement "pmm"}}selected{{end}}>PMM server</option>
+        </select>
+      </div>
+    </div>
+    {{if eq $p "chaos"}}
+    <div class="form-row" id="ca-compute-settings" {{if eq .Config.CAPlacement "pmm"}}style="display:none"{{end}}>
+      <div class="form-group">
+        <label for="ca_cpu_cores">CA vCPU</label>
+        <select id="ca_cpu_cores" name="ca_cpu_cores">
+          {{$v := .Config.CACpuCores}}
+          <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
+          <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
+          <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
+          <option value="16" {{if eq $v 16}}selected{{end}}>16 vCPU</option>
+          <option value="32" {{if eq $v 32}}selected{{end}}>32 vCPU</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="ca_memory_gb">CA Memory</label>
+        <select id="ca_memory_gb" name="ca_memory_gb">
+          {{$v := .Config.CAMemoryGb}}
+          <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
+          <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
+          <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="ca_volume_size">CA Disk</label>
+        <select id="ca_volume_size" name="ca_volume_size">
+          {{$v := .Config.CAVolumeSize}}
+          <option value="20" {{if or (eq $v 0) (eq $v 20)}}selected{{end}}>20 GB</option>
+          <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
+          <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
+          <option value="80" {{if eq $v 80}}selected{{end}}>80 GB</option>
+          <option value="100" {{if eq $v 100}}selected{{end}}>100 GB</option>
+        </select>
+      </div>
+    </div>
+    {{end}}
+    <p class="field-hint">Used when TLS is enabled on at least one cluster or replica set. The generated CA is intended for test environments. Dedicated CA is recommended; PMM placement requires the PMM server.</p>
     </div>
   </section>
   {{end}}
@@ -2838,6 +2911,10 @@ function buildPackageOverrideRows(type) {
         <label><input type="checkbox" name="${type}_enable_mongot[]" value="1" onchange="onMongotFeatureToggle(this)">
           Install Search/Vector Search</label>
       </div>
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="${type}_use_tls[]" value="1">
+          Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label>
+      </div>
     </div>
     <div class="subsection-header">
       <span class="subsection-title">Package Overrides</span>
@@ -3270,6 +3347,18 @@ function toggleCloudLdapSection(cb) {
   document.getElementById('ldap-cloud-body').style.display = cb.checked ? '' : 'none';
 }
 
+function toggleCASettings() {
+  const placement = document.getElementById('ca_placement')?.value || 'dedicated';
+  const computeSettings = document.getElementById('ca-compute-settings');
+  if (computeSettings) computeSettings.style.display = placement === 'dedicated' ? '' : 'none';
+}
+
+function toggleCAProvisioning(cb) {
+  const body = document.getElementById('ca-settings-body');
+  if (body) body.style.display = cb.checked ? '' : 'none';
+  if (cb.checked) toggleCASettings();
+}
+
 // Integer fields – send as numbers in JSON (not strings) so Go unmarshal works cleanly.
 const numericFields = new Set([
   'pmm_volume_size','pmm_port','subnet_count','backup_retention',
@@ -3284,6 +3373,7 @@ const numericFields = new Set([
   'minio_cpu_cores','minio_memory_gb','minio_volume_size',
   'minio_port','minio_console_port',
   'pmm_cpu_cores','pmm_memory_gb',
+  'ca_cpu_cores','ca_memory_gb','ca_volume_size',
 ]);
 
 function addAnsibleVar() {
@@ -3668,6 +3758,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     'minio_port','minio_console_port',
     'minio_root_user','minio_root_password',
     'pmm_cpu_cores','pmm_memory_gb',
+    'ca_cpu_cores','ca_memory_gb','ca_volume_size',
   ];
   for (const f of simpleFields) {
     const raw = fd.get(f);
@@ -3686,6 +3777,10 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   }
 	config.use_spot_instances = fd.has('use_spot_instances');
 	config.enable_ycsb = fd.has('enable_ycsb');
+  if (['aws', 'gcp', 'azure', 'chaos'].includes(PLATFORM)) {
+    config.enable_ca = fd.has('enable_ca');
+    config.ca_placement = fd.get('ca_placement') || 'dedicated';
+  }
   if (PLATFORM !== 'docker' && fd.has('enable_ldap')) {
     const ldapName = (fd.get('ldap_server_name') || 'ldap').trim();
     if (!/^[a-zA-Z0-9_-]+$/.test(ldapName)) {
@@ -3801,6 +3896,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       c.enable_pmm = getBlockChecked(block, 'cluster_enable_pmm[]');
       c.enable_pbm = getBlockChecked(block, 'cluster_enable_pbm[]');
       c.enable_mongot = getBlockChecked(block, 'cluster_enable_mongot[]');
+      c.use_tls = getBlockChecked(block, 'cluster_use_tls[]');
       const mongotVersion = getBlockFieldValue(block, 'cluster_mongot_version[]').trim();
       const mongotSource = getBlockFieldValue(block, 'cluster_mongot_source[]').trim();
       if (mongotSource) c.mongot_source = mongotSource;
@@ -3844,6 +3940,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       r.enable_pmm = getBlockChecked(block, 'replset_enable_pmm[]');
       r.enable_pbm = getBlockChecked(block, 'replset_enable_pbm[]');
       r.enable_mongot = getBlockChecked(block, 'replset_enable_mongot[]');
+      r.use_tls = getBlockChecked(block, 'replset_use_tls[]');
       const mongotVersion = getBlockFieldValue(block, 'replset_mongot_version[]').trim();
       const mongotSource = getBlockFieldValue(block, 'replset_mongot_source[]').trim();
       if (mongotSource) r.mongot_source = mongotSource;
@@ -3870,6 +3967,18 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     }
     config.replsets[name] = r;
   });
+
+  if (['aws', 'gcp', 'azure', 'chaos'].includes(PLATFORM)) {
+    config.use_tls = [...Object.values(config.clusters), ...Object.values(config.replsets)].some(item => item.use_tls);
+    if (config.use_tls && !config.enable_ca) {
+      alert('Provision a certificate authority before enabling TLS on a cluster or replica set.');
+      return;
+    }
+    if (config.enable_ca && config.ca_placement === 'pmm' && !fd.has('enable_pmm')) {
+      alert('Enable the PMM server or select a dedicated CA server.');
+      return;
+    }
+  }
 
   // PMM Servers (Docker)
   if (PLATFORM === 'docker') {

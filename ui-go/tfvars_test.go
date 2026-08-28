@@ -13,6 +13,134 @@ func intPtr(v int) *int {
 	return &v
 }
 
+func TestTLSJSONUsesBreakingUseTLSName(t *testing.T) {
+	data, err := json.Marshal(Config{
+		UseTLS: true,
+		Clusters: map[string]ClusterConfig{
+			"cl01": {UseTLS: boolPtr(true)},
+		},
+		Replsets: map[string]ReplsetConfig{
+			"rs01": {UseTLS: boolPtr(false)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal TLS config: %v", err)
+	}
+	if strings.Contains(string(data), "enable_tls") || !strings.Contains(string(data), `"use_tls":true`) {
+		t.Fatalf("unexpected TLS JSON: %s", data)
+	}
+
+	var cfg Config
+	if err := json.Unmarshal([]byte(`{"enable_tls":true,"clusters":{"cl01":{"enable_tls":true}}}`), &cfg); err != nil {
+		t.Fatalf("unmarshal old TLS names: %v", err)
+	}
+	if cfg.UseTLS || cfg.Clusters["cl01"].UseTLS != nil {
+		t.Fatalf("old enable_tls names unexpectedly populated config: %#v", cfg)
+	}
+}
+
+func TestWriteTfvarsCloudTLS(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{Prefix: "tls", CAPlacement: "dedicated", Clusters: map[string]ClusterConfig{
+		"secure": {UseTLS: boolPtr(true)},
+		"plain":  {UseTLS: boolPtr(false)},
+	}}
+	if err := writeTfvars("tls", "aws", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+	content, err := os.ReadFile(tfvarsPath("tls", "aws"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	for _, want := range []string{"enable_ca = true", `ca_placement = "dedicated"`, `"secure" = {`, `use_tls = true`, `"plain" = {`, `use_tls = false`} {
+		if !strings.Contains(string(content), want) {
+			t.Fatalf("expected %q in tfvars:\n%s", want, content)
+		}
+	}
+}
+
+func TestTopologyAnsibleVarsOverrideTLSPerInventory(t *testing.T) {
+	cfg := Config{
+		PmmImage:    " pmm:test ",
+		AnsibleVars: map[string]string{"use_tls": "wrong", "custom": "value"},
+		Clusters:    map[string]ClusterConfig{"secure": {UseTLS: boolPtr(true)}},
+		Replsets:    map[string]ReplsetConfig{"plain": {UseTLS: boolPtr(false)}},
+	}
+
+	secure := topologyAnsibleVars(cfg, "chaos", "secure", map[string]string{"step": "cert"})
+	plain := topologyAnsibleVars(cfg, "chaos", "plain", nil)
+	if value, ok := secure["use_tls"].(bool); !ok || !value {
+		t.Fatalf("secure topology use_tls = %#v, want boolean true", secure["use_tls"])
+	}
+	if value, ok := plain["use_tls"].(bool); !ok || value {
+		t.Fatalf("plain topology use_tls = %#v, want boolean false", plain["use_tls"])
+	}
+	if secure["pmm_image"] != "pmm:test" || secure["custom"] != "value" || secure["step"] != "cert" {
+		t.Fatalf("unexpected runtime variables: %#v", secure)
+	}
+}
+
+func TestNormalizeAndValidateUseTLSConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		platform string
+		cfg      Config
+		wantErr  string
+	}{
+		{name: "dedicated", platform: "aws", cfg: Config{Clusters: map[string]ClusterConfig{"cl01": {UseTLS: boolPtr(true)}}}},
+		{name: "TLS without CA", platform: "aws", cfg: Config{EnableCA: boolPtr(false), Clusters: map[string]ClusterConfig{"cl01": {UseTLS: boolPtr(true)}}}, wantErr: "provision a certificate authority"},
+		{name: "global default", platform: "aws", cfg: Config{UseTLS: true, Clusters: map[string]ClusterConfig{"cl01": {}}}},
+		{name: "pmm", platform: "gcp", cfg: Config{CAPlacement: "pmm", EnablePmm: boolPtr(true), Replsets: map[string]ReplsetConfig{"rs01": {UseTLS: boolPtr(true)}}}},
+		{name: "pmm disabled", platform: "azure", cfg: Config{CAPlacement: "pmm", EnablePmm: boolPtr(false), Replsets: map[string]ReplsetConfig{"rs01": {UseTLS: boolPtr(true)}}}, wantErr: "PMM server"},
+		{name: "chaos", platform: "chaos", cfg: Config{Replsets: map[string]ReplsetConfig{"rs01": {UseTLS: boolPtr(true)}}}},
+		{name: "invalid chaos CA CPU", platform: "chaos", cfg: Config{CACpuCores: 1, Replsets: map[string]ReplsetConfig{"rs01": {UseTLS: boolPtr(true)}}}, wantErr: "vCPU"},
+		{name: "unsupported platform", platform: "docker", cfg: Config{Clusters: map[string]ClusterConfig{"cl01": {UseTLS: boolPtr(true)}}}, wantErr: "supported only"},
+		{name: "ycsb", platform: "aws", cfg: Config{EnableYcsb: true, Clusters: map[string]ClusterConfig{"cl01": {UseTLS: boolPtr(true)}}}, wantErr: "YCSB"},
+		{name: "mongot", platform: "aws", cfg: Config{Clusters: map[string]ClusterConfig{"cl01": {UseTLS: boolPtr(true), EnableMongot: boolPtr(true)}}}, wantErr: "mongot"},
+		{name: "raw override", platform: "aws", cfg: Config{AnsibleVars: map[string]string{"use_tls": "true"}}, wantErr: "cannot be overridden"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := normalizeAndValidateUseTLSConfig(tt.platform, &tt.cfg)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if tt.cfg.CAPlacement == "" {
+					t.Fatal("CA placement was not normalized")
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("expected error containing %q, got %v", tt.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestWriteTfvarsProvisionsCAWithoutTLS(t *testing.T) {
+	dir := t.TempDir()
+	origTerraformDir := terraformDir
+	terraformDir = dir
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	cfg := Config{EnableCA: boolPtr(true), CAPlacement: "dedicated", Clusters: map[string]ClusterConfig{"plain": {UseTLS: boolPtr(false)}}}
+	if err := writeTfvars("ca-only", "aws", cfg); err != nil {
+		t.Fatalf("writeTfvars failed: %v", err)
+	}
+	content, err := os.ReadFile(tfvarsPath("ca-only", "aws"))
+	if err != nil {
+		t.Fatalf("read tfvars failed: %v", err)
+	}
+	if !strings.Contains(string(content), "enable_ca = true") {
+		t.Fatalf("expected shared CA infrastructure to be enabled:\n%s", content)
+	}
+}
+
 func TestWriteTfvarsDockerPmmExternalAndEmptyServiceMaps(t *testing.T) {
 	dir := t.TempDir()
 	origTerraformDir := terraformDir

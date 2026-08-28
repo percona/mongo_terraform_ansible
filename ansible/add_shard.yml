@@ -12,9 +12,9 @@
     mongodb_repo_product: "{{ 'mongodb-org' if mongodb_distribution_effective == 'community' else 'mongodb-enterprise' }}"
     mongodb_repo_host: "{{ 'repo.mongodb.org' if mongodb_distribution_effective == 'community' else 'repo.mongodb.com' }}"
     mongo_tls_flags: >-
-      {% if use_tls %}
+      {% if use_tls | bool %}
       --tls
-      --tlsCertificateKeyFile {{ certificateKeyFile }}
+      --tlsCertificateKeyFile {{ clientCertificateKeyFile }}
       --tlsCAFile {{ CAFile }}
       --tlsAllowInvalidCertificates
       {% endif %}
@@ -163,6 +163,14 @@
         - disable_telemetry | bool
         - mongodb_distribution_effective == 'psmdb'
 
+    - name: Grant MongoDB access to its TLS certificate
+      file:
+        path: "{{ certificateKeyFile }}"
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
+        mode: "0600"
+      when: use_tls | bool
+
     - name: Set up shared mongo keyfile
       copy:
         dest: "{{ keyFile_location }}"
@@ -308,9 +316,9 @@
   tags: add_shard
   vars:
     mongo_tls_flags: >-
-      {% if use_tls %}
+      {% if use_tls | bool %}
       --tls
-      --tlsCertificateKeyFile {{ certificateKeyFile }}
+      --tlsCertificateKeyFile {{ clientCertificateKeyFile }}
       --tlsCAFile {{ CAFile }}
       --tlsAllowInvalidCertificates
       {% endif %}
@@ -326,6 +334,7 @@
             print("Shard " + shardName + " is already registered, skipping.");
           }
         '
+      no_log: true
       delegate_to: "{{ groups.mongos | first }}"
       register: result
       changed_when: >

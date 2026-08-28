@@ -14,6 +14,11 @@ ${hostname_arbiters[arb_index]} ansible_host=${ip_arbiters[arb_index]} arbiter=T
 ${hostname_pmm} ansible_host=${ip_pmm}
 
 %{ endif ~}
+%{ if hostname_ca != "" ~}
+[ca]
+${hostname_ca} ansible_host=${ip_ca}
+
+%{ endif ~}
 %{ if hostname_ycsb != "" ~}
 [ycsb]
 ${hostname_ycsb} ansible_host=${ip_ycsb}
@@ -25,26 +30,17 @@ ${ldap_hostname} ansible_host=${ldap_ip}
 
 %{ endif ~}
 [all:vars]
-ansible_ssh_user=${my_ssh_user}
+# Ansible connection
+ansible_user=${my_ssh_user}
 %{ if ssh_private_key_path != "" ~}
 ansible_ssh_private_key_file=${ssh_private_key_path}
 %{ endif ~}
 ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-bucket=${bucket}
-region=${location}
-endpointUrl=${endpointUrl}
-enable_pmm=${enable_pmm}
-enable_pmm_agent=${enable_pmm_agent}
-pmm_image=${pmm_image}
-enable_pbm=${enable_pbm}
-enable_mongot=${enable_mongot}
-mongot_source=${mongot_source}
-%{ if mongot_repo != "" ~}
-mongot_repo=${mongot_repo}
-%{ endif ~}
-mongot_version=${mongot_version}
-key=${key}
-storage_provider=azure
+
+# Deployment
+env_tag=${env_tag}
+
+# MongoDB
 %{ if mongodb_distribution != "" ~}
 mongodb_distribution=${mongodb_distribution}
 %{ endif ~}
@@ -57,25 +53,17 @@ mongo_version=${mongo_version}
 %{ if mongo_repo != "" ~}
 mongo_repo=${mongo_repo}
 %{ endif ~}
-%{ if pbm_release != "" ~}
-pbm_release=${pbm_release}
-%{ endif ~}
-%{ if pbm_version != "" ~}
-pbm_version=${pbm_version}
-%{ endif ~}
-%{ if pbm_repo != "" ~}
-pbm_repo=${pbm_repo}
-%{ endif ~}
-%{ if pmm_client_version != "" ~}
-pmm_client_version=${pmm_client_version}
-%{ endif ~}
-%{ if pmm_client_repo != "" ~}
-pmm_client_repo=${pmm_client_repo}
-%{ endif ~}
-env_tag=${env_tag}
-enable_pmm=${enable_pmm}
-account=${account}
+
+# TLS
+use_tls=${use_tls}
+
+# Audit
 enable_audit=${enable_audit}
+%{ if audit_filter != "" ~}
+audit_filter=${audit_filter}
+%{ endif ~}
+
+# LDAP
 enable_ldap=${enable_ldap}
 %{ if enable_ldap ~}
 ldap_server=${ldap_endpoint}
@@ -88,6 +76,37 @@ ldap_admin_password=${ldap_admin_password}
 ldap_users=${ldap_users}
 ldap_mongodb_users=${ldap_mongodb_users}
 %{ endif ~}
-%{ if audit_filter != "" ~}
-audit_filter=${audit_filter}
+
+# MongoDB Search
+enable_mongot=${enable_mongot}
+mongot_source=${mongot_source}
+%{ if mongot_repo != "" ~}
+mongot_repo=${mongot_repo}
+%{ endif ~}
+mongot_version=${mongot_version}
+
+# PMM
+enable_pmm=${enable_pmm}
+enable_pmm_agent=${enable_pmm_agent}
+pmm_image=${pmm_image}
+%{ if pmm_client_version != "" ~}
+pmm_client_version=${pmm_client_version}
+%{ endif ~}
+%{ if pmm_client_repo != "" ~}
+pmm_client_repo=${pmm_client_repo}
+%{ endif ~}
+
+# PBM
+enable_pbm=${enable_pbm}
+bucket=${bucket}
+region=${location}
+endpointUrl=${endpointUrl}
+key=${key}
+storage_provider=azure
+account=${account}
+%{ if pbm_version != "" ~}
+pbm_version=${pbm_version}
+%{ endif ~}
+%{ if pbm_repo != "" ~}
+pbm_repo=${pbm_repo}
 %{ endif ~}

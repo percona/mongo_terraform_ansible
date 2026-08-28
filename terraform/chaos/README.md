@@ -12,9 +12,14 @@ Unlike public cloud providers (AWS, GCP, Azure), the CHAOS provider does not off
 
 ## Prerequisites
 
-1. Install [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
+1. From the repository root, install Terraform and Ansible:
 
-2. Ensure the `percona/chaos` Terraform provider is available in your environment
+   ```bash
+   ./scripts/install-prerequisites.sh
+   ```
+
+2. Ensure the privately distributed `percona/chaos` Terraform provider is available
+   in the standard Terraform plugin directory. The installer cannot obtain this provider.
 
 3. Change into this directory
 

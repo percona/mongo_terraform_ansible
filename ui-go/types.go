@@ -31,6 +31,7 @@ type ClusterConfig struct {
 	EnablePmm     *bool  `json:"enable_pmm,omitempty"`
 	EnablePbm     *bool  `json:"enable_pbm,omitempty"`
 	EnableMongot  *bool  `json:"enable_mongot,omitempty"`
+	UseTLS        *bool  `json:"use_tls,omitempty"`
 	MongotSource  string `json:"mongot_source,omitempty"`
 	MongotRepo    string `json:"mongot_repo,omitempty"`
 	MongotVersion string `json:"mongot_version,omitempty"`
@@ -69,6 +70,7 @@ type ReplsetConfig struct {
 	EnablePmm     *bool  `json:"enable_pmm,omitempty"`
 	EnablePbm     *bool  `json:"enable_pbm,omitempty"`
 	EnableMongot  *bool  `json:"enable_mongot,omitempty"`
+	UseTLS        *bool  `json:"use_tls,omitempty"`
 	MongotSource  string `json:"mongot_source,omitempty"`
 	MongotRepo    string `json:"mongot_repo,omitempty"`
 	MongotVersion string `json:"mongot_version,omitempty"`
@@ -125,12 +127,14 @@ type Config struct {
 	MongoDBDistribution string `json:"mongodb_distribution,omitempty"`
 	MongoVersion        string `json:"mongo_version,omitempty"`
 	MongoRepo           string `json:"mongo_repo,omitempty"`
-	PbmRelease          string `json:"pbm_release,omitempty"`
 	PbmVersion          string `json:"pbm_version,omitempty"`
 	PbmRepo             string `json:"pbm_repo,omitempty"`
 	PmmClientVersion    string `json:"pmm_client_version,omitempty"`
 	PmmClientRepo       string `json:"pmm_client_repo,omitempty"`
 	EnableYcsb          bool   `json:"enable_ycsb,omitempty"`
+	UseTLS              bool   `json:"use_tls,omitempty"`
+	EnableCA            *bool  `json:"enable_ca,omitempty"`
+	CAPlacement         string `json:"ca_placement,omitempty"`
 	YcsbImage           string `json:"ycsb_image,omitempty"`
 	YcsbOsImage         string `json:"ycsb_os_image,omitempty"`
 	YcsbContainerSuffix string `json:"ycsb_container_suffix,omitempty"`
@@ -199,6 +203,9 @@ type Config struct {
 	MinioRootPassword  string              `json:"minio_root_password,omitempty"`
 	PmmCpuCores        int                 `json:"pmm_cpu_cores,omitempty"`
 	PmmMemoryGb        int                 `json:"pmm_memory_gb,omitempty"`
+	CACpuCores         int                 `json:"ca_cpu_cores,omitempty"`
+	CAMemoryGb         int                 `json:"ca_memory_gb,omitempty"`
+	CAVolumeSize       int                 `json:"ca_volume_size,omitempty"`
 
 	// Per-component instance types and disk sizes (cloud platforms only).
 	ShardsvrType         string `json:"shardsvr_type,omitempty"`

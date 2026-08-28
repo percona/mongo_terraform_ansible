@@ -502,12 +502,6 @@ variable "mongo_repo" {
   description = "Percona repository channel for MongoDB packages (release, testing, experimental). Empty string uses group_vars default."
 }
 
-variable "pbm_release" {
-  type        = string
-  default     = ""
-  description = "Percona release channel for PBM (e.g. pbm). Empty string uses the default from group_vars."
-}
-
 variable "mongot_repo" {
   type        = string
   default     = ""

@@ -127,7 +127,6 @@ type Config struct {
 	MongoDBDistribution string `json:"mongodb_distribution,omitempty"`
 	MongoVersion        string `json:"mongo_version,omitempty"`
 	MongoRepo           string `json:"mongo_repo,omitempty"`
-	PbmRelease          string `json:"pbm_release,omitempty"`
 	PbmVersion          string `json:"pbm_version,omitempty"`
 	PbmRepo             string `json:"pbm_repo,omitempty"`
 	PmmClientVersion    string `json:"pmm_client_version,omitempty"`

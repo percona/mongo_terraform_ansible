@@ -28,7 +28,7 @@ Clusters and replica sets can enable MongoDB Search / Vector Search from the con
   Community `mongot` tarball. **Auto** selects Percona Search for PSMDB 8.3 and
   the Community implementation otherwise.
 - `mongot` requires MongoDB 8.2 or later. Percona Search requires PSMDB 8.3;
-  PSMDB 8.3 currently requires Percona Search version `1.70.3-1` (or `latest`).
+  PSMDB 8.3 currently requires Percona Search version `1.70` or newer (or `latest`).
 - The UI validates these combinations before it writes the environment
   configuration.
 

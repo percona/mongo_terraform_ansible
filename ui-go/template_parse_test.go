@@ -24,6 +24,16 @@ func TestTemplatesParse(t *testing.T) {
 	}
 }
 
+func TestYcsbPanelRequiresSuccessfulDeployment(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
+	if err != nil {
+		t.Fatalf("read environment template: %v", err)
+	}
+	if !strings.Contains(string(content), `{{if and .YcsbEnabled .YcsbAvailable}}`) {
+		t.Fatal("YCSB panel must require YCSB to be enabled and the environment to be successfully deployed")
+	}
+}
+
 func TestDockerMongotImageSelectorSupportsCustomRepository(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
 	if err != nil {
@@ -91,6 +101,17 @@ func TestMongoTemplatesPreferTLS(t *testing.T) {
 }
 
 func TestCloudInventoriesUseCanonicalTLSVariable(t *testing.T) {
+	sections := []string{
+		"# Ansible connection",
+		"# Deployment",
+		"# MongoDB",
+		"# TLS",
+		"# Audit",
+		"# LDAP",
+		"# MongoDB Search",
+		"# PMM",
+		"# PBM",
+	}
 	for _, platform := range []string{"aws", "gcp", "azure", "chaos"} {
 		for _, topology := range []string{"cluster", "replset"} {
 			name := platform + "/" + topology
@@ -106,6 +127,25 @@ func TestCloudInventoriesUseCanonicalTLSVariable(t *testing.T) {
 				}
 				if strings.Contains(template, "enable_tls") {
 					t.Errorf("%s still emits legacy enable_tls", path)
+				}
+				previousSection := -1
+				for _, section := range sections {
+					if strings.Count(template, section+"\n") != 1 {
+						t.Errorf("%s must contain section %q exactly once", path, section)
+					}
+					sectionOffset := strings.Index(template, section+"\n")
+					if sectionOffset <= previousSection {
+						t.Errorf("%s has section %q out of order", path, section)
+					}
+					previousSection = sectionOffset
+				}
+				for _, deadVariable := range []string{"ca_placement=", "pbm_release="} {
+					if strings.Contains(template, deadVariable) {
+						t.Errorf("%s still emits dead variable %s", path, deadVariable)
+					}
+				}
+				if strings.Count(template, "enable_pmm=${enable_pmm}") != 1 {
+					t.Errorf("%s must emit enable_pmm exactly once", path)
 				}
 			})
 		}

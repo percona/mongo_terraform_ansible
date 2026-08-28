@@ -54,10 +54,6 @@ output "ansible_group_arbiters" {
   value = [for key in local.arbiter_member_keys : azurerm_linux_virtual_machine.arbiter[key].tags["ansible-group"]]
 }
 
-output "ansible_group_arb_index" {
-  value = [for key in local.arbiter_member_keys : azurerm_linux_virtual_machine.arbiter[key].tags["ansible-index"]]
-}
-
 # Cluster-wide information
 output "location" {
   value = var.location
@@ -65,10 +61,6 @@ output "location" {
 
 output "number_of_shards" {
   value = range(var.shard_count)
-}
-
-output "arbiters_per_replset" {
-  value = var.arbiters_per_replset
 }
 
 output "gce_ssh_user" {

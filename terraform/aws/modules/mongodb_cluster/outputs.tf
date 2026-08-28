@@ -52,20 +52,12 @@ output "ansible_group_index" {
   value = [for key in local.shard_member_keys : aws_instance.shard[key].tags["ansible-index"]]
 }
 
-output "ansible_group_arb_index" {
-  value = [for key in local.arbiter_member_keys : aws_instance.arbiter[key].tags["ansible-index"]]
-}
-
 output "ansible_group_arbiters" {
   value = [for key in local.arbiter_member_keys : aws_instance.arbiter[key].tags["ansible-group"]]
 }
 
 output "number_of_shards" {
   value = range(var.shard_count)
-}
-
-output "arbiters_per_replset" {
-  value = var.arbiters_per_replset
 }
 
 output "my_ssh_user" {

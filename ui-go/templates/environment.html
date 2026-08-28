@@ -189,7 +189,7 @@
   </div>
 </div>
 
-{{if .YcsbEnabled}}
+{{if and .YcsbEnabled .YcsbAvailable}}
 <section class="form-section ycsb-panel" id="ycsb-panel">
   <div class="section-header"><h2>YCSB Load Generator</h2><span class="field-tip" data-tip="Shared settings for the selected cluster or replica set.">ⓘ</span></div>
   <div class="form-row">

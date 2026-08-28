@@ -320,6 +320,23 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func ycsbDeploymentReady(env *Environment) bool {
+	if env == nil || env.Status == "deleted" {
+		return false
+	}
+	if env.LastAppliedConfig != nil {
+		return true
+	}
+	for _, event := range env.History {
+		if event.Action == "deploy" && event.Status == "success" {
+			return true
+		}
+	}
+	// Backward-compatible fallback for state files created before deploy history
+	// and LastAppliedConfig were persisted.
+	return env.Status == "running" || env.Status == "deploy_success"
+}
+
 // GET /environment/{env_id}
 func environmentHandler(w http.ResponseWriter, r *http.Request) {
 	envID := r.PathValue("env_id")
@@ -340,7 +357,7 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		SortedReplsets: sortedReplsets(env.Config.Replsets),
 		ServiceURLs:    configServiceURLs(envID, env),
 		YcsbEnabled:    env.Config.EnableYcsb,
-		YcsbAvailable:  env.Status != "configured",
+		YcsbAvailable:  ycsbDeploymentReady(env),
 		YcsbLoad:       normalizedYcsbLoadConfig(env.YcsbLoad),
 	})
 }
@@ -1178,8 +1195,11 @@ func validateMongotVersionCompatibility(platform string, cfg *Config) error {
 			return fmt.Errorf("%s %q: Percona Search requires PSMDB 8.3 (psmdb-83), but release %s is selected", e.kind, e.name, e.mongoRelease)
 		}
 		if platform != "docker" && perconaSearch && e.mongoRelease == "psmdb-83" {
-			if e.mongotVersion != "" && e.mongotVersion != "latest" && e.mongotVersion != "1.70.3-1" {
-				return fmt.Errorf("%s %q: PSMDB 8.3 requires Percona Search 1.70.3-1, but version %s is selected", e.kind, e.name, e.mongotVersion)
+			if e.mongotVersion != "" && e.mongotVersion != "latest" {
+				major, minor := parseMajorMinor(e.mongotVersion)
+				if major < 1 || minor < 0 || (major == 1 && minor < 70) {
+					return fmt.Errorf("%s %q: PSMDB 8.3 requires Percona Search 1.70 or newer, but version %s is selected", e.kind, e.name, e.mongotVersion)
+				}
 			}
 		}
 		var versionStr string

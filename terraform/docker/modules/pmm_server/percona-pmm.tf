@@ -3,8 +3,14 @@ data "docker_registry_image" "renderer" {
   name = var.renderer_image
 }
 
+locals {
+  renderer_repository   = replace(data.docker_registry_image.renderer.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+  watchtower_repository = replace(data.docker_registry_image.watchtower.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+  pmm_repository        = replace(data.docker_registry_image.pmm.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+}
+
 resource "docker_image" "renderer" {
-  name          = data.docker_registry_image.renderer.name
+  name          = "${local.renderer_repository}@${data.docker_registry_image.renderer.sha256_digest}"
   pull_triggers = [data.docker_registry_image.renderer.sha256_digest]
   keep_locally  = true
 }
@@ -31,7 +37,7 @@ data "docker_registry_image" "watchtower" {
 }
 
 resource "docker_image" "watchtower" {
-  name          = data.docker_registry_image.watchtower.name
+  name          = "${local.watchtower_repository}@${data.docker_registry_image.watchtower.sha256_digest}"
   platform      = "linux/amd64"
   pull_triggers = [data.docker_registry_image.watchtower.sha256_digest]
   keep_locally  = true
@@ -70,7 +76,7 @@ data "docker_registry_image" "pmm" {
 }
 
 resource "docker_image" "pmm" {
-  name          = data.docker_registry_image.pmm.name
+  name          = "${local.pmm_repository}@${data.docker_registry_image.pmm.sha256_digest}"
   platform      = "linux/amd64"
   pull_triggers = [data.docker_registry_image.pmm.sha256_digest]
   keep_locally  = true

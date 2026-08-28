@@ -2,8 +2,12 @@ data "docker_registry_image" "vault" {
   name = var.vault_image
 }
 
+locals {
+  vault_repository = replace(data.docker_registry_image.vault.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
+}
+
 resource "docker_image" "vault" {
-  name          = data.docker_registry_image.vault.name
+  name          = "${local.vault_repository}@${data.docker_registry_image.vault.sha256_digest}"
   pull_triggers = [data.docker_registry_image.vault.sha256_digest]
   keep_locally  = true
 }
@@ -37,6 +41,10 @@ resource "docker_container" "vault" {
 # Provision Vault with PKI and KV secrets engines
 resource "null_resource" "vault_init" {
   depends_on = [docker_container.vault]
+
+  triggers = {
+    vault_container_id = docker_container.vault.id
+  }
 
   provisioner "local-exec" {
     command = <<EOT

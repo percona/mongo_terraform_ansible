@@ -1,4 +1,4 @@
-FROM eclipse-temurin:11-jdk-jammy AS ycsb-builder
+FROM ${ ycsb_builder_image } AS ycsb-builder
 
 ARG YCSB_SOURCE_REVISION=66302f301b13f60d4bcb2f29f478586bb1d6f2e0
 ARG MAVEN_VERSION=3.6.3

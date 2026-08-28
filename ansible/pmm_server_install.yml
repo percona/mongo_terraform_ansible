@@ -6,6 +6,10 @@
   become: true
   vars:
     pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
+    pmm_image_refs:
+      watchtower: "{{ watchtower_image | default('percona/watchtower:latest') }}"
+      renderer: "{{ renderer_image | default('grafana/grafana-image-renderer:latest') }}"
+      server: "{{ pmm_image }}"
   tasks:
     - name: Load OS-specific variables
       include_vars: "vars/{{ ansible_facts['os_family'] }}.yml"
@@ -87,67 +91,216 @@
       when: pmm_enabled | bool
 
     - name: Check if Docker network exists
-      command: docker network ls --filter name=^pmm-network$ --format '{{ "{{.Name}}" }}'
-      register: docker_networks
+      ansible.builtin.command:
+        argv:
+          - docker
+          - network
+          - inspect
+          - pmm-network
+      register: docker_network
+      changed_when: false
+      failed_when: false
       when: pmm_enabled | bool
 
     - name: Create Docker network if not exists
-      shell: docker network create pmm-network
+      ansible.builtin.command:
+        argv:
+          - docker
+          - network
+          - create
+          - pmm-network
       when:
         - pmm_enabled | bool
-        - docker_networks.stdout_lines == []
+        - docker_network.rc != 0
 
-    - name: Get list of existing containers
-      command: docker ps -a --format {{ '{{.Names}}' }}
-      register: docker_containers
+    - name: Pull PMM container images
+      ansible.builtin.command:
+        argv:
+          - docker
+          - pull
+          - "{{ item }}"
+      loop:
+        - "{{ pmm_image_refs.watchtower }}"
+        - "{{ pmm_image_refs.renderer }}"
+        - "{{ pmm_image_refs.server }}"
+      register: image_pull
+      changed_when: "'Downloaded newer image' in image_pull.stdout"
       when: pmm_enabled | bool
 
-    - name: Set facts for container existence
-      set_fact:
-        renderer_exists: "{{ 'renderer' in docker_containers.stdout_lines }}"
-        pmm_server_exists: "{{ 'pmm-server' in docker_containers.stdout_lines }}"
-        watchtower_exists: "{{ 'watchtower' in docker_containers.stdout_lines }}"
+    - name: Get desired local image IDs
+      ansible.builtin.command:
+        argv:
+          - docker
+          - image
+          - inspect
+          - "--format={{ '{{.Id}}' }}"
+          - "{{ item }}"
+      loop:
+        - "{{ pmm_image_refs.watchtower }}"
+        - "{{ pmm_image_refs.renderer }}"
+        - "{{ pmm_image_refs.server }}"
+      register: desired_images
+      changed_when: false
       when: pmm_enabled | bool
+
+    - name: Get Watchtower container image ID
+      ansible.builtin.command:
+        argv:
+          - docker
+          - container
+          - inspect
+          - "--format={{ '{{.Image}}' }}"
+          - watchtower
+      register: watchtower_container
+      changed_when: false
+      failed_when: false
+      when: pmm_enabled | bool
+
+    - name: Get renderer container image ID
+      ansible.builtin.command:
+        argv:
+          - docker
+          - container
+          - inspect
+          - "--format={{ '{{.Image}}' }}"
+          - renderer
+      register: renderer_container
+      changed_when: false
+      failed_when: false
+      when: pmm_enabled | bool
+
+    - name: Get PMM server container image ID
+      ansible.builtin.command:
+        argv:
+          - docker
+          - container
+          - inspect
+          - "--format={{ '{{.Image}}' }}"
+          - pmm-server
+      register: pmm_server_container
+      changed_when: false
+      failed_when: false
+      when: pmm_enabled | bool
+
+    - name: Determine containers requiring recreation
+      ansible.builtin.set_fact:
+        watchtower_recreate: "{{ watchtower_container.rc != 0 or watchtower_container.stdout != desired_images.results[0].stdout }}"
+        renderer_recreate: "{{ renderer_container.rc != 0 or renderer_container.stdout != desired_images.results[1].stdout }}"
+        pmm_server_recreate: "{{ pmm_server_container.rc != 0 or pmm_server_container.stdout != desired_images.results[2].stdout }}"
+      when: pmm_enabled | bool
+
+    - name: Remove containers using stale images
+      ansible.builtin.command:
+        argv:
+          - docker
+          - rm
+          - --force
+          - "{{ item.name }}"
+      loop:
+        - name: watchtower
+          exists: "{{ watchtower_container.rc == 0 }}"
+          recreate: "{{ watchtower_recreate }}"
+        - name: renderer
+          exists: "{{ renderer_container.rc == 0 }}"
+          recreate: "{{ renderer_recreate }}"
+        - name: pmm-server
+          exists: "{{ pmm_server_container.rc == 0 }}"
+          recreate: "{{ pmm_server_recreate }}"
+      when:
+        - pmm_enabled | bool
+        - item.exists | bool
+        - item.recreate | bool
 
     - name: Run Watchtower container
-      shell: >
-        docker run -d --network=pmm-network --name watchtower --restart always
-        -e WATCHTOWER_HTTP_API_TOKEN={{ watchtower_token }}
-        -e WATCHTOWER_HTTP_API_UPDATE=1
-        --volume /var/run/docker.sock:/var/run/docker.sock
-        percona/watchtower:latest
+      ansible.builtin.command:
+        argv:
+          - docker
+          - run
+          - -d
+          - --network=pmm-network
+          - --name
+          - watchtower
+          - --restart
+          - always
+          - -e
+          - "WATCHTOWER_HTTP_API_TOKEN={{ watchtower_token }}"
+          - -e
+          - WATCHTOWER_HTTP_API_UPDATE=1
+          - --volume
+          - /var/run/docker.sock:/var/run/docker.sock
+          - "{{ pmm_image_refs.watchtower }}"
       when:
         - pmm_enabled | bool
-        - not watchtower_exists
+        - watchtower_recreate | bool
 
     - name: Run Grafana renderer container
-      shell: >
-        docker run -d --network=pmm-network --name renderer --restart always
-        -e IGNORE_HTTPS_ERRORS=true
-        grafana/grafana-image-renderer:latest
+      ansible.builtin.command:
+        argv:
+          - docker
+          - run
+          - -d
+          - --network=pmm-network
+          - --name
+          - renderer
+          - --restart
+          - always
+          - -e
+          - IGNORE_HTTPS_ERRORS=true
+          - "{{ pmm_image_refs.renderer }}"
       when:
         - pmm_enabled | bool
-        - not renderer_exists
-      
-    - name: Create PMM data volume if not exists
-      shell: docker volume create pmm-data
-      register: volume_output
-      changed_when: "'pmm-data' in volume_output.stdout"
+        - renderer_recreate | bool
+
+    - name: Check if PMM data volume exists
+      ansible.builtin.command:
+        argv:
+          - docker
+          - volume
+          - inspect
+          - pmm-data
+      register: pmm_data_volume
+      changed_when: false
+      failed_when: false
       when: pmm_enabled | bool
 
-    - name: Run PMM server container
-      shell: >
-        docker run -d --network=pmm-network --name pmm-server --restart always
-        -p {{ pmm_external_port }}:{{ pmm_port }}
-        --volume pmm-data:/srv
-        -e GF_RENDERING_SERVER_URL=http://renderer:8081/render
-        -e GF_RENDERING_CALLBACK_URL=https://pmm-server:{{ pmm_port }}/graph/
-        -e PMM_WATCHTOWER_HOST=http://watchtower:8080
-        -e PMM_WATCHTOWER_TOKEN={{ watchtower_token }}
-        {{ pmm_image }}
+    - name: Create PMM data volume if not exists
+      ansible.builtin.command:
+        argv:
+          - docker
+          - volume
+          - create
+          - pmm-data
       when:
         - pmm_enabled | bool
-        - not pmm_server_exists
+        - pmm_data_volume.rc != 0
+
+    - name: Run PMM server container
+      ansible.builtin.command:
+        argv:
+          - docker
+          - run
+          - -d
+          - --network=pmm-network
+          - --name
+          - pmm-server
+          - --restart
+          - always
+          - -p
+          - "{{ pmm_external_port }}:{{ pmm_port }}"
+          - --volume
+          - pmm-data:/srv
+          - -e
+          - GF_RENDERING_SERVER_URL=http://renderer:8081/render
+          - -e
+          - "GF_RENDERING_CALLBACK_URL=https://pmm-server:{{ pmm_port }}/graph/"
+          - -e
+          - PMM_WATCHTOWER_HOST=http://watchtower:8080
+          - -e
+          - "PMM_WATCHTOWER_TOKEN={{ watchtower_token }}"
+          - "{{ pmm_image_refs.server }}"
+      when:
+        - pmm_enabled | bool
+        - pmm_server_recreate | bool
 
     - name: Wait until PMM server is healthy
       uri:
@@ -161,8 +314,14 @@
       when: pmm_enabled | bool
 
     - name: Configure PMM server admin password
-      shell: >
-        docker exec -t pmm-server change-admin-password {{ pmm_server_pwd }}
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - -t
+          - pmm-server
+          - change-admin-password
+          - "{{ pmm_server_pwd }}"
       when:
         - pmm_enabled | bool
-        - not pmm_server_exists
+        - pmm_server_recreate | bool

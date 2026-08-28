@@ -299,6 +299,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		Platform:                      platform,
 		EnvID:                         envID,
 		Config:                        cfg,
+		Regions:                       defaultRegions(platform),
 		DefaultAuditFilter:            defaultAuditFilter,
 		OSUser:                        osUser,
 		DockerDefaultPmmExternalPort:  dockerDefaultPmmExternalPort,
@@ -915,7 +916,7 @@ func apiDockerTagsHandler(w http.ResponseWriter, r *http.Request) {
 // GET /api/regions/{platform}
 func apiRegionsHandler(w http.ResponseWriter, r *http.Request) {
 	platform := r.PathValue("platform")
-	regions := getCloudRegions(platform)
+	regions := getCloudRegions(platform, r.URL.Query().Get("refresh") == "1")
 	writeJSON(w, 200, map[string]interface{}{
 		"regions":         regions,
 		"grouped_regions": groupRegionsByGeo(platform, regions),
@@ -1497,7 +1498,7 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	payload.EnvID = strings.TrimSpace(payload.EnvID)
 	if payload.EnvID == "" {
-		payload.EnvID = secureID(4)
+		payload.EnvID = "e" + secureID(4)
 	}
 	if !envNameRe.MatchString(payload.EnvID) {
 		jsonError(w, 400, "invalid env_id: use lowercase letters and digits only (max 16 chars)")
@@ -1506,6 +1507,22 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	if !validPlatform(payload.Platform) {
 		jsonError(w, 400, "invalid platform")
 		return
+	}
+	if payload.Platform == "gcp" && !gcpEnvNameRe.MatchString(payload.EnvID) {
+		jsonError(w, 400, "invalid GCP environment name: it must start with a lowercase letter and contain only lowercase letters and digits (max 14 chars)")
+		return
+	}
+	if payload.Platform == "gcp" {
+		settings, err := loadAppSettings()
+		if err != nil {
+			jsonError(w, 500, "settings load failed: "+err.Error())
+			return
+		}
+		if settings.GCPProjectID == "" {
+			jsonError(w, 400, "GCP project ID is required in Settings")
+			return
+		}
+		payload.Config.ProjectID = settings.GCPProjectID
 	}
 	// Resource names use the environment name as their prefix.
 	payload.Config.Prefix = payload.EnvID

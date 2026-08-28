@@ -10,6 +10,7 @@ import (
 
 var envIDRe = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,40}$`)
 var envNameRe = regexp.MustCompile(`^[a-z0-9]{1,16}$`)
+var gcpEnvNameRe = regexp.MustCompile(`^[a-z][a-z0-9]{0,13}$`)
 
 var stateMu sync.Mutex
 var settingsMu sync.Mutex

@@ -197,8 +197,11 @@ func getCloudImages(platform, region string) (map[string][]CloudImage, error) {
 
 // getCloudRegions queries the cloud CLI for available regions, with a static
 // fallback for each platform when the CLI is not available or returns an error.
-func getCloudRegions(platform string) []string {
+func getCloudRegions(platform string, refresh bool) []string {
 	key := "regions:" + platform
+	if refresh {
+		cacheDelete(key)
+	}
 	if v, ok := cacheGet(key); ok {
 		return v.([]string)
 	}

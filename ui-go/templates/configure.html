@@ -32,8 +32,9 @@
       <div class="form-group">
         <label for="region">Region <span class="field-tip" data-tip="GCP region where all resources will be deployed.">ⓘ</span></label>
         <select id="region" name="region" onchange="onRegionChange()">
-          <option value="">— loading regions… —</option>
-          {{if .Config.Region}}<option value="{{.Config.Region}}" selected>{{.Config.Region}}</option>{{end}}
+          {{$gcpRegion := strDefault .Config.Region "northamerica-northeast1"}}
+          <option value="{{$gcpRegion}}" selected>{{$gcpRegion}}</option>
+          {{range .Regions}}{{if ne . $gcpRegion}}<option value="{{.}}">{{.}}</option>{{end}}{{end}}
         </select>
         <small><a href="#" onclick="reloadRegions(event)">↻ Refresh from GCP</a></small>
       </div>
@@ -3403,18 +3404,21 @@ function addFirewallRule() {
 const DEFAULT_REGION = { gcp: 'northamerica-northeast1', aws: 'us-east-1', azure: 'eastus' };
 
 // Populates the region/location <select> from the API, preserving the current value.
-async function loadRegions() {
+async function loadRegions(refresh = false) {
   if (PLATFORM === 'docker') return;
   const fieldId = PLATFORM === 'azure' ? 'location' : 'region';
   const sel = document.getElementById(fieldId);
   if (!sel) return;
-  const current = sel.value || sel.querySelector('option[selected]')?.value || DEFAULT_REGION[PLATFORM] || '';
+  const hadRegion = Boolean(sel.value);
   try {
-    const resp = await fetch(`/api/regions/${PLATFORM}`);
+    const suffix = refresh ? '?refresh=1' : '';
+    const resp = await fetch(`/api/regions/${PLATFORM}${suffix}`);
     if (!resp.ok) return;
     const data = await resp.json();
     const regions = data.regions || [];
     const grouped = data.grouped_regions || null;
+    // Read this after the request so a slow response cannot undo a user change.
+    const current = sel.value || sel.querySelector('option[selected]')?.value || DEFAULT_REGION[PLATFORM] || '';
     sel.innerHTML = '';
     if (!current && !regions.length) {
       sel.appendChild(new Option('— no regions found —', ''));
@@ -3451,18 +3455,13 @@ async function loadRegions() {
         sel.insertBefore(opt, sel.firstChild);
       }
     }
-  } catch (e) { /* keep placeholder */ }
-  // Reload images whenever the region list finishes populating.
-  loadImages();
+    if (!hadRegion) loadImages();
+  } catch (e) { /* keep the server-rendered options */ }
 }
 
 function reloadRegions(evt) {
   evt.preventDefault();
-  // Bust cache by fetching fresh; clear select first.
-  const fieldId = PLATFORM === 'azure' ? 'location' : 'region';
-  const sel = document.getElementById(fieldId);
-  if (sel) { sel.innerHTML = '<option value="">— refreshing… —</option>'; }
-  loadRegions();
+  loadRegions(true);
 }
 
 // Called when the user manually changes the region/location selector.
@@ -3470,8 +3469,9 @@ function onRegionChange() {
   loadImages();
 }
 
-// Load regions on page start.
+// Load live regions and images independently on page start.
 loadRegions();
+loadImages();
 
 // ── Cloud Machine Images ──────────────────────────────────────────────────────
 

@@ -30,3 +30,9 @@ func cacheSet(key string, data interface{}) {
 	defer cacheMu.Unlock()
 	imgCache[key] = cacheEntry{data, time.Now()}
 }
+
+func cacheDelete(key string) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	delete(imgCache, key)
+}

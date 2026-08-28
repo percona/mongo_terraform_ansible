@@ -299,6 +299,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		Platform:                      platform,
 		EnvID:                         envID,
 		Config:                        cfg,
+		Regions:                       defaultRegions(platform),
 		DefaultAuditFilter:            defaultAuditFilter,
 		OSUser:                        osUser,
 		DockerDefaultPmmExternalPort:  dockerDefaultPmmExternalPort,
@@ -915,7 +916,7 @@ func apiDockerTagsHandler(w http.ResponseWriter, r *http.Request) {
 // GET /api/regions/{platform}
 func apiRegionsHandler(w http.ResponseWriter, r *http.Request) {
 	platform := r.PathValue("platform")
-	regions := getCloudRegions(platform)
+	regions := getCloudRegions(platform, r.URL.Query().Get("refresh") == "1")
 	writeJSON(w, 200, map[string]interface{}{
 		"regions":         regions,
 		"grouped_regions": groupRegionsByGeo(platform, regions),

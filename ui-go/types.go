@@ -437,6 +437,7 @@ type ConfigureData struct {
 	Platform                      string
 	EnvID                         string
 	Config                        Config
+	Regions                       []string
 	DefaultAuditFilter            string
 	OSUser                        string // current OS user, used as SSH user default
 	DockerDefaultPmmExternalPort  int

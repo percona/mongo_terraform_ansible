@@ -329,8 +329,7 @@ func clusterSyncPostDeployShell(envID string, env *Environment) string {
 	if env.Platform == "docker" {
 		return shellQuote(clusterSyncBootstrapPath(envID))
 	}
-	prefix := strDefault(env.Config.Prefix, envID)
-	return fmt.Sprintf("ansible-playbook -i %s %s --tags pcsm --extra-vars pcsm_env_file_source=%s", shellQuote(prefix+"_inventory_pcsm"), shellQuote(filepath.Join(ansibleDir, "main.yml")), shellQuote(clusterSyncEnvPath(envID)))
+	return ""
 }
 
 func clusterSyncDisableShell(envID string, env *Environment, applied *Config) string {

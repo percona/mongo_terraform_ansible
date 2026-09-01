@@ -102,6 +102,8 @@ resource "local_file" "AnsibleInventoryCluster" {
       hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
       ip_pcsm              = var.enable_pcsm ? azurerm_linux_virtual_machine.pcsm[0].public_ip_address : ""
       pcsm_version         = var.pcsm_version
+      pcsm_is_source       = var.enable_pcsm && var.pcsm_source_kind == "cluster" && var.pcsm_source_name == each.key
+      pcsm_is_target       = var.enable_pcsm && var.pcsm_target_kind == "cluster" && var.pcsm_target_name == each.key
       bucket               = azurerm_storage_container.mongo_backups_container.name
       endpointUrl          = local.storage_endpoint
       key                  = azurerm_storage_account.mongo_backups.primary_access_key
@@ -202,6 +204,8 @@ resource "local_file" "AnsibleInventoryRS" {
       hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
       ip_pcsm              = var.enable_pcsm ? azurerm_linux_virtual_machine.pcsm[0].public_ip_address : ""
       pcsm_version         = var.pcsm_version
+      pcsm_is_source       = var.enable_pcsm && var.pcsm_source_kind == "replset" && var.pcsm_source_name == each.key
+      pcsm_is_target       = var.enable_pcsm && var.pcsm_target_kind == "replset" && var.pcsm_target_name == each.key
       bucket               = azurerm_storage_container.mongo_backups_container.name
       endpointUrl          = local.storage_endpoint
       key                  = azurerm_storage_account.mongo_backups.primary_access_key

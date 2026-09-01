@@ -1965,6 +1965,25 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		invNames = append(invNames, name)
 	}
 	sort.Strings(invNames)
+	if env.Config.ClusterSync.Enabled {
+		// PCSM users are created by main.yml on the selected topology inventories.
+		// Configure source first, then target, before unrelated topologies.
+		ordered := make([]string, 0, len(invNames))
+		for _, preferred := range []string{env.Config.ClusterSync.SourceName, env.Config.ClusterSync.TargetName} {
+			for _, name := range invNames {
+				if name == preferred {
+					ordered = append(ordered, name)
+					break
+				}
+			}
+		}
+		for _, name := range invNames {
+			if name != env.Config.ClusterSync.SourceName && name != env.Config.ClusterSync.TargetName {
+				ordered = append(ordered, name)
+			}
+		}
+		invNames = ordered
+	}
 
 	// filePrefix is prepended to generated inventory and ssh_config filenames so
 	// that multiple environments sharing the same Terraform directory do not
@@ -2030,7 +2049,11 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		if certCmd := cloudCertificateCmdFor(names, waitForSSH); certCmd != "" {
 			steps = append(steps, certCmd)
 		}
-		steps = append(steps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "main.yml"), waitForSSH, names, nil))
+		pcsmVars := map[string]string(nil)
+		if env.Config.ClusterSync.Enabled {
+			pcsmVars = map[string]string{"pcsm_env_file_source": clusterSyncEnvPath(envID)}
+		}
+		steps = append(steps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "main.yml"), waitForSSH, names, pcsmVars))
 		return strings.Join(steps, " && ")
 	}
 

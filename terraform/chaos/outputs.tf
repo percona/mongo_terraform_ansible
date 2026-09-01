@@ -101,6 +101,8 @@ resource "local_file" "AnsibleInventoryCluster" {
       hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
       ip_pcsm              = var.enable_pcsm ? chaos_instance.pcsm[0].ip_address : ""
       pcsm_version         = var.pcsm_version
+      pcsm_is_source       = var.enable_pcsm && var.pcsm_source_kind == "cluster" && var.pcsm_source_name == each.key
+      pcsm_is_target       = var.enable_pcsm && var.pcsm_target_kind == "cluster" && var.pcsm_target_name == each.key
       bucket               = local.bucket_name
       minio_hostname       = local.minio_host
       minio_ip             = var.enable_minio ? chaos_instance.minio[0].ip_address : ""
@@ -202,6 +204,8 @@ resource "local_file" "AnsibleInventoryRS" {
       hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
       ip_pcsm              = var.enable_pcsm ? chaos_instance.pcsm[0].ip_address : ""
       pcsm_version         = var.pcsm_version
+      pcsm_is_source       = var.enable_pcsm && var.pcsm_source_kind == "replset" && var.pcsm_source_name == each.key
+      pcsm_is_target       = var.enable_pcsm && var.pcsm_target_kind == "replset" && var.pcsm_target_name == each.key
       bucket               = local.bucket_name
       minio_hostname       = local.minio_host
       minio_ip             = var.enable_minio ? chaos_instance.minio[0].ip_address : ""

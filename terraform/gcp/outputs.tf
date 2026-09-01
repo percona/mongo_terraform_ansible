@@ -101,6 +101,8 @@ resource "local_file" "AnsibleInventoryCluster" {
       hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
       ip_pcsm              = var.enable_pcsm ? google_compute_instance.pcsm[0].network_interface.0.access_config.0.nat_ip : ""
       pcsm_version         = var.pcsm_version
+      pcsm_is_source       = var.enable_pcsm && var.pcsm_source_kind == "cluster" && var.pcsm_source_name == each.key
+      pcsm_is_target       = var.enable_pcsm && var.pcsm_target_kind == "cluster" && var.pcsm_target_name == each.key
       bucket               = google_storage_bucket.mongo-backups.name
       access_key           = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key    = google_storage_hmac_key.mongo-backup-service-account.secret
@@ -199,6 +201,8 @@ resource "local_file" "AnsibleInventoryRS" {
       hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
       ip_pcsm              = var.enable_pcsm ? google_compute_instance.pcsm[0].network_interface.0.access_config.0.nat_ip : ""
       pcsm_version         = var.pcsm_version
+      pcsm_is_source       = var.enable_pcsm && var.pcsm_source_kind == "replset" && var.pcsm_source_name == each.key
+      pcsm_is_target       = var.enable_pcsm && var.pcsm_target_kind == "replset" && var.pcsm_target_name == each.key
       bucket               = google_storage_bucket.mongo-backups.name
       access_key           = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key    = google_storage_hmac_key.mongo-backup-service-account.secret

@@ -1,0 +1,68 @@
+[cfg]
+%{ for topology_name, topology in clusters ~}
+%{ for index, hostname in topology.hostname_cfg ~}
+${hostname} ansible_host=${topology.ip_cfg[index]}${ index == 0 ? " mongodb_primary=True" : "" } cluster=${topology_name} env_tag=${topology.env_tag}
+%{ endfor ~}
+%{ endfor ~}
+
+[shards:children]
+%{ for topology_name, topology in clusters ~}
+%{ for shard_index in topology.number_of_shards ~}
+shard${shard_index}
+%{ endfor ~}
+%{ endfor ~}
+
+%{ for topology_name, topology in clusters ~}
+%{ for shard_index in topology.number_of_shards ~}
+[shard${shard_index}]
+%{ for index, group in topology.ansible_group_shards ~}
+${group == tostring(shard_index) ? join("", [topology.hostname_shards[index], " ansible_host=", topology.ip_shards[index], topology.ansible_group_index[index] == "0" ? " mongodb_primary=True" : "", " cluster=", topology_name, " env_tag=", topology.env_tag, "\n"]) : "" ~}
+%{ endfor ~}
+%{ for index, group in topology.ansible_group_arbiters ~}
+${group == tostring(shard_index) ? join("", [topology.hostname_arbiters[index], " ansible_host=", topology.ip_arbiters[index], " arbiter=True cluster=", topology_name, " env_tag=", topology.env_tag, "\n"]) : "" ~}
+%{ endfor ~}
+%{ endfor ~}
+%{ endfor ~}
+
+[mongos]
+%{ for topology_name, topology in clusters ~}
+%{ for index, hostname in topology.hostname_mongos ~}
+${hostname} ansible_host=${topology.ip_mongos[index]} cluster=${topology_name} env_tag=${topology.env_tag}
+%{ endfor ~}
+%{ endfor ~}
+
+[replsets:children]
+%{ for topology_name, topology in replsets ~}
+${topology.rs_name}
+%{ endfor ~}
+
+%{ for topology_name, topology in replsets ~}
+[${topology.rs_name}]
+%{ for index, hostname in topology.hostname_replsets ~}
+${hostname} ansible_host=${topology.ip_replsets[index]}${ index == 0 ? " mongodb_primary=True" : "" } cluster=${topology_name} env_tag=${topology.env_tag}
+%{ endfor ~}
+%{ for index, hostname in topology.hostname_arbiters ~}
+${hostname} ansible_host=${topology.ip_arbiters[index]} arbiter=True cluster=${topology_name} env_tag=${topology.env_tag}
+%{ endfor ~}
+%{ endfor ~}
+
+[pcsm]
+${hostname_pcsm} ansible_host=${ip_pcsm}
+
+[pcsm_source]
+%{ for index, hostname in source.hostnames ~}
+${hostname} ansible_host=${source.ips[index]}
+%{ endfor ~}
+
+[pcsm_target]
+%{ for index, hostname in target.hostnames ~}
+${hostname} ansible_host=${target.ips[index]}
+%{ endfor ~}
+
+[all:vars]
+ansible_user=${my_ssh_user}
+%{ if ssh_private_key_path != "" ~}
+ansible_ssh_private_key_file=${ssh_private_key_path}
+%{ endif ~}
+ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+pcsm_version=${pcsm_version}

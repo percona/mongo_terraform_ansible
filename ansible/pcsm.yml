@@ -1,0 +1,182 @@
+---
+- name: Configure the source MongoDB user used by PCSM
+  hosts: pcsm_source
+  become: false
+  gather_facts: false
+  tags: pcsm
+  vars:
+    pcsm_secret_env: "{{ lookup('ansible.builtin.file', pcsm_env_file_source | default('/dev/null')) }}"
+    pcsm_source_password: "{{ (pcsm_secret_env | regex_findall(\"(?m)^PCSM_SOURCE_PASSWORD='?([^'\\n]+)'?$\"))[0] | default('') }}"
+  tasks:
+    - name: Require the PCSM source password
+      ansible.builtin.assert:
+        that: pcsm_source_password | length > 0
+        fail_msg: "pcsm_env_file_source must include PCSM_SOURCE_PASSWORD."
+      run_once: true
+
+    - name: Create or update the PCSM source user
+      ansible.builtin.shell: >-
+        mongosh admin --quiet --host localhost --port {{ mongo_port }}
+        {% if use_tls | default(false) | bool %}--tls --tlsCAFile {{ CAFile }} --tlsCertificateKeyFile {{ clientCertificateKeyFile }}{% endif %}
+        -u {{ mongo_admin_user }} -p {{ mongo_admin_password }}
+        --eval 'const admin=db.getSiblingDB("admin"); const user={pwd:process.env.PCSM_PASSWORD,roles:["backup","clusterMonitor","readAnyDatabase"]}; if(admin.getUser("pcsm-source")){admin.updateUser("pcsm-source",user)}else{admin.createUser({user:"pcsm-source",...user})}'
+      environment:
+        PCSM_PASSWORD: "{{ pcsm_source_password }}"
+      no_log: true
+      when: inventory_hostname == groups['pcsm_source'][0]
+
+- name: Configure the target MongoDB user used by PCSM
+  hosts: pcsm_target
+  become: false
+  gather_facts: false
+  tags: pcsm
+  vars:
+    pcsm_secret_env: "{{ lookup('ansible.builtin.file', pcsm_env_file_source | default('/dev/null')) }}"
+    pcsm_target_password: "{{ (pcsm_secret_env | regex_findall(\"(?m)^PCSM_TARGET_PASSWORD='?([^'\\n]+)'?$\"))[0] | default('') }}"
+  tasks:
+    - name: Require the PCSM target password
+      ansible.builtin.assert:
+        that: pcsm_target_password | length > 0
+        fail_msg: "pcsm_env_file_source must include PCSM_TARGET_PASSWORD."
+      run_once: true
+
+    - name: Create or update the PCSM target user
+      ansible.builtin.shell: >-
+        mongosh admin --quiet --host localhost --port {{ mongo_port }}
+        {% if use_tls | default(false) | bool %}--tls --tlsCAFile {{ CAFile }} --tlsCertificateKeyFile {{ clientCertificateKeyFile }}{% endif %}
+        -u {{ mongo_admin_user }} -p {{ mongo_admin_password }}
+        --eval 'const admin=db.getSiblingDB("admin"); const user={pwd:process.env.PCSM_PASSWORD,roles:["restore","clusterMonitor","clusterManager","readWriteAnyDatabase"]}; if(admin.getUser("pcsm-target")){admin.updateUser("pcsm-target",user)}else{admin.createUser({user:"pcsm-target",...user})}'
+      environment:
+        PCSM_PASSWORD: "{{ pcsm_target_password }}"
+      no_log: true
+      when: inventory_hostname == groups['pcsm_target'][0]
+
+- name: Install Percona ClusterSync
+  hosts: pcsm
+  become: true
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
+  tags: pcsm,install
+  vars:
+    pcsm_package_name: percona-clustersync-mongodb
+    pcsm_service_name: pcsm
+    pcsm_env_file: /etc/pcsm/pcsm.env
+  tasks:
+    - name: Require a controller-side PCSM environment file
+      ansible.builtin.assert:
+        that:
+          - pcsm_env_file_source is defined
+          - pcsm_env_file_source | length > 0
+        fail_msg: "Set pcsm_env_file_source to an already-generated secure environment file on the Ansible controller."
+
+    - name: Check the controller-side PCSM environment file
+      ansible.builtin.stat:
+        path: "{{ pcsm_env_file_source }}"
+      delegate_to: localhost
+      become: false
+      register: pcsm_env_source
+
+    - name: Validate the controller-side PCSM environment file
+      ansible.builtin.assert:
+        that:
+          - pcsm_env_source.stat.exists
+          - pcsm_env_source.stat.isreg
+        fail_msg: "pcsm_env_file_source must point to a regular file on the Ansible controller."
+
+    - name: Install percona-release on Debian
+      ansible.builtin.apt:
+        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+        state: present
+      when: ansible_facts.os_family == 'Debian'
+
+    - name: Install percona-release on Red Hat
+      ansible.builtin.dnf:
+        name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+        state: present
+        disable_gpg_check: true
+      when: ansible_facts.os_family == 'RedHat'
+
+    - name: Enable the PCSM repository
+      ansible.builtin.command: "/usr/bin/percona-release enable pcsm {{ pcsm_repo | default('release') }}"
+      changed_when: false
+
+    - name: Install pinned PCSM package on Debian
+      ansible.builtin.apt:
+        name: "{{ pcsm_package_name }}={{ pcsm_version }}*"
+        state: present
+        update_cache: true
+        allow_downgrade: true
+      when: ansible_facts.os_family == 'Debian'
+
+    - name: Install pinned PCSM package on Red Hat
+      ansible.builtin.dnf:
+        name: "{{ pcsm_package_name }}-{{ pcsm_version }}*"
+        state: present
+        allow_downgrade: true
+      when: ansible_facts.os_family == 'RedHat'
+
+    - name: Create PCSM configuration directory
+      ansible.builtin.file:
+        path: "{{ pcsm_env_file | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Stage secure PCSM environment
+      ansible.builtin.copy:
+        src: "{{ pcsm_env_file_source }}"
+        dest: "{{ pcsm_env_file }}"
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+      notify: Restart PCSM
+
+    - name: Create PCSM systemd override directory
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ pcsm_service_name }}.service.d"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configure PCSM to use the secure environment
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ pcsm_service_name }}.service.d/environment.conf"
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Service]
+          EnvironmentFile={{ pcsm_env_file }}
+      notify:
+        - Reload systemd
+        - Restart PCSM
+
+    - name: Enable and start PCSM
+      ansible.builtin.systemd:
+        name: "{{ pcsm_service_name }}"
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Apply pending PCSM restart before readiness check
+      ansible.builtin.meta: flush_handlers
+
+    - name: Wait for PCSM to accept control commands
+      ansible.builtin.command: pcsm status
+      register: pcsm_status
+      changed_when: false
+      retries: 12
+      delay: 5
+      until: pcsm_status.rc == 0
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart PCSM
+      ansible.builtin.systemd:
+        name: "{{ pcsm_service_name }}"
+        state: restarted

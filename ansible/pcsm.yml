@@ -1,12 +1,12 @@
 ---
 - name: Configure the source MongoDB user used by PCSM
-  hosts: pcsm_source
+  hosts: pcsm_sync_source
   become: false
   gather_facts: false
   tags: pcsm
   vars:
     pcsm_secret_env: "{{ lookup('ansible.builtin.file', pcsm_env_file_source | default('/dev/null')) }}"
-    pcsm_source_password: "{{ (pcsm_secret_env | regex_findall(\"(?m)^PCSM_SOURCE_PASSWORD='?([^'\\n]+)'?$\"))[0] | default('') }}"
+    pcsm_source_password: "{{ (pcsm_secret_env | regex_findall(\"(?m)^PCSM_SOURCE_PASSWORD='?([^'\\n]+)'?$\") | first) | default('') }}"
   tasks:
     - name: Require the PCSM source password
       ansible.builtin.assert:
@@ -23,16 +23,16 @@
       environment:
         PCSM_PASSWORD: "{{ pcsm_source_password }}"
       no_log: true
-      when: inventory_hostname == groups['pcsm_source'][0]
+      when: inventory_hostname == groups['pcsm_sync_source'][0]
 
 - name: Configure the target MongoDB user used by PCSM
-  hosts: pcsm_target
+  hosts: pcsm_sync_target
   become: false
   gather_facts: false
   tags: pcsm
   vars:
     pcsm_secret_env: "{{ lookup('ansible.builtin.file', pcsm_env_file_source | default('/dev/null')) }}"
-    pcsm_target_password: "{{ (pcsm_secret_env | regex_findall(\"(?m)^PCSM_TARGET_PASSWORD='?([^'\\n]+)'?$\"))[0] | default('') }}"
+    pcsm_target_password: "{{ (pcsm_secret_env | regex_findall(\"(?m)^PCSM_TARGET_PASSWORD='?([^'\\n]+)'?$\") | first) | default('') }}"
   tasks:
     - name: Require the PCSM target password
       ansible.builtin.assert:
@@ -49,7 +49,7 @@
       environment:
         PCSM_PASSWORD: "{{ pcsm_target_password }}"
       no_log: true
-      when: inventory_hostname == groups['pcsm_target'][0]
+      when: inventory_hostname == groups['pcsm_sync_target'][0]
 
 - name: Install Percona ClusterSync
   hosts: pcsm

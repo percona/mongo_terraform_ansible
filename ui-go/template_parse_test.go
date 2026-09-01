@@ -113,6 +113,28 @@ func TestClusterSyncTuningDisplaysEffectiveDefaults(t *testing.T) {
 	}
 }
 
+func TestPCSMPlaybookUsesGeneratedInventoryGroups(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "ansible", "pcsm.yml"))
+	if err != nil {
+		t.Fatalf("read PCSM playbook: %v", err)
+	}
+	playbook := string(content)
+	for _, want := range []string{
+		"hosts: pcsm_sync_source",
+		"hosts: pcsm_sync_target",
+		"groups['pcsm_sync_source'][0]",
+		"groups['pcsm_sync_target'][0]",
+		"| first) | default('')",
+	} {
+		if !strings.Contains(playbook, want) {
+			t.Fatalf("PCSM playbook is missing %q", want)
+		}
+	}
+	if strings.Contains(playbook, "hosts: pcsm_source") || strings.Contains(playbook, "hosts: pcsm_target") {
+		t.Fatal("PCSM playbook uses obsolete inventory group names")
+	}
+}
+
 func TestDockerMongotImageSelectorSupportsCustomRepository(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
 	if err != nil {

@@ -37,6 +37,9 @@ resource "local_file" "AnsibleInventoryCluster" {
     ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(aws_instance.ca[0].public_ip, "") : try(aws_instance.pmm[0].public_ip, "")) : ""
     hostname_ycsb        = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
     ip_ycsb              = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
+    hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+    ip_pcsm              = var.enable_pcsm ? aws_instance.pcsm[0].public_ip : ""
+    pcsm_version         = var.pcsm_version
     bucket               = aws_s3_bucket.mongo_backups.bucket
     region               = aws_s3_bucket.mongo_backups.region
     endpointUrl          = local.storage_endpoint
@@ -106,6 +109,8 @@ resource "local_file" "SSHConfigCluster" {
     public_ip_pmm        = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
     hostname_ycsb        = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
     public_ip_ycsb       = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
+    hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+    public_ip_pcsm       = var.enable_pcsm ? aws_instance.pcsm[0].public_ip : ""
     pmm_port             = var.pmm_port
   })
 
@@ -159,6 +164,9 @@ resource "local_file" "AnsibleInventoryRS" {
     ip_ca         = var.enable_ca ? (var.ca_placement == "dedicated" ? try(aws_instance.ca[0].public_ip, "") : try(aws_instance.pmm[0].public_ip, "")) : ""
     hostname_ycsb = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
     ip_ycsb       = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
+    hostname_pcsm = var.enable_pcsm ? local.pcsm_host : ""
+    ip_pcsm       = var.enable_pcsm ? aws_instance.pcsm[0].public_ip : ""
+    pcsm_version  = var.pcsm_version
     bucket        = aws_s3_bucket.mongo_backups.bucket
     endpointUrl   = local.storage_endpoint
 
@@ -196,6 +204,8 @@ resource "local_file" "SSHConfigRS" {
     public_ip_pmm          = var.enable_pmm ? aws_instance.pmm[0].public_ip : ""
     hostname_ycsb          = var.enable_ycsb ? aws_instance.ycsb[0].tags["Name"] : ""
     public_ip_ycsb         = var.enable_ycsb ? aws_instance.ycsb[0].public_ip : ""
+    hostname_pcsm          = var.enable_pcsm ? local.pcsm_host : ""
+    public_ip_pcsm         = var.enable_pcsm ? aws_instance.pcsm[0].public_ip : ""
     pmm_port               = var.pmm_port
   })
 

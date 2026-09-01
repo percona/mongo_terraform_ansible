@@ -119,25 +119,51 @@ type LdapServerConfig struct {
 	BindToLocalhost   bool   `json:"bind_to_localhost,omitempty"`
 }
 
+// ClusterSyncConfig configures one PCSM source-to-target relationship.
+type ClusterSyncConfig struct {
+	Enabled                  bool     `json:"enabled,omitempty"`
+	SourceKind               string   `json:"source_kind,omitempty"`
+	SourceName               string   `json:"source_name,omitempty"`
+	TargetKind               string   `json:"target_kind,omitempty"`
+	TargetName               string   `json:"target_name,omitempty"`
+	Version                  string   `json:"version,omitempty"`
+	Image                    string   `json:"image,omitempty"`
+	InstanceType             string   `json:"instance_type,omitempty"`
+	CPUs                     int      `json:"cpus,omitempty"`
+	MemoryMB                 int      `json:"memory_mb,omitempty"`
+	IncludeNamespaces        []string `json:"include_namespaces,omitempty"`
+	ExcludeNamespaces        []string `json:"exclude_namespaces,omitempty"`
+	CloneParallelCollections int      `json:"clone_parallel_collections,omitempty"`
+	CloneReadWorkers         int      `json:"clone_read_workers,omitempty"`
+	CloneInsertWorkers       int      `json:"clone_insert_workers,omitempty"`
+	CloneSegmentSize         string   `json:"clone_segment_size,omitempty"`
+	ReplicationWorkers       int      `json:"replication_workers,omitempty"`
+	ChangeStreamBatchSize    int      `json:"change_stream_batch_size,omitempty"`
+	EventQueueSize           int      `json:"event_queue_size,omitempty"`
+	WorkerQueueSize          int      `json:"worker_queue_size,omitempty"`
+	BulkOpsSize              int      `json:"bulk_ops_size,omitempty"`
+}
+
 // Config holds all user-configurable settings for an environment.
 type Config struct {
 	// General
-	Prefix              string `json:"prefix"`
-	MongoRelease        string `json:"mongo_release,omitempty"`
-	MongoDBDistribution string `json:"mongodb_distribution,omitempty"`
-	MongoVersion        string `json:"mongo_version,omitempty"`
-	MongoRepo           string `json:"mongo_repo,omitempty"`
-	PbmVersion          string `json:"pbm_version,omitempty"`
-	PbmRepo             string `json:"pbm_repo,omitempty"`
-	PmmClientVersion    string `json:"pmm_client_version,omitempty"`
-	PmmClientRepo       string `json:"pmm_client_repo,omitempty"`
-	EnableYcsb          bool   `json:"enable_ycsb,omitempty"`
-	UseTLS              bool   `json:"use_tls,omitempty"`
-	EnableCA            *bool  `json:"enable_ca,omitempty"`
-	CAPlacement         string `json:"ca_placement,omitempty"`
-	YcsbImage           string `json:"ycsb_image,omitempty"`
-	YcsbOsImage         string `json:"ycsb_os_image,omitempty"`
-	YcsbContainerSuffix string `json:"ycsb_container_suffix,omitempty"`
+	Prefix              string            `json:"prefix"`
+	MongoRelease        string            `json:"mongo_release,omitempty"`
+	MongoDBDistribution string            `json:"mongodb_distribution,omitempty"`
+	MongoVersion        string            `json:"mongo_version,omitempty"`
+	MongoRepo           string            `json:"mongo_repo,omitempty"`
+	PbmVersion          string            `json:"pbm_version,omitempty"`
+	PbmRepo             string            `json:"pbm_repo,omitempty"`
+	PmmClientVersion    string            `json:"pmm_client_version,omitempty"`
+	PmmClientRepo       string            `json:"pmm_client_repo,omitempty"`
+	EnableYcsb          bool              `json:"enable_ycsb,omitempty"`
+	UseTLS              bool              `json:"use_tls,omitempty"`
+	EnableCA            *bool             `json:"enable_ca,omitempty"`
+	CAPlacement         string            `json:"ca_placement,omitempty"`
+	YcsbImage           string            `json:"ycsb_image,omitempty"`
+	YcsbOsImage         string            `json:"ycsb_os_image,omitempty"`
+	YcsbContainerSuffix string            `json:"ycsb_container_suffix,omitempty"`
+	ClusterSync         ClusterSyncConfig `json:"cluster_sync,omitempty"`
 
 	// Cloud credentials / settings
 	ProjectID         string `json:"project_id,omitempty"`
@@ -465,14 +491,16 @@ type ConfigureData struct {
 }
 
 type EnvironmentData struct {
-	EnvID          string
-	Env            *Environment
-	SortedClusters []NamedCluster
-	SortedReplsets []NamedReplset
-	ServiceURLs    []ServiceURL
-	YcsbEnabled    bool
-	YcsbAvailable  bool
-	YcsbLoad       YcsbLoadConfig
+	EnvID                string
+	Env                  *Environment
+	SortedClusters       []NamedCluster
+	SortedReplsets       []NamedReplset
+	ServiceURLs          []ServiceURL
+	YcsbEnabled          bool
+	YcsbAvailable        bool
+	YcsbLoad             YcsbLoadConfig
+	ClusterSync          ClusterSyncConfig
+	ClusterSyncAvailable bool
 }
 
 // HostInfo describes a single running host or container.

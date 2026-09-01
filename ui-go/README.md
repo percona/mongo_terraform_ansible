@@ -291,6 +291,12 @@ ui-go/
 Tests remain next to the code they exercise, following standard Go conventions.
 Add reusable input or expected-output fixtures under `testdata/` when needed.
 
+## Percona ClusterSync
+
+Enable ClusterSync while configuring an environment, then select two replica sets or two sharded clusters in that environment. The deployment creates one dedicated PCSM container for Docker or one dedicated VM for AWS, GCP, Azure, and CHAOS. PCSM 0.9.0 is the default and sharded replication is marked as technical preview.
+
+The UI generates least-privilege source and target users and stores their random credentials in `secrets/pcsm/<environment>/` with owner-only permissions. Connection URIs are mounted or copied from those files and are not written to tfvars or `environments.json`. The environment page provides start, pause, resume, resume-from-failure, finalize, reset, status, progress, and redacted logs. Port 2242 is not published; the UI controls PCSM through `docker exec` or SSH.
+
 ## Security note
 
 This tool is intended for **local use only** (it binds to `127.0.0.1:5001` by default).

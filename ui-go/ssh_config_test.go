@@ -426,6 +426,18 @@ ansible_user=test
 	}
 }
 
+func TestUniqueHostsRemovesSharedPCSM(t *testing.T) {
+	hosts := uniqueHosts([]HostInfo{
+		{Name: "rs01-primary", Group: "rs01", Role: "mongod"},
+		{Name: "test-pcsm", Group: "ClusterSync", Role: "pcsm"},
+		{Name: "rs02-primary", Group: "rs02", Role: "mongod"},
+		{Name: "test-pcsm", Group: "ClusterSync", Role: "pcsm"},
+	})
+	if len(hosts) != 3 || hosts[1].Name != "test-pcsm" {
+		t.Fatalf("unique hosts = %+v, want one shared PCSM host", hosts)
+	}
+}
+
 func TestConfigServiceURLsIncludesDockerLDAPConsole(t *testing.T) {
 	env := &Environment{
 		Platform: "docker",

@@ -34,6 +34,85 @@ func TestYcsbPanelRequiresSuccessfulDeployment(t *testing.T) {
 	}
 }
 
+func TestClusterSyncPanelRequiresSuccessfulDeployment(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
+	if err != nil {
+		t.Fatalf("read environment template: %v", err)
+	}
+	if !strings.Contains(string(content), `{{if .Env.Config.ClusterSync.Enabled}}`) || !strings.Contains(string(content), `{{if not .ClusterSyncAvailable}}style="display:none"{{end}}`) {
+		t.Fatal("ClusterSync panel must be hidden until a successful environment deployment")
+	}
+}
+
+func TestClusterSyncPanelRefreshesAfterDeployment(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
+	if err != nil {
+		t.Fatalf("read environment template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		"async function refreshClusterSyncPanel()",
+		"cluster_sync_available",
+		"startClusterSyncStatusPolling()",
+		"loadHosts();\n\t\trefreshClusterSyncPanel();",
+	} {
+		if !strings.Contains(template, want) {
+			t.Fatalf("ClusterSync post-deploy refresh is missing %q", want)
+		}
+	}
+}
+
+func TestClusterSyncActionsUseAPIFetchMethodContract(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
+	if err != nil {
+		t.Fatalf("read environment template: %v", err)
+	}
+	if !strings.Contains(string(content), "clustersync/${action}`, 'POST', {from_failure: fromFailure}") {
+		t.Fatal("ClusterSync actions must pass POST and body separately to apiFetch")
+	}
+}
+
+func TestClusterSyncConfigurationWarnsAndExcludesSourceFromTarget(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
+	if err != nil {
+		t.Fatalf("read configure template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		`id="pcsm-topology-warning"`,
+		`Add at least two clusters or two replica sets`,
+		`option.kind === source.kind && option.value !== source.value`,
+	} {
+		if !strings.Contains(template, want) {
+			t.Fatalf("ClusterSync selector is missing %q", want)
+		}
+	}
+}
+
+func TestClusterSyncTuningDisplaysEffectiveDefaults(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
+	if err != nil {
+		t.Fatalf("read configure template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		`data-pcsm-default="parallel"`,
+		`value="{{intDefault .Config.ClusterSync.CloneParallelCollections 2}}"`,
+		`read: Math.max(Math.floor(cpus / 4), 1)`,
+		`insert: cpus * 2`,
+		`replication: cpus`,
+		`batch: 10000`,
+		`'event-queue': 5000`,
+		`'worker-queue': 5000`,
+		`bulk: 5000`,
+		`input.dataset.usingDefault === 'true'`,
+	} {
+		if !strings.Contains(template, want) {
+			t.Fatalf("ClusterSync effective defaults are missing %q", want)
+		}
+	}
+}
+
 func TestDockerMongotImageSelectorSupportsCustomRepository(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
 	if err != nil {

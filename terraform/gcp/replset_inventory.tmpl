@@ -24,6 +24,11 @@ ${hostname_ca} ansible_host=${ip_ca}
 ${hostname_ycsb} ansible_host=${ip_ycsb}
 
 %{ endif ~}
+%{ if hostname_pcsm != "" ~}
+[pcsm]
+${hostname_pcsm} ansible_host=${ip_pcsm}
+
+%{ endif ~}
 %{ if enable_ldap ~}
 [ldap]
 ${ldap_hostname} ansible_host=${ldap_ip}
@@ -40,6 +45,7 @@ ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/n
 # Deployment
 cluster=${rs_name}
 env_tag=${env_tag}
+pcsm_version=${pcsm_version}
 
 # MongoDB
 %{ if mongodb_distribution != "" ~}

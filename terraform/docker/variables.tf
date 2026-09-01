@@ -283,6 +283,50 @@ variable "prefix" {
   description = "Prefix applied to every Docker container and volume. If non-empty a hyphen is appended automatically (e.g. \"ig\" → \"ig-\")."
 }
 
+############################
+# Percona ClusterSync (PCSM)
+############################
+
+variable "enable_pcsm" {
+  type        = bool
+  default     = false
+  description = "Deploy one Percona ClusterSync for MongoDB container in this environment."
+}
+
+variable "pcsm_image" {
+  type        = string
+  default     = "percona/percona-clustersync-mongodb:0.9.0"
+  description = "Percona ClusterSync for MongoDB container image."
+}
+
+variable "pcsm_env_file" {
+  type        = string
+  default     = ""
+  description = "Path to a host-generated 0600 shell env file containing PCSM_SOURCE_URI and PCSM_TARGET_URI."
+}
+
+variable "pcsm_cpus" {
+  type        = number
+  default     = 2
+  description = "Maximum number of CPUs available to PCSM."
+
+  validation {
+    condition     = var.pcsm_cpus > 0
+    error_message = "pcsm_cpus must be greater than zero."
+  }
+}
+
+variable "pcsm_memory_mb" {
+  type        = number
+  default     = 1024
+  description = "PCSM memory limit in MiB."
+
+  validation {
+    condition     = var.pcsm_memory_mb > 0
+    error_message = "pcsm_memory_mb must be greater than zero."
+  }
+}
+
 #############
 # Networking
 #############

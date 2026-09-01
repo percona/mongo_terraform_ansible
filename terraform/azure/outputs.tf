@@ -65,6 +65,9 @@ resource "local_file" "AnsibleInventoryCluster" {
       ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(azurerm_linux_virtual_machine.ca[0].public_ip_address, "") : try(azurerm_linux_virtual_machine.pmm[0].public_ip_address, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
+      hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+      ip_pcsm              = var.enable_pcsm ? azurerm_linux_virtual_machine.pcsm[0].public_ip_address : ""
+      pcsm_version         = var.pcsm_version
       bucket               = azurerm_storage_container.mongo_backups_container.name
       endpointUrl          = local.storage_endpoint
       key                  = azurerm_storage_account.mongo_backups.primary_access_key
@@ -107,6 +110,8 @@ resource "local_file" "SSHConfigCluster" {
     public_ip_pmm        = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
     hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
     public_ip_ycsb       = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
+    hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+    public_ip_pcsm       = var.enable_pcsm ? azurerm_linux_virtual_machine.pcsm[0].public_ip_address : ""
     pmm_port             = var.pmm_port
   })
 
@@ -160,6 +165,9 @@ resource "local_file" "AnsibleInventoryRS" {
       ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(azurerm_linux_virtual_machine.ca[0].public_ip_address, "") : try(azurerm_linux_virtual_machine.pmm[0].public_ip_address, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
+      hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+      ip_pcsm              = var.enable_pcsm ? azurerm_linux_virtual_machine.pcsm[0].public_ip_address : ""
+      pcsm_version         = var.pcsm_version
       bucket               = azurerm_storage_container.mongo_backups_container.name
       endpointUrl          = local.storage_endpoint
       key                  = azurerm_storage_account.mongo_backups.primary_access_key
@@ -197,6 +205,8 @@ resource "local_file" "SSHConfigRS" {
     public_ip_pmm          = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
     hostname_ycsb          = var.enable_ycsb ? local.ycsb_host : ""
     public_ip_ycsb         = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
+    hostname_pcsm          = var.enable_pcsm ? local.pcsm_host : ""
+    public_ip_pcsm         = var.enable_pcsm ? azurerm_linux_virtual_machine.pcsm[0].public_ip_address : ""
     pmm_port               = var.pmm_port
   })
 

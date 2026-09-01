@@ -12,6 +12,7 @@ It can also create:
 - MinIO server (with a storage bucket for PBM backups)
 - YCSB container (for generating workloads)
 - LDAP Server (optional for authentication)
+- Percona ClusterSync for MongoDB (PCSM), disabled by default
 
 By default it deploys one sharded cluster with 2 shards. Each shard is a 3-node PSA replica set running the latest component versions.
 
@@ -265,6 +266,24 @@ docker exec -it cl01-pbm-cli pbm status
 ```
 
 - Access the MinIO web console at `http://127.0.0.1:9001`. Default credentials: `minio/minioadmin`.
+
+## Percona ClusterSync for MongoDB
+
+PCSM is disabled by default. Before enabling it, create a host file readable only by its owner (mode `0600`) using shell-compatible assignments:
+
+```sh
+PCSM_SOURCE_URI='mongodb://source-user:source-password@source-host:27017'
+PCSM_TARGET_URI='mongodb://target-user:target-password@target-host:27017'
+```
+
+Pass only its path through Terraform:
+
+```hcl
+enable_pcsm   = true
+pcsm_env_file = "/absolute/path/to/pcsm.env"
+```
+
+Terraform mounts the file read-only and never reads its contents, so the URIs are not stored in Terraform state. One `<prefix>-pcsm` container is attached to the environment network after all MongoDB modules complete. It publishes no API port and defaults to image `percona/percona-clustersync-mongodb:0.9.0`, 2 CPUs, and 1024 MiB of memory. The host path must be shared with Docker Desktop where applicable.
 
 ## Simulating a workload with YCSB
 

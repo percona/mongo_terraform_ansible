@@ -64,6 +64,9 @@ resource "local_file" "AnsibleInventoryCluster" {
       ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(google_compute_instance.ca[0].network_interface.0.access_config.0.nat_ip, "") : try(google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
+      hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+      ip_pcsm              = var.enable_pcsm ? google_compute_instance.pcsm[0].network_interface.0.access_config.0.nat_ip : ""
+      pcsm_version         = var.pcsm_version
       bucket               = google_storage_bucket.mongo-backups.name
       access_key           = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key    = google_storage_hmac_key.mongo-backup-service-account.secret
@@ -105,6 +108,8 @@ resource "local_file" "SSHConfigCluster" {
     public_ip_pmm        = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
     hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
     public_ip_ycsb       = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
+    hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+    public_ip_pcsm       = var.enable_pcsm ? google_compute_instance.pcsm[0].network_interface.0.access_config.0.nat_ip : ""
     pmm_port             = var.pmm_port
   })
 
@@ -157,6 +162,9 @@ resource "local_file" "AnsibleInventoryRS" {
       ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(google_compute_instance.ca[0].network_interface.0.access_config.0.nat_ip, "") : try(google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
+      hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+      ip_pcsm              = var.enable_pcsm ? google_compute_instance.pcsm[0].network_interface.0.access_config.0.nat_ip : ""
+      pcsm_version         = var.pcsm_version
       bucket               = google_storage_bucket.mongo-backups.name
       access_key           = google_storage_hmac_key.mongo-backup-service-account.access_id
       secret_access_key    = google_storage_hmac_key.mongo-backup-service-account.secret
@@ -193,6 +201,8 @@ resource "local_file" "SSHConfigRS" {
     public_ip_pmm          = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
     hostname_ycsb          = var.enable_ycsb ? local.ycsb_host : ""
     public_ip_ycsb         = var.enable_ycsb ? google_compute_instance.ycsb[0].network_interface.0.access_config.0.nat_ip : ""
+    hostname_pcsm          = var.enable_pcsm ? local.pcsm_host : ""
+    public_ip_pcsm         = var.enable_pcsm ? google_compute_instance.pcsm[0].network_interface.0.access_config.0.nat_ip : ""
     pmm_port               = var.pmm_port
   })
 

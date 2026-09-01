@@ -79,6 +79,28 @@ func writeTfvars(envID, platform string, cfg Config) error {
 	if cfg.Prefix != "" {
 		writeVar("prefix", cfg.Prefix)
 	}
+	writeVar("enable_pcsm", cfg.ClusterSync.Enabled)
+	if cfg.ClusterSync.Enabled {
+		if platform == "docker" {
+			writeVar("pcsm_image", strDefault(cfg.ClusterSync.Image, "percona/percona-clustersync-mongodb:0.9.0"))
+			writeVar("pcsm_env_file", clusterSyncEnvPath(envID))
+			writeVar("pcsm_cpus", intDefault(cfg.ClusterSync.CPUs, 2))
+			writeVar("pcsm_memory_mb", intDefault(cfg.ClusterSync.MemoryMB, 1024))
+		} else if platform == "chaos" {
+			writeVar("pcsm_version", strDefault(cfg.ClusterSync.Version, "0.9.0"))
+			writeVar("pcsm_cpu_cores", intDefault(cfg.ClusterSync.CPUs, 2))
+			memoryGB := max(4, intDefault(cfg.ClusterSync.MemoryMB, 4096)/1024)
+			if !containsInt([]int{4, 8, 16, 32}, memoryGB) {
+				memoryGB = 4
+			}
+			writeVar("pcsm_memory_gb", memoryGB)
+		} else {
+			writeVar("pcsm_version", strDefault(cfg.ClusterSync.Version, "0.9.0"))
+			if cfg.ClusterSync.InstanceType != "" {
+				writeVar("pcsm_type", cfg.ClusterSync.InstanceType)
+			}
+		}
+	}
 
 	if platform != "docker" {
 		if platform == "aws" || platform == "gcp" || platform == "azure" || platform == "chaos" {

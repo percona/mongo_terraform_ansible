@@ -1,0 +1,31 @@
+---
+- name: Configure the MongoDB user used by PCSM
+  hosts: "{{ pcsm_control_group | default('pcsm_control') }}"
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Create or update the PCSM user on the topology coordinator
+      ansible.builtin.shell: |
+        mongosh --quiet --host localhost --port 27017{% if use_tls | default(false) | bool %} --tls --tlsCAFile {{ CAFile }} --tlsCertificateKeyFile {{ clientCertificateKeyFile }}{% endif %} --eval '
+          const admin = db.getSiblingDB("admin");
+          if (!admin.auth(process.env.MONGO_ADMIN_USER, process.env.MONGO_ADMIN_PASSWORD)) throw new Error("admin authentication failed");
+          const roles = JSON.parse(process.env.PCSM_ROLES).map(role => ({role, db: "admin"}));
+          if (process.env.PCSM_REMOVE_USER === "true") {
+            if (admin.getUser(process.env.PCSM_USERNAME)) admin.dropUser(process.env.PCSM_USERNAME);
+          } else if (admin.getUser(process.env.PCSM_USERNAME)) {
+            admin.updateUser(process.env.PCSM_USERNAME, {pwd: process.env.PCSM_PASSWORD, roles});
+          } else {
+            admin.createUser({user: process.env.PCSM_USERNAME, pwd: process.env.PCSM_PASSWORD, roles});
+          }
+        '
+      environment:
+        MONGO_ADMIN_USER: "{{ mongo_admin_user }}"
+        MONGO_ADMIN_PASSWORD: "{{ mongo_admin_password }}"
+        PCSM_USERNAME: "{{ pcsm_username }}"
+        PCSM_PASSWORD: "{{ pcsm_password }}"
+        PCSM_ROLES: "{{ pcsm_roles | to_json }}"
+        PCSM_REMOVE_USER: "{{ pcsm_remove_user | default(false) | bool | lower }}"
+      no_log: true
+      when:
+        - mongodb_primary | default(false) | bool or (pcsm_control_group == 'mongos' and inventory_hostname == groups[pcsm_control_group][0])
+      changed_when: true

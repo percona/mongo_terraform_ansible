@@ -64,6 +64,9 @@ resource "local_file" "AnsibleInventoryCluster" {
       ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(chaos_instance.ca[0].ip_address, "") : try(chaos_instance.pmm[0].ip_address, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
+      hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+      ip_pcsm              = var.enable_pcsm ? chaos_instance.pcsm[0].ip_address : ""
+      pcsm_version         = var.pcsm_version
       bucket               = local.bucket_name
       minio_hostname       = local.minio_host
       minio_ip             = var.enable_minio ? chaos_instance.minio[0].ip_address : ""
@@ -108,6 +111,8 @@ resource "local_file" "SSHConfigCluster" {
     public_ip_pmm        = var.enable_pmm ? chaos_instance.pmm[0].ip_address : ""
     hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
     public_ip_ycsb       = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
+    hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+    public_ip_pcsm       = var.enable_pcsm ? chaos_instance.pcsm[0].ip_address : ""
     pmm_port             = var.pmm_port
   })
 
@@ -160,6 +165,9 @@ resource "local_file" "AnsibleInventoryRS" {
       ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(chaos_instance.ca[0].ip_address, "") : try(chaos_instance.pmm[0].ip_address, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
+      hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+      ip_pcsm              = var.enable_pcsm ? chaos_instance.pcsm[0].ip_address : ""
+      pcsm_version         = var.pcsm_version
       bucket               = local.bucket_name
       minio_hostname       = local.minio_host
       minio_ip             = var.enable_minio ? chaos_instance.minio[0].ip_address : ""
@@ -199,6 +207,8 @@ resource "local_file" "SSHConfigRS" {
     public_ip_pmm          = var.enable_pmm ? chaos_instance.pmm[0].ip_address : ""
     hostname_ycsb          = var.enable_ycsb ? local.ycsb_host : ""
     public_ip_ycsb         = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
+    hostname_pcsm          = var.enable_pcsm ? local.pcsm_host : ""
+    public_ip_pcsm         = var.enable_pcsm ? chaos_instance.pcsm[0].ip_address : ""
     pmm_port               = var.pmm_port
   })
 

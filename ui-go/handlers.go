@@ -338,6 +338,10 @@ func ycsbDeploymentReady(env *Environment) bool {
 	return env.Status == "running" || env.Status == "deploy_success"
 }
 
+func clusterSyncDeploymentReady(env *Environment) bool {
+	return env != nil && env.Config.ClusterSync.Enabled && env.LastAppliedConfig != nil && env.LastAppliedConfig.ClusterSync.Enabled && (env.Status == "running" || env.Status == "deploy_success")
+}
+
 // GET /environment/{env_id}
 func environmentHandler(w http.ResponseWriter, r *http.Request) {
 	envID := r.PathValue("env_id")
@@ -352,14 +356,16 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	renderPage(w, "environment", EnvironmentData{
-		EnvID:          envID,
-		Env:            env,
-		SortedClusters: sortedClusters(env.Config.Clusters),
-		SortedReplsets: sortedReplsets(env.Config.Replsets),
-		ServiceURLs:    configServiceURLs(envID, env),
-		YcsbEnabled:    env.Config.EnableYcsb,
-		YcsbAvailable:  ycsbDeploymentReady(env),
-		YcsbLoad:       normalizedYcsbLoadConfig(env.YcsbLoad),
+		EnvID:                envID,
+		Env:                  env,
+		SortedClusters:       sortedClusters(env.Config.Clusters),
+		SortedReplsets:       sortedReplsets(env.Config.Replsets),
+		ServiceURLs:          configServiceURLs(envID, env),
+		YcsbEnabled:          env.Config.EnableYcsb,
+		YcsbAvailable:        ycsbDeploymentReady(env),
+		YcsbLoad:             normalizedYcsbLoadConfig(env.YcsbLoad),
+		ClusterSync:          normalizedClusterSyncConfig(env.Config.ClusterSync),
+		ClusterSyncAvailable: clusterSyncDeploymentReady(env),
 	})
 }
 
@@ -1570,7 +1576,10 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 400, err.Error())
 		return
 	}
-
+	if err := normalizeAndValidateClusterSync(payload.Platform, &payload.Config); err != nil {
+		jsonError(w, 400, err.Error())
+		return
+	}
 	if payload.Platform == "chaos" {
 		payload.Config.LegacyChaosAPIToken = ""
 		payload.Config.ChaosApiTokenPath = strings.TrimSpace(payload.Config.ChaosApiTokenPath)
@@ -1597,6 +1606,14 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if existing != nil {
+		oldCS, newCS := existing.Config.ClusterSync, payload.Config.ClusterSync
+		if existing.LastAppliedConfig != nil {
+			oldCS = existing.LastAppliedConfig.ClusterSync
+		}
+		if oldCS.Enabled && newCS.Enabled && (oldCS.SourceKind != newCS.SourceKind || oldCS.SourceName != newCS.SourceName || oldCS.TargetKind != newCS.TargetKind || oldCS.TargetName != newCS.TargetName) {
+			jsonError(w, 400, "changing a deployed ClusterSync relationship is not supported; disable and deploy it first")
+			return
+		}
 		var baseline *Config
 		if existing.LastAppliedConfig != nil {
 			baseline = existing.LastAppliedConfig
@@ -1631,6 +1648,12 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 				jsonError(w, 400, "unsupported topology change: "+strings.Join(unsupported, "; "))
 				return
 			}
+		}
+	}
+	if payload.Config.ClusterSync.Enabled {
+		if err := ensureClusterSyncSecrets(payload.EnvID, payload.Platform, &payload.Config); err != nil {
+			jsonError(w, 500, "ClusterSync secret setup failed: "+err.Error())
+			return
 		}
 	}
 	if payload.Platform == "chaos" && existing != nil && existing.Config.ChaosApiTokenPath != payload.Config.ChaosApiTokenPath {
@@ -1686,6 +1709,7 @@ func deleteEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		if env.Platform == "chaos" {
 			removeManagedChaosTokenFile(env.Config.ChaosApiTokenPath)
 		}
+		removeClusterSyncSecrets(envID)
 		p := tfvarsPath(envID, env.Platform)
 		os.Remove(p)
 		os.Remove(tfstatePath(envID, env.Platform))
@@ -1875,6 +1899,12 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		jsonError(w, 404, "environment not found")
 		return
+	}
+	if env.Config.ClusterSync.Enabled {
+		if err := ensureClusterSyncSecrets(envID, env.Platform, &env.Config); err != nil {
+			jsonError(w, 500, "ClusterSync secret setup failed: "+err.Error())
+			return
+		}
 	}
 
 	var body struct {
@@ -2149,6 +2179,12 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		if postDeploy := clusterSyncPostDeployShell(envID, env); postDeploy != "" {
+			shellCmd += " && " + postDeploy
+		}
+		if disable := clusterSyncDisableShell(envID, env, appliedConfig); disable != "" {
+			shellCmd += " && " + disable
+		}
 		cmd = []string{"bash", "-c", shellCmd}
 
 	case "provision":
@@ -2181,9 +2217,11 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, 400, "configure action is not applicable to Docker environments")
 			return
 		}
-		cmd = []string{"bash", "-c",
-			cloudConfigureCmdFor(invNames, true),
+		configureCmd := cloudConfigureCmdFor(invNames, true)
+		if postDeploy := clusterSyncPostDeployShell(envID, env); postDeploy != "" {
+			configureCmd += " && " + postDeploy
 		}
+		cmd = []string{"bash", "-c", configureCmd}
 
 	case "reset":
 		if platform == "docker" {
@@ -2265,6 +2303,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				if platform == "docker" {
 					cleanupDockerModuleArtifacts(e.Config)
 				}
+				removeClusterSyncSecrets(envID)
 			} else {
 				e.Status = "destroy_failed"
 			}
@@ -2285,6 +2324,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				e.Status = "running"
 				if action == "deploy" {
 					e.LastAppliedConfig = cloneConfig(*configAtStart)
+					if !e.Config.ClusterSync.Enabled {
+						removeClusterSyncSecrets(envID)
+					}
 				}
 			default:
 				e.Status = action + "_success"
@@ -2392,7 +2434,11 @@ func envStatusHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 404, "environment not found")
 		return
 	}
-	writeJSON(w, 200, map[string]string{"status": env.Status, "updated_at": env.UpdatedAt})
+	writeJSON(w, 200, map[string]interface{}{
+		"status":                 env.Status,
+		"updated_at":             env.UpdatedAt,
+		"cluster_sync_available": clusterSyncDeploymentReady(env),
+	})
 }
 
 // GET /api/job/{job_id}/status

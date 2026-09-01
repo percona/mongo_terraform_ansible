@@ -180,6 +180,46 @@ variable "enable_pmm" {
 }
 
 #############
+# Percona ClusterSync
+#############
+
+variable "enable_pcsm" {
+  type        = bool
+  default     = false
+  description = "Deploy one dedicated Percona ClusterSync VM for this environment."
+}
+
+variable "pcsm_version" {
+  type        = string
+  default     = "0.9.0"
+  description = "Exact Percona ClusterSync package version installed by Ansible."
+}
+
+variable "default_pcsm_host" {
+  type    = string
+  default = "pcsm"
+}
+
+variable "pcsm_cpu_cores" {
+  type    = number
+  default = 2
+}
+
+variable "pcsm_memory_gb" {
+  type    = number
+  default = 4
+}
+
+variable "pcsm_volume_size" {
+  type    = number
+  default = 20
+}
+
+locals {
+  pcsm_host = "${var.prefix}-${var.default_pcsm_host}"
+}
+
+#############
 # TLS CA
 #############
 

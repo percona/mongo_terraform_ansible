@@ -51,14 +51,15 @@ const defaultAuditFilter = `{ atype: "authCheck", "param.command": { $in: [ "ins
 
 var (
 	// Application directories (set in main)
-	baseDir      string
-	terraformDir string
-	ansibleDir   string
-	stateFile    string
-	settingsFile string
-	jobsDir      string
-	tmplDir      string
-	staticDir    string
+	baseDir        string
+	terraformDir   string
+	ansibleDir     string
+	stateFile      string
+	settingsFile   string
+	jobsDir        string
+	pcsmSecretsDir string
+	tmplDir        string
+	staticDir      string
 )
 
 // ─── Template function map ────────────────────────────────────────────────────
@@ -71,6 +72,7 @@ var funcMap = template.FuncMap{
 	},
 	"upper":     strings.ToUpper,
 	"hasPrefix": strings.HasPrefix,
+	"join":      strings.Join,
 	// Return s if non-empty, otherwise def.
 	"strDefault": func(s, def string) string {
 		if s == "" {
@@ -497,11 +499,15 @@ func main() {
 	stateFile = filepath.Join(baseDir, "environments.json")
 	settingsFile = filepath.Join(baseDir, "settings.json")
 	jobsDir = filepath.Join(baseDir, "jobs")
+	pcsmSecretsDir = filepath.Join(baseDir, "secrets", "pcsm")
 	tmplDir = filepath.Join(baseDir, "templates")
 	staticDir = filepath.Join(baseDir, "static")
 
 	if err := os.MkdirAll(jobsDir, 0755); err != nil {
 		log.Fatal("cannot create jobs dir:", err)
+	}
+	if err := os.MkdirAll(pcsmSecretsDir, 0700); err != nil {
+		log.Fatal("cannot create PCSM secrets dir:", err)
 	}
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
@@ -546,6 +552,9 @@ func main() {
 	mux.HandleFunc("POST /api/environment/{env_id}/ycsb", environmentYCSBActionHandler)
 	mux.HandleFunc("PUT /api/environment/{env_id}/ycsb/config", environmentYCSBConfigHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/ycsb/status", environmentYCSBStatusHandler)
+	mux.HandleFunc("GET /api/environment/{env_id}/clustersync/status", clusterSyncStatusHandler)
+	mux.HandleFunc("GET /api/environment/{env_id}/clustersync/log", clusterSyncLogHandler)
+	mux.HandleFunc("POST /api/environment/{env_id}/clustersync/{action}", clusterSyncActionHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/status", jobStatusHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/stream", jobStreamHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/log", jobLogHandler)

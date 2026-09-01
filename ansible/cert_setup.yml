@@ -263,7 +263,7 @@
       tags: copy_certs
 
 - name: Prepare server certificates
-  hosts: cfg:shards:replsets:mongos
+  hosts: cfg:shards:replsets:mongos:pcsm
   become: true
   vars:
     ca_signer: "{{ groups['ca'] | first }}"

@@ -212,6 +212,31 @@
 </section>
 {{end}}
 
+{{if .Env.Config.ClusterSync.Enabled}}
+<section class="form-section" id="clustersync-panel" {{if not .ClusterSyncAvailable}}style="display:none"{{end}}>
+  <div class="section-header"><h2>Percona ClusterSync</h2><span class="badge">{{.ClusterSync.SourceKind}}</span></div>
+  <p><strong>{{.ClusterSync.SourceName}}</strong> → <strong>{{.ClusterSync.TargetName}}</strong>{{if eq .ClusterSync.SourceKind "cluster"}} · Technical Preview{{end}}</p>
+  <div class="summary-grid" id="clustersync-summary">
+    <div class="summary-item"><label>State</label><value id="pcsm-state">Loading…</value></div>
+    <div class="summary-item"><label>Lag</label><value id="pcsm-lag">—</value></div>
+    <div class="summary-item"><label>Events</label><value id="pcsm-events">—</value></div>
+    <div class="summary-item"><label>Clone progress</label><value id="pcsm-clone">—</value></div>
+  </div>
+  <p class="status-meta" id="pcsm-message"></p>
+  <div class="action-buttons">
+    <button class="btn btn-primary" onclick="runClusterSyncAction('start')">Start</button>
+    <button class="btn btn-warning" onclick="runClusterSyncAction('pause')">Pause</button>
+    <button class="btn btn-success" onclick="runClusterSyncAction('resume')">Resume</button>
+    <button class="btn btn-outline" onclick="runClusterSyncAction('resume', true)">Resume Failure</button>
+    <button class="btn btn-danger" onclick="runClusterSyncAction('finalize')">Finalize</button>
+    <button class="btn btn-danger" onclick="runClusterSyncAction('reset')">Reset</button>
+    <button class="btn btn-outline" onclick="showClusterSyncLogs()">Logs</button>
+    <a class="btn btn-outline" href="/configure/{{.Env.Platform}}?env_id={{.EnvID}}#enable_pcsm">Edit / Remove</a>
+  </div>
+  <pre class="tfvars-pre" id="pcsm-logs" style="display:none;max-height:22rem"></pre>
+</section>
+{{end}}
+
 <!-- Last-job logs modal -->
 <div class="modal-backdrop" id="logs-modal" style="display:none" onclick="closeLogsModal(event)">
   <div class="modal modal-wide">
@@ -348,11 +373,69 @@ const ENV_ID   = {{json .EnvID}};
 const PLATFORM = {{json .Env.Platform}};
 let activeEventSource = null;
 let currentJobId = null;
+let pcsmStatusPollTimer = null;
 const CHAOS_GUARDED_ACTIONS = new Set(['deploy', 'stop', 'restart', 'destroy']);
 
 function selectedYcsbTarget() {
   const [kind, ...name] = document.getElementById('ycsb-target').value.split(':');
   return { kind, target: name.join(':') };
+}
+
+async function refreshClusterSyncStatus() {
+  const panel = document.getElementById('clustersync-panel');
+  if (!panel || panel.style.display === 'none') return;
+  try {
+    const status = await apiFetch(`/api/environment/${ENV_ID}/clustersync/status`);
+    document.getElementById('pcsm-state').textContent = status.state || 'unknown';
+    document.getElementById('pcsm-lag').textContent = status.lagTimeSeconds == null ? '—' : `${status.lagTimeSeconds}s`;
+    document.getElementById('pcsm-events').textContent = `${status.eventsApplied || 0} / ${status.eventsRead || 0}`;
+    const sync = status.initialSync || {};
+    const total = sync.estimatedCloneSizeBytes || 0, copied = sync.clonedSizeBytes || 0;
+    document.getElementById('pcsm-clone').textContent = total ? `${Math.round(copied * 100 / total)}%` : (sync.completed ? 'Complete' : '—');
+    const indexFailures = status.finalization?.unsuccessfulIndexes?.length || 0;
+    document.getElementById('pcsm-message').textContent = status.error || (indexFailures ? `${indexFailures} index builds require attention.` : status.info || '');
+  } catch (err) { document.getElementById('pcsm-state').textContent = 'Unavailable'; document.getElementById('pcsm-message').textContent = err.message; }
+}
+
+function startClusterSyncStatusPolling() {
+  if (pcsmStatusPollTimer !== null) return;
+  pcsmStatusPollTimer = setInterval(refreshClusterSyncStatus, 5000);
+}
+
+function stopClusterSyncStatusPolling() {
+  if (pcsmStatusPollTimer === null) return;
+  clearInterval(pcsmStatusPollTimer);
+  pcsmStatusPollTimer = null;
+}
+
+async function refreshClusterSyncPanel() {
+  const panel = document.getElementById('clustersync-panel');
+  if (!panel) return;
+  try {
+    const status = await apiFetch(`/api/environment/${ENV_ID}/status`);
+    if (!status.cluster_sync_available) {
+      panel.style.display = 'none';
+      stopClusterSyncStatusPolling();
+      return;
+    }
+    panel.style.display = '';
+    await refreshClusterSyncStatus();
+    startClusterSyncStatusPolling();
+  } catch (_) { /* The next status refresh will retry. */ }
+}
+
+async function runClusterSyncAction(action, fromFailure = false) {
+  const destructive = {start:'Starting replication replaces the selected target collections. Continue?', finalize:'Finalization ends this replication run. Continue?', reset:'Reset deletes PCSM metadata and requires a new initial clone. Continue?'};
+  if (destructive[action] && !confirm(destructive[action])) return;
+  try {
+    await apiFetch(`/api/environment/${ENV_ID}/clustersync/${action}`, 'POST', {from_failure: fromFailure});
+    await refreshClusterSyncStatus();
+  } catch (err) { alert(err.message); }
+}
+
+async function showClusterSyncLogs() {
+  const pre = document.getElementById('pcsm-logs'); pre.style.display = '';
+  try { const data = await apiFetch(`/api/environment/${ENV_ID}/clustersync/log`); pre.textContent = data.log || 'No logs.'; } catch (err) { pre.textContent = err.message; }
 }
 function ycsbProfile() {
   const target = selectedYcsbTarget();
@@ -692,6 +775,7 @@ function logsTermNavDown() {
 
 // Register scroll listener so the slider tracks manual scrolling.
 document.addEventListener('DOMContentLoaded', () => {
+	refreshClusterSyncPanel();
   const term = document.getElementById('terminal');
   if (term) term.addEventListener('scroll', termUpdateSlider);
   const logsTerm = document.getElementById('logs-terminal');
@@ -1004,6 +1088,7 @@ async function executeAction(action) {
       // final persisted state (e.g. deleted, reset_success, stop_failed, …).
       refreshEnvStatus();
       loadHosts();
+		refreshClusterSyncPanel();
     });
     es.onerror = () => {
       appendToTerminal('\n⚠ Stream connection lost.');
@@ -1059,6 +1144,7 @@ async function runYcsbAction(kind, target, action) {
       await refreshEnvStatus();
       await refreshYcsbStatus();
       loadHosts();
+		await refreshClusterSyncPanel();
     });
     es.onerror = () => {
       appendToTerminal('\n⚠ Stream connection lost.');
@@ -1110,6 +1196,7 @@ async function cancelJob() {
       await refreshEnvStatus();
       await refreshYcsbStatus();
       loadHosts();
+		await refreshClusterSyncPanel();
     });
     es.onerror = () => { es.close(); activeEventSource = null; setButtonsDisabled(false); hideProgressIndicator(); refreshEnvStatus(); };
   } else {
@@ -1117,11 +1204,13 @@ async function cancelJob() {
     refreshEnvStatus();
     refreshYcsbStatus();
     loadHosts();
+		refreshClusterSyncPanel();
   }
   {{else}}
   // No job history yet but environment may already have hosts.
   refreshYcsbStatus();
   loadHosts();
+	refreshClusterSyncPanel();
   {{end}}
 })();
 

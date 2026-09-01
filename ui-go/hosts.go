@@ -122,6 +122,8 @@ func guessDockerRole(name, prefix string) string {
 		return "ldap"
 	case strings.HasPrefix(base, "ycsb"):
 		return "ycsb"
+	case strings.HasPrefix(base, "pcsm"):
+		return "pcsm"
 	default:
 		return "service"
 	}
@@ -139,6 +141,8 @@ func guessDockerGroup(name, prefix string) string {
 		return "PBM"
 	case "ycsb":
 		return "YCSB"
+	case "pcsm":
+		return "ClusterSync"
 	}
 	base := strings.TrimPrefix(name, prefix+"-")
 	parts := strings.Split(base, "-")
@@ -317,6 +321,7 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 		applyConfiguredCloudServicePorts(groupHosts, env)
 		hosts = append(hosts, groupHosts...)
 	}
+	hosts = uniqueHosts(hosts)
 
 	var mongoConns []MongoConnInfo
 	user, pass := mongoAdminCredentials(env)
@@ -370,6 +375,21 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 		msg = "No hosts found. Run Provision or Deploy first."
 	}
 	return hosts, mongoConns, msg
+}
+
+// uniqueHosts removes shared services repeated in each topology inventory while
+// preserving the first inventory's ordering and host metadata.
+func uniqueHosts(hosts []HostInfo) []HostInfo {
+	seen := make(map[string]struct{}, len(hosts))
+	unique := make([]HostInfo, 0, len(hosts))
+	for _, host := range hosts {
+		if _, ok := seen[host.Name]; ok {
+			continue
+		}
+		seen[host.Name] = struct{}{}
+		unique = append(unique, host)
+	}
+	return unique
 }
 
 // parseInventoryHosts parses a simple Ansible INI-style inventory file and
@@ -434,6 +454,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			role = "minio"
 		case strings.Contains(sec, "ycsb"):
 			role = "ycsb"
+		case strings.Contains(sec, "pcsm"):
+			role = "pcsm"
 		case strings.Contains(sec, "ldap"):
 			role = "ldap"
 		}
@@ -451,6 +473,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			hostGroup = "YCSB"
 		case "ldap":
 			hostGroup = "LDAP"
+		case "pcsm":
+			hostGroup = "ClusterSync"
 		}
 		sshCmd := fmt.Sprintf("ssh %s@%s", sshUser, ip)
 		if sshPrivateKeyPath != "" {

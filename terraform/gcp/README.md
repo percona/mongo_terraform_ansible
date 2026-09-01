@@ -1,5 +1,7 @@
 # Deploy MongoDB infrastructure on Google Cloud
 
+Percona ClusterSync is disabled by default. Set `enable_pcsm=true` to create one dedicated `e2-small` VM on the environment VPC. Only SSH is allowed inbound; API port `2242` is not exposed. Generated inventories and SSH configuration expose `${prefix}-pcsm`. Supply an already-generated secure environment file to Ansible through `pcsm_env_file_source`; Terraform never receives its contents. The package version defaults to `pcsm_version="0.9.0"`.
+
 This Terraform module creates:
 
 - a custom VPC, regional subnet, and firewall rules

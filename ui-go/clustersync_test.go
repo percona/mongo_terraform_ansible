@@ -100,7 +100,7 @@ func TestEnsureClusterSyncSecrets(t *testing.T) {
 	if err := ensureClusterSyncSecrets("test", "docker", &cfg); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{clusterSyncEnvPath("test"), clusterSyncSecretPath("test"), clusterSyncVarsPath("test", "source"), clusterSyncBootstrapPath("test"), clusterSyncCleanupPath("test")} {
+	for _, path := range []string{clusterSyncEnvPath("test"), clusterSyncSecretPath("test"), clusterSyncBootstrapPath("test"), clusterSyncCleanupPath("test")} {
 		info, err := os.Stat(path)
 		if err != nil {
 			t.Fatal(err)
@@ -123,6 +123,11 @@ func TestEnsureClusterSyncSecrets(t *testing.T) {
 	state, _ := os.ReadFile(clusterSyncSecretPath("test"))
 	if strings.Contains(string(env), "root") || strings.Contains(string(state), "mongodb://") {
 		t.Fatal("secret artifacts contain unintended admin/URI data")
+	}
+	for _, key := range []string{"PCSM_SOURCE_URI=", "PCSM_TARGET_URI=", "PCSM_SOURCE_PASSWORD=", "PCSM_TARGET_PASSWORD="} {
+		if !strings.Contains(string(env), key) {
+			t.Fatalf("PCSM environment file is missing %q", key)
+		}
 	}
 }
 
@@ -159,7 +164,7 @@ func TestWriteTfvarsIncludesClusterSyncWithoutURIs(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(data)
-	for _, expected := range []string{"enable_pcsm = true", `pcsm_image = "percona/percona-clustersync-mongodb:0.9.0"`, "pcsm_env_file = "} {
+	for _, expected := range []string{"enable_pcsm = true", `pcsm_source_kind = "replset"`, `pcsm_source_name = "source"`, `pcsm_target_name = "target"`, `pcsm_image = "percona/percona-clustersync-mongodb:0.9.0"`, "pcsm_env_file = "} {
 		if !strings.Contains(text, expected) {
 			t.Fatalf("tfvars missing %q:\n%s", expected, text)
 		}

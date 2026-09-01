@@ -2,6 +2,16 @@
 
 Percona ClusterSync is disabled by default. Set `enable_pcsm=true` to create one dedicated `t3.small` VM in the environment VPC. Only SSH is allowed inbound; API port `2242` is not exposed. Generated inventories and SSH configuration expose `${prefix}-pcsm`. Supply an already-generated secure environment file to Ansible through `pcsm_env_file_source`; Terraform never receives its contents. The package version defaults to `pcsm_version="0.9.0"`.
 
+## Percona ClusterSync
+
+Set `pcsm_source_kind` and `pcsm_target_kind` to `cluster` or `replset`, and set the matching names from `clusters` or `replsets`. Both kinds must match and the names must differ. `cluster` selects its mongos hosts; `replset` selects its data-bearing electable members. With PCSM enabled, `terraform apply` writes `<prefix>_inventory_pcsm`, which includes every topology using the normal inventory group names plus `[pcsm]`, `[pcsm_source]`, and `[pcsm_target]`.
+
+```bash
+terraform apply
+ansible-playbook -i <prefix>_inventory_pcsm ../../ansible/main.yml
+ansible-playbook -i <prefix>_inventory_pcsm ../../ansible/main.yml --tags pcsm -e pcsm_env_file_source=/secure/path/pcsm.env
+```
+
 This Terraform module creates:
 
 - a VPC, public subnets, an internet gateway, routes, and security groups

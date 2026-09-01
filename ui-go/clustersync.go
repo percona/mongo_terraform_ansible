@@ -213,10 +213,6 @@ func clusterSyncSecretPath(envID string) string {
 	return filepath.Join(pcsmSecretsDir, envID, "credentials.json")
 }
 
-func clusterSyncVarsPath(envID, side string) string {
-	return filepath.Join(pcsmSecretsDir, envID, side+"-user.json")
-}
-
 func clusterSyncBootstrapPath(envID string) string {
 	return filepath.Join(pcsmSecretsDir, envID, "bootstrap.sh")
 }
@@ -264,21 +260,12 @@ func ensureClusterSyncSecrets(envID, platform string, cfg *Config) error {
 	cs := normalizedClusterSyncConfig(cfg.ClusterSync)
 	sourceURI := clusterSyncURI(envID, platform, *cfg, cs.SourceKind, cs.SourceName, pcsmSourceUser, secrets.SourcePassword)
 	targetURI := clusterSyncURI(envID, platform, *cfg, cs.TargetKind, cs.TargetName, pcsmTargetUser, secrets.TargetPassword)
-	envData := "PCSM_SOURCE_URI=" + shellEnvQuote(sourceURI) + "\nPCSM_TARGET_URI=" + shellEnvQuote(targetURI) + "\n"
+	envData := "PCSM_SOURCE_URI=" + shellEnvQuote(sourceURI) + "\nPCSM_TARGET_URI=" + shellEnvQuote(targetURI) + "\n" +
+		"PCSM_SOURCE_PASSWORD=" + shellEnvQuote(secrets.SourcePassword) + "\nPCSM_TARGET_PASSWORD=" + shellEnvQuote(secrets.TargetPassword) + "\n"
 	if err := os.WriteFile(clusterSyncEnvPath(envID), []byte(envData), 0600); err != nil {
 		return err
 	}
 	adminUser, adminPassword := mongoAdminCredentials(&Environment{Config: *cfg})
-	if err := writeClusterSyncUserVars(envID, "source", cs.SourceKind, cs.SourceName, adminUser, adminPassword, pcsmSourceUser, secrets.SourcePassword, []string{"backup", "clusterMonitor", "readAnyDatabase"}, topologyUsesTLS(*cfg, cs.SourceName)); err != nil {
-		return err
-	}
-	if err := writeClusterSyncUserVars(envID, "target", cs.TargetKind, cs.TargetName, adminUser, adminPassword, pcsmTargetUser, secrets.TargetPassword, []string{"restore", "clusterMonitor", "clusterManager", "readWriteAnyDatabase"}, topologyUsesTLS(*cfg, cs.TargetName)); err != nil {
-		return err
-	}
-	installVars, _ := json.MarshalIndent(map[string]string{"pcsm_env_file_source": clusterSyncEnvPath(envID)}, "", "  ")
-	if err := os.WriteFile(filepath.Join(dir, "install.json"), installVars, 0600); err != nil {
-		return err
-	}
 	if platform == "docker" {
 		return writeDockerClusterSyncBootstrap(envID, *cfg, secrets, adminUser, adminPassword)
 	}
@@ -343,15 +330,7 @@ func clusterSyncPostDeployShell(envID string, env *Environment) string {
 		return shellQuote(clusterSyncBootstrapPath(envID))
 	}
 	prefix := strDefault(env.Config.Prefix, envID)
-	cs := env.Config.ClusterSync
-	sourceInventory := shellQuote(prefix + "_inventory_" + cs.SourceName)
-	targetInventory := shellQuote(prefix + "_inventory_" + cs.TargetName)
-	userPlay := shellQuote(filepath.Join(ansibleDir, "pcsm_user.yml"))
-	installPlay := shellQuote(filepath.Join(ansibleDir, "pcsm_install.yml"))
-	sourceVars := shellQuote("@" + clusterSyncVarsPath(envID, "source"))
-	targetVars := shellQuote("@" + clusterSyncVarsPath(envID, "target"))
-	installVars := shellQuote("@" + filepath.Join(pcsmSecretsDir, envID, "install.json"))
-	return fmt.Sprintf("ansible-playbook -i %s %s --extra-vars %s && ansible-playbook -i %s %s --extra-vars %s && ansible-playbook -i %s %s --extra-vars %s", sourceInventory, userPlay, sourceVars, targetInventory, userPlay, targetVars, sourceInventory, installPlay, installVars)
+	return fmt.Sprintf("ansible-playbook -i %s %s --tags pcsm --extra-vars pcsm_env_file_source=%s", shellQuote(prefix+"_inventory_pcsm"), shellQuote(filepath.Join(ansibleDir, "main.yml")), shellQuote(clusterSyncEnvPath(envID)))
 }
 
 func clusterSyncDisableShell(envID string, env *Environment, applied *Config) string {
@@ -362,24 +341,7 @@ func clusterSyncDisableShell(envID string, env *Environment, applied *Config) st
 		return shellQuote(clusterSyncCleanupPath(envID))
 	}
 	prefix := strDefault(env.Config.Prefix, envID)
-	cs := applied.ClusterSync
-	play := shellQuote(filepath.Join(ansibleDir, "pcsm_user.yml"))
-	source := fmt.Sprintf("ansible-playbook -i %s %s --extra-vars %s --extra-vars pcsm_remove_user=true", shellQuote(prefix+"_inventory_"+cs.SourceName), play, shellQuote("@"+clusterSyncVarsPath(envID, "source")))
-	target := fmt.Sprintf("ansible-playbook -i %s %s --extra-vars %s --extra-vars pcsm_remove_user=true", shellQuote(prefix+"_inventory_"+cs.TargetName), play, shellQuote("@"+clusterSyncVarsPath(envID, "target")))
-	return source + " && " + target
-}
-
-func writeClusterSyncUserVars(envID, side, kind, name, adminUser, adminPassword, user, password string, roles []string, useTLS bool) error {
-	group := name
-	if kind == "cluster" {
-		group = "mongos"
-	}
-	data, _ := json.MarshalIndent(map[string]interface{}{
-		"pcsm_control_group": group, "pcsm_username": user, "pcsm_password": password,
-		"pcsm_roles": roles, "mongo_admin_user": adminUser, "mongo_admin_password": adminPassword,
-		"use_tls": useTLS,
-	}, "", "  ")
-	return os.WriteFile(clusterSyncVarsPath(envID, side), data, 0600)
+	return fmt.Sprintf("ansible-playbook -i %s %s --tags pcsm --extra-vars pcsm_env_file_source=%s --extra-vars pcsm_state=absent", shellQuote(prefix+"_inventory_pcsm"), shellQuote(filepath.Join(ansibleDir, "main.yml")), shellQuote(clusterSyncEnvPath(envID)))
 }
 
 func shellEnvQuote(value string) string {

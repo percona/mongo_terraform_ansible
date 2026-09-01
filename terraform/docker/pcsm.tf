@@ -21,6 +21,27 @@ resource "docker_container" "pcsm" {
   cpus   = tostring(var.pcsm_cpus)
   memory = var.pcsm_memory_mb
 
+  # Selectors are nonsecret operational metadata; URIs stay only in pcsm_env_file.
+  labels {
+    label = "pcsm.source_kind"
+    value = var.pcsm_source_kind
+  }
+
+  labels {
+    label = "pcsm.source_name"
+    value = var.pcsm_source_name
+  }
+
+  labels {
+    label = "pcsm.target_kind"
+    value = var.pcsm_target_kind
+  }
+
+  labels {
+    label = "pcsm.target_name"
+    value = var.pcsm_target_name
+  }
+
   network_mode = "bridge"
   networks_advanced {
     name = docker_network.mongo_network.name
@@ -55,6 +76,26 @@ resource "docker_container" "pcsm" {
     precondition {
       condition     = trimspace(var.pcsm_env_file) != "" && fileexists(var.pcsm_env_file)
       error_message = "pcsm_env_file must identify an existing host file when enable_pcsm is true."
+    }
+
+    precondition {
+      condition     = var.pcsm_source_kind == var.pcsm_target_kind
+      error_message = "PCSM requires cluster-to-cluster or replset-to-replset replication."
+    }
+
+    precondition {
+      condition     = trimspace(var.pcsm_source_name) != "" && trimspace(var.pcsm_target_name) != "" && trimspace(var.pcsm_source_name) != trimspace(var.pcsm_target_name)
+      error_message = "pcsm_source_name and pcsm_target_name must be different non-empty topology names."
+    }
+
+    precondition {
+      condition     = var.pcsm_source_kind == "cluster" ? contains(keys(var.clusters), trimspace(var.pcsm_source_name)) : contains(keys(var.replsets), trimspace(var.pcsm_source_name))
+      error_message = "pcsm_source_name must identify a configured topology of pcsm_source_kind."
+    }
+
+    precondition {
+      condition     = var.pcsm_target_kind == "cluster" ? contains(keys(var.clusters), trimspace(var.pcsm_target_name)) : contains(keys(var.replsets), trimspace(var.pcsm_target_name))
+      error_message = "pcsm_target_name must identify a configured topology of pcsm_target_kind."
     }
   }
 }

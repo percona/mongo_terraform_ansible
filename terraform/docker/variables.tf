@@ -305,6 +305,40 @@ variable "pcsm_env_file" {
   description = "Path to a host-generated 0600 shell env file containing PCSM_SOURCE_URI and PCSM_TARGET_URI."
 }
 
+variable "pcsm_source_kind" {
+  type        = string
+  default     = "cluster"
+  description = "Source topology kind for PCSM: cluster or replset."
+
+  validation {
+    condition     = contains(["cluster", "replset"], var.pcsm_source_kind)
+    error_message = "pcsm_source_kind must be either cluster or replset."
+  }
+}
+
+variable "pcsm_source_name" {
+  type        = string
+  default     = ""
+  description = "Source topology name from clusters or replsets, according to pcsm_source_kind."
+}
+
+variable "pcsm_target_kind" {
+  type        = string
+  default     = "cluster"
+  description = "Target topology kind for PCSM: cluster or replset."
+
+  validation {
+    condition     = contains(["cluster", "replset"], var.pcsm_target_kind)
+    error_message = "pcsm_target_kind must be either cluster or replset."
+  }
+}
+
+variable "pcsm_target_name" {
+  type        = string
+  default     = ""
+  description = "Target topology name from clusters or replsets, according to pcsm_target_kind."
+}
+
 variable "pcsm_cpus" {
   type        = number
   default     = 2

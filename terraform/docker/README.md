@@ -279,9 +279,15 @@ PCSM_TARGET_URI='mongodb://target-user:target-password@target-host:27017'
 Pass only its path through Terraform:
 
 ```hcl
-enable_pcsm   = true
-pcsm_env_file = "/absolute/path/to/pcsm.env"
+enable_pcsm      = true
+pcsm_env_file    = "/absolute/path/to/pcsm.env"
+pcsm_source_kind = "cluster"
+pcsm_source_name = "cl01"
+pcsm_target_kind = "cluster"
+pcsm_target_name = "cl02"
 ```
+
+`pcsm_source_kind` and `pcsm_target_kind` must both be `cluster` or both be `replset`. The names must be different keys in the corresponding `clusters` or `replsets` map. Terraform records these nonsecret selectors as Docker labels only; it does not generate an Ansible inventory because Docker configures MongoDB directly.
 
 Terraform mounts the file read-only and never reads its contents, so the URIs are not stored in Terraform state. One `<prefix>-pcsm` container is attached to the environment network after all MongoDB modules complete. It publishes no API port and defaults to image `percona/percona-clustersync-mongodb:0.9.0`, 2 CPUs, and 1024 MiB of memory. The host path must be shared with Docker Desktop where applicable.
 

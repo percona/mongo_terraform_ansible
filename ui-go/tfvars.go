@@ -81,6 +81,10 @@ func writeTfvars(envID, platform string, cfg Config) error {
 	}
 	writeVar("enable_pcsm", cfg.ClusterSync.Enabled)
 	if cfg.ClusterSync.Enabled {
+		writeVar("pcsm_source_kind", cfg.ClusterSync.SourceKind)
+		writeVar("pcsm_source_name", cfg.ClusterSync.SourceName)
+		writeVar("pcsm_target_kind", cfg.ClusterSync.TargetKind)
+		writeVar("pcsm_target_name", cfg.ClusterSync.TargetName)
 		if platform == "docker" {
 			writeVar("pcsm_image", strDefault(cfg.ClusterSync.Image, "percona/percona-clustersync-mongodb:0.9.0"))
 			writeVar("pcsm_env_file", clusterSyncEnvPath(envID))

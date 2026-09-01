@@ -4,14 +4,14 @@ This directory contains the playbooks that install, configure, stop, restart, an
 
 ## Percona ClusterSync
 
-Terraform inventories contain a `[pcsm]` host only when `enable_pcsm=true`. The Web UI creates dedicated source and target MongoDB users with `pcsm_user.yml`, then installs PCSM separately after normal MongoDB configuration:
+Terraform creates `<prefix>_inventory_pcsm` only when `enable_pcsm=true`. It contains `[pcsm]`, `[pcsm_source]`, and `[pcsm_target]`. `main.yml` imports `pcsm.yml`, which creates the source and target users and installs PCSM after MongoDB setup:
 
 ```bash
-ansible-playbook pcsm_install.yml -i myenv_inventory_cl01 \
+ansible-playbook main.yml -i myenv_inventory_pcsm --tags pcsm \
   -e pcsm_env_file_source=/secure/myenv/pcsm.env
 ```
 
-The playbook installs the selected `percona-clustersync-mongodb` version (default `0.9.0`), stages the file as root-only `/etc/pcsm/pcsm.env`, configures the packaged `pcsm.service` to use it, verifies readiness, and enables the service. `stop.yml` and `restart.yml` include PCSM; `reset.yml` deliberately preserves its package and secret environment.
+The source file must contain `PCSM_SOURCE_URI`, `PCSM_TARGET_URI`, `PCSM_SOURCE_PASSWORD`, and `PCSM_TARGET_PASSWORD`, and must be mode `0600`. The imported play creates idempotent users like the PMM/PBM user workflow, stages the file as root-only `/etc/pcsm/pcsm.env`, configures the packaged `pcsm.service`, verifies readiness, and enables the service. `stop.yml` and `restart.yml` include PCSM; `reset.yml` deliberately preserves its package and secret environment.
 
 ## Prerequisites
 

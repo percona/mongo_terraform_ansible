@@ -4,6 +4,40 @@ locals {
     testing      = "pmm3-client testing"
     experimental = "pmm3-client experimental"
   }
+
+  pcsm_source = var.enable_pcsm ? (var.pcsm_source_kind == "cluster" ? {
+    hostnames = module.mongodb_clusters[var.pcsm_source_name].hostname_mongos
+    ips       = module.mongodb_clusters[var.pcsm_source_name].ip_mongos
+    } : {
+    hostnames = module.mongodb_replsets[var.pcsm_source_name].hostname_replsets
+    ips       = module.mongodb_replsets[var.pcsm_source_name].ip_replsets
+  }) : { hostnames = [], ips = [] }
+
+  pcsm_target = var.enable_pcsm ? (var.pcsm_target_kind == "cluster" ? {
+    hostnames = module.mongodb_clusters[var.pcsm_target_name].hostname_mongos
+    ips       = module.mongodb_clusters[var.pcsm_target_name].ip_mongos
+    } : {
+    hostnames = module.mongodb_replsets[var.pcsm_target_name].hostname_replsets
+    ips       = module.mongodb_replsets[var.pcsm_target_name].ip_replsets
+  }) : { hostnames = [], ips = [] }
+}
+
+resource "local_file" "AnsibleInventoryPCSM" {
+  count = var.enable_pcsm ? 1 : 0
+
+  content = templatefile("${path.module}/pcsm_inventory.tmpl", {
+    clusters             = module.mongodb_clusters
+    replsets             = module.mongodb_replsets
+    hostname_pcsm        = local.pcsm_host
+    ip_pcsm              = aws_instance.pcsm[0].public_ip
+    source               = local.pcsm_source
+    target               = local.pcsm_target
+    my_ssh_user          = var.my_ssh_user
+    ssh_private_key_path = var.ssh_private_key_path
+    pcsm_version         = var.pcsm_version
+  })
+
+  filename = "${var.prefix}_inventory_pcsm"
 }
 
 resource "local_file" "AnsibleInventoryCluster" {

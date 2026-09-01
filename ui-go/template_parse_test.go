@@ -135,6 +135,26 @@ func TestPCSMPlaybookUsesGeneratedInventoryGroups(t *testing.T) {
 	}
 }
 
+func TestMongoDBDefaultReleaseUsesPSMDB80(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
+	if err != nil {
+		t.Fatalf("read configure template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		`{{$defaultRel := preferredPSMDBRelease $.PSMDBVersions}}`,
+		`const defaultMongoRelease = PSMDB_VERSIONS.includes('psmdb-80') ? 'psmdb-80' : PSMDB_VERSIONS[0];`,
+		`PSMDB 8.3 and newer lines must be selected explicitly.`,
+	} {
+		if !strings.Contains(template, want) {
+			t.Fatalf("MongoDB GA release default is missing %q", want)
+		}
+	}
+	if got := funcMap["preferredPSMDBRelease"].(func([]string) string)([]string{"psmdb-83", "psmdb-80", "psmdb-70"}); got != "psmdb-80" {
+		t.Fatalf("preferred PSMDB release = %q, want psmdb-80", got)
+	}
+}
+
 func TestDockerMongotImageSelectorSupportsCustomRepository(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
 	if err != nil {

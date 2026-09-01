@@ -73,6 +73,17 @@ var funcMap = template.FuncMap{
 	"upper":     strings.ToUpper,
 	"hasPrefix": strings.HasPrefix,
 	"join":      strings.Join,
+	"preferredPSMDBRelease": func(versions []string) string {
+		for _, version := range versions {
+			if version == "psmdb-80" {
+				return version
+			}
+		}
+		if len(versions) > 0 {
+			return versions[0]
+		}
+		return "psmdb-80"
+	},
 	// Return s if non-empty, otherwise def.
 	"strDefault": func(s, def string) string {
 		if s == "" {

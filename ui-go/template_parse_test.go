@@ -72,6 +72,35 @@ func TestClusterSyncActionsUseAPIFetchMethodContract(t *testing.T) {
 	}
 }
 
+func TestClusterSyncButtonsTrackPCSMState(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
+	if err != nil {
+		t.Fatalf("read environment template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		`id="pcsm-start"`,
+		`id="pcsm-pause"`,
+		`id="pcsm-resume"`,
+		`id="pcsm-resume-failure"`,
+		`id="pcsm-finalize"`,
+		`id="pcsm-reset"`,
+		"let currentClusterSyncStatus = null",
+		"function setClusterSyncButtonState(status)",
+		"const paused = state === 'paused' || state.endsWith('_paused')",
+		"const failed = state === 'failed' || state.endsWith('_failed') || state.includes('failure')",
+		"(state === 'running' && status.initialSync?.completed === true)",
+		"const running = state === 'running' ||",
+		"buttons.resumeFailure.disabled = !failed",
+		"buttons.finalize.disabled = !finalizable",
+		"buttons.reset.disabled = running || finalizable",
+	} {
+		if !strings.Contains(template, want) {
+			t.Errorf("ClusterSync state gating is missing %q", want)
+		}
+	}
+}
+
 func TestClusterSyncConfigurationWarnsAndExcludesSourceFromTarget(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
 	if err != nil {
@@ -113,25 +142,25 @@ func TestClusterSyncTuningDisplaysEffectiveDefaults(t *testing.T) {
 	}
 }
 
-func TestPCSMPlaybookUsesGeneratedInventoryGroups(t *testing.T) {
+func TestPCSMPlaybookUsesDedicatedInventoryHosts(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("..", "ansible", "pcsm.yml"))
 	if err != nil {
 		t.Fatalf("read PCSM playbook: %v", err)
 	}
 	playbook := string(content)
 	for _, want := range []string{
-		"hosts: pcsm_sync_source",
-		"hosts: pcsm_sync_target",
-		"groups['pcsm_sync_source'][0]",
-		"groups['pcsm_sync_target'][0]",
+		"hosts: pcsm-source",
+		"hosts: pcsm-target",
 		"| first) | default('')",
 	} {
 		if !strings.Contains(playbook, want) {
 			t.Fatalf("PCSM playbook is missing %q", want)
 		}
 	}
-	if strings.Contains(playbook, "hosts: pcsm_source") || strings.Contains(playbook, "hosts: pcsm_target") {
-		t.Fatal("PCSM playbook uses obsolete inventory group names")
+	for _, unwanted := range []string{"pcsm_sync_source", "pcsm_sync_target", "hosts: pcsm_source", "hosts: pcsm_target"} {
+		if strings.Contains(playbook, unwanted) {
+			t.Fatalf("PCSM playbook references obsolete inventory name %q", unwanted)
+		}
 	}
 }
 
@@ -269,6 +298,79 @@ func TestCloudInventoriesUseCanonicalTLSVariable(t *testing.T) {
 					t.Errorf("%s must emit enable_pmm exactly once", path)
 				}
 			})
+		}
+	}
+}
+
+func TestPCSMUsesDedicatedInventory(t *testing.T) {
+	main, err := os.ReadFile(filepath.Join("..", "ansible", "main.yml"))
+	if err != nil {
+		t.Fatalf("read main.yml: %v", err)
+	}
+	if strings.Contains(string(main), "pcsm.yml") {
+		t.Error("main.yml must not configure PCSM from topology inventories")
+	}
+
+	pcsm, err := os.ReadFile(filepath.Join("..", "ansible", "pcsm.yml"))
+	if err != nil {
+		t.Fatalf("read pcsm.yml: %v", err)
+	}
+	for _, want := range []string{"hosts: pcsm-source", "hosts: pcsm-target", "hosts: pcsm"} {
+		if !strings.Contains(string(pcsm), want) {
+			t.Errorf("pcsm.yml missing %q", want)
+		}
+	}
+	for _, unwanted := range []string{"pcsm_sync_source", "pcsm_sync_target"} {
+		if strings.Contains(string(pcsm), unwanted) {
+			t.Errorf("pcsm.yml still references %q", unwanted)
+		}
+	}
+
+	for _, platform := range []string{"aws", "gcp", "azure", "chaos"} {
+		path := filepath.Join("..", "terraform", platform, "pcsm_inventory.tmpl")
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		inventory := string(content)
+		for _, want := range []string{"pcsm-source ansible_host=${source.ip}", "pcsm-target ansible_host=${target.ip}", "[pcsm]", "pcsm_use_tls=${source.use_tls || target.use_tls}", "pcsm_ca_staging_file="} {
+			if !strings.Contains(inventory, want) {
+				t.Errorf("%s missing %q", path, want)
+			}
+		}
+		for _, unwanted := range []string{"[pcsm_source]", "[pcsm_target]", "[replsets:children]"} {
+			if strings.Contains(inventory, unwanted) {
+				t.Errorf("%s still contains %q", path, unwanted)
+			}
+		}
+	}
+}
+
+func TestCloudReadmesDocumentManualPCSMFlow(t *testing.T) {
+	for _, platform := range []string{"aws", "gcp", "azure", "chaos"} {
+		path := filepath.Join("..", "terraform", platform, "README.md")
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		readme := string(content)
+		for _, want := range []string{
+			"ansible-playbook -i myenv_inventory_rs-source ../../ansible/main.yml",
+			"ansible-playbook -i myenv_inventory_pcsm ../../ansible/pcsm.yml",
+			"PCSM_SOURCE_URI=",
+			"PCSM_TARGET_URI=",
+			"PCSM_SOURCE_PASSWORD=",
+			"PCSM_TARGET_PASSWORD=",
+			"enable_pcsm      = true",
+			"pcsm_source_name = \"rs-source\"",
+			"pcsm_target_name = \"rs-target\"",
+		} {
+			if !strings.Contains(readme, want) {
+				t.Errorf("%s missing %q", path, want)
+			}
+		}
+		if strings.Contains(readme, "[pcsm_source]") || strings.Contains(readme, "[pcsm_target]") {
+			t.Errorf("%s documents obsolete PCSM inventory groups", path)
 		}
 	}
 }

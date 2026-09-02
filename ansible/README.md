@@ -4,14 +4,24 @@ This directory contains the playbooks that install, configure, stop, restart, an
 
 ## Percona ClusterSync
 
-Terraform creates `<prefix>_inventory_pcsm` only when `enable_pcsm=true`. It contains `[pcsm]`, `[pcsm_source]`, and `[pcsm_target]`. `main.yml` imports `pcsm.yml`, which creates the source and target users and installs PCSM after MongoDB setup:
+Terraform creates `<prefix>_inventory_pcsm` only when `enable_pcsm=true`. It contains source and target endpoint aliases plus `[pcsm]`. It is separate from normal topology inventories so PCSM setup cannot affect MongoDB replica-set membership.
+
+For a manual deployment, use this order:
+
+1. Run `main.yml` against every selected source and target topology inventory.
+2. Create a controller-side PCSM environment file with mode `0600`.
+3. Run `pcsm.yml` once against `<prefix>_inventory_pcsm`.
+
+For example, for replica sets `rs-source` and `rs-target` with prefix `myenv`:
 
 ```bash
-ansible-playbook main.yml -i myenv_inventory_pcsm --tags pcsm \
+ansible-playbook -i myenv_inventory_rs-source main.yml
+ansible-playbook -i myenv_inventory_rs-target main.yml
+ansible-playbook pcsm.yml -i myenv_inventory_pcsm \
   -e pcsm_env_file_source=/secure/myenv/pcsm.env
 ```
 
-The source file must contain `PCSM_SOURCE_URI`, `PCSM_TARGET_URI`, `PCSM_SOURCE_PASSWORD`, and `PCSM_TARGET_PASSWORD`, and must be mode `0600`. The imported play creates idempotent users like the PMM/PBM user workflow, stages the file as root-only `/etc/pcsm/pcsm.env`, configures the packaged `pcsm.service`, verifies readiness, and enables the service. `stop.yml` and `restart.yml` include PCSM; `reset.yml` deliberately preserves its package and secret environment.
+The environment file must contain `PCSM_SOURCE_URI`, `PCSM_TARGET_URI`, `PCSM_SOURCE_PASSWORD`, and `PCSM_TARGET_PASSWORD`. Passwords in the URIs must be URL-encoded; hexadecimal passwords are URL-safe. The cloud Terraform READMEs include a complete secure-file example and a minimum PCSM tfvars file. For TLS deployments, `pcsm.yml` stages the selected topology's CA bundle on the PCSM host. The playbook creates idempotent source and target users, stages the environment file as root-only `/etc/pcsm/pcsm.env`, configures the packaged `pcsm.service`, verifies readiness, and enables the service. `stop.yml` and `restart.yml` include PCSM; `reset.yml` deliberately preserves its package and secret environment.
 
 ## Prerequisites
 

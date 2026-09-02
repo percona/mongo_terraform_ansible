@@ -29,6 +29,13 @@ type clusterSyncSecrets struct {
 	TargetPassword string `json:"target_password"`
 }
 
+type clusterSyncStatusSnapshot struct {
+	State       string `json:"state"`
+	InitialSync struct {
+		Completed bool `json:"completed"`
+	} `json:"initialSync"`
+}
+
 func normalizedClusterSyncConfig(cfg ClusterSyncConfig) ClusterSyncConfig {
 	if cfg.Version == "" {
 		cfg.Version = "0.9.0"
@@ -468,17 +475,27 @@ func clusterSyncActionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	action := r.PathValue("action")
+	var fromFailure bool
+	if action == "resume" {
+		var body struct {
+			FromFailure bool `json:"from_failure"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		fromFailure = body.FromFailure
+	}
+	if action != "reset" {
+		if err := validateClusterSyncAction(envID, env, action, fromFailure); err != nil {
+			jsonError(w, 409, err.Error())
+			return
+		}
+	}
 	args := []string{action}
 	switch action {
 	case "start":
 		args = clusterSyncStartArgs(env.Config.ClusterSync)
 	case "pause", "finalize":
 	case "resume":
-		var body struct {
-			FromFailure bool `json:"from_failure"`
-		}
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		if body.FromFailure {
+		if fromFailure {
 			args = append(args, "--from-failure")
 		}
 	case "reset":
@@ -504,6 +521,47 @@ func clusterSyncActionHandler(w http.ResponseWriter, r *http.Request) {
 		result = map[string]interface{}{"ok": true, "output": strings.TrimSpace(string(out))}
 	}
 	writeJSON(w, 200, result)
+}
+
+func validateClusterSyncAction(envID string, env *Environment, action string, fromFailure bool) error {
+	name, args := clusterSyncCommand(envID, env, "status")
+	out, commandError, err := clusterSyncOutput(name, args...)
+	if err != nil {
+		message := strings.TrimSpace(redactClusterSyncOutput(envID, commandError))
+		if message == "" {
+			message = "PCSM status is unavailable"
+		}
+		return errors.New(message)
+	}
+	var status clusterSyncStatusSnapshot
+	if err := json.Unmarshal(out, &status); err != nil {
+		return errors.New("invalid PCSM status response")
+	}
+	state := strings.ToLower(strings.NewReplacer(" ", "_", "-", "_").Replace(status.State))
+	unstarted := map[string]bool{"idle": true, "created": true, "ready": true, "not_started": true, "notstarted": true, "initial": true}
+	paused := state == "paused" || strings.HasSuffix(state, "_paused")
+	failed := state == "failed" || strings.HasSuffix(state, "_failed") || strings.Contains(state, "failure")
+	finalized := state == "finalized" || state == "completed" || state == "complete" || state == "done" || strings.HasSuffix(state, "_finalized")
+	finalizable := !finalized && (state == "finalizable" || state == "ready_to_finalize" || state == "ready_for_finalize" || (state == "running" && status.InitialSync.Completed))
+	running := state == "running" || (!unstarted[state] && !paused && !failed && !finalized && !finalizable)
+
+	allowed := false
+	switch action {
+	case "start":
+		allowed = unstarted[state]
+	case "pause":
+		allowed = running
+	case "resume":
+		allowed = (paused && !fromFailure) || (failed && fromFailure)
+	case "finalize":
+		allowed = finalizable
+	default:
+		return errors.New("unknown PCSM action")
+	}
+	if !allowed {
+		return fmt.Errorf("PCSM action %q is not valid in state %q", action, status.State)
+	}
+	return nil
 }
 
 func clusterSyncOutput(name string, args ...string) ([]byte, string, error) {

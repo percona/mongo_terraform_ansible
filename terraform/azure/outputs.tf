@@ -6,28 +6,34 @@ locals {
   }
 
   pcsm_source = var.enable_pcsm ? (var.pcsm_source_kind == "cluster" ? {
-    hostnames = module.mongodb_clusters[var.pcsm_source_name].hostname_mongos
-    ips       = module.mongodb_clusters[var.pcsm_source_name].ip_mongos
+    hostname   = module.mongodb_clusters[var.pcsm_source_name].hostname_mongos[0]
+    ip         = module.mongodb_clusters[var.pcsm_source_name].ip_mongos[0]
+    mongo_port = 27017
+    use_tls    = var.clusters[var.pcsm_source_name].use_tls
     } : {
-    hostnames = module.mongodb_replsets[var.pcsm_source_name].hostname_replsets
-    ips       = module.mongodb_replsets[var.pcsm_source_name].ip_replsets
-  }) : { hostnames = [], ips = [] }
+    hostname   = module.mongodb_replsets[var.pcsm_source_name].hostname_replsets[0]
+    ip         = module.mongodb_replsets[var.pcsm_source_name].ip_replsets[0]
+    mongo_port = 27017
+    use_tls    = var.replsets[var.pcsm_source_name].use_tls
+  }) : { hostname = "", ip = "", mongo_port = 27017, use_tls = false }
 
   pcsm_target = var.enable_pcsm ? (var.pcsm_target_kind == "cluster" ? {
-    hostnames = module.mongodb_clusters[var.pcsm_target_name].hostname_mongos
-    ips       = module.mongodb_clusters[var.pcsm_target_name].ip_mongos
+    hostname   = module.mongodb_clusters[var.pcsm_target_name].hostname_mongos[0]
+    ip         = module.mongodb_clusters[var.pcsm_target_name].ip_mongos[0]
+    mongo_port = 27017
+    use_tls    = var.clusters[var.pcsm_target_name].use_tls
     } : {
-    hostnames = module.mongodb_replsets[var.pcsm_target_name].hostname_replsets
-    ips       = module.mongodb_replsets[var.pcsm_target_name].ip_replsets
-  }) : { hostnames = [], ips = [] }
+    hostname   = module.mongodb_replsets[var.pcsm_target_name].hostname_replsets[0]
+    ip         = module.mongodb_replsets[var.pcsm_target_name].ip_replsets[0]
+    mongo_port = 27017
+    use_tls    = var.replsets[var.pcsm_target_name].use_tls
+  }) : { hostname = "", ip = "", mongo_port = 27017, use_tls = false }
 }
 
 resource "local_file" "AnsibleInventoryPCSM" {
   count = var.enable_pcsm ? 1 : 0
 
   content = templatefile("${path.module}/pcsm_inventory.tmpl", {
-    clusters             = module.mongodb_clusters
-    replsets             = module.mongodb_replsets
     hostname_pcsm        = local.pcsm_host
     ip_pcsm              = azurerm_linux_virtual_machine.pcsm[0].public_ip_address
     source               = local.pcsm_source

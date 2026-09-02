@@ -36,6 +36,4 @@
 
 - import_playbook: pmm_client_install.yml
 
-- import_playbook: pcsm.yml
-
 - import_playbook: ycsb_install.yml

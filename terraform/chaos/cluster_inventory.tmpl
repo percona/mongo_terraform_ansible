@@ -39,19 +39,6 @@ ${hostname_ca} ansible_host=${ip_ca}
 ${hostname_ycsb} ansible_host=${ip_ycsb}
 
 %{ endif ~}
-%{ if pcsm_is_source ~}
-[pcsm_sync_source]
-${hostname_mongos[0]} ansible_host=${ip_mongos[0]}
-
-%{ endif ~}
-%{ if pcsm_is_target ~}
-[pcsm_sync_target]
-${hostname_mongos[0]} ansible_host=${ip_mongos[0]}
-
-[pcsm]
-${hostname_pcsm} ansible_host=${ip_pcsm}
-
-%{ endif ~}
 %{ if minio_ip != "" ~}
 [minio]
 ${minio_hostname} ansible_host=${minio_ip}

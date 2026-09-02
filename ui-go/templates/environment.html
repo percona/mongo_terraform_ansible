@@ -224,12 +224,12 @@
   </div>
   <p class="status-meta" id="pcsm-message"></p>
   <div class="action-buttons">
-    <button class="btn btn-primary" onclick="runClusterSyncAction('start')">Start</button>
-    <button class="btn btn-warning" onclick="runClusterSyncAction('pause')">Pause</button>
-    <button class="btn btn-success" onclick="runClusterSyncAction('resume')">Resume</button>
-    <button class="btn btn-outline" onclick="runClusterSyncAction('resume', true)">Resume Failure</button>
-    <button class="btn btn-danger" onclick="runClusterSyncAction('finalize')">Finalize</button>
-    <button class="btn btn-danger" onclick="runClusterSyncAction('reset')">Reset</button>
+    <button class="btn btn-primary" id="pcsm-start" onclick="runClusterSyncAction('start')" disabled>Start</button>
+    <button class="btn btn-warning" id="pcsm-pause" onclick="runClusterSyncAction('pause')" disabled>Pause</button>
+    <button class="btn btn-success" id="pcsm-resume" onclick="runClusterSyncAction('resume')" disabled>Resume</button>
+    <button class="btn btn-outline" id="pcsm-resume-failure" onclick="runClusterSyncAction('resume', true)" disabled>Resume Failure</button>
+    <button class="btn btn-danger" id="pcsm-finalize" onclick="runClusterSyncAction('finalize')" disabled>Finalize</button>
+    <button class="btn btn-danger" id="pcsm-reset" onclick="runClusterSyncAction('reset')" disabled>Reset</button>
     <button class="btn btn-outline" onclick="showClusterSyncLogs()">Logs</button>
     <a class="btn btn-outline" href="/configure/{{.Env.Platform}}?env_id={{.EnvID}}#enable_pcsm">Edit / Remove</a>
   </div>
@@ -374,6 +374,8 @@ const PLATFORM = {{json .Env.Platform}};
 let activeEventSource = null;
 let currentJobId = null;
 let pcsmStatusPollTimer = null;
+let currentClusterSyncStatus = null;
+let pcsmActionInFlight = false;
 const CHAOS_GUARDED_ACTIONS = new Set(['deploy', 'stop', 'restart', 'destroy']);
 
 function selectedYcsbTarget() {
@@ -386,7 +388,9 @@ async function refreshClusterSyncStatus() {
   if (!panel || panel.style.display === 'none') return;
   try {
     const status = await apiFetch(`/api/environment/${ENV_ID}/clustersync/status`);
+    currentClusterSyncStatus = status;
     document.getElementById('pcsm-state').textContent = status.state || 'unknown';
+    setClusterSyncButtonState(status);
     document.getElementById('pcsm-lag').textContent = status.lagTimeSeconds == null ? '—' : `${status.lagTimeSeconds}s`;
     document.getElementById('pcsm-events').textContent = `${status.eventsApplied || 0} / ${status.eventsRead || 0}`;
     const sync = status.initialSync || {};
@@ -394,7 +398,50 @@ async function refreshClusterSyncStatus() {
     document.getElementById('pcsm-clone').textContent = total ? `${Math.round(copied * 100 / total)}%` : (sync.completed ? 'Complete' : '—');
     const indexFailures = status.finalization?.unsuccessfulIndexes?.length || 0;
     document.getElementById('pcsm-message').textContent = status.error || (indexFailures ? `${indexFailures} index builds require attention.` : status.info || '');
-  } catch (err) { document.getElementById('pcsm-state').textContent = 'Unavailable'; document.getElementById('pcsm-message').textContent = err.message; }
+  } catch (err) {
+    currentClusterSyncStatus = null;
+    document.getElementById('pcsm-state').textContent = 'Unavailable';
+    document.getElementById('pcsm-message').textContent = err.message;
+    setClusterSyncButtonState(null);
+  }
+}
+
+function setClusterSyncButtonState(status) {
+  const buttons = {
+    start: document.getElementById('pcsm-start'),
+    pause: document.getElementById('pcsm-pause'),
+    resume: document.getElementById('pcsm-resume'),
+    resumeFailure: document.getElementById('pcsm-resume-failure'),
+    finalize: document.getElementById('pcsm-finalize'),
+    reset: document.getElementById('pcsm-reset'),
+  };
+  if (!status || !status.state) {
+    Object.values(buttons).forEach(button => { if (button) button.disabled = true; });
+    return;
+  }
+
+  if (pcsmActionInFlight) {
+    Object.values(buttons).forEach(button => { if (button) button.disabled = true; });
+    return;
+  }
+
+  const state = String(status.state).toLowerCase().replace(/[\s-]+/g, '_');
+  const unstarted = new Set(['idle', 'created', 'ready', 'not_started', 'notstarted', 'initial']);
+  const paused = state === 'paused' || state.endsWith('_paused');
+  const failed = state === 'failed' || state.endsWith('_failed') || state.includes('failure');
+  const finalized = ['finalized', 'completed', 'complete', 'done'].includes(state) || state.endsWith('_finalized');
+  const finalizable = !finalized && (
+    ['finalizable', 'ready_to_finalize', 'ready_for_finalize'].includes(state) ||
+    (state === 'running' && status.initialSync?.completed === true)
+  );
+  const running = state === 'running' || (!unstarted.has(state) && !paused && !failed && !finalized && !finalizable);
+
+  if (buttons.start) buttons.start.disabled = !unstarted.has(state);
+  if (buttons.pause) buttons.pause.disabled = !running;
+  if (buttons.resume) buttons.resume.disabled = !paused;
+  if (buttons.resumeFailure) buttons.resumeFailure.disabled = !failed;
+  if (buttons.finalize) buttons.finalize.disabled = !finalizable;
+  if (buttons.reset) buttons.reset.disabled = running || finalizable;
 }
 
 function startClusterSyncStatusPolling() {
@@ -425,12 +472,30 @@ async function refreshClusterSyncPanel() {
 }
 
 async function runClusterSyncAction(action, fromFailure = false) {
+  if (!clusterSyncActionAllowed(action, fromFailure)) return;
+  pcsmActionInFlight = true;
+  setClusterSyncButtonState(currentClusterSyncStatus);
   const destructive = {start:'Starting replication replaces the selected target collections. Continue?', finalize:'Finalization ends this replication run. Continue?', reset:'Reset deletes PCSM metadata and requires a new initial clone. Continue?'};
-  if (destructive[action] && !confirm(destructive[action])) return;
+  if (destructive[action] && !confirm(destructive[action])) {
+    pcsmActionInFlight = false;
+    setClusterSyncButtonState(currentClusterSyncStatus);
+    return;
+  }
   try {
     await apiFetch(`/api/environment/${ENV_ID}/clustersync/${action}`, 'POST', {from_failure: fromFailure});
     await refreshClusterSyncStatus();
   } catch (err) { alert(err.message); }
+  finally {
+    pcsmActionInFlight = false;
+    setClusterSyncButtonState(currentClusterSyncStatus);
+  }
+}
+
+function clusterSyncActionAllowed(action, fromFailure) {
+  if (action === 'resume' && fromFailure) return !document.getElementById('pcsm-resume-failure')?.disabled;
+  const ids = {start: 'pcsm-start', pause: 'pcsm-pause', resume: 'pcsm-resume', finalize: 'pcsm-finalize', reset: 'pcsm-reset'};
+  const button = document.getElementById(ids[action]);
+  return !!button && !button.disabled;
 }
 
 async function showClusterSyncLogs() {
@@ -938,6 +1003,7 @@ function setButtonsDisabled(disabled) {
   }
   const cancelBtn = document.getElementById('btn-cancel-job');
   if (cancelBtn) cancelBtn.style.display = disabled ? '' : 'none';
+  if (!disabled) setClusterSyncButtonState(currentClusterSyncStatus);
 }
 
 function toggleAdvanced() {

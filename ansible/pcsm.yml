@@ -1,6 +1,6 @@
 ---
 - name: Configure the source MongoDB user used by PCSM
-  hosts: pcsm_sync_source
+  hosts: pcsm-source
   become: false
   gather_facts: false
   tags: pcsm
@@ -23,10 +23,26 @@
       environment:
         PCSM_PASSWORD: "{{ pcsm_source_password }}"
       no_log: true
-      when: inventory_hostname == groups['pcsm_sync_source'][0]
+
+    - name: Create the controller CA staging directory
+      ansible.builtin.file:
+        path: "{{ pcsm_ca_staging_file | dirname }}"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      when: use_tls | default(false) | bool
+
+    - name: Fetch the source CA bundle for PCSM
+      ansible.builtin.fetch:
+        src: "{{ CAFile }}"
+        dest: "{{ pcsm_ca_staging_file }}"
+        flat: true
+      when: use_tls | default(false) | bool
 
 - name: Configure the target MongoDB user used by PCSM
-  hosts: pcsm_sync_target
+  hosts: pcsm-target
   become: false
   gather_facts: false
   tags: pcsm
@@ -49,7 +65,23 @@
       environment:
         PCSM_PASSWORD: "{{ pcsm_target_password }}"
       no_log: true
-      when: inventory_hostname == groups['pcsm_sync_target'][0]
+
+    - name: Create the controller CA staging directory
+      ansible.builtin.file:
+        path: "{{ pcsm_ca_staging_file | dirname }}"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      when: use_tls | default(false) | bool
+
+    - name: Fetch the target CA bundle for PCSM
+      ansible.builtin.fetch:
+        src: "{{ CAFile }}"
+        dest: "{{ pcsm_ca_staging_file }}"
+        flat: true
+      when: use_tls | default(false) | bool
 
 - name: Install Percona ClusterSync
   hosts: pcsm
@@ -130,6 +162,16 @@
         group: root
         mode: "0600"
       no_log: true
+      notify: Restart PCSM
+
+    - name: Stage the MongoDB CA bundle for PCSM
+      ansible.builtin.copy:
+        src: "{{ pcsm_ca_staging_file }}"
+        dest: "{{ CAFile }}"
+        owner: root
+        group: root
+        mode: "0644"
+      when: pcsm_use_tls | default(false) | bool
       notify: Restart PCSM
 
     - name: Create PCSM systemd override directory

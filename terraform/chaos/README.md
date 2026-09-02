@@ -71,36 +71,6 @@ If you copied the generated configuration to ssh_config, no parameters should be
     ssh my-cluster-name-mongodb-cfg00
 ```
 
-## Percona ClusterSync
-
-Percona ClusterSync is disabled by default. Set `enable_pcsm=true` to create one dedicated 2-vCPU/4-GB VM in the environment network. Only SSH is allowed inbound; API port `2242` is not exposed. Terraform never receives PCSM connection URIs or passwords. The package version defaults to `pcsm_version="0.9.0"`.
-
-Set source and target kinds to `cluster` or `replset`; they must match and the names must differ. Terraform writes `<prefix>_inventory_pcsm` in addition to the normal topology inventories. Run Ansible for each selected topology, then run `pcsm.yml` against that PCSM inventory. Store the required PCSM URIs and passwords in an owner-only environment file. See the [Ansible ClusterSync instructions](../../ansible/README.md#percona-clustersync) for the complete procedure.
-
-### Minimum PCSM tfvars
-
-This minimal example creates two PSMDB replica sets and a PCSM VM. Export `CHAOS_API_TOKEN` before running Terraform and set `my_ssh_user` to your CHAOS user. SSH key management is handled by CHAOS.
-Save it as `pcsm.tfvars` and pass `-var-file=pcsm.tfvars` to `terraform plan` and `terraform apply`.
-
-```hcl
-prefix      = "myenv"
-my_ssh_user = "your_chaos_username"
-
-clusters   = {}
-enable_pmm = false
-
-replsets = {
-  "rs-source" = { enable_pmm = false, enable_pbm = false }
-  "rs-target" = { enable_pmm = false, enable_pbm = false }
-}
-
-enable_pcsm      = true
-pcsm_source_kind = "replset"
-pcsm_source_name = "rs-source"
-pcsm_target_kind = "replset"
-pcsm_target_name = "rs-target"
-```
-
 ## Key Variables
 
 Review these first before deploying:
@@ -198,3 +168,33 @@ ssh -L 9001:localhost:9001 <minio-server-hostname>
 ```
 
 Then open `http://localhost:9001` in your browser.
+
+## Percona ClusterSync
+
+Percona ClusterSync is disabled by default. Set `enable_pcsm=true` to create one dedicated 2-vCPU/4-GB VM in the environment network. Only SSH is allowed inbound; API port `2242` is not exposed. Terraform never receives PCSM connection URIs or passwords. The package version defaults to `pcsm_version="0.9.0"`.
+
+Set source and target kinds to `cluster` or `replset`; they must match and the names must differ. Terraform writes `<prefix>_inventory_pcsm` in addition to the normal topology inventories. Run Ansible for each selected topology, then run `pcsm.yml` against that PCSM inventory. Store the required PCSM URIs and passwords in an owner-only environment file. See the [Ansible ClusterSync instructions](../../ansible/README.md#percona-clustersync) for the complete procedure.
+
+### Minimum PCSM tfvars
+
+This minimal example creates two PSMDB replica sets and a PCSM VM. Export `CHAOS_API_TOKEN` before running Terraform and set `my_ssh_user` to your CHAOS user. SSH key management is handled by CHAOS.
+Save it as `pcsm.tfvars` and pass `-var-file=pcsm.tfvars` to `terraform plan` and `terraform apply`.
+
+```hcl
+prefix      = "myenv"
+my_ssh_user = "your_chaos_username"
+
+clusters   = {}
+enable_pmm = false
+
+replsets = {
+  "rs-source" = { enable_pmm = false, enable_pbm = false }
+  "rs-target" = { enable_pmm = false, enable_pbm = false }
+}
+
+enable_pcsm      = true
+pcsm_source_kind = "replset"
+pcsm_source_name = "rs-source"
+pcsm_target_kind = "replset"
+pcsm_target_name = "rs-target"
+```

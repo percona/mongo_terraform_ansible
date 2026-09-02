@@ -125,12 +125,12 @@ OpenTofu may work but is not installed or tested by the repository installer.
 4. **Initialize and apply:**
 
    x86_64 (default):
-   ```bash
-terraform init
-terraform apply
-   ```
+    ```bash
+    terraform init
+    terraform apply
+    ```
 
-    aarch64 — see the [ARM example](#arm-aarch64-example) below.
+   aarch64 — see the [ARM example](#arm-aarch64-example) below.
 
 ### Minimum `tfvars`
 

@@ -16,6 +16,31 @@ It can also create:
 
 By default it deploys one sharded cluster with 2 shards. Each shard is a 3-node PSA replica set running the latest component versions.
 
+### Minimum `tfvars`
+
+The checked-in [`minimum.tfvars`](./minimum.tfvars) is the smallest standalone
+replica-set deployment. It disables PMM, PBM, MinIO, and LDAP so no supporting
+containers are required.
+
+```hcl
+prefix = "myenv"
+
+clusters = {}
+
+replsets = {
+  rs01 = {
+    enable_pmm = false
+    enable_pbm = false
+  }
+}
+
+pmm_servers  = {}
+minio_servers = {}
+ldap_servers  = {}
+```
+
+Apply it with `terraform apply -var-file=minimum.tfvars`.
+
 Additional clusters can be defined in a `.tfvars` file. Example:
 
 ```

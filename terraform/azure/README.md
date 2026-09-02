@@ -100,6 +100,32 @@ file. At minimum, review:
 - `source_ranges` for inbound access
 - optional PMM, CA/TLS, LDAP, and YCSB settings
 
+### Minimum `tfvars`
+
+The checked-in [`minimum.tfvars`](./minimum.tfvars) is the smallest standalone
+replica-set example. The SSH user must match a key in `ssh_users`. Supply Azure
+credentials through `ARM_*` environment variables or `az login`, not this file.
+
+```hcl
+prefix               = "myenv"
+my_ssh_user          = "ubuntu"
+ssh_users            = { ubuntu = "/absolute/path/to/id_ed25519.pub" }
+ssh_private_key_path = "/absolute/path/to/id_ed25519"
+
+clusters   = {}
+enable_pmm = false
+
+replsets = {
+  rs01 = {
+    enable_pmm = false
+    enable_pbm = false
+  }
+}
+```
+
+Save the example as `minimum.tfvars` or use the checked-in file and pass
+`-var-file=minimum.tfvars` to Terraform commands.
+
 Azure Storage account names are globally unique and have strict length and
 character limits. Choose a short, unique `prefix` containing letters and numbers.
 

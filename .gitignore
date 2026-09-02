@@ -8,6 +8,13 @@ ui-go/secrets/
 ssh_config
 .DS_Store
 *.tfvars
+!terraform/aws/minimum.tfvars
+!terraform/gcp/minimum.tfvars
+!terraform/azure/minimum.tfvars
+!terraform/chaos/minimum.tfvars
+!terraform/docker/minimum.tfvars
+!terraform/libvirt/minimum.tfvars
+!terraform/libvirt/minimum-arm.tfvars
 .ansible_facts_cache/
 
 # Go UI runtime artifacts

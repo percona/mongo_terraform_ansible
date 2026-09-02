@@ -117,10 +117,34 @@ Review these first before deploying:
 
     If you want to provision any replica sets (non-sharded), set this variable. Make sure to change the default name to avoid duplicates.
 
-- **my_ssh_user**
+ - **my_ssh_user**
 
     Your own SSH user name. This is used to generate an SSH config file for you to login easily.
-    SSH key management is handled automatically by the CHAOS platform — no public key injection is needed.
+     SSH key management is handled automatically by the CHAOS platform — no public key injection is needed.
+
+### Minimum `tfvars`
+
+The checked-in [`minimum.tfvars`](./minimum.tfvars) is the smallest standalone
+replica-set example. Export `CHAOS_API_TOKEN` before running Terraform and set
+`my_ssh_user` to your CHAOS user. SSH key management is handled by CHAOS.
+
+```hcl
+prefix        = "myenv"
+my_ssh_user   = "your_chaos_username"
+clusters      = {}
+enable_pmm    = false
+enable_minio  = false
+
+replsets = {
+  rs01 = {
+    enable_pmm = false
+    enable_pbm = false
+  }
+}
+```
+
+Save the example as `minimum.tfvars` or use the checked-in file and pass
+`-var-file=minimum.tfvars` to Terraform commands.
 
 - **delete_after_days**
 

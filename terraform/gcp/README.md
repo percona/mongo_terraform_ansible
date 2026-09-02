@@ -118,6 +118,34 @@ file. At minimum, review:
 - `source_ranges` for inbound access
 - optional PMM, CA/TLS, LDAP, and YCSB settings
 
+### Minimum `tfvars`
+
+The checked-in [`minimum.tfvars`](./minimum.tfvars) is the smallest standalone
+replica-set example. The SSH user must match a key in `gce_ssh_users`. Supply
+GCP credentials through Application Default Credentials or the provider
+environment, not this file.
+
+```hcl
+project_id           = "my-gcp-project"
+prefix               = "myenv"
+my_ssh_user          = "ubuntu"
+gce_ssh_users        = { ubuntu = "/absolute/path/to/id_ed25519.pub" }
+ssh_private_key_path = "/absolute/path/to/id_ed25519"
+
+clusters   = {}
+enable_pmm = false
+
+replsets = {
+  rs01 = {
+    enable_pmm = false
+    enable_pbm = false
+  }
+}
+```
+
+Save the example as `minimum.tfvars` or use the checked-in file and pass
+`-var-file=minimum.tfvars` to Terraform commands.
+
 Resource names must be unique in the project. Some firewall names are fixed, so
 deploying multiple copies of this Terraform root in one project can cause naming
 collisions even when `prefix` differs.

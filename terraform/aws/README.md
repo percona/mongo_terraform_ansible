@@ -104,6 +104,32 @@ file. At minimum, review:
 
 The checked-in `rs.tfvars` is an example standalone replica-set configuration.
 
+### Minimum `tfvars`
+
+The checked-in [`minimum.tfvars`](./minimum.tfvars) is the smallest standalone
+replica-set example. Set the SSH paths and user for the selected AMI. Supply AWS
+credentials through the AWS provider environment or profile, not this file.
+
+```hcl
+prefix               = "myenv"
+my_ssh_user          = "ec2-user"
+ssh_public_key_path  = "/absolute/path/to/id_ed25519.pub"
+ssh_private_key_path = "/absolute/path/to/id_ed25519"
+
+clusters   = {}
+enable_pmm = false
+
+replsets = {
+  rs01 = {
+    enable_pmm = false
+    enable_pbm = false
+  }
+}
+```
+
+Save the example as `minimum.tfvars` or use the checked-in file and pass
+`-var-file=minimum.tfvars` to Terraform commands.
+
 ## Deploy
 
 Initialize and review the Terraform plan before applying it:

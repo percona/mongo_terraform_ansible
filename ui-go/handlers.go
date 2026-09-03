@@ -583,7 +583,30 @@ func ycsbResetCommand(envID string, env *Environment, kind, target, mongoURL str
 		resetURL := fmt.Sprintf("mongodb://%s:%s@127.0.0.1:%d/?authSource=admin", urlQueryEscape(user), urlQueryEscape(pass), port)
 		return fmt.Sprintf("docker exec %s mongosh %s --quiet --eval %s", shellQuote(mongoContainer), shellQuote(resetURL), shellQuote("db.getSiblingDB('ycsb').dropDatabase()"))
 	}
-	return ""
+
+	hosts, _, _ := collectCloudHosts(envID, env)
+	var resetHost string
+	if kind == "cluster" {
+		clusterHosts := hostsWithRole(hosts, target, "mongos")
+		if len(clusterHosts) > 0 {
+			resetHost = clusterHosts[0].Name
+		}
+	} else if kind == "replset" {
+		replsetHosts := hostsWithRole(hosts, target, "mongod")
+		if len(replsetHosts) > 0 {
+			resetHost = replsetHosts[0].Name
+		}
+	}
+	if resetHost == "" {
+		return ""
+	}
+
+	resetArgs := "mongosh " + shellQuote(mongoURL) + " --quiet"
+	if topologyUsesTLS(env.Config, target) {
+		resetArgs += " --tls --tlsCertificateKeyFile /etc/ssl/client.pem --tlsCAFile /etc/ssl/test-ca.pem"
+	}
+	resetArgs += " --eval " + shellQuote("db.getSiblingDB('ycsb').dropDatabase()")
+	return fmt.Sprintf("ssh %s %s", shellQuote(resetHost), shellQuote(resetArgs))
 }
 
 func ycsbLoadCommand(binary, workloadPath, mongoURL string, cfg YcsbLoadConfig) string {
@@ -674,7 +697,11 @@ func ycsbActionShell(envID string, env *Environment, req ycsbActionRequest) (str
 		cfg := normalizedYcsbLoadConfig(env.YcsbLoad)
 		remote = ycsbLoadCommand(binary, "/opt/ycsb/workloads/"+cfg.Workload, mongoURL, cfg)
 		if cfg.ResetBeforeLoad {
-			remote = "echo 'Reset before load is only supported for Docker environments'; " + remote
+			reset := ycsbResetCommand(envID, env, req.Kind, req.Target, mongoURL)
+			if reset == "" {
+				return "", fmt.Errorf("cannot reset YCSB data: reset host not found for %s %q", req.Kind, req.Target)
+			}
+			remote = reset + " && " + remote
 		}
 	case "start":
 		cfg := normalizedYcsbLoadConfig(env.YcsbLoad)

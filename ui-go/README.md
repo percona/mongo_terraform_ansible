@@ -58,7 +58,7 @@ Deploy runs `cert_setup.yml` after Terraform provisioning and then runs `main.ym
 
 ```bash
 cd ui-go
-go run .
+UI_REPO_DIR=.. go run .
 ```
 
 Then open `http://127.0.0.1:5001` in your browser.

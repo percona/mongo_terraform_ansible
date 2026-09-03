@@ -24,13 +24,23 @@ func TestTemplatesParse(t *testing.T) {
 	}
 }
 
-func TestYcsbPanelRequiresSuccessfulDeployment(t *testing.T) {
+func TestYcsbPanelRefreshesAfterDeployment(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
 	if err != nil {
 		t.Fatalf("read environment template: %v", err)
 	}
-	if !strings.Contains(string(content), `{{if and .YcsbEnabled .YcsbAvailable}}`) {
-		t.Fatal("YCSB panel must require YCSB to be enabled and the environment to be successfully deployed")
+	template := string(content)
+	for _, want := range []string{
+		`{{if .YcsbEnabled}}`,
+		`id="ycsb-panel" {{if not .YcsbAvailable}}style="display:none"{{end}}`,
+		`ycsbAvailable = !!data.ycsb_available`,
+		`else if (!wasAvailable) await refreshYcsbStatus();`,
+		`refreshEnvStatus();
+  refreshYcsbStatus();`,
+	} {
+		if !strings.Contains(template, want) {
+			t.Fatalf("YCSB post-deploy refresh is missing %q", want)
+		}
 	}
 }
 

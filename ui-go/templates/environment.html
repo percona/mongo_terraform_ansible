@@ -189,8 +189,8 @@
   </div>
 </div>
 
-{{if and .YcsbEnabled .YcsbAvailable}}
-<section class="form-section ycsb-panel" id="ycsb-panel">
+{{if .YcsbEnabled}}
+<section class="form-section ycsb-panel" id="ycsb-panel" {{if not .YcsbAvailable}}style="display:none"{{end}}>
   <div class="section-header"><h2>YCSB Load Generator</h2><span class="field-tip" data-tip="Shared settings for the selected cluster or replica set.">ⓘ</span></div>
   <div class="form-row">
     <div class="form-group"><label for="ycsb-target">Target</label><select id="ycsb-target" onchange="refreshYcsbStatus()">{{range .SortedClusters}}<option value="cluster:{{.Name}}" {{if and (eq $.YcsbLoad.TargetKind "cluster") (eq $.YcsbLoad.Target .Name)}}selected{{end}}>Cluster: {{.Name}}</option>{{end}}{{range .SortedReplsets}}<option value="replset:{{.Name}}" {{if and (eq $.YcsbLoad.TargetKind "replset") (eq $.YcsbLoad.Target .Name)}}selected{{end}}>Replica set: {{.Name}}</option>{{end}}</select></div>
@@ -207,7 +207,7 @@
     <div class="form-group"><label for="ycsb-duration">Duration (seconds)</label><input id="ycsb-duration" type="number" min="1" max="86400" value="{{.YcsbLoad.DurationSeconds}}"></div>
     <div class="form-group"><label><input id="ycsb-reset" type="checkbox" {{if .YcsbLoad.ResetBeforeLoad}}checked{{end}}> Reset before Insert Data</label></div>
   </div>
-  <div class="action-buttons" style="margin-top:.5rem"><button class="btn btn-outline" id="ycsb-save-config" onclick="saveYcsbConfig()">Save Settings</button><button class="btn btn-outline ycsb-load-btn" id="ycsb-load-button" onclick="runSelectedYcsbAction('load')" {{if not .YcsbAvailable}}disabled{{end}}>Insert Data</button><button class="btn btn-outline ycsb-start-btn" id="ycsb-start-button" onclick="runSelectedYcsbAction('start')" {{if not .YcsbAvailable}}disabled{{end}}>Start Load</button><button class="btn btn-outline ycsb-stop-btn" id="ycsb-stop-button" onclick="runSelectedYcsbAction('stop')" disabled>Stop Load</button></div>
+  <div class="action-buttons" style="margin-top:.5rem"><button class="btn btn-outline" id="ycsb-save-config" onclick="saveYcsbConfig()" {{if not .YcsbAvailable}}disabled{{end}}>Save Settings</button><button class="btn btn-outline ycsb-load-btn" id="ycsb-load-button" onclick="runSelectedYcsbAction('load')" {{if not .YcsbAvailable}}disabled{{end}}>Insert Data</button><button class="btn btn-outline ycsb-start-btn" id="ycsb-start-button" onclick="runSelectedYcsbAction('start')" {{if not .YcsbAvailable}}disabled{{end}}>Start Load</button><button class="btn btn-outline ycsb-stop-btn" id="ycsb-stop-button" onclick="runSelectedYcsbAction('stop')" disabled>Stop Load</button></div>
   <div id="ycsb-config-message" class="status-meta" style="margin-top:.5rem"></div>
 </section>
 {{end}}
@@ -528,6 +528,8 @@ async function saveYcsbConfig() {
 }
 function setSelectedYcsbButtonState(running) {
   const available = isYcsbAvailable();
+  const saveButton = document.getElementById('ycsb-save-config');
+  if (saveButton) saveButton.disabled = !available;
   document.getElementById('ycsb-load-button').disabled = !available || running;
   document.getElementById('ycsb-start-button').disabled = !available || running;
   document.getElementById('ycsb-start-button').textContent = running ? 'Load Running' : 'Start Load';
@@ -967,7 +969,7 @@ function setStatus(status) {
 }
 
 function isYcsbAvailable() {
-  return currentStatus !== 'configured';
+  return ycsbAvailable;
 }
 
 function getStatusBadgeClass(status) {
@@ -1019,6 +1021,13 @@ async function refreshEnvStatus() {
   try {
     const data = await apiFetch(`/api/environment/${ENV_ID}/status`);
     if (data.status) setStatus(data.status);
+    if (document.getElementById('ycsb-panel')) {
+      const wasAvailable = ycsbAvailable;
+      ycsbAvailable = !!data.ycsb_available;
+      document.getElementById('ycsb-panel').style.display = ycsbAvailable ? '' : 'none';
+      if (!ycsbAvailable) setSelectedYcsbButtonState(false);
+      else if (!wasAvailable) await refreshYcsbStatus();
+    }
   } catch (_) { /* ignore – status bar keeps the last known value */ }
 }
 
@@ -1074,11 +1083,13 @@ async function refreshYcsbStatus() {
 
 // Current status tracked client-side so we can gate confirmations.
 let currentStatus = {{json .Env.Status}};
+let ycsbAvailable = {{json .YcsbAvailable}};
 let ycsbStatusPollTimer = null;
 
 function startYcsbStatusPolling() {
   stopYcsbStatusPolling();
   ycsbStatusPollTimer = setInterval(() => {
+    refreshEnvStatus();
     refreshYcsbStatus();
   }, 5000);
 }
@@ -1274,6 +1285,7 @@ async function cancelJob() {
   }
   {{else}}
   // No job history yet but environment may already have hosts.
+  refreshEnvStatus();
   refreshYcsbStatus();
   loadHosts();
 	refreshClusterSyncPanel();

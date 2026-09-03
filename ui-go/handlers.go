@@ -2460,6 +2460,7 @@ func envStatusHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]interface{}{
 		"status":                 env.Status,
 		"updated_at":             env.UpdatedAt,
+		"ycsb_available":         env.Config.EnableYcsb && ycsbDeploymentReady(env),
 		"cluster_sync_available": clusterSyncDeploymentReady(env),
 	})
 }

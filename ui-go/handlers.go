@@ -2099,11 +2099,11 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`chmod 600 "${_sshcfg}"; `)
 		for _, name := range invNames {
 			src := shellQuote(filePrefix + "_ssh_config_" + name)
-			begin := shellQuote("# BEGIN mongodeploy:" + envID + ":" + name)
-			end := shellQuote("# END mongodeploy:" + envID + ":" + name)
+			begin := shellQuote("# BEGIN psmdb-sandbox:" + envID + ":" + name)
+			end := shellQuote("# END psmdb-sandbox:" + envID + ":" + name)
 			b.WriteString(fmt.Sprintf(
 				`if [ -f %[1]s ]; then `+
-					`awk -v b=%[2]s -v e=%[3]s '$0==b{skip=1;next} skip&&$0==e{skip=0;next} !skip' "${_sshcfg}" > "${_sshcfg}.mongodeploy_tmp" && mv "${_sshcfg}.mongodeploy_tmp" "${_sshcfg}"; `+
+					`awk -v b=%[2]s -v e=%[3]s '$0==b{skip=1;next} skip&&$0==e{skip=0;next} !skip' "${_sshcfg}" > "${_sshcfg}.psmdb-sandbox_tmp" && mv "${_sshcfg}.psmdb-sandbox_tmp" "${_sshcfg}"; `+
 					`printf '\n%%s\n' %[2]s >> "${_sshcfg}"; `+
 					`cat %[1]s >> "${_sshcfg}"; `+
 					`printf '%%s\n' %[3]s >> "${_sshcfg}"; `+
@@ -2124,10 +2124,10 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`{ _sshcfg="${HOME}/.ssh/config"; `)
 		b.WriteString(`if [ -f "${_sshcfg}" ]; then `)
 		for _, name := range invNames {
-			begin := shellQuote("# BEGIN mongodeploy:" + envID + ":" + name)
-			end := shellQuote("# END mongodeploy:" + envID + ":" + name)
+			begin := shellQuote("# BEGIN psmdb-sandbox:" + envID + ":" + name)
+			end := shellQuote("# END psmdb-sandbox:" + envID + ":" + name)
 			b.WriteString(fmt.Sprintf(
-				`awk -v b=%[1]s -v e=%[2]s '$0==b{skip=1;next} skip&&$0==e{skip=0;next} !skip' "${_sshcfg}" > "${_sshcfg}.mongodeploy_tmp" && mv "${_sshcfg}.mongodeploy_tmp" "${_sshcfg}"; `+
+				`awk -v b=%[1]s -v e=%[2]s '$0==b{skip=1;next} skip&&$0==e{skip=0;next} !skip' "${_sshcfg}" > "${_sshcfg}.psmdb-sandbox_tmp" && mv "${_sshcfg}.psmdb-sandbox_tmp" "${_sshcfg}"; `+
 					`printf '==> Removed SSH config block for %[3]s from %%s\n' "${_sshcfg}"; `,
 				begin, end, name,
 			))

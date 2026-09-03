@@ -187,23 +187,23 @@ For a manual deployment, run `main.yml` once for every selected topology after `
 ansible-playbook -i myenv_inventory_rs-source ../../ansible/main.yml
 ansible-playbook -i myenv_inventory_rs-target ../../ansible/main.yml
 ansible-playbook -i myenv_inventory_pcsm ../../ansible/pcsm.yml \
-  -e pcsm_env_file_source="$HOME/.config/mongodeploy/myenv-pcsm.env"
+  -e pcsm_env_file_source="$HOME/.config/psmdb-sandbox/myenv-pcsm.env"
 ```
 
 Create the environment file before the final command with owner-only permissions. Use URL-encoded passwords in the URI; hexadecimal passwords generated below are already URL-safe. Replace the member placeholders with the private MongoDB hostnames listed in the generated source and target topology inventories.
 
 ```bash
-mkdir -p "$HOME/.config/mongodeploy"
+mkdir -p "$HOME/.config/psmdb-sandbox"
 umask 077
 source_password="$(openssl rand -hex 24)"
 target_password="$(openssl rand -hex 24)"
-cat >"$HOME/.config/mongodeploy/myenv-pcsm.env" <<EOF
+cat >"$HOME/.config/psmdb-sandbox/myenv-pcsm.env" <<EOF
 PCSM_SOURCE_URI='mongodb://pcsm-source:${source_password}@source-member-0:27017,source-member-1:27017/?authSource=admin&appName=pcsm&replicaSet=rs-source'
 PCSM_TARGET_URI='mongodb://pcsm-target:${target_password}@target-member-0:27017,target-member-1:27017/?authSource=admin&appName=pcsm&replicaSet=rs-target'
 PCSM_SOURCE_PASSWORD='${source_password}'
 PCSM_TARGET_PASSWORD='${target_password}'
 EOF
-chmod 600 "$HOME/.config/mongodeploy/myenv-pcsm.env"
+chmod 600 "$HOME/.config/psmdb-sandbox/myenv-pcsm.env"
 ```
 
 ### Minimum PCSM tfvars

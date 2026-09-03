@@ -22,7 +22,8 @@ environments.json
 ui-go/environments.json
 ui-go/settings.json
 ui-go/jobs/
-ui-go/mongodeploy
+ui-go/data/
+ui-go/psmdb-sandbox
 
 # Terraform-generated per-environment connection files
 terraform/**/*_inventory_*

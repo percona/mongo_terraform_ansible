@@ -602,23 +602,6 @@ func getPCSMVersionsFor(channel, osImage string) []string {
 	return versions
 }
 
-func getPCSMVersionsForSource(source, channel, osImage string) []string {
-	if source == "perconalab" {
-		versions := getDockerHubTags("perconalab", "percona-clustersync-mongodb", 100)
-		result := make([]string, 0, len(versions))
-		for _, version := range versions {
-			if regexp.MustCompile(`^\d+\.\d+\.\d+$`).MatchString(version) {
-				result = append(result, version)
-			}
-		}
-		sort.Slice(result, func(i, j int) bool { return semverGreater(result[i], result[j]) })
-		if len(result) > 0 {
-			return result
-		}
-	}
-	return getPCSMVersionsFor(channel, osImage)
-}
-
 // getPSMDBMinorVersionsByMajor returns a map from major release key (e.g. "psmdb-70")
 // to a sorted-descending list of specific minor versions (e.g. ["7.0.12", "7.0.11"]).
 // Versions are pulled from the Percona APT repository index for each major release.

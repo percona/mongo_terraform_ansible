@@ -881,7 +881,6 @@ func apiPackageVersionsHandler(w http.ResponseWriter, r *http.Request) {
 		distribution = "psmdb"
 	}
 	channel := normalizedRepoChannel(r.URL.Query().Get("channel"))
-	source := strings.TrimSpace(r.URL.Query().Get("source"))
 	osImage := strings.TrimSpace(r.URL.Query().Get("os_image"))
 
 	switch product {
@@ -910,7 +909,7 @@ func apiPackageVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	case "ps4m":
 		writeJSON(w, 200, map[string]interface{}{"versions": getPerconaSearchVersionsFor(channel, osImage)})
 	case "pcsm":
-		writeJSON(w, 200, map[string]interface{}{"versions": getPCSMVersionsForSource(source, channel, osImage)})
+		writeJSON(w, 200, map[string]interface{}{"versions": getPCSMVersionsFor(channel, osImage)})
 	default:
 		jsonError(w, 400, "product must be one of: psmdb, pbm, pmm_client, ps4m, pcsm")
 	}

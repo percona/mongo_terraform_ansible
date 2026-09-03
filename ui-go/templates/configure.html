@@ -1761,11 +1761,11 @@
       </div>
       <div class="subsection-header">
         <span class="subsection-title">Package Overrides</span>
-        <button type="button" class="btn btn-outline btn-sm package-toggle-btn" onclick="togglePackageBlock(this)">{{if or .Config.ClusterSync.Version .Config.ClusterSync.RepoSource .Config.ClusterSync.Repo .Config.ClusterSync.Image}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+        <button type="button" class="btn btn-outline btn-sm package-toggle-btn" onclick="togglePackageBlock(this)">{{if or .Config.ClusterSync.Version .Config.ClusterSync.Repo .Config.ClusterSync.Image}}▲ Collapse{{else}}▼ Customize{{end}}</button>
       </div>
-      <div class="package-block-body" {{if not (or .Config.ClusterSync.Version .Config.ClusterSync.RepoSource .Config.ClusterSync.Repo .Config.ClusterSync.Image)}}style="display:none"{{end}}>
+      <div class="package-block-body" {{if not (or .Config.ClusterSync.Version .Config.ClusterSync.Repo .Config.ClusterSync.Image)}}style="display:none"{{end}}>
       <div class="form-row">
-        {{if ne $p "docker"}}<div class="form-group"><label for="pcsm_repo_source">Repository Source</label><select id="pcsm_repo_source" name="pcsm_repo_source" onchange="onPCSMRepoSourceChange(this)"><option value="percona" {{if or (eq .Config.ClusterSync.RepoSource "") (eq .Config.ClusterSync.RepoSource "percona")}}selected{{end}}>percona</option><option value="perconalab" {{if eq .Config.ClusterSync.RepoSource "perconalab"}}selected{{end}}>perconalab</option></select></div><div class="form-group"><label for="pcsm_repo">Repository Channel</label><select id="pcsm_repo" name="pcsm_repo" onchange="refreshPCSMVersions()"><option value="release" {{if or (eq .Config.ClusterSync.Repo "") (eq .Config.ClusterSync.Repo "release")}}selected{{end}}>release</option><option value="testing" {{if eq .Config.ClusterSync.Repo "testing"}}selected{{end}}>testing</option><option value="experimental" {{if eq .Config.ClusterSync.Repo "experimental"}}selected{{end}}>experimental</option></select></div>{{end}}
+        {{if ne $p "docker"}}<div class="form-group"><label for="pcsm_repo">Repository Channel</label><select id="pcsm_repo" name="pcsm_repo" onchange="refreshPCSMVersions()"><option value="release" {{if or (eq .Config.ClusterSync.Repo "") (eq .Config.ClusterSync.Repo "release")}}selected{{end}}>release</option><option value="testing" {{if eq .Config.ClusterSync.Repo "testing"}}selected{{end}}>testing</option><option value="experimental" {{if eq .Config.ClusterSync.Repo "experimental"}}selected{{end}}>experimental</option></select></div>{{end}}
         <div class="form-group"><label for="pcsm_version">PCSM Version</label><select id="pcsm_version" name="pcsm_version" data-current="{{.Config.ClusterSync.Version}}">{{ $pcsmVersion := strDefault .Config.ClusterSync.Version "0.9.0" }}{{range .PCSMVersions}}<option value="{{.}}" {{if eq . $pcsmVersion}}selected{{end}}>{{.}}</option>{{end}}{{if and .Config.ClusterSync.Version (not (contains .PCSMVersions .Config.ClusterSync.Version))}}<option value="{{.Config.ClusterSync.Version}}" selected>{{.Config.ClusterSync.Version}}</option>{{end}}</select></div>
         {{if eq $p "docker"}}<div class="form-group"><label for="pcsm_image">Container image</label><input id="pcsm_image" name="pcsm_image" value="{{strDefault .Config.ClusterSync.Image "percona/percona-clustersync-mongodb:0.9.0"}}"></div>{{end}}
       </div>
@@ -2368,17 +2368,15 @@ async function refreshPCSMVersions() {
   if (!sel) return;
   const request = ++pcsmVersionRefreshSeq;
   const osImage = selectedPCSMOsImage();
-  const source = document.getElementById('pcsm_repo_source')?.value || 'percona';
   const channel = document.getElementById('pcsm_repo')?.value || 'release';
   sel.disabled = true;
   try {
-    const params = new URLSearchParams({product: 'pcsm', source, channel});
+    const params = new URLSearchParams({product: 'pcsm', channel});
     if (osImage) params.set('os_image', osImage);
     const resp = await fetch(`/api/package-versions?${params.toString()}`);
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Could not load PCSM versions');
     if (request !== pcsmVersionRefreshSeq || selectedPCSMOsImage() !== osImage ||
-        (document.getElementById('pcsm_repo_source')?.value || 'percona') !== source ||
         (document.getElementById('pcsm_repo')?.value || 'release') !== channel) return;
     PCSM_VERSIONS.splice(0, PCSM_VERSIONS.length, ...(data.versions || []));
     setPCSMVersionOptions(PCSM_VERSIONS);
@@ -2387,17 +2385,6 @@ async function refreshPCSMVersions() {
   } finally {
     if (request === pcsmVersionRefreshSeq) sel.disabled = false;
   }
-}
-
-async function onPCSMRepoSourceChange() {
-  const channel = document.getElementById('pcsm_repo');
-  const source = document.getElementById('pcsm_repo_source')?.value || 'percona';
-  if (channel) {
-    channel.innerHTML = source === 'perconalab'
-      ? '<option value="release" selected>release</option>'
-      : '<option value="release">release</option><option value="testing">testing</option><option value="experimental">experimental</option>';
-  }
-  await refreshPCSMVersions();
 }
 
 function selectedMongoDBDistribution(block, prefix) {
@@ -3987,7 +3974,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 	  config.cluster_sync = {
 	    enabled: true, source_kind: source.kind, source_name: source.name, target_kind: target.kind, target_name: target.name,
 	    version: (fd.get('pcsm_version') || '0.9.0').trim(), image: (fd.get('pcsm_image') || '').trim(),
-	    repo_source: (fd.get('pcsm_repo_source') || 'percona').trim(), repo: (fd.get('pcsm_repo') || 'release').trim(),
+    repo: (fd.get('pcsm_repo') || 'release').trim(),
 	    instance_type: (fd.get('pcsm_instance_type') || '').trim(), cpus: number('pcsm_cpus'), memory_mb: number('pcsm_memory_mb'),
 	    include_namespaces: list('pcsm_include_namespaces'), exclude_namespaces: list('pcsm_exclude_namespaces'),
 	    clone_parallel_collections: pcsmTuningNumber(fd, 'pcsm_clone_parallel'), clone_read_workers: pcsmTuningNumber(fd, 'pcsm_clone_read_workers'),

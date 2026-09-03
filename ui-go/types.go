@@ -127,7 +127,6 @@ type ClusterSyncConfig struct {
 	TargetKind               string   `json:"target_kind,omitempty"`
 	TargetName               string   `json:"target_name,omitempty"`
 	Version                  string   `json:"version,omitempty"`
-	RepoSource               string   `json:"repo_source,omitempty"`
 	Repo                     string   `json:"repo,omitempty"`
 	Image                    string   `json:"image,omitempty"`
 	InstanceType             string   `json:"instance_type,omitempty"`

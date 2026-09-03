@@ -34,7 +34,7 @@ type providerAuthStatus struct {
 }
 
 func cloudSecretsDir() string {
-	return filepath.Join(baseDir, "secrets", "cloud")
+	return filepath.Join(dataDir, "secrets", "cloud")
 }
 
 func awsSecretsDir() string {

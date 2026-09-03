@@ -67,8 +67,8 @@ To build a binary:
 
 ```bash
 cd ui-go
-go build -o mongodeploy .
-./mongodeploy
+go build -o psmbd-sandbox .
+UI_REPO_DIR=/path/to/mongo_terraform_ansible ./psmbd-sandbox
 ```
 
 ## Environment Variables
@@ -77,7 +77,12 @@ go build -o mongodeploy .
 |---------------|-------------------|----------------------------------------------------------------|
 | `PORT`        | `5001`            | TCP port to listen on                                          |
 | `UI_HOST`     | `127.0.0.1`       | Bind address; use `0.0.0.0` to listen on all interfaces        |
-| `UI_BASE_DIR` | current directory | Override the base directory; must contain `templates/` and `static/` |
+| `UI_REPO_DIR` | required | Repository root containing `terraform/` and `ansible/` |
+| `UI_DATA_DIR` | `./data` | Writable directory for state, settings, jobs, and secrets |
+
+The web UI templates and static assets are embedded in the PSMDB Sandbox binary. The
+repository directory is still required because Terraform and Ansible files are executed
+from disk.
 
 ## Screenshots
 

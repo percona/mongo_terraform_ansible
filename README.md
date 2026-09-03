@@ -77,7 +77,8 @@ go run .
 # then open http://127.0.0.1:5001
 ```
 
-See [`ui-go/README.md`](./ui-go/README.md) for full details.
+See [`ui-go/README.md`](./ui-go/README.md) for full details, including packaged PSMDB
+Sandbox usage with `UI_REPO_DIR` and `UI_DATA_DIR`.
 
 ## Manual Instructions (without the Web UI)
 

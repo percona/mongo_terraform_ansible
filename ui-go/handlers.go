@@ -22,7 +22,7 @@ const ycsbTargetOpsPerSecond = 1000
 const defaultChaosAPIURL = "https://chaos.int.percona.com/api/compute/proxmox-instances"
 
 func chaosTokenSecretsDir() string {
-	return filepath.Join(baseDir, "secrets", "chaos")
+	return filepath.Join(dataDir, "secrets", "chaos")
 }
 
 func chaosTokenUploadPath() string {
@@ -30,7 +30,7 @@ func chaosTokenUploadPath() string {
 }
 
 func sshSecretsDir() string {
-	return filepath.Join(baseDir, "secrets", "ssh")
+	return filepath.Join(dataDir, "secrets", "ssh")
 }
 
 func sshKeyUploadPath(kind string) string {

@@ -237,6 +237,12 @@ When **Include YCSB** is enabled, the UI provisions a dedicated workload generat
 
 For Docker, the UI runs YCSB inside the generated YCSB container. For cloud platforms, it connects to the generated YCSB host over SSH and runs `/opt/ycsb/bin/ycsb`.
 
+## Percona ClusterSync
+
+Enable ClusterSync while configuring an environment, then select two replica sets or two sharded clusters in that environment. The deployment creates one dedicated PCSM container for Docker or one dedicated VM for AWS, GCP, Azure, and CHAOS. PCSM 0.9.0 is the default and sharded replication is marked as technical preview.
+
+The UI generates least-privilege source and target users and stores their random credentials in `secrets/pcsm/<environment>/` with owner-only permissions. Connection URIs are mounted or copied from those files and are not written to tfvars or `environments.json`. The environment page provides start, pause, resume, resume-from-failure, finalize, reset, status, progress, and redacted logs. Port 2242 is not published; the UI controls PCSM through `docker exec` or SSH.
+
 ## Topology Expansion
 
 The UI supports additive topology changes for deployed environments:

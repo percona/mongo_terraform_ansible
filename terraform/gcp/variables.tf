@@ -193,6 +193,92 @@ variable "enable_pmm" {
 }
 
 #############
+# Percona ClusterSync
+#############
+
+variable "enable_pcsm" {
+  type        = bool
+  default     = false
+  description = "Deploy one dedicated Percona ClusterSync VM for this environment."
+}
+
+variable "pcsm_version" {
+  type        = string
+  default     = "0.9.0"
+  description = "Exact Percona ClusterSync package version installed by Ansible."
+}
+
+variable "pcsm_source_kind" {
+  type        = string
+  default     = ""
+  description = "PCSM source topology kind: cluster (mongos hosts) or replset (electable members)."
+
+  validation {
+    condition     = !var.enable_pcsm || contains(["cluster", "replset"], var.pcsm_source_kind)
+    error_message = "pcsm_source_kind must be cluster or replset when PCSM is enabled."
+  }
+
+  validation {
+    condition     = !var.enable_pcsm || (var.pcsm_source_kind == "cluster" ? contains(keys(var.clusters), var.pcsm_source_name) : contains(keys(var.replsets), var.pcsm_source_name))
+    error_message = "pcsm_source_name must reference an existing topology in the map selected by pcsm_source_kind."
+  }
+}
+
+variable "pcsm_source_name" {
+  type        = string
+  default     = ""
+  description = "Name of the source topology for PCSM."
+}
+
+variable "pcsm_target_kind" {
+  type        = string
+  default     = ""
+  description = "PCSM target topology kind: cluster (mongos hosts) or replset (electable members)."
+
+  validation {
+    condition     = !var.enable_pcsm || contains(["cluster", "replset"], var.pcsm_target_kind)
+    error_message = "pcsm_target_kind must be cluster or replset when PCSM is enabled."
+  }
+
+  validation {
+    condition     = !var.enable_pcsm || (var.pcsm_target_kind == "cluster" ? contains(keys(var.clusters), var.pcsm_target_name) : contains(keys(var.replsets), var.pcsm_target_name))
+    error_message = "pcsm_target_name must reference an existing topology in the map selected by pcsm_target_kind."
+  }
+
+  validation {
+    condition     = !var.enable_pcsm || var.pcsm_source_kind == var.pcsm_target_kind
+    error_message = "pcsm_source_kind and pcsm_target_kind must match."
+  }
+
+}
+
+variable "pcsm_target_name" {
+  type        = string
+  default     = ""
+  description = "Name of the target topology for PCSM."
+
+  validation {
+    condition     = !var.enable_pcsm || var.pcsm_source_name != var.pcsm_target_name
+    error_message = "pcsm_source_name and pcsm_target_name must be different."
+  }
+}
+
+variable "default_pcsm_host" {
+  type    = string
+  default = "pcsm"
+}
+
+variable "pcsm_type" {
+  type        = string
+  default     = "e2-small"
+  description = "GCP machine type for PCSM (default: 2 vCPU, 2 GiB)."
+}
+
+locals {
+  pcsm_host = "${var.prefix}-${var.default_pcsm_host}"
+}
+
+#############
 # TLS CA
 #############
 

@@ -24,13 +24,226 @@ func TestTemplatesParse(t *testing.T) {
 	}
 }
 
-func TestYcsbPanelRequiresSuccessfulDeployment(t *testing.T) {
+func TestYcsbPanelRefreshesAfterDeployment(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
 	if err != nil {
 		t.Fatalf("read environment template: %v", err)
 	}
-	if !strings.Contains(string(content), `{{if and .YcsbEnabled .YcsbAvailable}}`) {
-		t.Fatal("YCSB panel must require YCSB to be enabled and the environment to be successfully deployed")
+	template := string(content)
+	for _, want := range []string{
+		`{{if .YcsbEnabled}}`,
+		`id="ycsb-panel" {{if not .YcsbAvailable}}style="display:none"{{end}}`,
+		`ycsbAvailable = !!data.ycsb_available`,
+		`else if (!wasAvailable) await refreshYcsbStatus();`,
+		`refreshEnvStatus();
+  refreshYcsbStatus();`,
+	} {
+		if !strings.Contains(template, want) {
+			t.Fatalf("YCSB post-deploy refresh is missing %q", want)
+		}
+	}
+}
+
+func TestClusterSyncPanelRequiresSuccessfulDeployment(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
+	if err != nil {
+		t.Fatalf("read environment template: %v", err)
+	}
+	if !strings.Contains(string(content), `{{if .Env.Config.ClusterSync.Enabled}}`) || !strings.Contains(string(content), `{{if not .ClusterSyncAvailable}}style="display:none"{{end}}`) {
+		t.Fatal("ClusterSync panel must be hidden until a successful environment deployment")
+	}
+}
+
+func TestClusterSyncPanelRefreshesAfterDeployment(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
+	if err != nil {
+		t.Fatalf("read environment template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		"async function refreshClusterSyncPanel()",
+		"cluster_sync_available",
+		"startClusterSyncStatusPolling()",
+		"loadHosts();\n\t\trefreshClusterSyncPanel();",
+	} {
+		if !strings.Contains(template, want) {
+			t.Fatalf("ClusterSync post-deploy refresh is missing %q", want)
+		}
+	}
+}
+
+func TestClusterSyncActionsUseAPIFetchMethodContract(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
+	if err != nil {
+		t.Fatalf("read environment template: %v", err)
+	}
+	if !strings.Contains(string(content), "clustersync/${action}`, 'POST', {from_failure: fromFailure}") {
+		t.Fatal("ClusterSync actions must pass POST and body separately to apiFetch")
+	}
+}
+
+func TestClusterSyncButtonsTrackPCSMState(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "environment.html"))
+	if err != nil {
+		t.Fatalf("read environment template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		`id="pcsm-start"`,
+		`id="pcsm-pause"`,
+		`id="pcsm-resume"`,
+		`id="pcsm-resume-failure"`,
+		`id="pcsm-finalize"`,
+		`id="pcsm-reset"`,
+		"let currentClusterSyncStatus = null",
+		"function setClusterSyncButtonState(status)",
+		"const paused = state === 'paused' || state.endsWith('_paused')",
+		"const failed = state === 'failed' || state.endsWith('_failed') || state.includes('failure')",
+		"(state === 'running' && status.initialSync?.completed === true)",
+		"const running = state === 'running' ||",
+		"buttons.resumeFailure.disabled = !failed",
+		"buttons.finalize.disabled = !finalizable",
+		"buttons.reset.disabled = running || finalizable",
+	} {
+		if !strings.Contains(template, want) {
+			t.Errorf("ClusterSync state gating is missing %q", want)
+		}
+	}
+}
+
+func TestClusterSyncConfigurationWarnsAndExcludesSourceFromTarget(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
+	if err != nil {
+		t.Fatalf("read configure template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		`id="pcsm-topology-warning"`,
+		`Add at least two clusters or two replica sets`,
+		`option.kind === source.kind && option.value !== source.value`,
+	} {
+		if !strings.Contains(template, want) {
+			t.Fatalf("ClusterSync selector is missing %q", want)
+		}
+	}
+}
+
+func TestClusterSyncTuningDisplaysEffectiveDefaults(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
+	if err != nil {
+		t.Fatalf("read configure template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		`data-pcsm-default="parallel"`,
+		`value="{{intDefault .Config.ClusterSync.CloneParallelCollections 2}}"`,
+		`read: Math.max(Math.floor(cpus / 4), 1)`,
+		`insert: cpus * 2`,
+		`replication: cpus`,
+		`batch: 10000`,
+		`'event-queue': 5000`,
+		`'worker-queue': 5000`,
+		`bulk: 5000`,
+		`input.dataset.usingDefault === 'true'`,
+	} {
+		if !strings.Contains(template, want) {
+			t.Fatalf("ClusterSync effective defaults are missing %q", want)
+		}
+	}
+}
+
+func TestClusterSyncVersionUsesPrefetchedDropdown(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
+	if err != nil {
+		t.Fatalf("read configure template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		`<select id="pcsm_version" name="pcsm_version"`,
+		`range .PCSMVersions`,
+		`let PCSM_VERSIONS =`,
+		`product: 'pcsm'`,
+		`setPCSMVersionOptions(PCSM_VERSIONS)`,
+		`id="pcsm_repo"`,
+		`new URLSearchParams({product: 'pcsm', channel})`,
+		`selectedPCSMOsImage() !== osImage`,
+		`!== source`,
+		`!== channel`,
+		`Package Overrides`,
+		`Compute Resources`,
+		`class="package-block-body"`,
+		`class="compute-block-body"`,
+	} {
+		if !strings.Contains(template, want) {
+			t.Errorf("ClusterSync version selector is missing %q", want)
+		}
+	}
+}
+
+func TestClusterSyncCustomizeSectionsFollowOptions(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
+	if err != nil {
+		t.Fatalf("read configure template: %v", err)
+	}
+	template := string(content)
+	start := strings.Index(template, `<section class="form-section">`)
+	clusterSync := strings.Index(template[start:], `<h2>Percona ClusterSync</h2>`)
+	if clusterSync < 0 {
+		t.Fatal("ClusterSync section is missing")
+	}
+	clusterSyncStart := start + clusterSync
+	end := strings.Index(template[clusterSyncStart:], `</section>`)
+	if end < 0 {
+		t.Fatal("ClusterSync section is not closed")
+	}
+	section := template[clusterSyncStart : clusterSyncStart+end]
+	options := strings.Index(section, `name="pcsm_include_namespaces"`)
+	packageOverrides := strings.Index(section, `Package Overrides`)
+	computeResources := strings.Index(section, `Compute Resources`)
+	if options < 0 || packageOverrides < options || computeResources < packageOverrides {
+		t.Fatal("ClusterSync customize sections must follow the PCSM options")
+	}
+}
+
+func TestPCSMPlaybookUsesDedicatedInventoryHosts(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "ansible", "pcsm.yml"))
+	if err != nil {
+		t.Fatalf("read PCSM playbook: %v", err)
+	}
+	playbook := string(content)
+	for _, want := range []string{
+		"hosts: pcsm-source",
+		"hosts: pcsm-target",
+		"| first) | default('')",
+	} {
+		if !strings.Contains(playbook, want) {
+			t.Fatalf("PCSM playbook is missing %q", want)
+		}
+	}
+	for _, unwanted := range []string{"pcsm_sync_source", "pcsm_sync_target", "hosts: pcsm_source", "hosts: pcsm_target"} {
+		if strings.Contains(playbook, unwanted) {
+			t.Fatalf("PCSM playbook references obsolete inventory name %q", unwanted)
+		}
+	}
+}
+
+func TestMongoDBDefaultReleaseUsesPSMDB80(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
+	if err != nil {
+		t.Fatalf("read configure template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		`{{$defaultRel := preferredPSMDBRelease $.PSMDBVersions}}`,
+		`const defaultMongoRelease = PSMDB_VERSIONS.includes('psmdb-80') ? 'psmdb-80' : PSMDB_VERSIONS[0];`,
+		`PSMDB 8.3 and newer lines must be selected explicitly.`,
+	} {
+		if !strings.Contains(template, want) {
+			t.Fatalf("MongoDB GA release default is missing %q", want)
+		}
+	}
+	if got := funcMap["preferredPSMDBRelease"].(func([]string) string)([]string{"psmdb-83", "psmdb-80", "psmdb-70"}); got != "psmdb-80" {
+		t.Fatalf("preferred PSMDB release = %q, want psmdb-80", got)
 	}
 }
 
@@ -148,6 +361,79 @@ func TestCloudInventoriesUseCanonicalTLSVariable(t *testing.T) {
 					t.Errorf("%s must emit enable_pmm exactly once", path)
 				}
 			})
+		}
+	}
+}
+
+func TestPCSMUsesDedicatedInventory(t *testing.T) {
+	main, err := os.ReadFile(filepath.Join("..", "ansible", "main.yml"))
+	if err != nil {
+		t.Fatalf("read main.yml: %v", err)
+	}
+	if strings.Contains(string(main), "pcsm.yml") {
+		t.Error("main.yml must not configure PCSM from topology inventories")
+	}
+
+	pcsm, err := os.ReadFile(filepath.Join("..", "ansible", "pcsm.yml"))
+	if err != nil {
+		t.Fatalf("read pcsm.yml: %v", err)
+	}
+	for _, want := range []string{"hosts: pcsm-source", "hosts: pcsm-target", "hosts: pcsm"} {
+		if !strings.Contains(string(pcsm), want) {
+			t.Errorf("pcsm.yml missing %q", want)
+		}
+	}
+	for _, unwanted := range []string{"pcsm_sync_source", "pcsm_sync_target"} {
+		if strings.Contains(string(pcsm), unwanted) {
+			t.Errorf("pcsm.yml still references %q", unwanted)
+		}
+	}
+
+	for _, platform := range []string{"aws", "gcp", "azure", "chaos"} {
+		path := filepath.Join("..", "terraform", platform, "pcsm_inventory.tmpl")
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		inventory := string(content)
+		for _, want := range []string{"pcsm-source ansible_host=${source.ip}", "pcsm-target ansible_host=${target.ip}", "[pcsm]", "pcsm_use_tls=${source.use_tls || target.use_tls}", "pcsm_ca_staging_file="} {
+			if !strings.Contains(inventory, want) {
+				t.Errorf("%s missing %q", path, want)
+			}
+		}
+		for _, unwanted := range []string{"[pcsm_source]", "[pcsm_target]", "[replsets:children]"} {
+			if strings.Contains(inventory, unwanted) {
+				t.Errorf("%s still contains %q", path, unwanted)
+			}
+		}
+	}
+}
+
+func TestCloudReadmesDocumentManualPCSMFlow(t *testing.T) {
+	for _, platform := range []string{"aws", "gcp", "azure", "chaos"} {
+		path := filepath.Join("..", "terraform", platform, "README.md")
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		readme := string(content)
+		for _, want := range []string{
+			"ansible-playbook -i myenv_inventory_rs-source ../../ansible/main.yml",
+			"ansible-playbook -i myenv_inventory_pcsm ../../ansible/pcsm.yml",
+			"PCSM_SOURCE_URI=",
+			"PCSM_TARGET_URI=",
+			"PCSM_SOURCE_PASSWORD=",
+			"PCSM_TARGET_PASSWORD=",
+			"enable_pcsm      = true",
+			"pcsm_source_name = \"rs-source\"",
+			"pcsm_target_name = \"rs-target\"",
+		} {
+			if !strings.Contains(readme, want) {
+				t.Errorf("%s missing %q", path, want)
+			}
+		}
+		if strings.Contains(readme, "[pcsm_source]") || strings.Contains(readme, "[pcsm_target]") {
+			t.Errorf("%s documents obsolete PCSM inventory groups", path)
 		}
 	}
 }

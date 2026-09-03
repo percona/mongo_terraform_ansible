@@ -5,6 +5,7 @@ This repository automates Percona software for MongoDB across cloud and local en
 - Percona Server for MongoDB (PSMDB)
 - Percona Backup for MongoDB (PBM)
 - Percona Monitoring and Management (PMM)
+- Percona ClusterSync for MongoDB (PCSM)
 
 Supported deployment targets:
 
@@ -107,6 +108,7 @@ The root README is a starting point. Detailed operational guidance lives with th
 
 - Existing topology expansion: [UI workflow](./ui-go/README.md#topology-expansion), [Ansible playbooks](./ansible/README.md#running), and each Terraform provider README.
 - Workload generation with YCSB: [UI workflow](./ui-go/README.md#ycsb-workloads), [cloud Ansible notes](./ansible/README.md#ycsb-workloads), and [Docker workflow](./terraform/docker/README.md#simulating-a-workload-with-ycsb).
+- ClusterSync: [manual cloud workflow](./ansible/README.md#percona-clustersync), [Docker workflow](./terraform/docker/README.md#percona-clustersync-for-mongodb), and the Terraform README for the selected cloud provider.
 - TLS, Vault-backed encryption, PBM, PMM, stopping, restarting, and reset playbooks: [Ansible README](./ansible/README.md).
 
 ## Verification

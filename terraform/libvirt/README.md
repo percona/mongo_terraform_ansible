@@ -125,12 +125,32 @@ OpenTofu may work but is not installed or tested by the repository installer.
 4. **Initialize and apply:**
 
    x86_64 (default):
-   ```bash
-terraform init
-terraform apply
-   ```
+    ```bash
+    terraform init
+    terraform apply
+    ```
 
    aarch64 — see the [ARM example](#arm-aarch64-example) below.
+
+### Minimum `tfvars`
+
+The checked-in [`minimum.tfvars`](./minimum.tfvars) is the smallest x86_64
+example. Download `sources/rocky9.qcow2` first, then run:
+
+```hcl
+hosts     = 3
+hostnames = ["db-1", "db-2", "db-3"]
+source_vm = "sources/rocky9.qcow2"
+arch      = "x86_64"
+```
+
+```bash
+terraform apply -var-file=minimum.tfvars
+```
+
+For aarch64 guests, use the checked-in [`minimum-arm.tfvars`](./minimum-arm.tfvars)
+after completing the ARM prerequisites. Update the firmware paths for the host
+OS if necessary, then run `terraform apply -var-file=minimum-arm.tfvars`.
 
 ## Connecting to Instances
 

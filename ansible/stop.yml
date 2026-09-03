@@ -33,3 +33,12 @@
         state: stopped
       with_items:
         - mongod     
+
+- hosts: pcsm
+  gather_facts: false
+  become: yes
+  tasks:
+    - name: Stop PCSM service
+      systemd:
+        name: "{{ pcsm_service_name | default('pcsm') }}"
+        state: stopped

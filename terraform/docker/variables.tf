@@ -283,6 +283,84 @@ variable "prefix" {
   description = "Prefix applied to every Docker container and volume. If non-empty a hyphen is appended automatically (e.g. \"ig\" → \"ig-\")."
 }
 
+############################
+# Percona ClusterSync (PCSM)
+############################
+
+variable "enable_pcsm" {
+  type        = bool
+  default     = false
+  description = "Deploy one Percona ClusterSync for MongoDB container in this environment."
+}
+
+variable "pcsm_image" {
+  type        = string
+  default     = "percona/percona-clustersync-mongodb:0.9.0"
+  description = "Percona ClusterSync for MongoDB container image."
+}
+
+variable "pcsm_env_file" {
+  type        = string
+  default     = ""
+  description = "Path to a host-generated 0600 shell env file containing PCSM_SOURCE_URI and PCSM_TARGET_URI."
+}
+
+variable "pcsm_source_kind" {
+  type        = string
+  default     = "cluster"
+  description = "Source topology kind for PCSM: cluster or replset."
+
+  validation {
+    condition     = contains(["cluster", "replset"], var.pcsm_source_kind)
+    error_message = "pcsm_source_kind must be either cluster or replset."
+  }
+}
+
+variable "pcsm_source_name" {
+  type        = string
+  default     = ""
+  description = "Source topology name from clusters or replsets, according to pcsm_source_kind."
+}
+
+variable "pcsm_target_kind" {
+  type        = string
+  default     = "cluster"
+  description = "Target topology kind for PCSM: cluster or replset."
+
+  validation {
+    condition     = contains(["cluster", "replset"], var.pcsm_target_kind)
+    error_message = "pcsm_target_kind must be either cluster or replset."
+  }
+}
+
+variable "pcsm_target_name" {
+  type        = string
+  default     = ""
+  description = "Target topology name from clusters or replsets, according to pcsm_target_kind."
+}
+
+variable "pcsm_cpus" {
+  type        = number
+  default     = 2
+  description = "Maximum number of CPUs available to PCSM."
+
+  validation {
+    condition     = var.pcsm_cpus > 0
+    error_message = "pcsm_cpus must be greater than zero."
+  }
+}
+
+variable "pcsm_memory_mb" {
+  type        = number
+  default     = 1024
+  description = "PCSM memory limit in MiB."
+
+  validation {
+    condition     = var.pcsm_memory_mb > 0
+    error_message = "pcsm_memory_mb must be greater than zero."
+  }
+}
+
 #############
 # Networking
 #############

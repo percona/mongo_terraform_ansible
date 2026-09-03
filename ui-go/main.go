@@ -27,6 +27,7 @@ var safeFilenameRe = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
 
 // defaultPSMDBVersions is used as a fallback when the Percona repo is unreachable.
 var defaultPSMDBVersions = []string{"psmdb-83", "psmdb-80", "psmdb-70", "psmdb-60", "psmdb-50", "psmdb-44", "psmdb-42", "psmdb-40", "psmdb-36"}
+var defaultPCSMVersions = []string{"0.9.0"}
 var defaultMongoDBOfficialVersions = []string{"8.3", "8.2", "8.0", "7.0", "6.0"}
 
 // Default Docker image tags used when Docker Hub is unreachable.
@@ -51,14 +52,15 @@ const defaultAuditFilter = `{ atype: "authCheck", "param.command": { $in: [ "ins
 
 var (
 	// Application directories (set in main)
-	baseDir      string
-	terraformDir string
-	ansibleDir   string
-	stateFile    string
-	settingsFile string
-	jobsDir      string
-	tmplDir      string
-	staticDir    string
+	baseDir        string
+	terraformDir   string
+	ansibleDir     string
+	stateFile      string
+	settingsFile   string
+	jobsDir        string
+	pcsmSecretsDir string
+	tmplDir        string
+	staticDir      string
 )
 
 // ─── Template function map ────────────────────────────────────────────────────
@@ -71,6 +73,26 @@ var funcMap = template.FuncMap{
 	},
 	"upper":     strings.ToUpper,
 	"hasPrefix": strings.HasPrefix,
+	"join":      strings.Join,
+	"contains": func(values []string, value string) bool {
+		for _, candidate := range values {
+			if candidate == value {
+				return true
+			}
+		}
+		return false
+	},
+	"preferredPSMDBRelease": func(versions []string) string {
+		for _, version := range versions {
+			if version == "psmdb-80" {
+				return version
+			}
+		}
+		if len(versions) > 0 {
+			return versions[0]
+		}
+		return "psmdb-80"
+	},
 	// Return s if non-empty, otherwise def.
 	"strDefault": func(s, def string) string {
 		if s == "" {
@@ -497,11 +519,15 @@ func main() {
 	stateFile = filepath.Join(baseDir, "environments.json")
 	settingsFile = filepath.Join(baseDir, "settings.json")
 	jobsDir = filepath.Join(baseDir, "jobs")
+	pcsmSecretsDir = filepath.Join(baseDir, "secrets", "pcsm")
 	tmplDir = filepath.Join(baseDir, "templates")
 	staticDir = filepath.Join(baseDir, "static")
 
 	if err := os.MkdirAll(jobsDir, 0755); err != nil {
 		log.Fatal("cannot create jobs dir:", err)
+	}
+	if err := os.MkdirAll(pcsmSecretsDir, 0700); err != nil {
+		log.Fatal("cannot create PCSM secrets dir:", err)
 	}
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
@@ -546,6 +572,9 @@ func main() {
 	mux.HandleFunc("POST /api/environment/{env_id}/ycsb", environmentYCSBActionHandler)
 	mux.HandleFunc("PUT /api/environment/{env_id}/ycsb/config", environmentYCSBConfigHandler)
 	mux.HandleFunc("GET /api/environment/{env_id}/ycsb/status", environmentYCSBStatusHandler)
+	mux.HandleFunc("GET /api/environment/{env_id}/clustersync/status", clusterSyncStatusHandler)
+	mux.HandleFunc("GET /api/environment/{env_id}/clustersync/log", clusterSyncLogHandler)
+	mux.HandleFunc("POST /api/environment/{env_id}/clustersync/{action}", clusterSyncActionHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/status", jobStatusHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/stream", jobStreamHandler)
 	mux.HandleFunc("GET /api/job/{job_id}/log", jobLogHandler)

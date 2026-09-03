@@ -118,6 +118,34 @@ file. At minimum, review:
 - `source_ranges` for inbound access
 - optional PMM, CA/TLS, LDAP, and YCSB settings
 
+### Minimum `tfvars`
+
+The checked-in [`minimum.tfvars`](./minimum.tfvars) is the smallest standalone
+replica-set example. The SSH user must match a key in `gce_ssh_users`. Supply
+GCP credentials through Application Default Credentials or the provider
+environment, not this file.
+
+```hcl
+project_id           = "my-gcp-project"
+prefix               = "myenv"
+my_ssh_user          = "ubuntu"
+gce_ssh_users        = { ubuntu = "/absolute/path/to/id_ed25519.pub" }
+ssh_private_key_path = "/absolute/path/to/id_ed25519"
+
+clusters   = {}
+enable_pmm = false
+
+replsets = {
+  rs01 = {
+    enable_pmm = false
+    enable_pbm = false
+  }
+}
+```
+
+Save the example as `minimum.tfvars` or use the checked-in file and pass
+`-var-file=minimum.tfvars` to Terraform commands.
+
 Resource names must be unique in the project. Some firewall names are fixed, so
 deploying multiple copies of this Terraform root in one project can cause naming
 collisions even when `prefix` differs.
@@ -165,6 +193,59 @@ If you appended the generated SSH configuration, connect by host alias:
 
 ```bash
 ssh my-cluster-name-mongodb-cfg01
+```
+
+## Percona ClusterSync
+
+Percona ClusterSync is disabled by default. Set `enable_pcsm=true` to create one dedicated `e2-small` VM in the environment VPC. Only SSH is allowed inbound; API port `2242` is not exposed. Terraform never receives PCSM connection URIs or passwords. The package version defaults to `pcsm_version="0.9.0"`.
+
+Set source and target kinds to `cluster` or `replset`; they must match and the names must differ. Terraform writes one normal inventory per topology plus `<prefix>_inventory_pcsm`. Run Ansible for each selected topology, then run `pcsm.yml` against that PCSM inventory. Store the required PCSM URIs and passwords in an owner-only environment file. See the [Ansible ClusterSync instructions](../../ansible/README.md#percona-clustersync) for the complete procedure.
+
+For example, after applying the Terraform configuration, run Ansible for both
+selected topologies and create a controller-side environment file with mode
+`0600`:
+
+```bash
+ansible-playbook -i myenv_inventory_rs-source ../../ansible/main.yml
+ansible-playbook -i myenv_inventory_rs-target ../../ansible/main.yml
+
+umask 077
+cat > /secure/myenv/pcsm.env <<'EOF'
+PCSM_SOURCE_URI=...
+PCSM_TARGET_URI=...
+PCSM_SOURCE_PASSWORD=...
+PCSM_TARGET_PASSWORD=...
+EOF
+
+ansible-playbook -i myenv_inventory_pcsm ../../ansible/pcsm.yml \
+  -e pcsm_env_file_source=/secure/myenv/pcsm.env
+```
+
+### Minimum PCSM tfvars
+
+This minimal example creates two PSMDB replica sets and a PCSM VM. `prefix` must start with a lowercase letter, contain only lowercase letters and digits, and be at most 14 characters. The key in `gce_ssh_users` must match `my_ssh_user`. GCP credentials are supplied through the Google provider environment or application-default credentials, not this file.
+Save it as `pcsm.tfvars` and pass `-var-file=pcsm.tfvars` to `terraform plan` and `terraform apply`.
+
+```hcl
+project_id           = "my-gcp-project"
+prefix               = "myenv"
+my_ssh_user          = "ubuntu"
+gce_ssh_users        = { ubuntu = "/absolute/path/to/id_ed25519.pub" }
+ssh_private_key_path = "/absolute/path/to/id_ed25519"
+
+clusters   = {}
+enable_pmm = false
+
+replsets = {
+  "rs-source" = { enable_pmm = false, enable_pbm = false }
+  "rs-target" = { enable_pmm = false, enable_pbm = false }
+}
+
+enable_pcsm      = true
+pcsm_source_kind = "replset"
+pcsm_source_name = "rs-source"
+pcsm_target_kind = "replset"
+pcsm_target_name = "rs-target"
 ```
 
 ## Backup credentials and sensitive files

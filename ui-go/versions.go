@@ -581,6 +581,27 @@ func getPerconaSearchVersionsFor(channel, osImage string) []string {
 	return perconaPackageVersions("ps4m", "percona-search-mongodb", channel, osImage)
 }
 
+func getPCSMVersions() []string {
+	const key = "pcsm_all_versions"
+	if v, ok := cacheGet(key); ok {
+		return v.([]string)
+	}
+	versions := getPCSMVersionsFor("release", "")
+	if len(versions) == 0 {
+		versions = defaultPCSMVersions
+	}
+	cacheSet(key, versions)
+	return versions
+}
+
+func getPCSMVersionsFor(channel, osImage string) []string {
+	versions := perconaPackageVersions("pcsm", "percona-clustersync-mongodb", channel, osImage)
+	if len(versions) == 0 {
+		return defaultPCSMVersions
+	}
+	return versions
+}
+
 // getPSMDBMinorVersionsByMajor returns a map from major release key (e.g. "psmdb-70")
 // to a sorted-descending list of specific minor versions (e.g. ["7.0.12", "7.0.11"]).
 // Versions are pulled from the Percona APT repository index for each major release.
@@ -652,6 +673,7 @@ func prefetchVersions() {
 	getPMMClientImages()
 	getMongotImages()
 	getPSMDBMinorVersionsByMajor()
+	getPCSMVersions()
 	slog.Info("version prefetch complete")
 }
 
@@ -715,4 +737,11 @@ func cachedPSMDBMinorVersionsByMajor() map[string][]string {
 		return v.(map[string][]string)
 	}
 	return map[string][]string{}
+}
+
+func cachedPCSMVersions() []string {
+	if v, ok := cacheGet("pcsm_all_versions"); ok {
+		return v.([]string)
+	}
+	return defaultPCSMVersions
 }

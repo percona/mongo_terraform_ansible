@@ -189,8 +189,8 @@
   </div>
 </div>
 
-{{if and .YcsbEnabled .YcsbAvailable}}
-<section class="form-section ycsb-panel" id="ycsb-panel">
+{{if .YcsbEnabled}}
+<section class="form-section ycsb-panel" id="ycsb-panel" {{if not .YcsbAvailable}}style="display:none"{{end}}>
   <div class="section-header"><h2>YCSB Load Generator</h2><span class="field-tip" data-tip="Shared settings for the selected cluster or replica set.">ⓘ</span></div>
   <div class="form-row">
     <div class="form-group"><label for="ycsb-target">Target</label><select id="ycsb-target" onchange="refreshYcsbStatus()">{{range .SortedClusters}}<option value="cluster:{{.Name}}" {{if and (eq $.YcsbLoad.TargetKind "cluster") (eq $.YcsbLoad.Target .Name)}}selected{{end}}>Cluster: {{.Name}}</option>{{end}}{{range .SortedReplsets}}<option value="replset:{{.Name}}" {{if and (eq $.YcsbLoad.TargetKind "replset") (eq $.YcsbLoad.Target .Name)}}selected{{end}}>Replica set: {{.Name}}</option>{{end}}</select></div>
@@ -207,8 +207,33 @@
     <div class="form-group"><label for="ycsb-duration">Duration (seconds)</label><input id="ycsb-duration" type="number" min="1" max="86400" value="{{.YcsbLoad.DurationSeconds}}"></div>
     <div class="form-group"><label><input id="ycsb-reset" type="checkbox" {{if .YcsbLoad.ResetBeforeLoad}}checked{{end}}> Reset before Insert Data</label></div>
   </div>
-  <div class="action-buttons" style="margin-top:.5rem"><button class="btn btn-outline" id="ycsb-save-config" onclick="saveYcsbConfig()">Save Settings</button><button class="btn btn-outline ycsb-load-btn" id="ycsb-load-button" onclick="runSelectedYcsbAction('load')" {{if not .YcsbAvailable}}disabled{{end}}>Insert Data</button><button class="btn btn-outline ycsb-start-btn" id="ycsb-start-button" onclick="runSelectedYcsbAction('start')" {{if not .YcsbAvailable}}disabled{{end}}>Start Load</button><button class="btn btn-outline ycsb-stop-btn" id="ycsb-stop-button" onclick="runSelectedYcsbAction('stop')" disabled>Stop Load</button></div>
+  <div class="action-buttons" style="margin-top:.5rem"><button class="btn btn-outline" id="ycsb-save-config" onclick="saveYcsbConfig()" {{if not .YcsbAvailable}}disabled{{end}}>Save Settings</button><button class="btn btn-outline ycsb-load-btn" id="ycsb-load-button" onclick="runSelectedYcsbAction('load')" {{if not .YcsbAvailable}}disabled{{end}}>Insert Data</button><button class="btn btn-outline ycsb-start-btn" id="ycsb-start-button" onclick="runSelectedYcsbAction('start')" {{if not .YcsbAvailable}}disabled{{end}}>Start Load</button><button class="btn btn-outline ycsb-stop-btn" id="ycsb-stop-button" onclick="runSelectedYcsbAction('stop')" disabled>Stop Load</button></div>
   <div id="ycsb-config-message" class="status-meta" style="margin-top:.5rem"></div>
+</section>
+{{end}}
+
+{{if .Env.Config.ClusterSync.Enabled}}
+<section class="form-section" id="clustersync-panel" {{if not .ClusterSyncAvailable}}style="display:none"{{end}}>
+  <div class="section-header"><h2>Percona ClusterSync</h2><span class="badge">{{.ClusterSync.SourceKind}}</span></div>
+  <p><strong>{{.ClusterSync.SourceName}}</strong> → <strong>{{.ClusterSync.TargetName}}</strong>{{if eq .ClusterSync.SourceKind "cluster"}} · Technical Preview{{end}}</p>
+  <div class="summary-grid" id="clustersync-summary">
+    <div class="summary-item"><label>State</label><value id="pcsm-state">Loading…</value></div>
+    <div class="summary-item"><label>Lag</label><value id="pcsm-lag">—</value></div>
+    <div class="summary-item"><label>Events</label><value id="pcsm-events">—</value></div>
+    <div class="summary-item"><label>Clone progress</label><value id="pcsm-clone">—</value></div>
+  </div>
+  <p class="status-meta" id="pcsm-message"></p>
+  <div class="action-buttons">
+    <button class="btn btn-primary" id="pcsm-start" onclick="runClusterSyncAction('start')" disabled>Start</button>
+    <button class="btn btn-warning" id="pcsm-pause" onclick="runClusterSyncAction('pause')" disabled>Pause</button>
+    <button class="btn btn-success" id="pcsm-resume" onclick="runClusterSyncAction('resume')" disabled>Resume</button>
+    <button class="btn btn-outline" id="pcsm-resume-failure" onclick="runClusterSyncAction('resume', true)" disabled>Resume Failure</button>
+    <button class="btn btn-danger" id="pcsm-finalize" onclick="runClusterSyncAction('finalize')" disabled>Finalize</button>
+    <button class="btn btn-danger" id="pcsm-reset" onclick="runClusterSyncAction('reset')" disabled>Reset</button>
+    <button class="btn btn-outline" onclick="showClusterSyncLogs()">Logs</button>
+    <a class="btn btn-outline" href="/configure/{{.Env.Platform}}?env_id={{.EnvID}}#enable_pcsm">Edit / Remove</a>
+  </div>
+  <pre class="tfvars-pre" id="pcsm-logs" style="display:none;max-height:22rem"></pre>
 </section>
 {{end}}
 
@@ -348,11 +373,134 @@ const ENV_ID   = {{json .EnvID}};
 const PLATFORM = {{json .Env.Platform}};
 let activeEventSource = null;
 let currentJobId = null;
+let pcsmStatusPollTimer = null;
+let currentClusterSyncStatus = null;
+let pcsmActionInFlight = false;
 const CHAOS_GUARDED_ACTIONS = new Set(['deploy', 'stop', 'restart', 'destroy']);
 
 function selectedYcsbTarget() {
   const [kind, ...name] = document.getElementById('ycsb-target').value.split(':');
   return { kind, target: name.join(':') };
+}
+
+async function refreshClusterSyncStatus() {
+  const panel = document.getElementById('clustersync-panel');
+  if (!panel || panel.style.display === 'none') return;
+  try {
+    const status = await apiFetch(`/api/environment/${ENV_ID}/clustersync/status`);
+    currentClusterSyncStatus = status;
+    document.getElementById('pcsm-state').textContent = status.state || 'unknown';
+    setClusterSyncButtonState(status);
+    document.getElementById('pcsm-lag').textContent = status.lagTimeSeconds == null ? '—' : `${status.lagTimeSeconds}s`;
+    document.getElementById('pcsm-events').textContent = `${status.eventsApplied || 0} / ${status.eventsRead || 0}`;
+    const sync = status.initialSync || {};
+    const total = sync.estimatedCloneSizeBytes || 0, copied = sync.clonedSizeBytes || 0;
+    document.getElementById('pcsm-clone').textContent = total ? `${Math.round(copied * 100 / total)}%` : (sync.completed ? 'Complete' : '—');
+    const indexFailures = status.finalization?.unsuccessfulIndexes?.length || 0;
+    document.getElementById('pcsm-message').textContent = status.error || (indexFailures ? `${indexFailures} index builds require attention.` : status.info || '');
+  } catch (err) {
+    currentClusterSyncStatus = null;
+    document.getElementById('pcsm-state').textContent = 'Unavailable';
+    document.getElementById('pcsm-message').textContent = err.message;
+    setClusterSyncButtonState(null);
+  }
+}
+
+function setClusterSyncButtonState(status) {
+  const buttons = {
+    start: document.getElementById('pcsm-start'),
+    pause: document.getElementById('pcsm-pause'),
+    resume: document.getElementById('pcsm-resume'),
+    resumeFailure: document.getElementById('pcsm-resume-failure'),
+    finalize: document.getElementById('pcsm-finalize'),
+    reset: document.getElementById('pcsm-reset'),
+  };
+  if (!status || !status.state) {
+    Object.values(buttons).forEach(button => { if (button) button.disabled = true; });
+    return;
+  }
+
+  if (pcsmActionInFlight) {
+    Object.values(buttons).forEach(button => { if (button) button.disabled = true; });
+    return;
+  }
+
+  const state = String(status.state).toLowerCase().replace(/[\s-]+/g, '_');
+  const unstarted = new Set(['idle', 'created', 'ready', 'not_started', 'notstarted', 'initial']);
+  const paused = state === 'paused' || state.endsWith('_paused');
+  const failed = state === 'failed' || state.endsWith('_failed') || state.includes('failure');
+  const finalized = ['finalized', 'completed', 'complete', 'done'].includes(state) || state.endsWith('_finalized');
+  const finalizable = !finalized && (
+    ['finalizable', 'ready_to_finalize', 'ready_for_finalize'].includes(state) ||
+    (state === 'running' && status.initialSync?.completed === true)
+  );
+  const running = state === 'running' || (!unstarted.has(state) && !paused && !failed && !finalized && !finalizable);
+
+  if (buttons.start) buttons.start.disabled = !unstarted.has(state);
+  if (buttons.pause) buttons.pause.disabled = !running;
+  if (buttons.resume) buttons.resume.disabled = !paused;
+  if (buttons.resumeFailure) buttons.resumeFailure.disabled = !failed;
+  if (buttons.finalize) buttons.finalize.disabled = !finalizable;
+  if (buttons.reset) buttons.reset.disabled = running || finalizable;
+}
+
+function startClusterSyncStatusPolling() {
+  if (pcsmStatusPollTimer !== null) return;
+  pcsmStatusPollTimer = setInterval(refreshClusterSyncStatus, 5000);
+}
+
+function stopClusterSyncStatusPolling() {
+  if (pcsmStatusPollTimer === null) return;
+  clearInterval(pcsmStatusPollTimer);
+  pcsmStatusPollTimer = null;
+}
+
+async function refreshClusterSyncPanel() {
+  const panel = document.getElementById('clustersync-panel');
+  if (!panel) return;
+  try {
+    const status = await apiFetch(`/api/environment/${ENV_ID}/status`);
+    if (!status.cluster_sync_available) {
+      panel.style.display = 'none';
+      stopClusterSyncStatusPolling();
+      return;
+    }
+    panel.style.display = '';
+    await refreshClusterSyncStatus();
+    startClusterSyncStatusPolling();
+  } catch (_) { /* The next status refresh will retry. */ }
+}
+
+async function runClusterSyncAction(action, fromFailure = false) {
+  if (!clusterSyncActionAllowed(action, fromFailure)) return;
+  pcsmActionInFlight = true;
+  setClusterSyncButtonState(currentClusterSyncStatus);
+  const destructive = {start:'Starting replication replaces the selected target collections. Continue?', finalize:'Finalization ends this replication run. Continue?', reset:'Reset deletes PCSM metadata and requires a new initial clone. Continue?'};
+  if (destructive[action] && !confirm(destructive[action])) {
+    pcsmActionInFlight = false;
+    setClusterSyncButtonState(currentClusterSyncStatus);
+    return;
+  }
+  try {
+    await apiFetch(`/api/environment/${ENV_ID}/clustersync/${action}`, 'POST', {from_failure: fromFailure});
+    await refreshClusterSyncStatus();
+  } catch (err) { alert(err.message); }
+  finally {
+    pcsmActionInFlight = false;
+    setClusterSyncButtonState(currentClusterSyncStatus);
+  }
+}
+
+function clusterSyncActionAllowed(action, fromFailure) {
+  if (action === 'resume' && fromFailure) return !document.getElementById('pcsm-resume-failure')?.disabled;
+  const ids = {start: 'pcsm-start', pause: 'pcsm-pause', resume: 'pcsm-resume', finalize: 'pcsm-finalize', reset: 'pcsm-reset'};
+  const button = document.getElementById(ids[action]);
+  return !!button && !button.disabled;
+}
+
+async function showClusterSyncLogs() {
+  const pre = document.getElementById('pcsm-logs'); pre.style.display = '';
+  try { const data = await apiFetch(`/api/environment/${ENV_ID}/clustersync/log`); pre.textContent = data.log || 'No logs.'; } catch (err) { pre.textContent = err.message; }
 }
 function ycsbProfile() {
   const target = selectedYcsbTarget();
@@ -380,6 +528,8 @@ async function saveYcsbConfig() {
 }
 function setSelectedYcsbButtonState(running) {
   const available = isYcsbAvailable();
+  const saveButton = document.getElementById('ycsb-save-config');
+  if (saveButton) saveButton.disabled = !available;
   document.getElementById('ycsb-load-button').disabled = !available || running;
   document.getElementById('ycsb-start-button').disabled = !available || running;
   document.getElementById('ycsb-start-button').textContent = running ? 'Load Running' : 'Start Load';
@@ -692,6 +842,7 @@ function logsTermNavDown() {
 
 // Register scroll listener so the slider tracks manual scrolling.
 document.addEventListener('DOMContentLoaded', () => {
+	refreshClusterSyncPanel();
   const term = document.getElementById('terminal');
   if (term) term.addEventListener('scroll', termUpdateSlider);
   const logsTerm = document.getElementById('logs-terminal');
@@ -818,7 +969,7 @@ function setStatus(status) {
 }
 
 function isYcsbAvailable() {
-  return currentStatus !== 'configured';
+  return ycsbAvailable;
 }
 
 function getStatusBadgeClass(status) {
@@ -854,6 +1005,7 @@ function setButtonsDisabled(disabled) {
   }
   const cancelBtn = document.getElementById('btn-cancel-job');
   if (cancelBtn) cancelBtn.style.display = disabled ? '' : 'none';
+  if (!disabled) setClusterSyncButtonState(currentClusterSyncStatus);
 }
 
 function toggleAdvanced() {
@@ -869,6 +1021,13 @@ async function refreshEnvStatus() {
   try {
     const data = await apiFetch(`/api/environment/${ENV_ID}/status`);
     if (data.status) setStatus(data.status);
+    if (document.getElementById('ycsb-panel')) {
+      const wasAvailable = ycsbAvailable;
+      ycsbAvailable = !!data.ycsb_available;
+      document.getElementById('ycsb-panel').style.display = ycsbAvailable ? '' : 'none';
+      if (!ycsbAvailable) setSelectedYcsbButtonState(false);
+      else if (!wasAvailable) await refreshYcsbStatus();
+    }
   } catch (_) { /* ignore – status bar keeps the last known value */ }
 }
 
@@ -924,11 +1083,13 @@ async function refreshYcsbStatus() {
 
 // Current status tracked client-side so we can gate confirmations.
 let currentStatus = {{json .Env.Status}};
+let ycsbAvailable = {{json .YcsbAvailable}};
 let ycsbStatusPollTimer = null;
 
 function startYcsbStatusPolling() {
   stopYcsbStatusPolling();
   ycsbStatusPollTimer = setInterval(() => {
+    refreshEnvStatus();
     refreshYcsbStatus();
   }, 5000);
 }
@@ -1004,6 +1165,7 @@ async function executeAction(action) {
       // final persisted state (e.g. deleted, reset_success, stop_failed, …).
       refreshEnvStatus();
       loadHosts();
+		refreshClusterSyncPanel();
     });
     es.onerror = () => {
       appendToTerminal('\n⚠ Stream connection lost.');
@@ -1059,6 +1221,7 @@ async function runYcsbAction(kind, target, action) {
       await refreshEnvStatus();
       await refreshYcsbStatus();
       loadHosts();
+		await refreshClusterSyncPanel();
     });
     es.onerror = () => {
       appendToTerminal('\n⚠ Stream connection lost.');
@@ -1110,6 +1273,7 @@ async function cancelJob() {
       await refreshEnvStatus();
       await refreshYcsbStatus();
       loadHosts();
+		await refreshClusterSyncPanel();
     });
     es.onerror = () => { es.close(); activeEventSource = null; setButtonsDisabled(false); hideProgressIndicator(); refreshEnvStatus(); };
   } else {
@@ -1117,11 +1281,14 @@ async function cancelJob() {
     refreshEnvStatus();
     refreshYcsbStatus();
     loadHosts();
+		refreshClusterSyncPanel();
   }
   {{else}}
   // No job history yet but environment may already have hosts.
+  refreshEnvStatus();
   refreshYcsbStatus();
   loadHosts();
+	refreshClusterSyncPanel();
   {{end}}
 })();
 

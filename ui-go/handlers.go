@@ -308,6 +308,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		PSMDBVersions:                 cachedPSMDBVersions(),
 		PBMVersions:                   cachedPBMVersions(),
 		PSMDBMinorVersions:            cachedPSMDBMinorVersionsByMajor(),
+		PCSMVersions:                  cachedPCSMVersions(),
 		PMMImages:                     cachedPMMServerImages(),
 		PSMDBImages:                   cachedPSMDBImages(),
 		PBMImages:                     cachedPBMImages(),
@@ -338,6 +339,10 @@ func ycsbDeploymentReady(env *Environment) bool {
 	return env.Status == "running" || env.Status == "deploy_success"
 }
 
+func clusterSyncDeploymentReady(env *Environment) bool {
+	return env != nil && env.Config.ClusterSync.Enabled && env.LastAppliedConfig != nil && env.LastAppliedConfig.ClusterSync.Enabled && (env.Status == "running" || env.Status == "deploy_success")
+}
+
 // GET /environment/{env_id}
 func environmentHandler(w http.ResponseWriter, r *http.Request) {
 	envID := r.PathValue("env_id")
@@ -352,14 +357,16 @@ func environmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	renderPage(w, "environment", EnvironmentData{
-		EnvID:          envID,
-		Env:            env,
-		SortedClusters: sortedClusters(env.Config.Clusters),
-		SortedReplsets: sortedReplsets(env.Config.Replsets),
-		ServiceURLs:    configServiceURLs(envID, env),
-		YcsbEnabled:    env.Config.EnableYcsb,
-		YcsbAvailable:  ycsbDeploymentReady(env),
-		YcsbLoad:       normalizedYcsbLoadConfig(env.YcsbLoad),
+		EnvID:                envID,
+		Env:                  env,
+		SortedClusters:       sortedClusters(env.Config.Clusters),
+		SortedReplsets:       sortedReplsets(env.Config.Replsets),
+		ServiceURLs:          configServiceURLs(envID, env),
+		YcsbEnabled:          env.Config.EnableYcsb,
+		YcsbAvailable:        ycsbDeploymentReady(env),
+		YcsbLoad:             normalizedYcsbLoadConfig(env.YcsbLoad),
+		ClusterSync:          normalizedClusterSyncConfig(env.Config.ClusterSync),
+		ClusterSyncAvailable: clusterSyncDeploymentReady(env),
 	})
 }
 
@@ -577,7 +584,30 @@ func ycsbResetCommand(envID string, env *Environment, kind, target, mongoURL str
 		resetURL := fmt.Sprintf("mongodb://%s:%s@127.0.0.1:%d/?authSource=admin", urlQueryEscape(user), urlQueryEscape(pass), port)
 		return fmt.Sprintf("docker exec %s mongosh %s --quiet --eval %s", shellQuote(mongoContainer), shellQuote(resetURL), shellQuote("db.getSiblingDB('ycsb').dropDatabase()"))
 	}
-	return ""
+
+	hosts, _, _ := collectCloudHosts(envID, env)
+	var resetHost string
+	if kind == "cluster" {
+		clusterHosts := hostsWithRole(hosts, target, "mongos")
+		if len(clusterHosts) > 0 {
+			resetHost = clusterHosts[0].Name
+		}
+	} else if kind == "replset" {
+		replsetHosts := hostsWithRole(hosts, target, "mongod")
+		if len(replsetHosts) > 0 {
+			resetHost = replsetHosts[0].Name
+		}
+	}
+	if resetHost == "" {
+		return ""
+	}
+
+	resetArgs := "mongosh " + shellQuote(mongoURL) + " --quiet"
+	if topologyUsesTLS(env.Config, target) {
+		resetArgs += " --tls --tlsCertificateKeyFile /etc/ssl/client.pem --tlsCAFile /etc/ssl/test-ca.pem"
+	}
+	resetArgs += " --eval " + shellQuote("db.getSiblingDB('ycsb').dropDatabase()")
+	return fmt.Sprintf("ssh %s %s", shellQuote(resetHost), shellQuote(resetArgs))
 }
 
 func ycsbLoadCommand(binary, workloadPath, mongoURL string, cfg YcsbLoadConfig) string {
@@ -668,7 +698,11 @@ func ycsbActionShell(envID string, env *Environment, req ycsbActionRequest) (str
 		cfg := normalizedYcsbLoadConfig(env.YcsbLoad)
 		remote = ycsbLoadCommand(binary, "/opt/ycsb/workloads/"+cfg.Workload, mongoURL, cfg)
 		if cfg.ResetBeforeLoad {
-			remote = "echo 'Reset before load is only supported for Docker environments'; " + remote
+			reset := ycsbResetCommand(envID, env, req.Kind, req.Target, mongoURL)
+			if reset == "" {
+				return "", fmt.Errorf("cannot reset YCSB data: reset host not found for %s %q", req.Kind, req.Target)
+			}
+			remote = reset + " && " + remote
 		}
 	case "start":
 		cfg := normalizedYcsbLoadConfig(env.YcsbLoad)
@@ -835,6 +869,7 @@ func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
 		"pmm_client_images":    getPMMClientImages(),
 		"mongot_images":        getMongotImages(),
 		"psmdb_minor_versions": getPSMDBMinorVersionsByMajor(),
+		"pcsm_versions":        getPCSMVersions(),
 	})
 }
 
@@ -873,8 +908,10 @@ func apiPackageVersionsHandler(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]interface{}{"versions": getPMMClientVersionsFor(channel, osImage)})
 	case "ps4m":
 		writeJSON(w, 200, map[string]interface{}{"versions": getPerconaSearchVersionsFor(channel, osImage)})
+	case "pcsm":
+		writeJSON(w, 200, map[string]interface{}{"versions": getPCSMVersionsFor(channel, osImage)})
 	default:
-		jsonError(w, 400, "product must be one of: psmdb, pbm, pmm_client, ps4m")
+		jsonError(w, 400, "product must be one of: psmdb, pbm, pmm_client, ps4m, pcsm")
 	}
 }
 
@@ -1570,7 +1607,10 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 400, err.Error())
 		return
 	}
-
+	if err := normalizeAndValidateClusterSync(payload.Platform, &payload.Config); err != nil {
+		jsonError(w, 400, err.Error())
+		return
+	}
 	if payload.Platform == "chaos" {
 		payload.Config.LegacyChaosAPIToken = ""
 		payload.Config.ChaosApiTokenPath = strings.TrimSpace(payload.Config.ChaosApiTokenPath)
@@ -1597,6 +1637,14 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if existing != nil {
+		oldCS, newCS := existing.Config.ClusterSync, payload.Config.ClusterSync
+		if existing.LastAppliedConfig != nil {
+			oldCS = existing.LastAppliedConfig.ClusterSync
+		}
+		if oldCS.Enabled && newCS.Enabled && (oldCS.SourceKind != newCS.SourceKind || oldCS.SourceName != newCS.SourceName || oldCS.TargetKind != newCS.TargetKind || oldCS.TargetName != newCS.TargetName) {
+			jsonError(w, 400, "changing a deployed ClusterSync relationship is not supported; disable and deploy it first")
+			return
+		}
 		var baseline *Config
 		if existing.LastAppliedConfig != nil {
 			baseline = existing.LastAppliedConfig
@@ -1631,6 +1679,12 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 				jsonError(w, 400, "unsupported topology change: "+strings.Join(unsupported, "; "))
 				return
 			}
+		}
+	}
+	if payload.Config.ClusterSync.Enabled {
+		if err := ensureClusterSyncSecrets(payload.EnvID, payload.Platform, &payload.Config); err != nil {
+			jsonError(w, 500, "ClusterSync secret setup failed: "+err.Error())
+			return
 		}
 	}
 	if payload.Platform == "chaos" && existing != nil && existing.Config.ChaosApiTokenPath != payload.Config.ChaosApiTokenPath {
@@ -1686,6 +1740,7 @@ func deleteEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		if env.Platform == "chaos" {
 			removeManagedChaosTokenFile(env.Config.ChaosApiTokenPath)
 		}
+		removeClusterSyncSecrets(envID)
 		p := tfvarsPath(envID, env.Platform)
 		os.Remove(p)
 		os.Remove(tfstatePath(envID, env.Platform))
@@ -1876,6 +1931,12 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 404, "environment not found")
 		return
 	}
+	if env.Config.ClusterSync.Enabled {
+		if err := ensureClusterSyncSecrets(envID, env.Platform, &env.Config); err != nil {
+			jsonError(w, 500, "ClusterSync secret setup failed: "+err.Error())
+			return
+		}
+	}
 
 	var body struct {
 		Action string `json:"action"`
@@ -1982,6 +2043,26 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	cloudAnsibleCmd := func(playbookPath string, waitForSSH bool) string {
 		return cloudAnsibleCmdFor(playbookPath, waitForSSH, invNames, nil)
 	}
+	cloudPCSMCmd := func(waitForSSH bool) string {
+		inv := shellQuote(filePrefix + "_inventory_pcsm")
+		vars, _ := json.Marshal(map[string]string{"pcsm_env_file_source": clusterSyncEnvPath(envID)})
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf(`{ [ -f %[1]s ] || { printf "ERROR: inventory file %%s not found\n" %[1]s; exit 1; }; `, inv))
+		if waitForSSH {
+			b.WriteString(fmt.Sprintf(
+				`printf "Waiting for SSH on %%s (up to 10 min)…\n" %[1]s; `+
+					`_ssh_ready=false; `+
+					`for _n in $(seq 1 20); do `+
+					`ansible -i %[1]s all -m ping --timeout=10 2>&1 && { _ssh_ready=true; break; }; `+
+					`printf "  attempt %%s/20 – not ready yet, retrying in 10s…\n" "$_n"; `+
+					`[ "$_n" -lt 20 ] && sleep 10; done; `+
+					`$_ssh_ready || { printf "ERROR: timed out waiting for SSH (%%s)\n" %[1]s; exit 1; }; `,
+				inv,
+			))
+		}
+		b.WriteString(fmt.Sprintf(`printf "==> ansible-playbook -i %%s\n" %[1]s; ansible-playbook -i %[1]s %[2]s --extra-vars %[3]s || exit $?; }`, inv, shellQuote(filepath.Join(ansibleDir, "pcsm.yml")), shellQuote(string(vars))))
+		return b.String()
+	}
 	cloudCertificateCmdFor := func(names []string, waitForSSH bool) string {
 		steps := make([]string, 0, len(names))
 		for _, name := range names {
@@ -2001,6 +2082,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			steps = append(steps, certCmd)
 		}
 		steps = append(steps, cloudAnsibleCmdFor(filepath.Join(ansibleDir, "main.yml"), waitForSSH, names, nil))
+		if env.Config.ClusterSync.Enabled {
+			steps = append(steps, cloudPCSMCmd(waitForSSH))
+		}
 		return strings.Join(steps, " && ")
 	}
 
@@ -2149,6 +2233,12 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		if postDeploy := clusterSyncPostDeployShell(envID, env); postDeploy != "" {
+			shellCmd += " && " + postDeploy
+		}
+		if disable := clusterSyncDisableShell(envID, env, appliedConfig); disable != "" {
+			shellCmd += " && " + disable
+		}
 		cmd = []string{"bash", "-c", shellCmd}
 
 	case "provision":
@@ -2181,9 +2271,11 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, 400, "configure action is not applicable to Docker environments")
 			return
 		}
-		cmd = []string{"bash", "-c",
-			cloudConfigureCmdFor(invNames, true),
+		configureCmd := cloudConfigureCmdFor(invNames, true)
+		if postDeploy := clusterSyncPostDeployShell(envID, env); postDeploy != "" {
+			configureCmd += " && " + postDeploy
 		}
+		cmd = []string{"bash", "-c", configureCmd}
 
 	case "reset":
 		if platform == "docker" {
@@ -2265,6 +2357,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				if platform == "docker" {
 					cleanupDockerModuleArtifacts(e.Config)
 				}
+				removeClusterSyncSecrets(envID)
 			} else {
 				e.Status = "destroy_failed"
 			}
@@ -2285,6 +2378,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				e.Status = "running"
 				if action == "deploy" {
 					e.LastAppliedConfig = cloneConfig(*configAtStart)
+					if !e.Config.ClusterSync.Enabled {
+						removeClusterSyncSecrets(envID)
+					}
 				}
 			default:
 				e.Status = action + "_success"
@@ -2392,7 +2488,12 @@ func envStatusHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 404, "environment not found")
 		return
 	}
-	writeJSON(w, 200, map[string]string{"status": env.Status, "updated_at": env.UpdatedAt})
+	writeJSON(w, 200, map[string]interface{}{
+		"status":                 env.Status,
+		"updated_at":             env.UpdatedAt,
+		"ycsb_available":         env.Config.EnableYcsb && ycsbDeploymentReady(env),
+		"cluster_sync_available": clusterSyncDeploymentReady(env),
+	})
 }
 
 // GET /api/job/{job_id}/status

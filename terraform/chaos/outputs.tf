@@ -4,6 +4,46 @@ locals {
     testing      = "pmm3-client testing"
     experimental = "pmm3-client experimental"
   }
+
+  pcsm_source = var.enable_pcsm ? (var.pcsm_source_kind == "cluster" ? {
+    hostname   = module.mongodb_clusters[var.pcsm_source_name].hostname_mongos[0]
+    ip         = module.mongodb_clusters[var.pcsm_source_name].ip_mongos[0]
+    mongo_port = 27017
+    use_tls    = var.clusters[var.pcsm_source_name].use_tls
+    } : {
+    hostname   = module.mongodb_replsets[var.pcsm_source_name].hostname_replsets[0]
+    ip         = module.mongodb_replsets[var.pcsm_source_name].ip_replsets[0]
+    mongo_port = 27017
+    use_tls    = var.replsets[var.pcsm_source_name].use_tls
+  }) : { hostname = "", ip = "", mongo_port = 27017, use_tls = false }
+
+  pcsm_target = var.enable_pcsm ? (var.pcsm_target_kind == "cluster" ? {
+    hostname   = module.mongodb_clusters[var.pcsm_target_name].hostname_mongos[0]
+    ip         = module.mongodb_clusters[var.pcsm_target_name].ip_mongos[0]
+    mongo_port = 27017
+    use_tls    = var.clusters[var.pcsm_target_name].use_tls
+    } : {
+    hostname   = module.mongodb_replsets[var.pcsm_target_name].hostname_replsets[0]
+    ip         = module.mongodb_replsets[var.pcsm_target_name].ip_replsets[0]
+    mongo_port = 27017
+    use_tls    = var.replsets[var.pcsm_target_name].use_tls
+  }) : { hostname = "", ip = "", mongo_port = 27017, use_tls = false }
+}
+
+resource "local_file" "AnsibleInventoryPCSM" {
+  count = var.enable_pcsm ? 1 : 0
+
+  content = templatefile("${path.module}/pcsm_inventory.tmpl", {
+    hostname_pcsm        = local.pcsm_host
+    ip_pcsm              = chaos_instance.pcsm[0].ip_address
+    source               = local.pcsm_source
+    target               = local.pcsm_target
+    my_ssh_user          = var.my_ssh_user
+    ssh_private_key_path = var.ssh_private_key_path
+    pcsm_version         = var.pcsm_version
+  })
+
+  filename = "${var.prefix}_inventory_pcsm"
 }
 
 resource "local_file" "AnsibleInventoryCluster" {
@@ -64,6 +104,9 @@ resource "local_file" "AnsibleInventoryCluster" {
       ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(chaos_instance.ca[0].ip_address, "") : try(chaos_instance.pmm[0].ip_address, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
+      hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+      ip_pcsm              = var.enable_pcsm ? chaos_instance.pcsm[0].ip_address : ""
+      pcsm_version         = var.pcsm_version
       bucket               = local.bucket_name
       minio_hostname       = local.minio_host
       minio_ip             = var.enable_minio ? chaos_instance.minio[0].ip_address : ""
@@ -108,6 +151,8 @@ resource "local_file" "SSHConfigCluster" {
     public_ip_pmm        = var.enable_pmm ? chaos_instance.pmm[0].ip_address : ""
     hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
     public_ip_ycsb       = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
+    hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
+    public_ip_pcsm       = var.enable_pcsm ? chaos_instance.pcsm[0].ip_address : ""
     pmm_port             = var.pmm_port
   })
 
@@ -160,6 +205,7 @@ resource "local_file" "AnsibleInventoryRS" {
       ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(chaos_instance.ca[0].ip_address, "") : try(chaos_instance.pmm[0].ip_address, "")) : ""
       hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
       ip_ycsb              = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
+      pcsm_version         = var.pcsm_version
       bucket               = local.bucket_name
       minio_hostname       = local.minio_host
       minio_ip             = var.enable_minio ? chaos_instance.minio[0].ip_address : ""
@@ -199,6 +245,8 @@ resource "local_file" "SSHConfigRS" {
     public_ip_pmm          = var.enable_pmm ? chaos_instance.pmm[0].ip_address : ""
     hostname_ycsb          = var.enable_ycsb ? local.ycsb_host : ""
     public_ip_ycsb         = var.enable_ycsb ? chaos_instance.ycsb[0].ip_address : ""
+    hostname_pcsm          = var.enable_pcsm ? local.pcsm_host : ""
+    public_ip_pcsm         = var.enable_pcsm ? chaos_instance.pcsm[0].ip_address : ""
     pmm_port               = var.pmm_port
   })
 

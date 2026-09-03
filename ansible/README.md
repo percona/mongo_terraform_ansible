@@ -197,6 +197,21 @@ ansible-playbook main.yml -i inventory --skip-tags monitoring,backup
 ansible-playbook main.yml -i inventory --tags backup
 ```
 
+## Percona ClusterSync
+
+Terraform creates `<prefix>_inventory_pcsm` only when `enable_pcsm=true`. It contains source and target endpoint aliases plus `[pcsm]`, separate from normal topology inventories.
+
+For a manual deployment, run `main.yml` against every selected source and target topology inventory, create a controller-side PCSM environment file with mode `0600`, then run `pcsm.yml` once against `<prefix>_inventory_pcsm`:
+
+```bash
+ansible-playbook -i myenv_inventory_rs-source main.yml
+ansible-playbook -i myenv_inventory_rs-target main.yml
+ansible-playbook pcsm.yml -i myenv_inventory_pcsm \
+  -e pcsm_env_file_source=/secure/myenv/pcsm.env
+```
+
+The environment file must contain `PCSM_SOURCE_URI`, `PCSM_TARGET_URI`, `PCSM_SOURCE_PASSWORD`, and `PCSM_TARGET_PASSWORD`. Passwords in the URIs must be URL-encoded. For TLS deployments, `pcsm.yml` stages the selected topology's CA bundle on the PCSM host. The playbook creates the source and target users, installs the root-only environment file, configures and verifies `pcsm.service`, and enables it. `stop.yml` and `restart.yml` include PCSM; `reset.yml` preserves its package and secret environment.
+
 ## YCSB Workloads
 
 If the inventory contains a `ycsb` host, `main.yml` installs YCSB through `ycsb_install.yml`. The MongoDB binding is built from a pinned upstream YCSB source revision so it includes the modern MongoDB Java driver required by PSMDB 8.3. Change `ycsb_source_revision` in `group_vars/all.yml` to upgrade the build; the revision marker causes YCSB to be rebuilt automatically.

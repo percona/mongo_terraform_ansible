@@ -104,6 +104,32 @@ file. At minimum, review:
 
 The checked-in `rs.tfvars` is an example standalone replica-set configuration.
 
+### Minimum `tfvars`
+
+The checked-in [`minimum.tfvars`](./minimum.tfvars) is the smallest standalone
+replica-set example. Set the SSH paths and user for the selected AMI. Supply AWS
+credentials through the AWS provider environment or profile, not this file.
+
+```hcl
+prefix               = "myenv"
+my_ssh_user          = "ec2-user"
+ssh_public_key_path  = "/absolute/path/to/id_ed25519.pub"
+ssh_private_key_path = "/absolute/path/to/id_ed25519"
+
+clusters   = {}
+enable_pmm = false
+
+replsets = {
+  rs01 = {
+    enable_pmm = false
+    enable_pbm = false
+  }
+}
+```
+
+Save the example as `minimum.tfvars` or use the checked-in file and pass
+`-var-file=minimum.tfvars` to Terraform commands.
+
 ## Deploy
 
 Initialize and review the Terraform plan before applying it:
@@ -147,6 +173,63 @@ If you appended the generated SSH configuration, connect by host alias:
 
 ```bash
 ssh my-cluster-name-mongodb-cfg01
+```
+
+## Percona ClusterSync
+
+Percona ClusterSync is disabled by default. Set `enable_pcsm=true` to create one dedicated `t3.small` VM in the environment VPC. Only SSH is allowed inbound; API port `2242` is not exposed. Terraform never receives PCSM connection URIs or passwords. The package version defaults to `pcsm_version="0.9.0"`.
+
+Set source and target kinds to `cluster` or `replset`; they must match and the names must differ. Terraform writes one normal inventory per topology plus `<prefix>_inventory_pcsm`. The PCSM inventory contains only `pcsm-source`, `pcsm-target`, and `[pcsm]`, so it cannot alter MongoDB replica-set membership.
+
+For a manual deployment, run `main.yml` once for every selected topology after `terraform apply`, then run `pcsm.yml` once:
+
+```bash
+ansible-playbook -i myenv_inventory_rs-source ../../ansible/main.yml
+ansible-playbook -i myenv_inventory_rs-target ../../ansible/main.yml
+ansible-playbook -i myenv_inventory_pcsm ../../ansible/pcsm.yml \
+  -e pcsm_env_file_source="$HOME/.config/mongodeploy/myenv-pcsm.env"
+```
+
+Create the environment file before the final command with owner-only permissions. Use URL-encoded passwords in the URI; hexadecimal passwords generated below are already URL-safe. Replace the member placeholders with the private MongoDB hostnames listed in the generated source and target topology inventories.
+
+```bash
+mkdir -p "$HOME/.config/mongodeploy"
+umask 077
+source_password="$(openssl rand -hex 24)"
+target_password="$(openssl rand -hex 24)"
+cat >"$HOME/.config/mongodeploy/myenv-pcsm.env" <<EOF
+PCSM_SOURCE_URI='mongodb://pcsm-source:${source_password}@source-member-0:27017,source-member-1:27017/?authSource=admin&appName=pcsm&replicaSet=rs-source'
+PCSM_TARGET_URI='mongodb://pcsm-target:${target_password}@target-member-0:27017,target-member-1:27017/?authSource=admin&appName=pcsm&replicaSet=rs-target'
+PCSM_SOURCE_PASSWORD='${source_password}'
+PCSM_TARGET_PASSWORD='${target_password}'
+EOF
+chmod 600 "$HOME/.config/mongodeploy/myenv-pcsm.env"
+```
+
+### Minimum PCSM tfvars
+
+This minimal example creates two PSMDB replica sets and a PCSM VM. Set `my_ssh_user` for the selected AMI and provide the matching key pair. AWS credentials are supplied through the AWS provider environment or profile, not this file.
+Save it as `pcsm.tfvars` and pass `-var-file=pcsm.tfvars` to `terraform plan` and `terraform apply`.
+
+```hcl
+prefix               = "myenv"
+my_ssh_user          = "ubuntu"
+ssh_public_key_path  = "/absolute/path/to/id_ed25519.pub"
+ssh_private_key_path = "/absolute/path/to/id_ed25519"
+
+clusters   = {}
+enable_pmm = false
+
+replsets = {
+  "rs-source" = { enable_pmm = false, enable_pbm = false }
+  "rs-target" = { enable_pmm = false, enable_pbm = false }
+}
+
+enable_pcsm      = true
+pcsm_source_kind = "replset"
+pcsm_source_name = "rs-source"
+pcsm_target_kind = "replset"
+pcsm_target_name = "rs-target"
 ```
 
 ## Backup credentials and sensitive files

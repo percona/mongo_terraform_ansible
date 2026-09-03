@@ -92,3 +92,12 @@
       with_items:
         - pmm-agent
       when: pmm_enabled | bool
+
+- hosts: pcsm
+  gather_facts: false
+  become: yes
+  tasks:
+    - name: Restart PCSM service
+      systemd:
+        name: "{{ pcsm_service_name | default('pcsm') }}"
+        state: restarted

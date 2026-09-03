@@ -1,0 +1,14 @@
+pcsm-source ansible_host=${source.ip} mongo_port=${source.mongo_port} use_tls=${source.use_tls}
+pcsm-target ansible_host=${target.ip} mongo_port=${target.mongo_port} use_tls=${target.use_tls}
+
+[pcsm]
+${hostname_pcsm} ansible_host=${ip_pcsm} pcsm_use_tls=${source.use_tls || target.use_tls}
+
+[all:vars]
+ansible_user=${my_ssh_user}
+%{ if ssh_private_key_path != "" ~}
+ansible_ssh_private_key_file=${ssh_private_key_path}
+%{ endif ~}
+ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+pcsm_version=${pcsm_version}
+pcsm_ca_staging_file=/tmp/mongo_terraform_ansible/pcsm-${hostname_pcsm}-ca.pem

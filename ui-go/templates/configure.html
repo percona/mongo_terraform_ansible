@@ -1738,16 +1738,10 @@
     <div id="pcsm-settings" {{if not .Config.ClusterSync.Enabled}}style="display:none"{{end}}>
       <p class="field-hint">PCSM supports replica set to replica set and sharded cluster to sharded cluster. Sharded replication is a technical preview. Starting replication replaces selected collections on the target.</p>
       <p id="pcsm-topology-warning" class="alert alert-warning" style="display:none">Add at least two clusters or two replica sets before enabling ClusterSync.</p>
-      <div class="form-row">
-        <div class="form-group"><label for="pcsm_source">Source</label><select id="pcsm_source" name="pcsm_source" onfocus="refreshClusterSyncTopologies()" onchange="refreshClusterSyncTopologies(true)" data-current="{{.Config.ClusterSync.SourceKind}}:{{.Config.ClusterSync.SourceName}}"></select></div>
-        <div class="form-group"><label for="pcsm_target">Target</label><select id="pcsm_target" name="pcsm_target" onfocus="refreshClusterSyncTopologies()" data-current="{{.Config.ClusterSync.TargetKind}}:{{.Config.ClusterSync.TargetName}}"></select></div>
-        <div class="form-group"><label for="pcsm_version">PCSM Version</label><input id="pcsm_version" name="pcsm_version" value="{{strDefault .Config.ClusterSync.Version "0.9.0"}}"></div>
-      </div>
-      <div class="form-row">
-        {{if eq $p "docker"}}<div class="form-group"><label for="pcsm_image">Container image</label><input id="pcsm_image" name="pcsm_image" value="{{strDefault .Config.ClusterSync.Image "percona/percona-clustersync-mongodb:0.9.0"}}"></div>{{else}}<div class="form-group"><label for="pcsm_instance_type">Instance type</label><input id="pcsm_instance_type" name="pcsm_instance_type" value="{{.Config.ClusterSync.InstanceType}}" placeholder="Provider default"></div>{{end}}
-        <div class="form-group"><label for="pcsm_cpus">CPU limit / cores</label><input type="number" min="1" id="pcsm_cpus" name="pcsm_cpus" value="{{intDefault .Config.ClusterSync.CPUs 2}}" oninput="refreshPCSMeffectiveDefaults()"></div>
-        <div class="form-group"><label for="pcsm_memory_mb">Memory (MB)</label><input type="number" min="1024" step="1024" id="pcsm_memory_mb" name="pcsm_memory_mb" value="{{intDefault .Config.ClusterSync.MemoryMB 1024}}"></div>
-      </div>
+       <div class="form-row">
+         <div class="form-group"><label for="pcsm_source">Source</label><select id="pcsm_source" name="pcsm_source" onfocus="refreshClusterSyncTopologies()" onchange="refreshClusterSyncTopologies(true)" data-current="{{.Config.ClusterSync.SourceKind}}:{{.Config.ClusterSync.SourceName}}"></select></div>
+         <div class="form-group"><label for="pcsm_target">Target</label><select id="pcsm_target" name="pcsm_target" onfocus="refreshClusterSyncTopologies()" data-current="{{.Config.ClusterSync.TargetKind}}:{{.Config.ClusterSync.TargetName}}"></select></div>
+       </div>
       <div class="form-row">
         <div class="form-group"><label for="pcsm_include_namespaces">Include namespaces</label><input id="pcsm_include_namespaces" name="pcsm_include_namespaces" value="{{join .Config.ClusterSync.IncludeNamespaces ","}}" placeholder="db.*,db.collection"></div>
         <div class="form-group"><label for="pcsm_exclude_namespaces">Exclude namespaces</label><input id="pcsm_exclude_namespaces" name="pcsm_exclude_namespaces" value="{{join .Config.ClusterSync.ExcludeNamespaces ","}}" placeholder="db.audit"></div>
@@ -1764,6 +1758,28 @@
         <div class="form-group"><label>Event queue</label><input type="number" min="1" name="pcsm_event_queue" data-pcsm-default="event-queue" data-using-default="{{if .Config.ClusterSync.EventQueueSize}}false{{else}}true{{end}}" class="{{if not .Config.ClusterSync.EventQueueSize}}pcsm-default-value{{end}}" value="{{intDefault .Config.ClusterSync.EventQueueSize 5000}}" oninput="markPCSMValueExplicit(this)"></div>
         <div class="form-group"><label>Worker queue</label><input type="number" min="1" name="pcsm_worker_queue" data-pcsm-default="worker-queue" data-using-default="{{if .Config.ClusterSync.WorkerQueueSize}}false{{else}}true{{end}}" class="{{if not .Config.ClusterSync.WorkerQueueSize}}pcsm-default-value{{end}}" value="{{intDefault .Config.ClusterSync.WorkerQueueSize 5000}}" oninput="markPCSMValueExplicit(this)"></div>
         <div class="form-group"><label>Bulk operations</label><input type="number" min="1" name="pcsm_bulk_ops" data-pcsm-default="bulk" data-using-default="{{if .Config.ClusterSync.BulkOpsSize}}false{{else}}true{{end}}" class="{{if not .Config.ClusterSync.BulkOpsSize}}pcsm-default-value{{end}}" value="{{intDefault .Config.ClusterSync.BulkOpsSize 5000}}" oninput="markPCSMValueExplicit(this)"></div>
+      </div>
+      <div class="subsection-header">
+        <span class="subsection-title">Package Overrides</span>
+        <button type="button" class="btn btn-outline btn-sm package-toggle-btn" onclick="togglePackageBlock(this)">{{if or .Config.ClusterSync.Version .Config.ClusterSync.RepoSource .Config.ClusterSync.Repo .Config.ClusterSync.Image}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+      </div>
+      <div class="package-block-body" {{if not (or .Config.ClusterSync.Version .Config.ClusterSync.RepoSource .Config.ClusterSync.Repo .Config.ClusterSync.Image)}}style="display:none"{{end}}>
+      <div class="form-row">
+        {{if ne $p "docker"}}<div class="form-group"><label for="pcsm_repo_source">Repository Source</label><select id="pcsm_repo_source" name="pcsm_repo_source" onchange="onPCSMRepoSourceChange(this)"><option value="percona" {{if or (eq .Config.ClusterSync.RepoSource "") (eq .Config.ClusterSync.RepoSource "percona")}}selected{{end}}>percona</option><option value="perconalab" {{if eq .Config.ClusterSync.RepoSource "perconalab"}}selected{{end}}>perconalab</option></select></div><div class="form-group"><label for="pcsm_repo">Repository Channel</label><select id="pcsm_repo" name="pcsm_repo" onchange="refreshPCSMVersions()"><option value="release" {{if or (eq .Config.ClusterSync.Repo "") (eq .Config.ClusterSync.Repo "release")}}selected{{end}}>release</option><option value="testing" {{if eq .Config.ClusterSync.Repo "testing"}}selected{{end}}>testing</option><option value="experimental" {{if eq .Config.ClusterSync.Repo "experimental"}}selected{{end}}>experimental</option></select></div>{{end}}
+        <div class="form-group"><label for="pcsm_version">PCSM Version</label><select id="pcsm_version" name="pcsm_version" data-current="{{.Config.ClusterSync.Version}}">{{ $pcsmVersion := strDefault .Config.ClusterSync.Version "0.9.0" }}{{range .PCSMVersions}}<option value="{{.}}" {{if eq . $pcsmVersion}}selected{{end}}>{{.}}</option>{{end}}{{if and .Config.ClusterSync.Version (not (contains .PCSMVersions .Config.ClusterSync.Version))}}<option value="{{.Config.ClusterSync.Version}}" selected>{{.Config.ClusterSync.Version}}</option>{{end}}</select></div>
+        {{if eq $p "docker"}}<div class="form-group"><label for="pcsm_image">Container image</label><input id="pcsm_image" name="pcsm_image" value="{{strDefault .Config.ClusterSync.Image "percona/percona-clustersync-mongodb:0.9.0"}}"></div>{{end}}
+      </div>
+      </div>
+      <div class="subsection-header">
+        <span class="subsection-title">Compute Resources</span>
+        <button type="button" class="btn btn-outline btn-sm compute-toggle-btn" onclick="toggleComputeBlock(this)">{{if or .Config.ClusterSync.InstanceType .Config.ClusterSync.CPUs .Config.ClusterSync.MemoryMB}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+      </div>
+      <div class="compute-block-body" {{if not (or .Config.ClusterSync.InstanceType .Config.ClusterSync.CPUs .Config.ClusterSync.MemoryMB)}}style="display:none"{{end}}>
+      <div class="form-row">
+        {{if eq $p "aws"}}{{$v := .Config.ClusterSync.InstanceType}}<div class="form-group"><label for="pcsm_instance_type">Instance type</label><select id="pcsm_instance_type" name="pcsm_instance_type"><option value="t3.small" {{if or (eq $v "") (eq $v "t3.small")}}selected{{end}}>t3.small</option><option value="t3.medium" {{if eq $v "t3.medium"}}selected{{end}}>t3.medium</option><option value="t3.large" {{if eq $v "t3.large"}}selected{{end}}>t3.large</option><option value="t3.xlarge" {{if eq $v "t3.xlarge"}}selected{{end}}>t3.xlarge</option></select></div>{{else if eq $p "gcp"}}{{$v := .Config.ClusterSync.InstanceType}}<div class="form-group"><label for="pcsm_instance_type">Instance type</label><select id="pcsm_instance_type" name="pcsm_instance_type"><option value="e2-small" {{if or (eq $v "") (eq $v "e2-small")}}selected{{end}}>e2-small</option><option value="e2-medium" {{if eq $v "e2-medium"}}selected{{end}}>e2-medium</option><option value="e2-standard-2" {{if eq $v "e2-standard-2"}}selected{{end}}>e2-standard-2</option><option value="e2-standard-4" {{if eq $v "e2-standard-4"}}selected{{end}}>e2-standard-4</option></select></div>{{else if eq $p "azure"}}{{$v := .Config.ClusterSync.InstanceType}}<div class="form-group"><label for="pcsm_instance_type">Instance type</label><select id="pcsm_instance_type" name="pcsm_instance_type"><option value="Standard_B2s" {{if or (eq $v "") (eq $v "Standard_B2s")}}selected{{end}}>Standard_B2s</option><option value="Standard_D2s_v3" {{if eq $v "Standard_D2s_v3"}}selected{{end}}>Standard_D2s_v3</option><option value="Standard_D4s_v3" {{if eq $v "Standard_D4s_v3"}}selected{{end}}>Standard_D4s_v3</option></select></div>{{end}}
+        <div class="form-group"><label for="pcsm_cpus">CPU limit / cores</label><select id="pcsm_cpus" name="pcsm_cpus" onchange="refreshPCSMeffectiveDefaults()">{{$v := .Config.ClusterSync.CPUs}}<option value="1" {{if eq $v 1}}selected{{end}}>1</option><option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2</option><option value="4" {{if eq $v 4}}selected{{end}}>4</option><option value="8" {{if eq $v 8}}selected{{end}}>8</option><option value="16" {{if eq $v 16}}selected{{end}}>16</option><option value="32" {{if eq $v 32}}selected{{end}}>32</option></select></div>
+        <div class="form-group"><label for="pcsm_memory_mb">Memory (MB)</label><select id="pcsm_memory_mb" name="pcsm_memory_mb">{{$v := .Config.ClusterSync.MemoryMB}}<option value="1024" {{if or (eq $v 0) (eq $v 1024)}}selected{{end}}>1024</option><option value="2048" {{if eq $v 2048}}selected{{end}}>2048</option><option value="4096" {{if eq $v 4096}}selected{{end}}>4096</option><option value="8192" {{if eq $v 8192}}selected{{end}}>8192</option><option value="16384" {{if eq $v 16384}}selected{{end}}>16384</option><option value="32768" {{if eq $v 32768}}selected{{end}}>32768</option></select></div>
+      </div>
       </div>
     </div>
   </section>
@@ -1969,12 +1985,13 @@ const DOCKER_DEFAULT_MINIO_PORT = {{.DockerDefaultMinioPort}};
 const DOCKER_DEFAULT_MINIO_CONSOLE_PORT = {{.DockerDefaultMinioConsolePort}};
 const PSMDB_IMAGES    = {{json .PSMDBImages}};
 const PBM_IMAGES      = {{json .PBMImages}};
-const PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
+let PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
 const PMM_SERVER_IMAGES = {{json .PMMImages}};
 const MONGOT_IMAGES = {{json .MongotImages}};
-const PSMDB_VERSIONS  = {{json .PSMDBVersions}};
+let PCSM_VERSIONS = {{json .PCSMVersions}};
+let PSMDB_VERSIONS  = {{json .PSMDBVersions}};
 const OFFICIAL_MONGODB_VERSIONS = ['8.3', '8.2', '8.0', '7.0', '6.0'];
-const PBM_VERSIONS    = {{json .PBMVersions}};
+let PBM_VERSIONS    = {{json .PBMVersions}};
 const DEFAULT_AUDIT_FILTER = {{json .DefaultAuditFilter}};
 // Minor versions keyed by major release identifier, e.g. {"psmdb-70": ["7.0.12", ...]}
 // Declared as let so the async /api/versions refresh can update it in-place.
@@ -2331,6 +2348,58 @@ function selectedPackageOsImage(block, prefix) {
   return (packageSelect(block, prefix, 'os_image')?.value || '').trim();
 }
 
+function selectedPCSMOsImage() {
+  if (PLATFORM !== 'chaos') return '';
+  return (document.querySelector('select[name="cluster_os_image[]"], select[name="replset_os_image[]"]')?.value || '').trim();
+}
+
+function setPCSMVersionOptions(versions) {
+  const sel = document.getElementById('pcsm_version');
+  if (!sel) return;
+  const current = sel.value || sel.dataset.current || '0.9.0';
+  const values = Array.from(new Set((versions || []).concat(current ? [current] : [])));
+  sel.innerHTML = values.map(v => `<option value="${escHtml(v)}"${v === current ? ' selected' : ''}>${escHtml(v)}</option>`).join('');
+  if (current && values.includes(current)) sel.value = current;
+}
+
+let pcsmVersionRefreshSeq = 0;
+async function refreshPCSMVersions() {
+  const sel = document.getElementById('pcsm_version');
+  if (!sel) return;
+  const request = ++pcsmVersionRefreshSeq;
+  const osImage = selectedPCSMOsImage();
+  const source = document.getElementById('pcsm_repo_source')?.value || 'percona';
+  const channel = document.getElementById('pcsm_repo')?.value || 'release';
+  sel.disabled = true;
+  try {
+    const params = new URLSearchParams({product: 'pcsm', source, channel});
+    if (osImage) params.set('os_image', osImage);
+    const resp = await fetch(`/api/package-versions?${params.toString()}`);
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Could not load PCSM versions');
+    if (request !== pcsmVersionRefreshSeq || selectedPCSMOsImage() !== osImage ||
+        (document.getElementById('pcsm_repo_source')?.value || 'percona') !== source ||
+        (document.getElementById('pcsm_repo')?.value || 'release') !== channel) return;
+    PCSM_VERSIONS.splice(0, PCSM_VERSIONS.length, ...(data.versions || []));
+    setPCSMVersionOptions(PCSM_VERSIONS);
+  } catch (err) {
+    if (request === pcsmVersionRefreshSeq) console.warn(err);
+  } finally {
+    if (request === pcsmVersionRefreshSeq) sel.disabled = false;
+  }
+}
+
+async function onPCSMRepoSourceChange() {
+  const channel = document.getElementById('pcsm_repo');
+  const source = document.getElementById('pcsm_repo_source')?.value || 'percona';
+  if (channel) {
+    channel.innerHTML = source === 'perconalab'
+      ? '<option value="release" selected>release</option>'
+      : '<option value="release">release</option><option value="testing">testing</option><option value="experimental">experimental</option>';
+  }
+  await refreshPCSMVersions();
+}
+
 function selectedMongoDBDistribution(block, prefix) {
   return (packageSelect(block, prefix, 'mongodb_distribution')?.value || 'psmdb').trim() || 'psmdb';
 }
@@ -2383,6 +2452,7 @@ function packageVersionField(product) {
 
 let packageVersionRefreshDepth = 0;
 let packageVersionDisabledStates = null;
+const packageVersionRefreshSeq = new WeakMap();
 
 function showPackageVersionDialog() {
   packageVersionRefreshDepth++;
@@ -2434,6 +2504,13 @@ function refreshPackageMinorOptions(block, prefix, product) {
 
 async function refreshPackageVersions(block, prefix, product) {
   if (!block || !prefix || PLATFORM === 'docker') return;
+  let refreshes = packageVersionRefreshSeq.get(block);
+  if (!refreshes) {
+    refreshes = new Map();
+    packageVersionRefreshSeq.set(block, refreshes);
+  }
+  const request = (refreshes.get(product) || 0) + 1;
+  refreshes.set(product, request);
   const repoField = product === 'psmdb' ? 'mongo_repo' : product === 'pbm' ? 'pbm_repo' : product === 'ps4m' ? 'mongot_repo' : 'pmm_client_repo';
   const channel = packageSelect(block, prefix, repoField)?.value || 'release';
   const osImage = selectedPackageOsImage(block, prefix);
@@ -2453,6 +2530,7 @@ async function refreshPackageVersions(block, prefix, product) {
     const resp = await fetch(`/api/package-versions?${params.toString()}`);
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Could not load package versions');
+    if (refreshes.get(product) !== request) return;
     const currentChannel = packageSelect(block, prefix, repoField)?.value || 'release';
     const currentOsImage = selectedPackageOsImage(block, prefix);
     const currentDistribution = product === 'psmdb' ? selectedMongoDBDistribution(block, prefix) : 'psmdb';
@@ -2481,9 +2559,12 @@ async function refreshPackageVersions(block, prefix, product) {
       refreshPackageMinorOptions(block, prefix, product);
     }
   } catch (err) {
+    if (refreshes.get(product) !== request) return;
     console.warn(err);
   } finally {
-    affectedStates.forEach(([sel, disabled]) => { if (sel) sel.disabled = disabled; });
+    if (refreshes.get(product) === request) {
+      affectedStates.forEach(([sel, disabled]) => { if (sel) sel.disabled = disabled; });
+    }
   }
 }
 
@@ -2508,6 +2589,7 @@ function onPackageOsImageChange(sel) {
   const block = packageBlockForField(sel);
   const prefix = packageFieldPrefix(sel);
   withPackageVersionDialog(() => Promise.all(['psmdb', 'pbm', 'pmm_client', 'ps4m'].map(product => refreshPackageVersions(block, prefix, product))));
+  refreshPCSMVersions();
 }
 
 function refreshAllPackageVersions(block) {
@@ -3650,6 +3732,7 @@ function reloadImages(evt) {
 // was cold when the page was server-rendered.
 document.addEventListener('DOMContentLoaded', () => {
   refreshClusterSyncTopologies();
+  refreshPCSMVersions();
   refreshPCSMeffectiveDefaults();
   document.querySelectorAll('select[name="cluster_mongo_release[]"], select[name="replset_mongo_release[]"]').forEach(onMongoReleaseChange);
   if (PLATFORM !== 'docker') {
@@ -3676,18 +3759,30 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(r => r.json())
     .then(data => {
       if (data.psmdb_versions && data.psmdb_versions.length) {
-        // Keep PSMDB_MINOR_VERSIONS in sync so cascade still works.
+        // Keep the values used by dynamically added blocks current.
+        PSMDB_VERSIONS.splice(0, PSMDB_VERSIONS.length, ...data.psmdb_versions);
         if (data.psmdb_minor_versions) {
           Object.assign(PSMDB_MINOR_VERSIONS, data.psmdb_minor_versions);
         }
         document.querySelectorAll('select[name="cluster_mongo_release[]"], select[name="replset_mongo_release[]"]').forEach(onMongoReleaseChange);
       }
       if (data.pbm_versions && data.pbm_versions.length) {
-        // Existing per-resource PBM selects are populated server-side; newly
-        // added blocks use PBM_VERSIONS from the initial page payload.
+        PBM_VERSIONS.splice(0, PBM_VERSIONS.length, ...data.pbm_versions);
+      }
+      if (data.pmm_client_images && data.pmm_client_images.length) {
+        PMM_CLIENT_IMAGES.splice(0, PMM_CLIENT_IMAGES.length, ...data.pmm_client_images);
       }
       if (data.mongot_images && data.mongot_images.length) {
         MONGOT_IMAGES.splice(0, MONGOT_IMAGES.length, ...data.mongot_images);
+      }
+      if (data.pcsm_versions && data.pcsm_versions.length) {
+        PCSM_VERSIONS.splice(0, PCSM_VERSIONS.length, ...data.pcsm_versions);
+        setPCSMVersionOptions(PCSM_VERSIONS);
+      }
+      // Re-query each block using its selected channel and OS. This also
+      // refreshes selectors rendered before the initial cache was warm.
+      if (PLATFORM !== 'docker') {
+        document.querySelectorAll('#clusters-container > .component-block, #replsets-container > .component-block').forEach(refreshAllPackageVersions);
       }
     })
     .catch(() => {}); // silently ignore if offline
@@ -3892,6 +3987,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 	  config.cluster_sync = {
 	    enabled: true, source_kind: source.kind, source_name: source.name, target_kind: target.kind, target_name: target.name,
 	    version: (fd.get('pcsm_version') || '0.9.0').trim(), image: (fd.get('pcsm_image') || '').trim(),
+	    repo_source: (fd.get('pcsm_repo_source') || 'percona').trim(), repo: (fd.get('pcsm_repo') || 'release').trim(),
 	    instance_type: (fd.get('pcsm_instance_type') || '').trim(), cpus: number('pcsm_cpus'), memory_mb: number('pcsm_memory_mb'),
 	    include_namespaces: list('pcsm_include_namespaces'), exclude_namespaces: list('pcsm_exclude_namespaces'),
 	    clone_parallel_collections: pcsmTuningNumber(fd, 'pcsm_clone_parallel'), clone_read_workers: pcsmTuningNumber(fd, 'pcsm_clone_read_workers'),

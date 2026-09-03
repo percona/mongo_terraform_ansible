@@ -40,6 +40,12 @@ func normalizedClusterSyncConfig(cfg ClusterSyncConfig) ClusterSyncConfig {
 	if cfg.Version == "" {
 		cfg.Version = "0.9.0"
 	}
+	if cfg.RepoSource == "" {
+		cfg.RepoSource = "percona"
+	}
+	if cfg.Repo == "" {
+		cfg.Repo = "release"
+	}
 	if cfg.Image == "" {
 		cfg.Image = "percona/percona-clustersync-mongodb:" + cfg.Version
 	}

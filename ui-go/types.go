@@ -127,6 +127,8 @@ type ClusterSyncConfig struct {
 	TargetKind               string   `json:"target_kind,omitempty"`
 	TargetName               string   `json:"target_name,omitempty"`
 	Version                  string   `json:"version,omitempty"`
+	RepoSource               string   `json:"repo_source,omitempty"`
+	Repo                     string   `json:"repo,omitempty"`
 	Image                    string   `json:"image,omitempty"`
 	InstanceType             string   `json:"instance_type,omitempty"`
 	CPUs                     int      `json:"cpus,omitempty"`
@@ -477,6 +479,7 @@ type ConfigureData struct {
 	// PSMDBMinorVersions maps major release key → sorted minor versions
 	// e.g. {"psmdb-70": ["7.0.12", "7.0.11", ...]}
 	PSMDBMinorVersions map[string][]string
+	PCSMVersions       []string
 	PMMImages          []string
 	PSMDBImages        []string
 	PBMImages          []string

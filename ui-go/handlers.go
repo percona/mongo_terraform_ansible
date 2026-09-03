@@ -308,6 +308,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		PSMDBVersions:                 cachedPSMDBVersions(),
 		PBMVersions:                   cachedPBMVersions(),
 		PSMDBMinorVersions:            cachedPSMDBMinorVersionsByMajor(),
+		PCSMVersions:                  cachedPCSMVersions(),
 		PMMImages:                     cachedPMMServerImages(),
 		PSMDBImages:                   cachedPSMDBImages(),
 		PBMImages:                     cachedPBMImages(),
@@ -868,6 +869,7 @@ func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
 		"pmm_client_images":    getPMMClientImages(),
 		"mongot_images":        getMongotImages(),
 		"psmdb_minor_versions": getPSMDBMinorVersionsByMajor(),
+		"pcsm_versions":        getPCSMVersions(),
 	})
 }
 
@@ -879,6 +881,7 @@ func apiPackageVersionsHandler(w http.ResponseWriter, r *http.Request) {
 		distribution = "psmdb"
 	}
 	channel := normalizedRepoChannel(r.URL.Query().Get("channel"))
+	source := strings.TrimSpace(r.URL.Query().Get("source"))
 	osImage := strings.TrimSpace(r.URL.Query().Get("os_image"))
 
 	switch product {
@@ -906,8 +909,10 @@ func apiPackageVersionsHandler(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]interface{}{"versions": getPMMClientVersionsFor(channel, osImage)})
 	case "ps4m":
 		writeJSON(w, 200, map[string]interface{}{"versions": getPerconaSearchVersionsFor(channel, osImage)})
+	case "pcsm":
+		writeJSON(w, 200, map[string]interface{}{"versions": getPCSMVersionsForSource(source, channel, osImage)})
 	default:
-		jsonError(w, 400, "product must be one of: psmdb, pbm, pmm_client, ps4m")
+		jsonError(w, 400, "product must be one of: psmdb, pbm, pmm_client, ps4m, pcsm")
 	}
 }
 

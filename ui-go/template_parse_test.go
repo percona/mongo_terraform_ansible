@@ -152,6 +152,62 @@ func TestClusterSyncTuningDisplaysEffectiveDefaults(t *testing.T) {
 	}
 }
 
+func TestClusterSyncVersionUsesPrefetchedDropdown(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
+	if err != nil {
+		t.Fatalf("read configure template: %v", err)
+	}
+	template := string(content)
+	for _, want := range []string{
+		`<select id="pcsm_version" name="pcsm_version"`,
+		`range .PCSMVersions`,
+		`let PCSM_VERSIONS =`,
+		`product: 'pcsm'`,
+		`setPCSMVersionOptions(PCSM_VERSIONS)`,
+		`id="pcsm_repo_source"`,
+		`id="pcsm_repo"`,
+		`onPCSMRepoSourceChange(this)`,
+		`source === 'perconalab'`,
+		`new URLSearchParams({product: 'pcsm', source, channel})`,
+		`selectedPCSMOsImage() !== osImage`,
+		`!== source`,
+		`!== channel`,
+		`Package Overrides`,
+		`Compute Resources`,
+		`class="package-block-body"`,
+		`class="compute-block-body"`,
+	} {
+		if !strings.Contains(template, want) {
+			t.Errorf("ClusterSync version selector is missing %q", want)
+		}
+	}
+}
+
+func TestClusterSyncCustomizeSectionsFollowOptions(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("templates", "configure.html"))
+	if err != nil {
+		t.Fatalf("read configure template: %v", err)
+	}
+	template := string(content)
+	start := strings.Index(template, `<section class="form-section">`)
+	clusterSync := strings.Index(template[start:], `<h2>Percona ClusterSync</h2>`)
+	if clusterSync < 0 {
+		t.Fatal("ClusterSync section is missing")
+	}
+	clusterSyncStart := start + clusterSync
+	end := strings.Index(template[clusterSyncStart:], `</section>`)
+	if end < 0 {
+		t.Fatal("ClusterSync section is not closed")
+	}
+	section := template[clusterSyncStart : clusterSyncStart+end]
+	options := strings.Index(section, `name="pcsm_include_namespaces"`)
+	packageOverrides := strings.Index(section, `Package Overrides`)
+	computeResources := strings.Index(section, `Compute Resources`)
+	if options < 0 || packageOverrides < options || computeResources < packageOverrides {
+		t.Fatal("ClusterSync customize sections must follow the PCSM options")
+	}
+}
+
 func TestPCSMPlaybookUsesDedicatedInventoryHosts(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("..", "ansible", "pcsm.yml"))
 	if err != nil {

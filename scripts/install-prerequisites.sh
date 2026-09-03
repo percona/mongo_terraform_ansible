@@ -145,7 +145,9 @@ add_hashicorp_repo_rhel() {
 install_common() {
   case "$platform" in
     macos)
-      run brew install git terraform ansible curl unzip openssh python
+      run brew tap hashicorp/tap
+      run brew install hashicorp/tap/terraform
+      run brew install git ansible curl unzip openssh python
       ;;
     debian)
       add_hashicorp_repo_debian

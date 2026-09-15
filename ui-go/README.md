@@ -67,8 +67,8 @@ To build a binary:
 
 ```bash
 cd ui-go
-go build -o psmbd-sandbox .
-UI_REPO_DIR=/path/to/mongo_terraform_ansible ./psmbd-sandbox
+go build .
+UI_REPO_DIR=/path/to/mongo_terraform_ansible ./psmdb-sandbox
 ```
 
 ## Environment Variables
@@ -226,8 +226,8 @@ stateDiagram-v2
 
 Open **Settings** from the environments page and configure credentials for the cloud provider you want to use:
 
-- AWS: access key ID, secret access key, profile, and default region. The UI writes isolated AWS config files under `ui-go/secrets/cloud/aws/` and runs Terraform with `AWS_SHARED_CREDENTIALS_FILE`, `AWS_CONFIG_FILE`, and `AWS_PROFILE`.
-- GCP: service account JSON file and project ID. The UI stores the uploaded key under `ui-go/secrets/cloud/gcp/`, uses an isolated `CLOUDSDK_CONFIG`, and runs Terraform with `GOOGLE_APPLICATION_CREDENTIALS`.
+- AWS: access key ID, secret access key, profile, and default region. The UI writes isolated AWS config files under `UI_DATA_DIR/secrets/cloud/aws/` and runs Terraform with `AWS_SHARED_CREDENTIALS_FILE`, `AWS_CONFIG_FILE`, and `AWS_PROFILE`.
+- GCP: service account JSON file and project ID. The UI stores the uploaded key under `UI_DATA_DIR/secrets/cloud/gcp/`, uses an isolated `CLOUDSDK_CONFIG`, and runs Terraform with `GOOGLE_APPLICATION_CREDENTIALS`.
 - Azure: service principal tenant ID, subscription ID, client ID, and client secret. The UI uses an isolated `AZURE_CONFIG_DIR` and runs Terraform with the matching `ARM_*` environment variables.
 
 Use the provider-specific **Configure** button after entering credentials, then **Test** to validate them. Deploy, Provision, and Destroy validate provider credentials before Terraform runs.
@@ -286,8 +286,6 @@ ui-go/
 ├── versions.go, hosts.go          Version discovery and connection details
 ├── *_test.go                      Colocated Go unit and integration-style tests
 ├── go.mod                         Go module (standard library only)
-├── environments.json, settings.json Runtime state (auto-created)
-├── jobs/                          Background job logs (auto-created)
 ├── templates/
 │   ├── layout.html
 │   ├── index.html
@@ -298,6 +296,10 @@ ui-go/
     ├── style.css
     └── app.js
 ```
+
+The binary embeds `templates/` and `static/`. Runtime files are created under
+`UI_DATA_DIR`, while generated Terraform files and state remain under the repository's
+`terraform/` directory.
 
 Tests remain next to the code they exercise, following standard Go conventions.
 Add reusable input or expected-output fixtures under `testdata/` when needed.

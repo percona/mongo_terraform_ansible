@@ -53,7 +53,9 @@ credential environment variables or profiles. Docker must be running after its
 installation. Linux users must add themselves to the Docker or Libvirt group and
 start a new login session before using those targets without `sudo`.
 
-When using the Web UI, configure provider credentials in **Settings**. The UI stores them under `ui-go/secrets/cloud/` and passes isolated credential environment variables to Terraform. Manual CLI usage still requires provider credentials configured in your shell.
+When using the Web UI, configure provider credentials in **Settings**. The UI stores them under
+the `UI_DATA_DIR` secrets directory and passes isolated credential environment variables to
+Terraform. Manual CLI usage still requires provider credentials configured in your shell.
 
 ## Web UI (Recommended)
 
@@ -73,12 +75,12 @@ Key features:
 
 ```bash
 cd ui-go
-go run .
+UI_REPO_DIR=.. go run .
 # then open http://127.0.0.1:5001
 ```
 
 See [`ui-go/README.md`](./ui-go/README.md) for full details, including packaged PSMDB
-Sandbox usage with `UI_REPO_DIR` and `UI_DATA_DIR`.
+Sandbox usage with the required `UI_REPO_DIR` and optional `UI_DATA_DIR`.
 
 ## Manual Instructions (without the Web UI)
 

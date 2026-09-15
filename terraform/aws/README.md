@@ -81,7 +81,7 @@ aws sts get-caller-identity
 
 For the Web UI, enter the access key, secret access key, region, and profile name
 in **Settings**. The UI stores isolated AWS credential files under
-`ui-go/secrets/cloud/aws/` and sets `AWS_SHARED_CREDENTIALS_FILE`,
+`UI_DATA_DIR/secrets/cloud/aws/` and sets `AWS_SHARED_CREDENTIALS_FILE`,
 `AWS_CONFIG_FILE`, and `AWS_PROFILE` for Terraform.
 
 ## Configure the deployment

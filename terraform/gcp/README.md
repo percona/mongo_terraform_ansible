@@ -91,7 +91,7 @@ gcloud auth print-access-token >/dev/null
 ```
 
 For the Web UI, upload this JSON key and enter `PROJECT_ID` in **Settings**. The
-UI stores the key under `ui-go/secrets/cloud/gcp/`, uses an isolated Cloud SDK
+UI stores the key under `UI_DATA_DIR/secrets/cloud/gcp/`, uses an isolated Cloud SDK
 configuration, and sets `GOOGLE_APPLICATION_CREDENTIALS` for Terraform.
 
 For an interactive manual deployment, Application Default Credentials also work:

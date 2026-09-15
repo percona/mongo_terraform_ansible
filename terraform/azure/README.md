@@ -76,7 +76,7 @@ az account show --query '{subscription:id, tenant:tenantId, user:user.name}'
 ```
 
 For the Web UI, enter the client ID, client secret, tenant ID, and subscription ID
-in **Settings**. The UI stores the secret under `ui-go/secrets/cloud/azure/`, uses
+in **Settings**. The UI stores the secret under `UI_DATA_DIR/secrets/cloud/azure/`, uses
 an isolated Azure CLI configuration, and sets `ARM_CLIENT_ID`,
 `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, and `ARM_SUBSCRIPTION_ID` for Terraform.
 

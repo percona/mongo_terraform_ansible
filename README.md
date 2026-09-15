@@ -53,10 +53,6 @@ credential environment variables or profiles. Docker must be running after its
 installation. Linux users must add themselves to the Docker or Libvirt group and
 start a new login session before using those targets without `sudo`.
 
-When using the Web UI, configure provider credentials in **Settings**. The UI stores them under
-the `UI_DATA_DIR` secrets directory and passes isolated credential environment variables to
-Terraform. Manual CLI usage still requires provider credentials configured in your shell.
-
 ## Web UI (Recommended)
 
 A zero-dependency web frontend (written in Go) is available in [`ui-go/`](./ui-go/README.md).
@@ -113,14 +109,5 @@ The root README is a starting point. Detailed operational guidance lives with th
 - Workload generation with YCSB: [UI workflow](./ui-go/README.md#ycsb-workloads), [cloud Ansible notes](./ansible/README.md#ycsb-workloads), and [Docker workflow](./terraform/docker/README.md#simulating-a-workload-with-ycsb).
 - ClusterSync: [manual cloud workflow](./ansible/README.md#percona-clustersync), [Docker workflow](./terraform/docker/README.md#percona-clustersync-for-mongodb), and the Terraform README for the selected cloud provider.
 - TLS, Vault-backed encryption, PBM, PMM, stopping, restarting, and reset playbooks: [Ansible README](./ansible/README.md).
-
-## Verification
-
-Run the Go UI test suite after changing the UI or its generated Terraform configuration:
-
-```bash
-cd ui-go
-go test ./...
-```
 
 ## Disclaimer: This code is not supported by Percona. It has been provided solely as a community-contributed example and is not covered under any Percona services agreement.

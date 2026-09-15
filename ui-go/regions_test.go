@@ -6,15 +6,15 @@ import (
 	"html/template"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestGCPRegionSelectorRendersImmediateOptions(t *testing.T) {
-	tmpl, err := template.New("").Funcs(funcMap).ParseFiles(
-		filepath.Join("templates", "layout.html"),
-		filepath.Join("templates", "configure.html"),
+	tmpl, err := template.New("").Funcs(funcMap).ParseFS(
+		uiAssets,
+		"templates/layout.html",
+		"templates/configure.html",
 	)
 	if err != nil {
 		t.Fatal(err)

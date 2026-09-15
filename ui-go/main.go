@@ -1,11 +1,13 @@
-// main.go – MongoDB Deploy UI (Go rewrite)
-// Drop-in replacement for ui/app.py, runs as a standalone binary.
-// Usage: cd ui-go && go run . (or build with: go build -o mongodeploy .)
+// main.go – PSMDB Sandbox (Go rewrite)
+// Runs as a standalone binary.
 package main
 
 import (
+	"embed"
 	"encoding/json"
+	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"log/slog"
 	"net/http"
@@ -17,6 +19,12 @@ import (
 	"time"
 	"unicode"
 )
+
+// uiAssets contains the read-only files needed to serve the web UI.
+// Terraform and Ansible remain on disk because external tools execute them.
+//
+//go:embed templates static
+var uiAssets embed.FS
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -52,15 +60,14 @@ const defaultAuditFilter = `{ atype: "authCheck", "param.command": { $in: [ "ins
 
 var (
 	// Application directories (set in main)
-	baseDir        string
+	repoDir        string
+	dataDir        string
 	terraformDir   string
 	ansibleDir     string
 	stateFile      string
 	settingsFile   string
 	jobsDir        string
 	pcsmSecretsDir string
-	tmplDir        string
-	staticDir      string
 )
 
 // ─── Template function map ────────────────────────────────────────────────────
@@ -306,9 +313,9 @@ var funcMap = template.FuncMap{
 // ─── renderPage ───────────────────────────────────────────────────────────────
 
 func renderPage(w http.ResponseWriter, page string, data interface{}) {
-	t, err := template.New("").Funcs(funcMap).ParseFiles(
-		filepath.Join(tmplDir, "layout.html"),
-		filepath.Join(tmplDir, page+".html"),
+	t, err := template.New("").Funcs(funcMap).ParseFS(uiAssets,
+		"templates/layout.html",
+		"templates/"+page+".html",
 	)
 	if err != nil {
 		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
@@ -318,6 +325,62 @@ func renderPage(w http.ResponseWriter, page string, data interface{}) {
 	if err := t.ExecuteTemplate(w, "layout", data); err != nil {
 		slog.Error("template execute", "page", page, "err", err)
 	}
+}
+
+func absolutePath(path string) (string, error) {
+	if path == "" {
+		return "", fmt.Errorf("path must not be empty")
+	}
+	return filepath.Abs(filepath.Clean(path))
+}
+
+func configurePaths() error {
+	repo := os.Getenv("UI_REPO_DIR")
+	if repo == "" {
+		return fmt.Errorf("UI_REPO_DIR is required")
+	}
+	var err error
+	if repoDir, err = absolutePath(repo); err != nil {
+		return fmt.Errorf("resolve UI_REPO_DIR: %w", err)
+	}
+	data := os.Getenv("UI_DATA_DIR")
+	if data == "" {
+		data = "./data"
+	}
+	dataDir, err = absolutePath(data)
+	if err != nil {
+		return fmt.Errorf("resolve UI_DATA_DIR: %w", err)
+	}
+
+	terraformDir = filepath.Join(repoDir, "terraform")
+	ansibleDir = filepath.Join(repoDir, "ansible")
+	for _, path := range []struct {
+		name string
+		path string
+	}{
+		{"terraform", terraformDir},
+		{"ansible", ansibleDir},
+	} {
+		info, statErr := os.Stat(path.path)
+		if statErr != nil {
+			return fmt.Errorf("UI_REPO_DIR must contain %s/: %w", path.name, statErr)
+		}
+		if !info.IsDir() {
+			return fmt.Errorf("UI_REPO_DIR/%s is not a directory", path.name)
+		}
+	}
+
+	stateFile = filepath.Join(dataDir, "environments.json")
+	settingsFile = filepath.Join(dataDir, "settings.json")
+	jobsDir = filepath.Join(dataDir, "jobs")
+	pcsmSecretsDir = filepath.Join(dataDir, "secrets", "pcsm")
+	if err := os.MkdirAll(jobsDir, 0755); err != nil {
+		return fmt.Errorf("create jobs directory: %w", err)
+	}
+	if err := os.MkdirAll(pcsmSecretsDir, 0700); err != nil {
+		return fmt.Errorf("create PCSM secrets directory: %w", err)
+	}
+	return nil
 }
 
 // ─── JSON helpers ─────────────────────────────────────────────────────────────
@@ -504,34 +567,12 @@ func validPlatform(p string) bool {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 func main() {
-	cwd, err := os.Getwd()
-	if err != nil {
+	if err := configurePaths(); err != nil {
 		log.Fatal(err)
-	}
-	if override := os.Getenv("UI_BASE_DIR"); override != "" {
-		baseDir = override
-	} else {
-		baseDir = cwd
-	}
-
-	terraformDir = filepath.Join(baseDir, "..", "terraform")
-	ansibleDir = filepath.Join(baseDir, "..", "ansible")
-	stateFile = filepath.Join(baseDir, "environments.json")
-	settingsFile = filepath.Join(baseDir, "settings.json")
-	jobsDir = filepath.Join(baseDir, "jobs")
-	pcsmSecretsDir = filepath.Join(baseDir, "secrets", "pcsm")
-	tmplDir = filepath.Join(baseDir, "templates")
-	staticDir = filepath.Join(baseDir, "static")
-
-	if err := os.MkdirAll(jobsDir, 0755); err != nil {
-		log.Fatal("cannot create jobs dir:", err)
-	}
-	if err := os.MkdirAll(pcsmSecretsDir, 0700); err != nil {
-		log.Fatal("cannot create PCSM secrets dir:", err)
 	}
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
-	slog.Info("starting PSMDB Sandbox", "baseDir", baseDir)
+	slog.Info("starting PSMDB Sandbox", "repoDir", repoDir, "dataDir", filepath.Dir(stateFile))
 
 	go prefetchVersions()
 
@@ -581,7 +622,11 @@ func main() {
 	mux.HandleFunc("POST /api/job/{job_id}/cancel", jobCancelHandler)
 
 	// Static files
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
+	staticFS, err := fs.Sub(uiAssets, "static")
+	if err != nil {
+		log.Fatal("load embedded static assets:", err)
+	}
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
 
 	addr := ":5001"
 	if p := os.Getenv("PORT"); p != "" {

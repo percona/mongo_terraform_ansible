@@ -16,22 +16,6 @@ Supported platforms:
 - CHAOS
 - Docker
 
-## Search and Vector Search
-
-Clusters and replica sets can enable MongoDB Search / Vector Search from the configuration wizard.
-
-- Docker deployments run `mongot` sidecars from a selectable Docker Hub
-  namespace and repository. The UI queries tags for the selected image, with
-  `mongodb/mongodb-community-search` and
-  `perconalab/percona-search-mongodb` available by default.
-- Cloud and CHAOS deployments support the Percona Search package and the MongoDB
-  Community `mongot` tarball. **Auto** selects Percona Search for PSMDB 8.3 and
-  the Community implementation otherwise.
-- `mongot` requires MongoDB 8.2 or later. Percona Search requires PSMDB 8.3;
-  PSMDB 8.3 currently requires Percona Search version `1.70` or newer (or `latest`).
-- The UI validates these combinations before it writes the environment
-  configuration.
-
 ## Requirements
 
 - **Go 1.22+** (install with `./scripts/install-prerequisites.sh --ui` from the repository root)
@@ -45,14 +29,6 @@ Optional, depending on the environment type you want to deploy:
 The installer supports macOS with Homebrew already installed plus Debian- and
 RHEL-family Linux. It does not configure provider credentials. See the root
 [prerequisites](../README.md#prerequisites) for all target flags and requirements.
-
-## Managed TLS
-
-AWS, GCP, Azure, and CHAOS clusters and replica sets can independently enable TLS with x.509 member authentication. Enable **Provision certificate authority** to configure one shared CA for the environment, then select TLS on the required topologies. A dedicated CA VM is the default; the PMM host can be used instead, in which case the same host belongs to both `[pmm]` and `[ca]`.
-
-TLS-enabled topologies use `preferTLS`: internal members authenticate with x.509, while SCRAM clients may connect with or without TLS.
-
-Deploy runs `cert_setup.yml` after Terraform provisioning and then runs `main.yml` once with TLS enabled. The bundled CA is intended for test environments. Existing CA and leaf certificates are retained on retries and topology expansion.
 
 ## Quick Start
 
@@ -100,74 +76,6 @@ The environment detail page provides deployment actions, topology summary,
 Hosts & Connections, and YCSB controls when enabled.
 
 ![Environment detail](static/readme/environment-detail.png)
-
-## State transition diagrams
-
-### Docker
-
-```mermaid
-stateDiagram-v2
-    [*]              --> Configured        : Create / Save
-
-    Configured       --> DeployInProgress  : Deploy
-    Stopped          --> DeployInProgress  : Deploy
-    Running          --> DeployInProgress  : Re-deploy
-
-    DeployInProgress --> Running           : ✓ success
-    DeployInProgress --> Configured        : ✗ failed (retry)
-
-    Running          --> StopInProgress    : Stop
-    Stopped          --> RestartInProgress : Restart
-    Running          --> RestartInProgress : Restart
-
-    StopInProgress   --> Stopped           : ✓ success
-    RestartInProgress --> Running          : ✓ success
-
-    Running          --> DestroyInProgress : Destroy
-    Stopped          --> DestroyInProgress : Destroy
-    DestroyInProgress --> Deleted          : ✓ success
-```
-
-### Cloud (AWS / GCP / Azure)
-
-```mermaid
-stateDiagram-v2
-    [*]                  --> Configured            : Create / Save
-
-    Configured           --> DeployInProgress      : Deploy
-    Configured           --> ProvisionInProgress   : Provision only
-
-    DeployInProgress     --> Running               : ✓ success
-    DeployInProgress     --> Configured            : ✗ failed (retry)
-
-    ProvisionInProgress  --> ProvisionSuccess      : Terraform OK
-    ProvisionSuccess     --> ConfigureInProgress   : Install (auto-starts)
-
-    ConfigureInProgress  --> Running               : ✓ success (no intermediate state)
-    ConfigureInProgress  --> Provisioned           : ✗ failed (re-run Install)
-
-    Provisioned          --> ConfigureInProgress   : Install
-    Provisioned          --> DeployInProgress      : Re-deploy
-
-    Running              --> ConfigureInProgress   : Install (re-configure)
-    Running              --> ResetInProgress       : Reset
-    Running              --> StopInProgress        : Stop
-    Running              --> RestartInProgress     : Restart
-    Running              --> DestroyInProgress     : Destroy
-
-    ResetInProgress      --> Provisioned           : ✓ success
-    StopInProgress       --> Stopped               : ✓ success
-    RestartInProgress    --> Running               : ✓ success
-    Stopped              --> RestartInProgress     : Restart
-    Stopped              --> DestroyInProgress     : Destroy
-
-    DestroyInProgress    --> Deleted               : ✓ success
-```
-
-> **Note:** Every `*InProgress` state may transition back to the **previous
-> stable state** on failure (shown as "retry" for brevity).  There is **no**
-> `ConfigureSuccess` state — a successful Ansible run goes directly to
-> **Running**.
 
 ---
 
@@ -232,22 +140,6 @@ Open **Settings** from the environments page and configure credentials for the c
 
 Use the provider-specific **Configure** button after entering credentials, then **Test** to validate them. Deploy, Provision, and Destroy validate provider credentials before Terraform runs.
 
-## YCSB Workloads
-
-When **Include YCSB** is enabled, the UI provisions a dedicated workload generator for Docker and cloud environments. After the environment is provisioned or running, each cluster and standalone replica set shows YCSB controls:
-
-- **Insert Data** runs the initial YCSB load.
-- **Start Load** starts a background workload against the selected target.
-- **Stop Load** stops the active workload.
-
-For Docker, the UI runs YCSB inside the generated YCSB container. For cloud platforms, it connects to the generated YCSB host over SSH and runs `/opt/ycsb/bin/ycsb`.
-
-## Percona ClusterSync
-
-Enable ClusterSync while configuring an environment, then select two replica sets or two sharded clusters in that environment. The deployment creates one dedicated PCSM container for Docker or one dedicated VM for AWS, GCP, Azure, and CHAOS. PCSM 0.9.0 is the default and sharded replication is marked as technical preview.
-
-The UI generates least-privilege source and target users and stores their random credentials in `secrets/pcsm/<environment>/` with owner-only permissions. Connection URIs are mounted or copied from those files and are not written to tfvars or `environments.json`. The environment page provides start, pause, resume, resume-from-failure, finalize, reset, status, progress, and redacted logs. Port 2242 is not published; the UI controls PCSM through `docker exec` or SSH.
-
 ## Topology Expansion
 
 The UI supports additive topology changes for deployed environments:
@@ -272,37 +164,6 @@ The UI refuses unsupported changes before Terraform runs:
 - Changing `arbiters_per_replset` on existing sharded clusters or standalone replica sets.
 
 Use **Deploy** for topology expansion. **Provision** is intentionally refused for topology expansion because it would only create infrastructure and would not run the required MongoDB reconfiguration playbook.
-
-## File structure
-
-```
-ui-go/
-├── main.go, types.go              Application entry point and data models
-├── handlers.go, jobs.go           HTTP handlers and background job execution
-├── state.go, cache.go             Persistent UI state and in-memory cache
-├── tfvars.go, topology_changes.go Terraform configuration and scale-out planning
-├── provider_auth.go, ssh_config.go Provider credentials and managed SSH config
-├── prereqs.go, regions.go         Prerequisite and provider metadata discovery
-├── versions.go, hosts.go          Version discovery and connection details
-├── *_test.go                      Colocated Go unit and integration-style tests
-├── go.mod                         Go module (standard library only)
-├── templates/
-│   ├── layout.html
-│   ├── index.html
-│   ├── new_environment.html
-│   ├── configure.html
-│   └── environment.html
-└── static/
-    ├── style.css
-    └── app.js
-```
-
-The binary embeds `templates/` and `static/`. Runtime files are created under
-`UI_DATA_DIR`, while generated Terraform files and state remain under the repository's
-`terraform/` directory.
-
-Tests remain next to the code they exercise, following standard Go conventions.
-Add reusable input or expected-output fixtures under `testdata/` when needed.
 
 ## Security note
 

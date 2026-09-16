@@ -321,6 +321,14 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 		applyConfiguredCloudServicePorts(groupHosts, env)
 		hosts = append(hosts, groupHosts...)
 	}
+	if env.Config.ClusterSync.Enabled {
+		p := filepath.Join(tfDir, filePrefix+"_inventory_pcsm")
+		if content, err := os.ReadFile(p); err == nil {
+			groupHosts := parseInventoryHosts(string(content), "ClusterSync", sshUser, sshPrivateKeyPath)
+			applyConfiguredCloudServicePorts(groupHosts, env)
+			hosts = append(hosts, groupHosts...)
+		}
+	}
 	hosts = uniqueHosts(hosts)
 
 	var mongoConns []MongoConnInfo

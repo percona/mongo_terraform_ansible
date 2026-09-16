@@ -1854,6 +1854,13 @@ func getInventoryHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		files = append(files, invFile{Name: filePrefix + "_inventory_" + name, Content: string(content)})
 	}
+	if env.Config.ClusterSync.Enabled {
+		name := "pcsm"
+		p := filepath.Join(tfDir, filePrefix+"_inventory_"+name)
+		if content, err := os.ReadFile(p); err == nil {
+			files = append(files, invFile{Name: filePrefix + "_inventory_" + name, Content: string(content)})
+		}
+	}
 
 	if len(files) == 0 {
 		writeJSON(w, 200, map[string]interface{}{

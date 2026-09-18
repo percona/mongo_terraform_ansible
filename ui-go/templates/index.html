@@ -93,25 +93,25 @@
           <input type="number" id="settings_terraform_parallelism" min="1" max="256" value="{{if .Settings.TerraformParallelism}}{{.Settings.TerraformParallelism}}{{end}}" placeholder="default">
         </div>
         <div class="form-group form-group-full">
-          <label for="settings_ssh_public_key_path">SSH Public Key File <span class="field-tip" data-tip="Required for new AWS, GCP, and Azure deployments. Not used for CHAOS.">ⓘ</span></label>
+          <label for="settings_ssh_public_key_display">SSH Public Key File <span class="field-tip" data-tip="Required for new AWS, GCP, and Azure deployments. Not used for CHAOS.">ⓘ</span></label>
           <div class="settings-file-row">
-            <input type="text" id="settings_ssh_public_key_path"
-                   value="{{.Settings.SSHPublicKeyPath}}"
+            <input type="text" id="settings_ssh_public_key_display"
                    placeholder="No file selected" readonly>
+            <input type="hidden" id="settings_ssh_public_key_path" value="{{.Settings.SSHPublicKeyPath}}">
             <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('settings_ssh_public_key_file_input').click()">Browse...</button>
-            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('settings_ssh_public_key_path').value=''">Clear</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="clearUploadedFile('settings_ssh_public_key_display', 'settings_ssh_public_key_path', 'settings_ssh_public_key_upload_status')">Clear</button>
             <input type="file" id="settings_ssh_public_key_file_input" accept=".pub,text/plain" style="display:none" onchange="uploadSettingsSSHKeyFile(this, 'public')">
           </div>
           <small id="settings_ssh_public_key_upload_status" class="text-muted"></small>
         </div>
         <div class="form-group form-group-full">
-          <label for="settings_ssh_private_key_path">SSH Private Key File <span class="field-tip" data-tip="Optional. Leave empty to keep using ssh-agent as today.">ⓘ</span></label>
+          <label for="settings_ssh_private_key_display">SSH Private Key File <span class="field-tip" data-tip="Optional. Leave empty to keep using ssh-agent as today.">ⓘ</span></label>
           <div class="settings-file-row">
-            <input type="text" id="settings_ssh_private_key_path"
-                   value="{{.Settings.SSHPrivateKeyPath}}"
+            <input type="text" id="settings_ssh_private_key_display"
                    placeholder="No file selected" readonly>
+            <input type="hidden" id="settings_ssh_private_key_path" value="{{.Settings.SSHPrivateKeyPath}}">
             <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('settings_ssh_private_key_file_input').click()">Browse...</button>
-            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('settings_ssh_private_key_path').value=''">Clear</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="clearUploadedFile('settings_ssh_private_key_display', 'settings_ssh_private_key_path', 'settings_ssh_private_key_upload_status')">Clear</button>
             <input type="file" id="settings_ssh_private_key_file_input" style="display:none" onchange="uploadSettingsSSHKeyFile(this, 'private')">
           </div>
           <small id="settings_ssh_private_key_upload_status" class="text-muted"></small>
@@ -141,10 +141,12 @@
             <input type="text" id="settings_gcp_project_id" value="{{.Settings.GCPProjectID}}" placeholder="my-gcp-project">
           </div>
           <div class="form-group form-group-full">
-            <label for="settings_gcp_service_account_key">Service Account JSON</label>
+            <label for="settings_gcp_service_account_display">Service Account JSON</label>
             <div class="settings-file-row">
-              <input type="text" id="settings_gcp_service_account_key" value="{{.Settings.GCPServiceAccountKey}}" placeholder="Uploaded key path" readonly>
+              <input type="text" id="settings_gcp_service_account_display" placeholder="No file selected" readonly>
+              <input type="hidden" id="settings_gcp_service_account_key" value="{{.Settings.GCPServiceAccountKey}}">
               <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('gcp_service_account_file_input').click()">Browse...</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="clearUploadedFile('settings_gcp_service_account_display', 'settings_gcp_service_account_key', 'gcp_credential_upload_status')">Clear</button>
               <input type="file" id="gcp_service_account_file_input" accept="application/json,.json" style="display:none" onchange="uploadProviderCredentialFile(this, 'gcp')">
             </div>
             <small id="gcp_credential_upload_status" class="text-muted"></small>
@@ -245,12 +247,12 @@
           <input type="text" id="settings_chaos_ssh_user" value="{{strDefault .Settings.ChaosSSHUser .Settings.SSHUser}}" placeholder="{{.LocalSSHUser}}">
         </div>
         <div class="form-group form-group-full">
-          <label for="settings_chaos_api_token_path">CHAOS API Token File <span class="field-tip" data-tip="Token file used to authenticate with the CHAOS provider. Stored under ui-go/secrets/chaos/ when uploaded.">ⓘ</span></label>
+          <label for="settings_chaos_api_token_display">CHAOS API Token File <span class="field-tip" data-tip="Token file used to authenticate with the CHAOS provider. Stored securely by PSMDB Sandbox when uploaded.">ⓘ</span></label>
           <div class="settings-file-row">
-            <input type="text" id="settings_chaos_api_token_path"
-                   value="{{.Settings.ChaosApiTokenPath}}"
-                   placeholder="Uploaded token path" readonly>
+            <input type="text" id="settings_chaos_api_token_display" placeholder="No file selected" readonly>
+            <input type="hidden" id="settings_chaos_api_token_path" value="{{.Settings.ChaosApiTokenPath}}">
             <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('chaos_token_file_input').click()">Browse...</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="clearUploadedFile('settings_chaos_api_token_display', 'settings_chaos_api_token_path', 'chaos_token_upload_status')">Clear</button>
             <input type="file" id="chaos_token_file_input" style="display:none" onchange="uploadChaosTokenFile(this)">
           </div>
           <small id="chaos_token_upload_status" class="text-muted"></small>
@@ -266,6 +268,7 @@
 
 <script>
 function openPlatformSettings() {
+  initializeUploadedFileDisplays();
   const settings = getPlatformSettings();
   document.querySelectorAll('#platform-settings-form input[name="platform"]').forEach(input => {
     input.checked = !!settings[input.value];
@@ -298,6 +301,30 @@ function switchSettingsTab(tab) {
   });
 }
 
+function uploadedFileBasename(path) {
+  return (path || '').trim().split(/[\\/]/).pop() || '';
+}
+
+function setUploadedFile(displayID, pathID, path, filename) {
+  const display = document.getElementById(displayID);
+  const storedPath = document.getElementById(pathID);
+  if (display) display.value = filename || uploadedFileBasename(path);
+  if (storedPath) storedPath.value = path || '';
+}
+
+function clearUploadedFile(displayID, pathID, statusID) {
+  setUploadedFile(displayID, pathID, '', '');
+  const status = document.getElementById(statusID);
+  if (status) status.textContent = '';
+}
+
+function initializeUploadedFileDisplays() {
+  setUploadedFile('settings_ssh_public_key_display', 'settings_ssh_public_key_path', document.getElementById('settings_ssh_public_key_path').value);
+  setUploadedFile('settings_ssh_private_key_display', 'settings_ssh_private_key_path', document.getElementById('settings_ssh_private_key_path').value);
+  setUploadedFile('settings_gcp_service_account_display', 'settings_gcp_service_account_key', document.getElementById('settings_gcp_service_account_key').value);
+  setUploadedFile('settings_chaos_api_token_display', 'settings_chaos_api_token_path', document.getElementById('settings_chaos_api_token_path').value);
+}
+
 async function uploadChaosTokenFile(input) {
   const file = input.files[0];
   if (!file) return;
@@ -309,8 +336,8 @@ async function uploadChaosTokenFile(input) {
     const resp = await fetch('/api/upload-chaos-token', { method: 'POST', body });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Upload failed');
-    document.getElementById('settings_chaos_api_token_path').value = data.path || '';
-    if (status) status.textContent = `Uploaded ${data.filename || 'token file'} to ${data.path}`;
+    setUploadedFile('settings_chaos_api_token_display', 'settings_chaos_api_token_path', data.path, data.filename || 'token file');
+    if (status) status.textContent = `Uploaded ${data.filename || 'token file'}. Stored securely by PSMDB Sandbox.`;
   } catch (err) {
     if (status) status.textContent = 'Upload failed.';
     alert('Could not upload CHAOS token file: ' + err.message);
@@ -323,7 +350,6 @@ async function uploadSettingsSSHKeyFile(input, kind) {
   const file = input.files[0];
   if (!file) return;
   const status = document.getElementById(`settings_ssh_${kind}_key_upload_status`);
-  const pathInput = document.getElementById(`settings_ssh_${kind}_key_path`);
   const body = new FormData();
   body.append('ssh_key_file', file);
   if (status) status.textContent = `Uploading ${kind} key file...`;
@@ -331,8 +357,8 @@ async function uploadSettingsSSHKeyFile(input, kind) {
     const resp = await fetch(`/api/upload-settings-ssh-key/${kind}`, { method: 'POST', body });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Upload failed');
-    if (pathInput) pathInput.value = data.path || '';
-    if (status) status.textContent = `Uploaded ${data.filename || kind + ' key'} to ${data.path}`;
+    setUploadedFile(`settings_ssh_${kind}_key_display`, `settings_ssh_${kind}_key_path`, data.path, data.filename || kind + ' key');
+    if (status) status.textContent = `Uploaded ${data.filename || kind + ' key'}. Stored securely by PSMDB Sandbox.`;
   } catch (err) {
     if (status) status.textContent = 'Upload failed.';
     alert(`Could not upload SSH ${kind} key file: ` + err.message);
@@ -352,8 +378,8 @@ async function uploadProviderCredentialFile(input, platform) {
     const resp = await fetch(`/api/upload-provider-credential/${platform}`, { method: 'POST', body });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Upload failed');
-    if (platform === 'gcp') document.getElementById('settings_gcp_service_account_key').value = data.path || '';
-    if (status) status.textContent = `Uploaded ${data.filename || 'credential file'} to ${data.path}`;
+    if (platform === 'gcp') setUploadedFile('settings_gcp_service_account_display', 'settings_gcp_service_account_key', data.path, data.filename || 'credential file');
+    if (status) status.textContent = `Uploaded ${data.filename || 'credential file'}. Stored securely by PSMDB Sandbox.`;
   } catch (err) {
     if (status) status.textContent = 'Upload failed.';
     alert('Could not upload credential file: ' + err.message);

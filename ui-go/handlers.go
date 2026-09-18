@@ -25,16 +25,39 @@ func chaosTokenSecretsDir() string {
 	return filepath.Join(dataDir, "secrets", "chaos")
 }
 
-func chaosTokenUploadPath() string {
-	return filepath.Join(chaosTokenSecretsDir(), "chaos_api.token")
+func chaosTokenUploadPath(filename string) string {
+	return filepath.Join(chaosTokenSecretsDir(), filename)
 }
 
 func sshSecretsDir() string {
 	return filepath.Join(dataDir, "secrets", "ssh")
 }
 
-func sshKeyUploadPath(kind string) string {
-	return filepath.Join(sshSecretsDir(), "settings_"+kind)
+func sshKeyUploadPath(filename string) string {
+	return filepath.Join(sshSecretsDir(), filename)
+}
+
+func managedUploadFilename(rawName, fallback string) string {
+	name := safeFilenameRe.ReplaceAllString(filepath.Base(rawName), "_")
+	if name == "" || name == "." || name == ".." {
+		return fallback
+	}
+	return name
+}
+
+func sshUploadFilename(kind, rawName string) string {
+	fallback := "settings_" + kind
+	name := managedUploadFilename(rawName, fallback)
+	if kind == "public" {
+		if strings.ToLower(filepath.Ext(name)) != ".pub" {
+			name += ".pub"
+		}
+		return name
+	}
+	if filepath.Ext(name) == "" || strings.EqualFold(filepath.Ext(name), ".pub") {
+		name += ".key"
+	}
+	return name
 }
 
 func currentLocalUser() string {
@@ -1037,7 +1060,8 @@ func apiUploadSettingsSSHKeyHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 500, "cannot create secrets dir: "+err.Error())
 		return
 	}
-	storedPath := sshKeyUploadPath(kind)
+	storedFilename := sshUploadFilename(kind, header.Filename)
+	storedPath := sshKeyUploadPath(storedFilename)
 	mode := os.FileMode(0600)
 	if err := os.WriteFile(storedPath, data, mode); err != nil {
 		jsonError(w, 500, "write failed: "+err.Error())
@@ -1046,7 +1070,7 @@ func apiUploadSettingsSSHKeyHandler(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, 200, map[string]string{
 		"path":     storedPath,
-		"filename": filepath.Base(header.Filename),
+		"filename": storedFilename,
 	})
 }
 
@@ -1120,14 +1144,15 @@ func apiUploadChaosTokenHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 500, "cannot create secrets dir: "+err.Error())
 		return
 	}
-	storedPath := chaosTokenUploadPath()
+	storedFilename := managedUploadFilename(header.Filename, "chaos_api.token")
+	storedPath := chaosTokenUploadPath(storedFilename)
 	if err := os.WriteFile(storedPath, []byte(token+"\n"), 0600); err != nil {
 		jsonError(w, 500, "write failed: "+err.Error())
 		return
 	}
 	writeJSON(w, 200, map[string]string{
 		"path":     storedPath,
-		"filename": filepath.Base(header.Filename),
+		"filename": storedFilename,
 	})
 }
 

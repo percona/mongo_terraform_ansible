@@ -116,8 +116,8 @@ func guessDockerRole(name, prefix string) string {
 		return "configsvr"
 	case strings.HasPrefix(base, "pmm"):
 		return "pmm"
-	case strings.HasPrefix(base, "minio"):
-		return "minio"
+	case strings.HasPrefix(base, "seaweedfs"):
+		return "seaweedfs"
 	case strings.HasPrefix(base, "ldap"):
 		return "ldap"
 	case strings.HasPrefix(base, "ycsb"):
@@ -458,8 +458,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			role = "pmm"
 		case sec == "ca":
 			role = "ca"
-		case strings.Contains(sec, "minio"):
-			role = "minio"
+		case strings.Contains(sec, "seaweedfs"):
+			role = "seaweedfs"
 		case strings.Contains(sec, "ycsb"):
 			role = "ycsb"
 		case strings.Contains(sec, "pcsm"):
@@ -467,12 +467,12 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 		case strings.Contains(sec, "ldap"):
 			role = "ldap"
 		}
-		// Service hosts (minio, pmm) get their own logical group so they appear in
+		// Service hosts (seaweedfs, pmm) get their own logical group so they appear in
 		// a separate subsection rather than inside the replica-set/cluster group.
 		hostGroup := group
 		switch role {
-		case "minio":
-			hostGroup = "Minio"
+		case "seaweedfs":
+			hostGroup = "SeaweedFS"
 		case "pmm":
 			hostGroup = "PMM"
 		case "ca":
@@ -513,7 +513,7 @@ func cloudHostPort(role, section string) string {
 		return "27017"
 	case "pmm":
 		return "8443"
-	case "minio":
+	case "seaweedfs":
 		return "9000, 9001"
 	case "ldap":
 		return "389"
@@ -531,14 +531,14 @@ func applyConfiguredCloudServicePorts(hosts []HostInfo, env *Environment) {
 				port = 8443
 			}
 			hosts[i].Port = fmt.Sprintf("%d", port)
-		case "minio":
-			servicePort := env.Config.MinioPort
+		case "seaweedfs":
+			servicePort := env.Config.SeaweedFSPort
 			if servicePort == 0 {
-				servicePort = 9000
+				servicePort = 8333
 			}
-			consolePort := env.Config.MinioConsolePort
+			consolePort := env.Config.SeaweedFSAdminPort
 			if consolePort == 0 {
-				consolePort = 9001
+				consolePort = 9333
 			}
 			hosts[i].Port = fmt.Sprintf("%d, %d", servicePort, consolePort)
 		}
@@ -581,15 +581,12 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 				URL:   fmt.Sprintf("https://%s:%d", host, port),
 			})
 		}
-		for svcName, svc := range env.Config.MinioServers {
-			consolePort := svc.MinioConsolePort
-			if consolePort == 0 {
-				consolePort = 9001
-			}
+		for svcName := range env.Config.SeaweedFSServers {
+			objectBrowserPort := 8888
 			urls = append(urls, ServiceURL{
 				Name:  prefix + "-" + svcName,
-				Label: "MinIO Console: " + svcName,
-				URL:   fmt.Sprintf("http://%s:%d", host, consolePort),
+				Label: "SeaweedFS Object Browser: " + svcName,
+				URL:   fmt.Sprintf("http://%s:%d/buckets/", host, objectBrowserPort),
 			})
 		}
 		for svcName := range env.Config.LdapServers {
@@ -611,8 +608,8 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 			names = append(names, name)
 		}
 		sort.Strings(names)
-		minioHost := ""
-		minioIP := ""
+		seaweedFSHost := ""
+		seaweedFSIP := ""
 		pmmHost := ""
 		pmmIP := ""
 		ldapHost := ""
@@ -624,41 +621,41 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 			if err != nil {
 				continue
 			}
-			inMinio := false
+			inSeaweedFS := false
 			inPmm := false
 			inLDAP := false
 			for _, line := range strings.Split(string(content), "\n") {
 				line = strings.TrimSpace(line)
-				if line == "[minio]" {
-					inMinio = true
+				if line == "[seaweedfs]" {
+					inSeaweedFS = true
 					inPmm = false
 					inLDAP = false
 					continue
 				}
 				if line == "[pmm]" {
 					inPmm = true
-					inMinio = false
+					inSeaweedFS = false
 					inLDAP = false
 					continue
 				}
 				if line == "[ldap]" {
 					inLDAP = true
-					inMinio = false
+					inSeaweedFS = false
 					inPmm = false
 					continue
 				}
 				if strings.HasPrefix(line, "[") {
-					inMinio = false
+					inSeaweedFS = false
 					inPmm = false
 					inLDAP = false
 					continue
 				}
-				if inMinio && line != "" {
+				if inSeaweedFS && line != "" {
 					parts := strings.Fields(line)
-					minioHost = parts[0]
+					seaweedFSHost = parts[0]
 					for _, kv := range parts[1:] {
 						if strings.HasPrefix(kv, "ansible_host=") {
-							minioIP = strings.TrimPrefix(kv, "ansible_host=")
+							seaweedFSIP = strings.TrimPrefix(kv, "ansible_host=")
 						}
 					}
 				}
@@ -681,23 +678,20 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 					}
 				}
 			}
-			if (minioHost != "" || minioIP != "") && (pmmHost != "" || pmmIP != "") && (ldapHost != "" || ldapIP != "") {
+			if (seaweedFSHost != "" || seaweedFSIP != "") && (pmmHost != "" || pmmIP != "") && (ldapHost != "" || ldapIP != "") {
 				break
 			}
 		}
-		if minioHost != "" || minioIP != "" {
-			host := minioIP
+		if seaweedFSHost != "" || seaweedFSIP != "" {
+			host := seaweedFSIP
 			if host == "" {
-				host = minioHost
+				host = seaweedFSHost
 			}
-			consolePort := env.Config.MinioConsolePort
-			if consolePort == 0 {
-				consolePort = 9001
-			}
+			objectBrowserPort := 8888
 			urls = append(urls, ServiceURL{
-				Name:  "minio",
-				Label: "MinIO Console",
-				URL:   fmt.Sprintf("http://%s:%d", host, consolePort),
+				Name:  "seaweedfs",
+				Label: "SeaweedFS Object Browser",
+				URL:   fmt.Sprintf("http://%s:%d/buckets/", host, objectBrowserPort),
 			})
 		}
 		if v := env.Config.EnablePmm; v != nil && *v {

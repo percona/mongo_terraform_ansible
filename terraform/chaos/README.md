@@ -3,12 +3,12 @@
 Creates the following resources:
 
 - VM instances for each MongoDB component (using the `chaos` provider)
-- A dedicated VM running [Minio](https://min.io/) for S3-compatible backup storage
+- A dedicated VM running [SeaweedFS](https://github.com/seaweedfs/seaweedfs) for S3-compatible backup storage
 - Firewall rules per instance
 - Ansible inventory
 - SSH configuration
 
-Unlike public cloud providers (AWS, GCP, Azure), the CHAOS provider does not offer managed object storage. A Minio server VM is provisioned instead to provide an S3-compatible backup endpoint for [Percona Backup for MongoDB (PBM)](https://docs.percona.com/percona-backup-mongodb/index.html).
+Unlike public cloud providers (AWS, GCP, Azure), the CHAOS provider does not offer managed object storage. A SeaweedFS server VM is provisioned instead to provide an S3-compatible backup endpoint for [Percona Backup for MongoDB (PBM)](https://docs.percona.com/percona-backup-mongodb/index.html).
 
 ## Prerequisites
 
@@ -61,7 +61,7 @@ Unlike public cloud providers (AWS, GCP, Azure), the CHAOS provider does not off
 
 5. Run the Ansible playbooks from [../../ansible](../../ansible) to complete the software installation.
 
-- You can run `terraform output` to see the Minio endpoint and credentials generated for backup storage
+- You can run `terraform output` to see the SeaweedFS endpoint and credentials generated for backup storage
 
 ## Connecting
 
@@ -103,7 +103,7 @@ prefix        = "myenv"
 my_ssh_user   = "your_chaos_username"
 clusters      = {}
 enable_pmm    = false
-enable_minio  = false
+enable_seaweedfs  = false
 
 replsets = {
   rs01 = {
@@ -150,24 +150,24 @@ For entirely new clusters or replica sets, run `ansible/main.yml` against their 
 
 Reducing topology size, changing `configsvr_count`, changing `shardsvr_replicas`, and changing arbiter counts are not implemented.
 
-## Backup Storage (Minio)
+## Backup Storage (SeaweedFS)
 
-Since the CHAOS environment does not feature managed object storage, a dedicated VM running [Minio](https://min.io/) is provisioned as an S3-compatible alternative to AWS S3 or GCP Cloud Storage.
+Since the CHAOS environment does not feature managed object storage, a dedicated VM running [SeaweedFS](https://github.com/seaweedfs/seaweedfs) is provisioned as an S3-compatible backup endpoint.
 
-The Minio server:
-- Listens on port `9000` (API) and `9001` (web console)
-- Uses root credentials defined by `minio_root_user` and `minio_root_password` variables
-- Is **installed and configured via Ansible** (`minio_install.yml` playbook) — the Terraform `user_data` only sets the hostname
-- Automatically creates the backup bucket during Ansible provisioning
-- Is referenced in the generated Ansible inventory as the `endpointUrl` for PBM with `storage_provider=minio`
+The SeaweedFS server:
+- Listens on port `8333` (S3 API), `8888` (object browser), and `9333` (Admin UI)
+- Uses credentials defined by `seaweedfs_access_key` and `seaweedfs_secret_key`
+- Is **installed and configured via Ansible** (`seaweedfs_install.yml`) — the Terraform `user_data` only sets the hostname
+- Runs the single-node `weed mini` mode
+- Is referenced in the generated Ansible inventory as the `endpointUrl` for PBM with `storage_provider=minio`; PBM keeps using its MinIO driver because SeaweedFS provides an S3-compatible endpoint
 
-To access the Minio web console, use SSH port forwarding:
+To access the SeaweedFS Admin UI, use SSH port forwarding:
 
 ```
-ssh -L 9001:localhost:9001 <minio-server-hostname>
+ssh -L 9333:localhost:9333 <seaweedfs-server-hostname>
 ```
 
-Then open `http://localhost:9001` in your browser.
+Then open `http://localhost:8888/buckets/` in your browser to browse buckets and objects. The S3 endpoint is available on port `8333`, and the Admin UI is available on port `9333`.
 
 ## Percona ClusterSync
 

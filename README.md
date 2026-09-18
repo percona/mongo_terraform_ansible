@@ -65,7 +65,7 @@ Key features:
 - Optional YCSB workload generator with UI controls to insert data, start load, and stop load
 - Live deployment log streamed in the browser via Server-Sent Events
 - Hosts & Connections panel with one-click SSH/`docker exec` commands, MongoDB connection
-  strings, and direct links to PMM and MinIO Console web UIs
+  strings, and direct links to PMM and SeaweedFS Admin UIs
 - Multiple concurrent environments supported — each gets its own prefixed inventory and
   SSH config files (e.g. `myenv_inventory_cl01`, `myenv_ssh_config_cl01`)
 

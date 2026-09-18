@@ -375,57 +375,57 @@ variable "ycsb_volume_size" {
 }
 
 #############
-# Backup (Minio)
+# Backup (SeaweedFS)
 #############
 
-variable "default_minio_host" {
-  description = "Base Minio host name"
+variable "default_seaweedfs_host" {
+  description = "Base SeaweedFS host name"
   type        = string
-  default     = "minio-server"
+  default     = "seaweedfs-server"
 }
 
 locals {
-  minio_host = "${var.prefix}-${var.default_minio_host}"
+  seaweedfs_host = "${var.prefix}-${var.default_seaweedfs_host}"
 }
 
-variable "minio_cpu_cores" {
+variable "seaweedfs_cpu_cores" {
   default     = 2
-  description = "Number of CPU cores for the Minio server instance"
+  description = "Number of CPU cores for the SeaweedFS server instance"
 }
 
-variable "minio_memory_gb" {
+variable "seaweedfs_memory_gb" {
   default     = 4
-  description = "Memory in GB for the Minio server instance"
+  description = "Memory in GB for the SeaweedFS server instance"
 }
 
-variable "minio_volume_size" {
+variable "seaweedfs_volume_size" {
   default     = 20
-  description = "Root disk size in GB for the Minio server (stores all backups)"
+  description = "Root disk size in GB for the SeaweedFS server (stores all backups)"
 }
 
-variable "minio_port" {
+variable "seaweedfs_port" {
   type        = number
-  default     = 9000
-  description = "Port for the Minio API endpoint"
+  default     = 8333
+  description = "Port for the SeaweedFS S3 endpoint"
 }
 
-variable "minio_console_port" {
+variable "seaweedfs_admin_port" {
   type        = number
-  default     = 9001
-  description = "Port for the Minio web console"
+  default     = 9333
+  description = "Port for the SeaweedFS admin UI"
 }
 
-variable "minio_root_user" {
+variable "seaweedfs_access_key" {
   type        = string
-  default     = "minioadmin"
-  description = "Minio root user (access key)"
+  default     = "seaweedfs"
+  description = "SeaweedFS S3 access key"
 }
 
-variable "minio_root_password" {
+variable "seaweedfs_secret_key" {
   type        = string
-  default     = "minioadmin"
+  default     = "seaweedfs-secret"
   sensitive   = true
-  description = "Minio root password (secret key)"
+  description = "SeaweedFS S3 secret key"
 }
 
 variable "default_bucket_name" {
@@ -440,7 +440,7 @@ locals {
 
 variable "backup_retention" {
   default     = 2
-  description = "Days to keep backups in Minio bucket"
+  description = "Days to keep backups in SeaweedFS bucket"
 }
 
 #############
@@ -563,10 +563,10 @@ variable "chaos_api_token" {
   description = "CHAOS API token. If null, the CHAOS_API_TOKEN environment variable is used."
 }
 
-variable "enable_minio" {
+variable "enable_seaweedfs" {
   type        = bool
   default     = true
-  description = "Deploy a Minio S3-compatible backup storage VM. Set to false to skip Minio."
+  description = "Deploy a SeaweedFS S3-compatible backup storage VM. Set to false to skip SeaweedFS."
 }
 
 #############

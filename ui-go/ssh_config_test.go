@@ -397,7 +397,7 @@ func TestGuessDockerRole(t *testing.T) {
 		{"myenv-rs01-arb1", "arbiter"},
 		{"myenv-cl01-cfg1", "configsvr"},
 		{"myenv-cl01-mongos1", "mongos"},
-		{"myenv-minio-server", "minio"},
+		{"myenv-seaweedfs-server", "seaweedfs"},
 		{"myenv-ldap-server", "ldap"},
 	}
 	for _, tc := range tests {
@@ -449,6 +449,22 @@ func TestConfigServiceURLsIncludesDockerLDAPConsole(t *testing.T) {
 	urls := configServiceURLs("test", env)
 	if len(urls) != 1 || urls[0].Label != "LDAP Console: directory" || urls[0].URL != "http://localhost:80" {
 		t.Fatalf("LDAP service URLs = %+v, want phpLDAPadmin console URL", urls)
+	}
+}
+
+func TestConfigServiceURLsUsesSeaweedFSObjectBrowser(t *testing.T) {
+	env := &Environment{
+		Platform: "docker",
+		Config: Config{
+			Prefix: "test",
+			SeaweedFSServers: map[string]SeaweedFSServerConfig{
+				"seaweedfs": {SeaweedFSPort: 8333, SeaweedFSAdminPort: 9333},
+			},
+		},
+	}
+	urls := configServiceURLs("test", env)
+	if len(urls) != 1 || urls[0].Label != "SeaweedFS Object Browser: seaweedfs" || urls[0].URL != "http://localhost:8888/buckets/" {
+		t.Fatalf("SeaweedFS service URLs = %+v, want filer object browser URL", urls)
 	}
 }
 

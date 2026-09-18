@@ -8,9 +8,6 @@ terraform {
       source  = "kreuzwerker/docker"
       version = ">= 3.6.2"
     }
-    minio = {
-      source = "aminueza/minio"
-    }
   }
 }
 
@@ -40,8 +37,8 @@ module "mongodb_clusters" {
   pmm_port              = each.value.pmm_port
   pmm_server_user       = each.value.pmm_server_user
   pmm_server_pwd        = each.value.pmm_server_pwd
-  minio_server          = "${local.name_prefix}${each.value.minio_server}"
-  minio_port            = each.value.minio_port
+  minio_server          = "${local.name_prefix}${each.value.seaweedfs_server}"
+  minio_port            = each.value.seaweedfs_port
   base_os_image         = each.value.base_os_image
   psmdb_image           = each.value.psmdb_image
   pbm_image             = each.value.pbm_image
@@ -71,7 +68,7 @@ module "mongodb_clusters" {
 
   depends_on = [
     module.pmm_server,
-    module.minio_server,
+    module.seaweedfs_server,
     module.ldap_server
   ]
 }
@@ -92,8 +89,8 @@ module "mongodb_replsets" {
   pmm_port               = each.value.pmm_port
   pmm_server_user        = each.value.pmm_server_user
   pmm_server_pwd         = each.value.pmm_server_pwd
-  minio_server           = "${local.name_prefix}${each.value.minio_server}"
-  minio_port             = each.value.minio_port
+  minio_server           = "${local.name_prefix}${each.value.seaweedfs_server}"
+  minio_port             = each.value.seaweedfs_port
   base_os_image          = each.value.base_os_image
   psmdb_image            = each.value.psmdb_image
   pbm_image              = each.value.pbm_image
@@ -123,7 +120,7 @@ module "mongodb_replsets" {
 
   depends_on = [
     module.pmm_server,
-    module.minio_server,
+    module.seaweedfs_server,
     module.ldap_server
   ]
 }
@@ -146,22 +143,18 @@ module "pmm_server" {
   bind_to_localhost = each.value.bind_to_localhost
 }
 
-module "minio_server" {
-  source             = "./modules/minio_server"
-  for_each           = var.minio_servers
-  minio_server       = "${local.name_prefix}${each.key}"
-  domain_name        = each.value.domain_name
-  env_tag            = each.value.env_tag
-  minio_image        = each.value.minio_image
-  minio_mc_image     = each.value.minio_mc_image
-  minio_port         = each.value.minio_port
-  minio_console_port = each.value.minio_console_port
-  minio_access_key   = each.value.minio_access_key
-  minio_secret_key   = each.value.minio_secret_key
-  bucket_name        = each.value.bucket_name
-  backup_retention   = each.value.backup_retention
-  network_name       = "${local.name_prefix}${each.value.network_name}"
-  bind_to_localhost  = each.value.bind_to_localhost
+module "seaweedfs_server" {
+  source               = "./modules/seaweedfs_server"
+  for_each             = var.seaweedfs_servers
+  seaweedfs_server     = "${local.name_prefix}${each.key}"
+  seaweedfs_image      = each.value.seaweedfs_image
+  seaweedfs_port       = each.value.seaweedfs_port
+  seaweedfs_admin_port = each.value.seaweedfs_admin_port
+  seaweedfs_access_key = each.value.seaweedfs_access_key
+  seaweedfs_secret_key = each.value.seaweedfs_secret_key
+  bucket_name          = each.value.bucket_name
+  network_name         = "${local.name_prefix}${each.value.network_name}"
+  bind_to_localhost    = each.value.bind_to_localhost
 }
 
 module "ldap_server" {

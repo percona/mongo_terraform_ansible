@@ -10,8 +10,5 @@ terraform {
     local = {
       source = "hashicorp/local"
     }
-    minio = {
-      source = "aminueza/minio"
-    }
   }
 }

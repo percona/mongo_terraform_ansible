@@ -1,0 +1,97 @@
+---
+- name: Install and configure SeaweedFS S3 storage
+  hosts: seaweedfs
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
+  become: yes
+  tags: install,backup,seaweedfs
+  vars:
+    seaweedfs_user: seaweedfs
+    seaweedfs_group: seaweedfs
+    seaweedfs_data_dir: /data/seaweedfs
+    seaweedfs_config_dir: /etc/seaweedfs
+    seaweedfs_binary: /usr/local/bin/weed
+    seaweedfs_s3_port: "{{ seaweedfs_port | default(8333) }}"
+    seaweedfs_admin_service_port: "{{ seaweedfs_admin_port | default(9333) }}"
+    seaweedfs_access_key: "{{ access_key_id | default('seaweedfs') }}"
+    seaweedfs_secret_key: "{{ secret_access_key | default('seaweedfs-secret') }}"
+    seaweedfs_bucket: "{{ bucket | default('mongo-backups') }}"
+
+  tasks:
+    - name: Create SeaweedFS group
+      group:
+        name: "{{ seaweedfs_group }}"
+        system: yes
+
+    - name: Create SeaweedFS user
+      user:
+        name: "{{ seaweedfs_user }}"
+        group: "{{ seaweedfs_group }}"
+        system: yes
+        shell: /sbin/nologin
+        create_home: no
+
+    - name: Create SeaweedFS data directory
+      file:
+        path: "{{ seaweedfs_data_dir }}"
+        state: directory
+        owner: "{{ seaweedfs_user }}"
+        group: "{{ seaweedfs_group }}"
+        mode: '0750'
+
+    - name: Create SeaweedFS config directory
+      file:
+        path: "{{ seaweedfs_config_dir }}"
+        state: directory
+        owner: "{{ seaweedfs_user }}"
+        group: "{{ seaweedfs_group }}"
+        mode: '0750'
+
+    - name: Download SeaweedFS binary
+      get_url:
+        url: "{{ seaweedfs_download_url | default('https://github.com/seaweedfs/seaweedfs/releases/latest/download/linux_amd64.tar.gz') }}"
+        dest: /tmp/seaweedfs.tar.gz
+        mode: '0644'
+
+    - name: Install SeaweedFS binary
+      unarchive:
+        src: /tmp/seaweedfs.tar.gz
+        dest: /usr/local/bin
+        remote_src: yes
+        include:
+          - weed
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Install SeaweedFS systemd service
+      template:
+        src: templates/seaweedfs.service.j2
+        dest: /etc/systemd/system/seaweedfs.service
+        mode: '0644'
+      notify:
+        - reload systemd
+        - restart seaweedfs
+
+    - name: Enable and start SeaweedFS service
+      systemd:
+        name: seaweedfs
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Wait for SeaweedFS S3 endpoint
+      wait_for:
+        port: "{{ seaweedfs_s3_port }}"
+        host: "{{ ansible_facts['default_ipv4']['address'] }}"
+        delay: 5
+        timeout: 60
+
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: restart seaweedfs
+      systemd:
+        name: seaweedfs
+        state: restarted

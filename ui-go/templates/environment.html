@@ -92,7 +92,7 @@
           title="View the history of actions performed on this environment">📜 History</button>
 </div>
 
-<!-- Service URL buttons (PMM, MinIO console, etc.) shown below action buttons -->
+<!-- Service URL buttons (PMM, SeaweedFS console, etc.) shown below action buttons -->
 {{if .ServiceURLs}}
 <div class="service-url-row" id="service-url-row">
   <span id="service-url-buttons">{{range .ServiceURLs}}
@@ -1315,7 +1315,7 @@ async function refreshHosts() {
 }
 
 function updateServiceURLButtons(serviceUrls) {
-  // Dynamically replaces the service URL link buttons (PMM, MinIO console, etc.)
+  // Dynamically replaces the service URL link buttons (PMM, SeaweedFS console, etc.)
   // in the service-url row with fresh data from the hosts API response.
   const container = document.getElementById('service-url-buttons');
   if (!container || !serviceUrls || serviceUrls.length === 0) return;
@@ -1414,7 +1414,7 @@ function renderHosts(data) {
     });
 
     // Determine which groups belong to MongoDB clusters/replsets (they come
-    // first); remaining service groups (PMM, PBM, minio, ldap, etc.) follow.
+    // first); remaining service groups (PMM, PBM, seaweedfs, ldap, etc.) follow.
     const mongoRoles = new Set(['mongod', 'mongos', 'configsvr', 'arbiter']);
     const mongoGroups = [];
     const serviceGroups = [];

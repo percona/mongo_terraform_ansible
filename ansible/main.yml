@@ -18,7 +18,7 @@
 
 - import_playbook: ldap_install.yml
 
-- import_playbook: minio_install.yml
+- import_playbook: seaweedfs_install.yml
 
 - import_playbook: mongod_install.yml
 

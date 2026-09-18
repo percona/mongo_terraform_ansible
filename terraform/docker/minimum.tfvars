@@ -10,6 +10,6 @@ replsets = {
   }
 }
 
-pmm_servers   = {}
-minio_servers = {}
-ldap_servers  = {}
+pmm_servers       = {}
+seaweedfs_servers = {}
+ldap_servers      = {}

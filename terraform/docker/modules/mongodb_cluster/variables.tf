@@ -276,19 +276,19 @@ variable "minio_region" {
 }
 
 variable "minio_access_key" {
-  default = "minio"
+  default = "seaweedfs"
 }
 
 variable "minio_server" {
-  default = "minio"
+  default = "seaweedfs"
 }
 
 variable "minio_port" {
-  default = "9000"
+  default = "8333"
 }
 
 variable "minio_secret_key" {
-  default   = "minioadmin"
+  default   = "seaweedfs-secret"
   sensitive = true
 }
 

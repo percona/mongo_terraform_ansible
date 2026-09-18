@@ -1,0 +1,18 @@
+[Unit]
+Description=SeaweedFS S3-compatible backup storage
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User={{ seaweedfs_user }}
+Group={{ seaweedfs_group }}
+Environment=AWS_ACCESS_KEY_ID={{ seaweedfs_access_key }}
+Environment=AWS_SECRET_ACCESS_KEY={{ seaweedfs_secret_key }}
+Environment=S3_BUCKET={{ seaweedfs_bucket }}
+ExecStart={{ seaweedfs_binary }} mini -dir={{ seaweedfs_data_dir }} -s3.port={{ seaweedfs_s3_port }} -master.port={{ seaweedfs_admin_service_port }}
+Restart=always
+RestartSec=5s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

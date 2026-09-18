@@ -96,17 +96,17 @@ type PmmServerConfig struct {
 	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
 }
 
-// MinioServerConfig maps to the Docker minio_servers map object type.
-type MinioServerConfig struct {
-	EnvTag           string `json:"env_tag"`
-	MinioImage       string `json:"minio_image,omitempty"`
-	MinioPort        int    `json:"minio_port,omitempty"`
-	MinioConsolePort int    `json:"minio_console_port,omitempty"`
-	MinioAccessKey   string `json:"minio_access_key,omitempty"`
-	MinioSecretKey   string `json:"minio_secret_key,omitempty"`
-	BucketName       string `json:"bucket_name,omitempty"`
-	BackupRetention  int    `json:"backup_retention,omitempty"`
-	BindToLocalhost  bool   `json:"bind_to_localhost,omitempty"`
+// SeaweedFSServerConfig maps to the Docker seaweedfs_servers map object type.
+type SeaweedFSServerConfig struct {
+	EnvTag             string `json:"env_tag"`
+	SeaweedFSImage     string `json:"seaweedfs_image,omitempty"`
+	SeaweedFSPort      int    `json:"seaweedfs_port,omitempty"`
+	SeaweedFSAdminPort int    `json:"seaweedfs_admin_port,omitempty"`
+	SeaweedFSAccessKey string `json:"seaweedfs_access_key,omitempty"`
+	SeaweedFSSecretKey string `json:"seaweedfs_secret_key,omitempty"`
+	BucketName         string `json:"bucket_name,omitempty"`
+	BackupRetention    int    `json:"backup_retention,omitempty"`
+	BindToLocalhost    bool   `json:"bind_to_localhost,omitempty"`
 }
 
 // LdapServerConfig maps to the ldap_servers map object type.
@@ -205,34 +205,34 @@ type Config struct {
 	// CHAOS-specific settings
 	ChaosApiTokenPath   string `json:"chaos_api_token_path,omitempty"`
 	LegacyChaosAPIToken string `json:"chaos_api_token,omitempty"`
-	EnableMinio         *bool  `json:"enable_minio,omitempty"`
+	EnableSeaweedFS     *bool  `json:"enable_seaweedfs,omitempty"`
 	DeleteAfterDays     int    `json:"delete_after_days,omitempty"`
 	OsImage             string `json:"os_image,omitempty"`
 	// FirewallRules replaces the old SourceRanges single string for CHAOS.
 	// Each entry is an independent ingress rule with its own CIDR and port.
-	FirewallRules      []ChaosFirewallRule `json:"firewall_rules,omitempty"`
-	ShardsvrCpuCores   int                 `json:"shardsvr_cpu_cores,omitempty"`
-	ShardsvrMemoryGb   int                 `json:"shardsvr_memory_gb,omitempty"`
-	ConfigsvrCpuCores  int                 `json:"configsvr_cpu_cores,omitempty"`
-	ConfigsvrMemoryGb  int                 `json:"configsvr_memory_gb,omitempty"`
-	MongosCpuCores     int                 `json:"mongos_cpu_cores,omitempty"`
-	MongosMemoryGb     int                 `json:"mongos_memory_gb,omitempty"`
-	ArbiterCpuCores    int                 `json:"arbiter_cpu_cores,omitempty"`
-	ArbiterMemoryGb    int                 `json:"arbiter_memory_gb,omitempty"`
-	ReplsetSvrCpuCores int                 `json:"replsetsvr_cpu_cores,omitempty"`
-	ReplsetSvrMemoryGb int                 `json:"replsetsvr_memory_gb,omitempty"`
-	MinioCpuCores      int                 `json:"minio_cpu_cores,omitempty"`
-	MinioMemoryGb      int                 `json:"minio_memory_gb,omitempty"`
-	MinioVolumeSize    int                 `json:"minio_volume_size,omitempty"`
-	MinioPort          int                 `json:"minio_port,omitempty"`
-	MinioConsolePort   int                 `json:"minio_console_port,omitempty"`
-	MinioRootUser      string              `json:"minio_root_user,omitempty"`
-	MinioRootPassword  string              `json:"minio_root_password,omitempty"`
-	PmmCpuCores        int                 `json:"pmm_cpu_cores,omitempty"`
-	PmmMemoryGb        int                 `json:"pmm_memory_gb,omitempty"`
-	CACpuCores         int                 `json:"ca_cpu_cores,omitempty"`
-	CAMemoryGb         int                 `json:"ca_memory_gb,omitempty"`
-	CAVolumeSize       int                 `json:"ca_volume_size,omitempty"`
+	FirewallRules       []ChaosFirewallRule `json:"firewall_rules,omitempty"`
+	ShardsvrCpuCores    int                 `json:"shardsvr_cpu_cores,omitempty"`
+	ShardsvrMemoryGb    int                 `json:"shardsvr_memory_gb,omitempty"`
+	ConfigsvrCpuCores   int                 `json:"configsvr_cpu_cores,omitempty"`
+	ConfigsvrMemoryGb   int                 `json:"configsvr_memory_gb,omitempty"`
+	MongosCpuCores      int                 `json:"mongos_cpu_cores,omitempty"`
+	MongosMemoryGb      int                 `json:"mongos_memory_gb,omitempty"`
+	ArbiterCpuCores     int                 `json:"arbiter_cpu_cores,omitempty"`
+	ArbiterMemoryGb     int                 `json:"arbiter_memory_gb,omitempty"`
+	ReplsetSvrCpuCores  int                 `json:"replsetsvr_cpu_cores,omitempty"`
+	ReplsetSvrMemoryGb  int                 `json:"replsetsvr_memory_gb,omitempty"`
+	SeaweedFSCpuCores   int                 `json:"seaweedfs_cpu_cores,omitempty"`
+	SeaweedFSMemoryGb   int                 `json:"seaweedfs_memory_gb,omitempty"`
+	SeaweedFSVolumeSize int                 `json:"seaweedfs_volume_size,omitempty"`
+	SeaweedFSPort       int                 `json:"seaweedfs_port,omitempty"`
+	SeaweedFSAdminPort  int                 `json:"seaweedfs_admin_port,omitempty"`
+	SeaweedFSAccessKey  string              `json:"seaweedfs_access_key,omitempty"`
+	SeaweedFSSecretKey  string              `json:"seaweedfs_secret_key,omitempty"`
+	PmmCpuCores         int                 `json:"pmm_cpu_cores,omitempty"`
+	PmmMemoryGb         int                 `json:"pmm_memory_gb,omitempty"`
+	CACpuCores          int                 `json:"ca_cpu_cores,omitempty"`
+	CAMemoryGb          int                 `json:"ca_memory_gb,omitempty"`
+	CAVolumeSize        int                 `json:"ca_volume_size,omitempty"`
 
 	// Per-component instance types and disk sizes (cloud platforms only).
 	ShardsvrType         string `json:"shardsvr_type,omitempty"`
@@ -253,9 +253,9 @@ type Config struct {
 	Replsets map[string]ReplsetConfig `json:"replsets"`
 
 	// Docker-specific service servers
-	PmmServers   map[string]PmmServerConfig   `json:"pmm_servers,omitempty"`
-	MinioServers map[string]MinioServerConfig `json:"minio_servers,omitempty"`
-	LdapServers  map[string]LdapServerConfig  `json:"ldap_servers,omitempty"`
+	PmmServers       map[string]PmmServerConfig       `json:"pmm_servers,omitempty"`
+	SeaweedFSServers map[string]SeaweedFSServerConfig `json:"seaweedfs_servers,omitempty"`
+	LdapServers      map[string]LdapServerConfig      `json:"ldap_servers,omitempty"`
 
 	// Ansible variable overrides passed via --extra-vars at playbook runtime.
 	AnsibleVars map[string]string `json:"ansible_vars,omitempty"`
@@ -349,9 +349,9 @@ type NamedPmmServer struct {
 	Name   string
 	Config PmmServerConfig
 }
-type NamedMinioServer struct {
+type NamedSeaweedFSServer struct {
 	Name   string
-	Config MinioServerConfig
+	Config SeaweedFSServerConfig
 }
 type NamedLdapServer struct {
 	Name   string
@@ -397,15 +397,15 @@ func sortedPmmServers(m map[string]PmmServerConfig) []NamedPmmServer {
 	return out
 }
 
-func sortedMinioServers(m map[string]MinioServerConfig) []NamedMinioServer {
+func sortedSeaweedFSServers(m map[string]SeaweedFSServerConfig) []NamedSeaweedFSServer {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	out := make([]NamedMinioServer, 0, len(keys))
+	out := make([]NamedSeaweedFSServer, 0, len(keys))
 	for _, k := range keys {
-		out = append(out, NamedMinioServer{k, m[k]})
+		out = append(out, NamedSeaweedFSServer{k, m[k]})
 	}
 	return out
 }
@@ -461,16 +461,16 @@ type NewEnvData struct {
 }
 
 type ConfigureData struct {
-	Platform                      string
-	EnvID                         string
-	Config                        Config
-	Regions                       []string
-	DefaultAuditFilter            string
-	OSUser                        string // current OS user, used as SSH user default
-	DockerDefaultPmmExternalPort  int
-	DockerDefaultMinioPort        int
-	DockerDefaultMinioConsolePort int
-	PSMDBVersions                 []string
+	Platform                        string
+	EnvID                           string
+	Config                          Config
+	Regions                         []string
+	DefaultAuditFilter              string
+	OSUser                          string // current OS user, used as SSH user default
+	DockerDefaultPmmExternalPort    int
+	DockerDefaultSeaweedFSPort      int
+	DockerDefaultSeaweedFSAdminPort int
+	PSMDBVersions                   []string
 	// PBMVersions holds a flat sorted-descending list of all available PBM package
 	// versions (e.g. ["2.7.0", "2.6.1", "2.6.0", ...]). PBM uses a single Percona
 	// repository so there is no per-major-version grouping.
@@ -488,7 +488,7 @@ type ConfigureData struct {
 	SortedClusters   []NamedCluster
 	SortedReplsets   []NamedReplset
 	SortedPmmServers []NamedPmmServer
-	SortedMinio      []NamedMinioServer
+	SortedSeaweedFS  []NamedSeaweedFSServer
 	SortedLdap       []NamedLdapServer
 }
 

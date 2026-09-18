@@ -173,7 +173,7 @@ func TestWriteTfvarsDockerPmmExternalAndEmptyServiceMaps(t *testing.T) {
 		"pmm_port = 8443",
 		"pmm_external_port = 9443",
 		"arbiter_base_port = 27027",
-		"minio_servers = {}",
+		"seaweedfs_servers = {}",
 	} {
 		if !strings.Contains(tfvars, want) {
 			t.Fatalf("expected %q in tfvars:\n%s", want, tfvars)
@@ -248,7 +248,7 @@ func TestWriteTfvarsDockerEmptyPmmServersMap(t *testing.T) {
 
 	for _, want := range []string{
 		"pmm_servers = {}",
-		"minio_servers = {}",
+		"seaweedfs_servers = {}",
 	} {
 		if !strings.Contains(tfvars, want) {
 			t.Fatalf("expected %q in tfvars:\n%s", want, tfvars)
@@ -617,8 +617,8 @@ func TestValidateDockerPortConflictsDetectsOverlap(t *testing.T) {
 		Replsets: map[string]ReplsetConfig{
 			"rs01": {DataNodesPerReplset: 2, ArbitersPerReplset: intPtr(1), ReplsetPort: 27017, ArbiterPort: 27017},
 		},
-		MinioServers: map[string]MinioServerConfig{
-			"minio-server": {MinioPort: 27018},
+		SeaweedFSServers: map[string]SeaweedFSServerConfig{
+			"seaweedfs-server": {SeaweedFSPort: 27018},
 		},
 	}
 
@@ -640,8 +640,8 @@ func TestDockerConfigureDefaultsAvoidRunningEnvironmentServicePorts(t *testing.T
 				PmmServers: map[string]PmmServerConfig{
 					"pmm-server": {PmmPort: 8443, PmmExternalPort: 8443},
 				},
-				MinioServers: map[string]MinioServerConfig{
-					"minio": {MinioPort: 9000, MinioConsolePort: 9001},
+				SeaweedFSServers: map[string]SeaweedFSServerConfig{
+					"seaweedfs": {SeaweedFSPort: 8333, SeaweedFSAdminPort: 9333},
 				},
 			},
 		},
@@ -649,13 +649,13 @@ func TestDockerConfigureDefaultsAvoidRunningEnvironmentServicePorts(t *testing.T
 
 	occupied := dockerOccupiedServicePorts(state, "")
 	pmmPort := nextFreeDockerPort(8443, occupied)
-	minioPort, minioConsolePort := nextFreeDockerPortPair(9000, occupied)
+	seaweedFSPort, seaweedFSAdminPort := nextFreeSeaweedFSPorts(8333, occupied)
 
 	if pmmPort != 8444 {
 		t.Fatalf("expected PMM external port 8444, got %d", pmmPort)
 	}
-	if minioPort != 9002 || minioConsolePort != 9003 {
-		t.Fatalf("expected MinIO ports 9002/9003, got %d/%d", minioPort, minioConsolePort)
+	if seaweedFSPort != 8334 || seaweedFSAdminPort != 9334 {
+		t.Fatalf("expected SeaweedFS ports 8334/9334, got %d/%d", seaweedFSPort, seaweedFSAdminPort)
 	}
 }
 
@@ -682,8 +682,8 @@ func TestSaveEnvironmentHandlerDetectsRunningDockerEnvironmentPortConflicts(t *t
 				PmmServers: map[string]PmmServerConfig{
 					"pmm-server": {PmmPort: 8443, PmmExternalPort: 8443},
 				},
-				MinioServers: map[string]MinioServerConfig{
-					"minio": {MinioPort: 9000, MinioConsolePort: 9001},
+				SeaweedFSServers: map[string]SeaweedFSServerConfig{
+					"seaweedfs": {SeaweedFSPort: 8333, SeaweedFSAdminPort: 9333},
 				},
 			},
 		},
@@ -703,8 +703,8 @@ func TestSaveEnvironmentHandlerDetectsRunningDockerEnvironmentPortConflicts(t *t
 			PmmServers: map[string]PmmServerConfig{
 				"pmm-server": {PmmPort: 8443, PmmExternalPort: 8443},
 			},
-			MinioServers: map[string]MinioServerConfig{
-				"minio": {MinioPort: 9000, MinioConsolePort: 9001},
+			SeaweedFSServers: map[string]SeaweedFSServerConfig{
+				"seaweedfs": {SeaweedFSPort: 8333, SeaweedFSAdminPort: 9333},
 			},
 		},
 	}

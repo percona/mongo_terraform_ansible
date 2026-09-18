@@ -30,12 +30,12 @@ variable "clusters" {
     pmm_server_pwd   = optional(string, "admin")
     pmm_client_image = optional(string, "percona/pmm-client:latest")
     # PBM
-    enable_pbm    = optional(bool, true)
-    base_os_image = optional(string, "redhat/ubi9-minimal")
-    pbm_image     = optional(string, "percona/percona-backup-mongodb:latest")
-    minio_server  = optional(string, "minio")
-    minio_port    = optional(number, 9000)
-    bucket_name   = optional(string, "mongo-backups")
+    enable_pbm       = optional(bool, true)
+    base_os_image    = optional(string, "redhat/ubi9-minimal")
+    pbm_image        = optional(string, "percona/percona-backup-mongodb:latest")
+    seaweedfs_server = optional(string, "seaweedfs")
+    seaweedfs_port   = optional(number, 8333)
+    bucket_name      = optional(string, "mongo-backups")
     # LDAP
     enable_ldap           = optional(bool, false)
     ldap_servers          = optional(string, "ldap:389")
@@ -98,12 +98,12 @@ variable "replsets" {
     pmm_server_pwd   = optional(string, "admin")
     pmm_client_image = optional(string, "percona/pmm-client:latest")
     # PBM
-    enable_pbm    = optional(bool, true)
-    base_os_image = optional(string, "redhat/ubi9-minimal")
-    pbm_image     = optional(string, "percona/percona-backup-mongodb:latest")
-    minio_server  = optional(string, "minio")
-    minio_port    = optional(number, 9000)
-    bucket_name   = optional(string, "mongo-backups")
+    enable_pbm       = optional(bool, true)
+    base_os_image    = optional(string, "redhat/ubi9-minimal")
+    pbm_image        = optional(string, "percona/percona-backup-mongodb:latest")
+    seaweedfs_server = optional(string, "seaweedfs")
+    seaweedfs_port   = optional(number, 8333)
+    bucket_name      = optional(string, "mongo-backups")
     # LDAP
     enable_ldap           = optional(bool, false)
     ldap_servers          = optional(string, "ldap:389")
@@ -172,31 +172,30 @@ variable "pmm_servers" {
 }
 
 ###############
-# Minio Servers
+# SeaweedFS Servers
 ###############
 
-variable "minio_servers" {
-  description = "Minio Servers to deploy"
+variable "seaweedfs_servers" {
+  description = "SeaweedFS servers to deploy"
   type = map(object({
-    env_tag            = optional(string, "test") # Name of the environment
-    domain_name        = optional(string, "")     # DNS domain name
-    minio_image        = optional(string, "minio/minio")
-    minio_mc_image     = optional(string, "minio/mc")
-    minio_port         = optional(number, 9000)
-    minio_console_port = optional(number, 9001)
-    minio_access_key   = optional(string, "minio")
-    minio_secret_key   = optional(string, "minioadmin")
-    bucket_name        = optional(string, "mongo-backups")
-    backup_retention   = optional(number, 2) # Days to keep backups
-    network_name       = optional(string, "mongo-terraform")
-    bind_to_localhost  = optional(bool, true) # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
+    env_tag              = optional(string, "test") # Name of the environment
+    domain_name          = optional(string, "")     # DNS domain name
+    seaweedfs_image      = optional(string, "chrislusf/seaweedfs:latest")
+    seaweedfs_port       = optional(number, 8333)
+    seaweedfs_admin_port = optional(number, 9333)
+    seaweedfs_access_key = optional(string, "seaweedfs")
+    seaweedfs_secret_key = optional(string, "seaweedfs-secret")
+    bucket_name          = optional(string, "mongo-backups")
+    backup_retention     = optional(number, 2) # Days to keep backups
+    network_name         = optional(string, "mongo-terraform")
+    bind_to_localhost    = optional(bool, true) # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0
   }))
 
   default = {
-    minio = {
+    seaweedfs = {
       env_tag = "test"
     }
-    #     minio-prod = {
+    #     seaweedfs-prod = {
     #       env_tag = "prod"
     #     }
   }

@@ -181,6 +181,37 @@
             <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
           </div>
         </div>
+        {{if ne $p "docker"}}
+        <div class="form-row component-feature-row">
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_enable_pmm[]" value="1" {{if boolDefault .Config.EnablePmm false}}checked{{end}} onchange="onPmmAgentFeatureToggle(this)"> Install PMM agent</label>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_enable_pbm[]" value="1" {{if boolDefault .Config.EnablePbm false}}checked{{end}} onchange="onPbmAgentFeatureToggle(this)"> Install PBM agent</label>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_enable_mongot[]" value="1" {{if boolDefault .Config.EnableMongot false}}checked{{end}} onchange="onMongotFeatureToggle(this)"> Install Search/Vector Search</label>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_use_tls[]" value="1" {{if boolDefault .Config.UseTLS false}}checked{{end}}> Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label>
+          </div>
+        </div>
+        {{else}}
+        <div class="form-row component-feature-row">
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_enable_pmm[]" value="1" {{if boolDefault .Config.EnablePmm false}}checked{{end}} onchange="onDockerPmmFeatureToggle(this)"> Enable PMM monitoring</label>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_enable_pbm[]" value="1" {{if boolDefault .Config.EnablePbm false}}checked{{end}} onchange="onDockerPbmFeatureToggle(this)"> Enable PBM backups</label>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_enable_mongot[]" value="1" {{if boolDefault .Config.EnableMongot false}}checked{{end}} onchange="onDockerMongotFeatureToggle(this)"> Enable mongot</label>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label><input type="checkbox" name="cluster_bind_to_localhost[]" value="1" {{if .Config.BindToLocalhost}}checked{{end}}> Bind ports to localhost only</label>
+          </div>
+        </div>
+        {{end}}
         <div class="customize-body" style="display:none">
            <div class="form-row">
             <div class="form-group">
@@ -392,58 +423,8 @@
             </div>
           </div>
           </div>
-          <div class="form-row">
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_enable_pmm[]" value="1"
-                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
-                            onchange="onPmmAgentFeatureToggle(this)">
-                Install PMM agent</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_enable_pbm[]" value="1"
-                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
-                            onchange="onPbmAgentFeatureToggle(this)">
-                Install PBM agent</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_enable_mongot[]" value="1"
-                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}
-                            onchange="onMongotFeatureToggle(this)">
-                Install Search/Vector Search</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_use_tls[]" value="1"
-                            {{if boolDefault .Config.UseTLS false}}checked{{end}}>
-                Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label>
-            </div>
-          </div>
           {{end}}
           {{if eq $p "docker"}}
-            <div class="form-row">
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_enable_pmm[]" value="1"
-                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
-                            onchange="onDockerPmmFeatureToggle(this)">
-                Enable PMM monitoring</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_enable_pbm[]" value="1"
-                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
-                            onchange="onDockerPbmFeatureToggle(this)">
-                Enable PBM backups</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_enable_mongot[]" value="1"
-                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}
-                            onchange="onDockerMongotFeatureToggle(this)">
-                Enable mongot</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="cluster_bind_to_localhost[]" value="1"
-                            {{if .Config.BindToLocalhost}}checked{{end}}>
-                Bind ports to localhost only</label>
-            </div>
-          </div>
           <div class="form-row">
             <div class="form-group image-field" data-image-repo="percona-server-mongodb">
               <label>PSMDB Image <span class="field-tip" data-tip="Percona Server for MongoDB Docker image tag used for all nodes in this cluster.">ⓘ</span></label>
@@ -726,6 +707,21 @@
             <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
           </div>
         </div>
+        {{if ne $p "docker"}}
+        <div class="form-row component-feature-row">
+          <div class="form-group form-group-checkbox"><label><input type="checkbox" name="replset_enable_pmm[]" value="1" {{if boolDefault .Config.EnablePmm false}}checked{{end}} onchange="onPmmAgentFeatureToggle(this)"> Install PMM agent</label></div>
+          <div class="form-group form-group-checkbox"><label><input type="checkbox" name="replset_enable_pbm[]" value="1" {{if boolDefault .Config.EnablePbm false}}checked{{end}} onchange="onPbmAgentFeatureToggle(this)"> Install PBM agent</label></div>
+          <div class="form-group form-group-checkbox"><label><input type="checkbox" name="replset_enable_mongot[]" value="1" {{if boolDefault .Config.EnableMongot false}}checked{{end}} onchange="onMongotFeatureToggle(this)"> Install Search/Vector Search</label></div>
+          <div class="form-group form-group-checkbox"><label><input type="checkbox" name="replset_use_tls[]" value="1" {{if boolDefault .Config.UseTLS false}}checked{{end}}> Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label></div>
+        </div>
+        {{else}}
+        <div class="form-row component-feature-row">
+          <div class="form-group form-group-checkbox"><label><input type="checkbox" name="replset_enable_pmm[]" value="1" {{if boolDefault .Config.EnablePmm false}}checked{{end}} onchange="onDockerPmmFeatureToggle(this)"> Enable PMM monitoring</label></div>
+          <div class="form-group form-group-checkbox"><label><input type="checkbox" name="replset_enable_pbm[]" value="1" {{if boolDefault .Config.EnablePbm false}}checked{{end}} onchange="onDockerPbmFeatureToggle(this)"> Enable PBM backups</label></div>
+          <div class="form-group form-group-checkbox"><label><input type="checkbox" name="replset_enable_mongot[]" value="1" {{if boolDefault .Config.EnableMongot false}}checked{{end}} onchange="onDockerMongotFeatureToggle(this)"> Enable mongot</label></div>
+          <div class="form-group form-group-checkbox"><label><input type="checkbox" name="replset_bind_to_localhost[]" value="1" {{if .Config.BindToLocalhost}}checked{{end}}> Bind ports to localhost only</label></div>
+        </div>
+        {{end}}
         <div class="customize-body" style="display:none">
            <div class="form-row">
             <div class="form-group">
@@ -920,58 +916,8 @@
             </div>
           </div>
           </div>
-          <div class="form-row">
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_enable_pmm[]" value="1"
-                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
-                            onchange="onPmmAgentFeatureToggle(this)">
-                Install PMM agent</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_enable_pbm[]" value="1"
-                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
-                            onchange="onPbmAgentFeatureToggle(this)">
-                Install PBM agent</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_enable_mongot[]" value="1"
-                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}
-                            onchange="onMongotFeatureToggle(this)">
-                Install Search/Vector Search</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_use_tls[]" value="1"
-                            {{if boolDefault .Config.UseTLS false}}checked{{end}}>
-                Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label>
-            </div>
-          </div>
           {{end}}
           {{if eq $p "docker"}}
-          <div class="form-row">
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_enable_pmm[]" value="1"
-                            {{if boolDefault .Config.EnablePmm false}}checked{{end}}
-                            onchange="onDockerPmmFeatureToggle(this)">
-                Enable PMM monitoring</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_enable_pbm[]" value="1"
-                            {{if boolDefault .Config.EnablePbm false}}checked{{end}}
-                            onchange="onDockerPbmFeatureToggle(this)">
-                Enable PBM backups</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_enable_mongot[]" value="1"
-                            {{if boolDefault .Config.EnableMongot false}}checked{{end}}
-                            onchange="onDockerMongotFeatureToggle(this)">
-                Enable mongot</label>
-            </div>
-            <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="replset_bind_to_localhost[]" value="1"
-                            {{if .Config.BindToLocalhost}}checked{{end}}>
-                Bind ports to localhost only</label>
-            </div>
-          </div>
           <div class="form-row">
             <div class="form-group image-field" data-image-repo="percona-server-mongodb">
               <label>PSMDB Image <span class="field-tip" data-tip="Percona Server for MongoDB Docker image tag for this replica set.">ⓘ</span></label>
@@ -2277,17 +2223,17 @@ function toggleDockerYcsbSection(checkbox) {
 // .customize-body ancestor for an element with the matching data-image-group attribute,
 // so it works correctly for both server-rendered and dynamically added blocks.
 function toggleImageGroup(checkbox, group) {
-  const body = checkbox.closest('.customize-body');
-  if (!body) return;
-  const el = body.querySelector(`[data-image-group="${group}"]`);
+  const block = checkbox.closest('.component-block');
+  if (!block) return;
+  const el = block.querySelector(`[data-image-group="${group}"]`);
   if (!el) return;
   el.style.display = checkbox.checked ? '' : 'none';
 }
 
 function togglePackageFeatureGroup(checkbox, feature) {
-  const body = checkbox.closest('.customize-body');
-  if (!body) return;
-  const el = body.querySelector(`[data-package-feature="${feature}"]`);
+  const block = checkbox.closest('.component-block');
+  if (!block) return;
+  const el = block.querySelector(`[data-package-feature="${feature}"]`);
   if (!el) return;
   el.style.display = checkbox.checked ? '' : 'none';
 }
@@ -2298,6 +2244,13 @@ function onPmmAgentFeatureToggle(checkbox) {
 
 function onPbmAgentFeatureToggle(checkbox) {
   togglePackageFeatureGroup(checkbox, 'pbm');
+  if (PLATFORM === 'chaos' && checkbox.checked) {
+    const minio = document.getElementById('enable_minio');
+    if (minio && !minio.checked) {
+      minio.checked = true;
+      minio.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
 }
 
 function toggleAuditFilter(checkbox) {
@@ -2960,19 +2913,6 @@ function buildDockerImageRows(type) {
     </div>`;
   return `
     <div class="form-row">
-      <div class="form-group form-group-checkbox">
-          <label><input type="checkbox" name="${type}_enable_pmm[]" value="1"
-          onchange="onDockerPmmFeatureToggle(this)"> Enable PMM monitoring</label></div>
-      <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_enable_pbm[]" value="1"
-          onchange="onDockerPbmFeatureToggle(this)"> Enable PBM backups</label></div>
-      <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_enable_mongot[]" value="1"
-          onchange="onDockerMongotFeatureToggle(this)"> Enable mongot</label></div>
-      <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_bind_to_localhost[]" value="1"> Bind ports to localhost only</label></div>
-    </div>
-    <div class="form-row">
       ${makeImageGroup('PSMDB Image', 'Percona Server for MongoDB Docker image tag for nodes in this block.', 'psmdb_image[]', psmdbSel, null, 'percona-server-mongodb')}
       ${makeImageGroup('PBM Image', 'Percona Backup for MongoDB Docker image tag for backup agents.', 'pbm_image[]', pbmSel, 'pbm', 'percona-backup-mongodb')}
       ${makeImageGroup('PMM Client Image', 'PMM Client Docker image tag for monitoring nodes.', 'pmm_client_image[]', pmmcSel, 'pmm', 'pmm-client')}
@@ -3006,24 +2946,6 @@ function buildPackageOverrideRows(type) {
     </div>` : '';
   return `
     ${osImageRows}
-    <div class="form-row">
-      <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_enable_pmm[]" value="1" onchange="onPmmAgentFeatureToggle(this)">
-          Install PMM agent</label>
-      </div>
-      <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_enable_pbm[]" value="1" onchange="onPbmAgentFeatureToggle(this)">
-          Install PBM agent</label>
-      </div>
-      <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_enable_mongot[]" value="1" onchange="onMongotFeatureToggle(this)">
-          Install Search/Vector Search</label>
-      </div>
-      <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" name="${type}_use_tls[]" value="1">
-          Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label>
-      </div>
-    </div>
     <div class="subsection-header">
       <span class="subsection-title">Package Overrides</span>
       <button type="button" class="btn btn-outline btn-sm package-toggle-btn" onclick="togglePackageBlock(this)">▼ Customize</button>
@@ -3268,6 +3190,23 @@ function buildCloudComputeRows(type) {
     </div>`;
 }
 
+function buildFeatureRows(type) {
+  if (PLATFORM === 'docker') {
+    return `<div class="form-row component-feature-row">
+      <div class="form-group form-group-checkbox"><label><input type="checkbox" name="${type}_enable_pmm[]" value="1" onchange="onDockerPmmFeatureToggle(this)"> Enable PMM monitoring</label></div>
+      <div class="form-group form-group-checkbox"><label><input type="checkbox" name="${type}_enable_pbm[]" value="1" onchange="onDockerPbmFeatureToggle(this)"> Enable PBM backups</label></div>
+      <div class="form-group form-group-checkbox"><label><input type="checkbox" name="${type}_enable_mongot[]" value="1" onchange="onDockerMongotFeatureToggle(this)"> Enable mongot</label></div>
+      <div class="form-group form-group-checkbox"><label><input type="checkbox" name="${type}_bind_to_localhost[]" value="1"> Bind ports to localhost only</label></div>
+    </div>`;
+  }
+  return `<div class="form-row component-feature-row">
+    <div class="form-group form-group-checkbox"><label><input type="checkbox" name="${type}_enable_pmm[]" value="1" onchange="onPmmAgentFeatureToggle(this)"> Install PMM agent</label></div>
+    <div class="form-group form-group-checkbox"><label><input type="checkbox" name="${type}_enable_pbm[]" value="1" onchange="onPbmAgentFeatureToggle(this)"> Install PBM agent</label></div>
+    <div class="form-group form-group-checkbox"><label><input type="checkbox" name="${type}_enable_mongot[]" value="1" onchange="onMongotFeatureToggle(this)"> Install Search/Vector Search</label></div>
+    <div class="form-group form-group-checkbox"><label><input type="checkbox" name="${type}_use_tls[]" value="1"> Enable TLS/x.509 <span class="field-tip" data-tip="Uses x.509 for member authentication and preferTLS so TLS and non-TLS clients can coexist.">ⓘ</span></label></div>
+  </div>`;
+}
+
 function addCluster() {
   const name = nextClusterName();
   const c = document.createElement('div');
@@ -3275,6 +3214,7 @@ function addCluster() {
   const dockerRows = PLATFORM === 'docker' ? buildDockerImageRows('cluster') : '';
   const packageRows = buildPackageOverrideRows('cluster');
   const computeRows = buildCloudComputeRows('cluster');
+  const featureRows = buildFeatureRows('cluster');
   c.innerHTML = `
     <div class="component-block-header">
       <div class="block-name-field">
@@ -3286,6 +3226,7 @@ function addCluster() {
         <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
       </div>
     </div>
+    ${featureRows}
     <div class="customize-body" style="display:none">
       <div class="form-row">
         <div class="form-group"><label>Environment <span class="field-tip" data-tip="Environment for the resources created. Examples: dev, qa, prod.">ⓘ</span></label>
@@ -3315,6 +3256,7 @@ function addReplset() {
   const dockerRows = PLATFORM === 'docker' ? buildDockerImageRows('replset') : '';
   const packageRows = buildPackageOverrideRows('replset');
   const computeRows = buildCloudComputeRows('replset');
+  const featureRows = buildFeatureRows('replset');
   // Pick a random base port between 28000-38000 for Docker to avoid collisions.
   const randomPort = PLATFORM === 'docker' ? (28000 + Math.floor(Math.random() * 10000)) : 0;
   c.innerHTML = `
@@ -3328,6 +3270,7 @@ function addReplset() {
         <button type="button" class="btn btn-danger btn-sm" onclick="removeBlock(this)">Remove</button>
       </div>
     </div>
+    ${featureRows}
     <div class="customize-body" style="display:none">
       <div class="form-row">
         <div class="form-group"><label>Environment <span class="field-tip" data-tip="Environment for the resources created. Examples: dev, qa, prod.">ⓘ</span></label>

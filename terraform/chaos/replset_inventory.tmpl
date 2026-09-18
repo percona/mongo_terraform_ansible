@@ -25,7 +25,7 @@ ${hostname_ycsb} ansible_host=${ip_ycsb}
 
 %{ endif ~}
 %{ if minio_ip != "" ~}
-[minio]
+[seaweedfs]
 ${minio_hostname} ansible_host=${minio_ip}
 
 %{ endif ~}

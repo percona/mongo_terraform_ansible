@@ -211,19 +211,19 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				writeVar("ca_memory_gb", intDefault(cfg.CAMemoryGb, 4))
 				writeVar("ca_volume_size", intDefault(cfg.CAVolumeSize, 20))
 			}
-			// Minio
-			enableMinio := cfg.EnableMinio != nil && *cfg.EnableMinio
-			if cfg.EnableMinio != nil {
-				writeVar("enable_minio", *cfg.EnableMinio)
+			// SeaweedFS
+			enableSeaweedFS := cfg.EnableSeaweedFS != nil && *cfg.EnableSeaweedFS
+			if cfg.EnableSeaweedFS != nil {
+				writeVar("enable_seaweedfs", *cfg.EnableSeaweedFS)
 			}
-			if enableMinio {
-				writeOptStr("minio_root_user", cfg.MinioRootUser)
-				writeOptStr("minio_root_password", cfg.MinioRootPassword)
-				writeOptInt("minio_port", cfg.MinioPort)
-				writeOptInt("minio_console_port", cfg.MinioConsolePort)
-				writeOptInt("minio_cpu_cores", cfg.MinioCpuCores)
-				writeOptInt("minio_memory_gb", cfg.MinioMemoryGb)
-				writeOptInt("minio_volume_size", cfg.MinioVolumeSize)
+			if enableSeaweedFS {
+				writeOptStr("seaweedfs_access_key", cfg.SeaweedFSAccessKey)
+				writeOptStr("seaweedfs_secret_key", cfg.SeaweedFSSecretKey)
+				writeOptInt("seaweedfs_port", intDefault(cfg.SeaweedFSPort, 8333))
+				writeOptInt("seaweedfs_admin_port", intDefault(cfg.SeaweedFSAdminPort, 9333))
+				writeOptInt("seaweedfs_cpu_cores", cfg.SeaweedFSCpuCores)
+				writeOptInt("seaweedfs_memory_gb", cfg.SeaweedFSMemoryGb)
+				writeOptInt("seaweedfs_volume_size", cfg.SeaweedFSVolumeSize)
 			}
 			// Backup
 			writeOptStr("default_bucket_name", cfg.DefaultBucketName)
@@ -572,28 +572,28 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		}
 
 		write("")
-		if len(cfg.MinioServers) == 0 {
-			write("minio_servers = {}")
+		if len(cfg.SeaweedFSServers) == 0 {
+			write("seaweedfs_servers = {}")
 		} else {
-			write("minio_servers = {")
-			for _, ns := range sortedMinioServers(cfg.MinioServers) {
+			write("seaweedfs_servers = {")
+			for _, ns := range sortedSeaweedFSServers(cfg.SeaweedFSServers) {
 				n, s := ns.Name, ns.Config
 				write(fmt.Sprintf("  %q = {", n))
 				write(fmt.Sprintf("    env_tag = %s", formatHCLVal(strDefault(s.EnvTag, "test"))))
-				if s.MinioImage != "" {
-					write(fmt.Sprintf("    minio_image = %s", formatHCLVal(s.MinioImage)))
+				if s.SeaweedFSImage != "" {
+					write(fmt.Sprintf("    seaweedfs_image = %s", formatHCLVal(s.SeaweedFSImage)))
 				}
-				if s.MinioPort != 0 {
-					write(fmt.Sprintf("    minio_port = %s", formatHCLVal(s.MinioPort)))
+				if s.SeaweedFSPort != 0 {
+					write(fmt.Sprintf("    seaweedfs_port = %s", formatHCLVal(s.SeaweedFSPort)))
 				}
-				if s.MinioConsolePort != 0 {
-					write(fmt.Sprintf("    minio_console_port = %s", formatHCLVal(s.MinioConsolePort)))
+				if s.SeaweedFSAdminPort != 0 {
+					write(fmt.Sprintf("    seaweedfs_admin_port = %s", formatHCLVal(s.SeaweedFSAdminPort)))
 				}
-				if s.MinioAccessKey != "" {
-					write(fmt.Sprintf("    minio_access_key = %s", formatHCLVal(s.MinioAccessKey)))
+				if s.SeaweedFSAccessKey != "" {
+					write(fmt.Sprintf("    seaweedfs_access_key = %s", formatHCLVal(s.SeaweedFSAccessKey)))
 				}
-				if s.MinioSecretKey != "" {
-					write(fmt.Sprintf("    minio_secret_key = %s", formatHCLVal(s.MinioSecretKey)))
+				if s.SeaweedFSSecretKey != "" {
+					write(fmt.Sprintf("    seaweedfs_secret_key = %s", formatHCLVal(s.SeaweedFSSecretKey)))
 				}
 				if s.BucketName != "" {
 					write(fmt.Sprintf("    bucket_name = %s", formatHCLVal(s.BucketName)))

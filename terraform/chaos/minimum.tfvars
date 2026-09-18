@@ -3,9 +3,9 @@
 prefix      = "myenv"
 my_ssh_user = "your_chaos_username"
 
-clusters     = {}
-enable_pmm   = false
-enable_minio = false
+clusters         = {}
+enable_pmm       = false
+enable_seaweedfs = false
 
 replsets = {
   rs01 = {

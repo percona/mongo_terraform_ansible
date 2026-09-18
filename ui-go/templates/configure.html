@@ -1344,56 +1344,56 @@
     {{end}}
   </section>
 
-  <!-- ──────────── Minio VM (CHAOS only) ──────────── -->
+  <!-- ──────────── SeaweedFS VM (CHAOS only) ──────────── -->
   {{if eq $p "chaos"}}
-  {{$minioDetailsConfigured := or .Config.MinioRootUser .Config.MinioRootPassword .Config.DefaultBucketName .Config.MinioPort .Config.MinioConsolePort .Config.BackupRetention .Config.MinioCpuCores .Config.MinioMemoryGb .Config.MinioVolumeSize}}
+  {{$seaweedfsDetailsConfigured := or .Config.SeaweedFSAccessKey .Config.SeaweedFSSecretKey .Config.DefaultBucketName .Config.SeaweedFSPort .Config.SeaweedFSAdminPort .Config.BackupRetention .Config.SeaweedFSCpuCores .Config.SeaweedFSMemoryGb .Config.SeaweedFSVolumeSize}}
   <section class="form-section">
     <div class="section-header">
-      <h2>Minio Backup Storage VM</h2>
+      <h2>SeaweedFS Backup Storage VM</h2>
       <button type="button" class="btn btn-outline btn-sm"
-              id="minio-details-toggle"
-              onclick="toggleMinioDetails(this)"
-              {{if not (boolDefault .Config.EnableMinio false)}}style="display:none"{{end}}
-              >{{if $minioDetailsConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+              id="seaweedfs-details-toggle"
+              onclick="toggleSeaweedFSDetails(this)"
+              {{if not (boolDefault .Config.EnableSeaweedFS false)}}style="display:none"{{end}}
+              >{{if $seaweedfsDetailsConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
     </div>
-    <!-- Enable Minio checkbox always visible, outside the collapsible body -->
+    <!-- Enable SeaweedFS checkbox always visible, outside the collapsible body -->
     <div class="form-row" style="margin-bottom:0.5rem">
       <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" id="enable_minio" name="enable_minio" value="true"
-                      {{if boolDefault .Config.EnableMinio false}}checked{{end}}>
-          Deploy Minio backup storage VM <span class="field-tip" data-tip="Deploy a dedicated Minio S3-compatible storage VM for backups.">ⓘ</span></label>
+        <label><input type="checkbox" id="enable_seaweedfs" name="enable_seaweedfs" value="true"
+                      {{if boolDefault .Config.EnableSeaweedFS false}}checked{{end}}>
+          Deploy SeaweedFS backup storage VM <span class="field-tip" data-tip="Deploy a dedicated SeaweedFS S3-compatible storage VM for backups.">ⓘ</span></label>
       </div>
     </div>
-    <div id="minio-vm-body" {{if not (boolDefault .Config.EnableMinio false)}}style="display:none"{{end}}>
-      <div id="minio-details-body" {{if not $minioDetailsConfigured}}style="display:none"{{end}}>
+    <div id="seaweedfs-vm-body" {{if not (boolDefault .Config.EnableSeaweedFS false)}}style="display:none"{{end}}>
+      <div id="seaweedfs-details-body" {{if not $seaweedfsDetailsConfigured}}style="display:none"{{end}}>
         <span class="subsection-title">VM Details</span>
         <div class="form-row">
           <div class="form-group">
-            <label for="minio_root_user">Minio Root User <span class="field-tip" data-tip="Admin username for the Minio server (passed to Ansible).">ⓘ</span></label>
-            <input type="text" id="minio_root_user" name="minio_root_user"
-                   value="{{strDefault .Config.MinioRootUser "minioadmin"}}">
+            <label for="seaweedfs_access_key">SeaweedFS Access Key <span class="field-tip" data-tip="Access key for the SeaweedFS server (passed to Ansible).">ⓘ</span></label>
+            <input type="text" id="seaweedfs_access_key" name="seaweedfs_access_key"
+                   value="{{strDefault .Config.SeaweedFSAccessKey "seaweedfs"}}">
           </div>
           <div class="form-group">
-            <label for="minio_root_password">Minio Root Password <span class="field-tip" data-tip="Admin password for the Minio server (passed to Ansible).">ⓘ</span></label>
-            <input type="password" id="minio_root_password" name="minio_root_password"
-                   value="{{strDefault .Config.MinioRootPassword "minioadmin"}}" autocomplete="new-password">
+            <label for="seaweedfs_secret_key">SeaweedFS Secret Key <span class="field-tip" data-tip="Secret key for the SeaweedFS server (passed to Ansible).">ⓘ</span></label>
+            <input type="password" id="seaweedfs_secret_key" name="seaweedfs_secret_key"
+                   value="{{strDefault .Config.SeaweedFSSecretKey "seaweedfs-secret"}}" autocomplete="new-password">
           </div>
           <div class="form-group">
-            <label for="default_bucket_name">Bucket Name <span class="field-tip" data-tip="Default S3 bucket name created in Minio for MongoDB backups.">ⓘ</span></label>
+            <label for="default_bucket_name">Bucket Name <span class="field-tip" data-tip="Default S3 bucket name created in SeaweedFS for MongoDB backups.">ⓘ</span></label>
             <input type="text" id="default_bucket_name" name="default_bucket_name"
                    value="{{strDefault .Config.DefaultBucketName "mongo-backups"}}">
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="minio_port">API Port <span class="field-tip" data-tip="HTTP port for the Minio S3 API (default: 9000).">ⓘ</span></label>
-            <input type="number" id="minio_port" name="minio_port"
-                   value="{{intDefault .Config.MinioPort 9000}}">
+            <label for="seaweedfs_port">API Port <span class="field-tip" data-tip="HTTP port for the SeaweedFS S3 API (default: 9000).">ⓘ</span></label>
+            <input type="number" id="seaweedfs_port" name="seaweedfs_port"
+                   value="{{intDefault .Config.SeaweedFSPort 8333}}">
           </div>
           <div class="form-group">
-            <label for="minio_console_port">Console Port <span class="field-tip" data-tip="HTTP port for the Minio web console (default: 9001).">ⓘ</span></label>
-            <input type="number" id="minio_console_port" name="minio_console_port"
-                   value="{{intDefault .Config.MinioConsolePort 9001}}">
+            <label for="seaweedfs_admin_port">Admin Port <span class="field-tip" data-tip="HTTP port for the SeaweedFS admin interface (default: 9333).">ⓘ</span></label>
+            <input type="number" id="seaweedfs_admin_port" name="seaweedfs_admin_port"
+                   value="{{intDefault .Config.SeaweedFSAdminPort 9333}}">
           </div>
           <div class="form-group">
             <label for="backup_retention">Retention (days) <span class="field-tip" data-tip="Number of days to retain PBM backups (minimum 1).">ⓘ</span></label>
@@ -1402,36 +1402,36 @@
           </div>
         </div>
         <!-- Compute resources hidden under nested Customize -->
-        {{$minioComputeConfigured := or .Config.MinioCpuCores .Config.MinioMemoryGb .Config.MinioVolumeSize}}
+        {{$seaweedfsComputeConfigured := or .Config.SeaweedFSCpuCores .Config.SeaweedFSMemoryGb .Config.SeaweedFSVolumeSize}}
         <div class="subsection-header">
           <span class="subsection-title">Compute Resources</span>
           <button type="button" class="btn btn-outline btn-sm compute-toggle-btn"
-                  onclick="toggleComputeBlock(this)">{{if $minioComputeConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+                  onclick="toggleComputeBlock(this)">{{if $seaweedfsComputeConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
         </div>
-        <div class="compute-block-body" {{if not $minioComputeConfigured}}style="display:none"{{end}}>
+        <div class="compute-block-body" {{if not $seaweedfsComputeConfigured}}style="display:none"{{end}}>
           <div class="form-row">
             <div class="form-group">
-              <label for="minio_cpu_cores">Minio VM vCPU <span class="field-tip" data-tip="Number of virtual CPUs for the Minio VM.">ⓘ</span></label>
-              <select id="minio_cpu_cores" name="minio_cpu_cores">
-                {{$v := .Config.MinioCpuCores}}
+              <label for="seaweedfs_cpu_cores">SeaweedFS VM vCPU <span class="field-tip" data-tip="Number of virtual CPUs for the SeaweedFS VM.">ⓘ</span></label>
+              <select id="seaweedfs_cpu_cores" name="seaweedfs_cpu_cores">
+                {{$v := .Config.SeaweedFSCpuCores}}
                 <option value="2" {{if or (eq $v 0) (eq $v 2)}}selected{{end}}>2 vCPU</option>
                 <option value="4" {{if eq $v 4}}selected{{end}}>4 vCPU</option>
                 <option value="8" {{if eq $v 8}}selected{{end}}>8 vCPU</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="minio_memory_gb">Minio VM Memory (GB) <span class="field-tip" data-tip="Memory size for the Minio VM.">ⓘ</span></label>
-              <select id="minio_memory_gb" name="minio_memory_gb">
-                {{$v := .Config.MinioMemoryGb}}
+              <label for="seaweedfs_memory_gb">SeaweedFS VM Memory (GB) <span class="field-tip" data-tip="Memory size for the SeaweedFS VM.">ⓘ</span></label>
+              <select id="seaweedfs_memory_gb" name="seaweedfs_memory_gb">
+                {{$v := .Config.SeaweedFSMemoryGb}}
                 <option value="4" {{if or (eq $v 0) (eq $v 4)}}selected{{end}}>4 GB</option>
                 <option value="8" {{if eq $v 8}}selected{{end}}>8 GB</option>
                 <option value="16" {{if eq $v 16}}selected{{end}}>16 GB</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="minio_volume_size">Minio VM Disk (GB) <span class="field-tip" data-tip="Disk size for the Minio VM.">ⓘ</span></label>
-              <select id="minio_volume_size" name="minio_volume_size">
-                {{$v := .Config.MinioVolumeSize}}
+              <label for="seaweedfs_volume_size">SeaweedFS VM Disk (GB) <span class="field-tip" data-tip="Disk size for the SeaweedFS VM.">ⓘ</span></label>
+              <select id="seaweedfs_volume_size" name="seaweedfs_volume_size">
+                {{$v := .Config.SeaweedFSVolumeSize}}
                 <option value="20" {{if or (eq $v 0) (eq $v 20)}}selected{{end}}>20 GB</option>
                 <option value="40" {{if eq $v 40}}selected{{end}}>40 GB</option>
                 <option value="60" {{if eq $v 60}}selected{{end}}>60 GB</option>
@@ -1446,25 +1446,25 @@
   </section>
   {{end}}
 
-  <!-- ──────────── Minio Servers (Docker only) ──────────── -->
+  <!-- ──────────── SeaweedFS Servers (Docker only) ──────────── -->
   {{if eq $p "docker"}}
   <section class="form-section">
     <div class="section-header">
-      <h2>Minio Backup Storage</h2>
+      <h2>SeaweedFS Backup Storage</h2>
       <label class="toggle-label">
-        <input type="checkbox" id="enable-minio-docker"
-               {{if .SortedMinio}}checked{{end}}
-               onchange="toggleDockerSingleServer('minio-servers-container', this, addMinioServer); toggleCredentialRow('cred-minio-row', this.checked); syncDockerMinioDependencies(this.checked)">
-        Include Minio Server
+        <input type="checkbox" id="enable-seaweedfs-docker"
+               {{if .SortedSeaweedFS}}checked{{end}}
+               onchange="toggleDockerSingleServer('seaweedfs-servers-container', this, addSeaweedFSServer); toggleCredentialRow('cred-seaweedfs-row', this.checked); syncDockerSeaweedFSDependencies(this.checked)">
+        Include SeaweedFS Server
       </label>
     </div>
-    <div id="minio-servers-container">
-      {{range .SortedMinio}}
+    <div id="seaweedfs-servers-container">
+      {{range .SortedSeaweedFS}}
       <div class="component-block">
         <div class="component-block-header">
           <div class="block-name-field">
             <label class="block-name-label">Name</label>
-            <input type="text" name="minio_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="minio" readonly>
+            <input type="text" name="seaweedfs_server_name[]" value="{{.Name}}" class="block-name-input" placeholder="seaweedfs" readonly>
           </div>
           <div class="block-header-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
@@ -1473,29 +1473,29 @@
         <div class="customize-body" style="display:none">
           <div class="form-row">
             <div class="form-group">
-              <label>Minio Image <span class="field-tip" data-tip="Minio Docker image to use (e.g. minio/minio:latest).">ⓘ</span></label>
-              <input type="text" name="minio_image[]" value="{{strDefault .Config.MinioImage "minio/minio:latest"}}" placeholder="minio/minio:latest">
+              <label>SeaweedFS Image <span class="field-tip" data-tip="SeaweedFS Docker image to use (e.g. chrislusf/seaweedfs:latest).">ⓘ</span></label>
+              <input type="text" name="seaweedfs_image[]" value="{{strDefault .Config.SeaweedFSImage "chrislusf/seaweedfs:latest"}}" placeholder="chrislusf/seaweedfs:latest">
             </div>
             <div class="form-group">
-              <label>API Port <span class="field-tip" data-tip="Host port for the Minio S3 API (default: 9000).">ⓘ</span></label>
-              <input type="number" name="minio_port[]" value="{{if .Config.MinioPort}}{{.Config.MinioPort}}{{else}}{{$.DockerDefaultMinioPort}}{{end}}">
+              <label>API Port <span class="field-tip" data-tip="Host port for the SeaweedFS S3 API (default: 9000).">ⓘ</span></label>
+              <input type="number" name="seaweedfs_port[]" value="{{if .Config.SeaweedFSPort}}{{.Config.SeaweedFSPort}}{{else}}{{$.DockerDefaultSeaweedFSPort}}{{end}}">
             </div>
             <div class="form-group">
-              <label>Console Port <span class="field-tip" data-tip="Host port for the Minio web console (default: 9001).">ⓘ</span></label>
-              <input type="number" name="minio_console_port[]" value="{{if .Config.MinioConsolePort}}{{.Config.MinioConsolePort}}{{else}}{{$.DockerDefaultMinioConsolePort}}{{end}}">
+              <label>Console Port <span class="field-tip" data-tip="Host port for the SeaweedFS web console (default: 9001).">ⓘ</span></label>
+              <input type="number" name="seaweedfs_admin_port[]" value="{{if .Config.SeaweedFSAdminPort}}{{.Config.SeaweedFSAdminPort}}{{else}}{{$.DockerDefaultSeaweedFSAdminPort}}{{end}}">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Bucket Name <span class="field-tip" data-tip="Default S3 bucket name created in Minio for MongoDB backups.">ⓘ</span></label>
-              <input type="text" name="minio_bucket_name[]" value="{{strDefault .Config.BucketName "mongo-backups"}}">
+              <label>Bucket Name <span class="field-tip" data-tip="Default S3 bucket name created in SeaweedFS for MongoDB backups.">ⓘ</span></label>
+              <input type="text" name="seaweedfs_bucket_name[]" value="{{strDefault .Config.BucketName "mongo-backups"}}">
             </div>
             <div class="form-group">
               <label>Retention (days) <span class="field-tip" data-tip="Number of days to keep backups before expiry (minimum 1).">ⓘ</span></label>
-              <input type="number" name="minio_backup_retention[]" value="{{intDefault .Config.BackupRetention 2}}" min="1">
+              <input type="number" name="seaweedfs_backup_retention[]" value="{{intDefault .Config.BackupRetention 2}}" min="1">
             </div>
             <div class="form-group form-group-checkbox">
-              <label><input type="checkbox" name="minio_bind_localhost[]" value="1"
+              <label><input type="checkbox" name="seaweedfs_bind_localhost[]" value="1"
                             {{if .Config.BindToLocalhost}}checked{{end}}>
                 Bind to localhost only</label>
             </div>
@@ -1766,7 +1766,7 @@
 
   <!-- ──────────── Credentials ──────────── -->
   <section class="form-section">
-    {{$credConfigured := or (index .Config.AnsibleVars "mongo_admin_user") (index .Config.AnsibleVars "mongo_admin_password") (index .Config.AnsibleVars "pbm_agent_user") (index .Config.AnsibleVars "pbmpwd") .SortedPmmServers .SortedMinio .SortedLdap}}
+    {{$credConfigured := or (index .Config.AnsibleVars "mongo_admin_user") (index .Config.AnsibleVars "mongo_admin_password") (index .Config.AnsibleVars "pbm_agent_user") (index .Config.AnsibleVars "pbmpwd") .SortedPmmServers .SortedSeaweedFS .SortedLdap}}
     <div class="section-header">
       <h2>Credentials <span class="field-tip" data-tip="Usernames and passwords passed to Ansible and Terraform. Values here populate group_vars or --extra-vars.">ⓘ</span></h2>
       <button type="button" class="btn btn-outline btn-sm" id="credentials-toggle"
@@ -1788,18 +1788,18 @@
           </div>
         </div>
         {{if eq $p "docker"}}
-        <div class="form-row" id="cred-minio-row" {{if not .SortedMinio}}style="display:none"{{end}}>
+        <div class="form-row" id="cred-seaweedfs-row" {{if not .SortedSeaweedFS}}style="display:none"{{end}}>
           <div class="form-group">
-            <label for="cred_minio_access_key">Minio Access Key <span class="field-tip" data-tip="Access key used to authenticate with the Minio server.">ⓘ</span></label>
-            <input type="text" id="cred_minio_access_key" name="cred_minio_access_key"
-                   value="{{if .SortedMinio}}{{(index .SortedMinio 0).Config.MinioAccessKey}}{{end}}"
-                   placeholder="minio">
+            <label for="cred_seaweedfs_access_key">SeaweedFS Access Key <span class="field-tip" data-tip="Access key used to authenticate with the SeaweedFS server.">ⓘ</span></label>
+            <input type="text" id="cred_seaweedfs_access_key" name="cred_seaweedfs_access_key"
+                   value="{{if .SortedSeaweedFS}}{{(index .SortedSeaweedFS 0).Config.SeaweedFSAccessKey}}{{end}}"
+                   placeholder="seaweedfs">
           </div>
           <div class="form-group">
-            <label for="cred_minio_secret_key">Minio Secret Key <span class="field-tip" data-tip="Secret key used to authenticate with the Minio server.">ⓘ</span></label>
-            <input type="password" id="cred_minio_secret_key" name="cred_minio_secret_key"
-                   value="{{if .SortedMinio}}{{(index .SortedMinio 0).Config.MinioSecretKey}}{{end}}"
-                   placeholder="minioadmin" autocomplete="new-password">
+            <label for="cred_seaweedfs_secret_key">SeaweedFS Secret Key <span class="field-tip" data-tip="Secret key used to authenticate with the SeaweedFS server.">ⓘ</span></label>
+            <input type="password" id="cred_seaweedfs_secret_key" name="cred_seaweedfs_secret_key"
+                   value="{{if .SortedSeaweedFS}}{{(index .SortedSeaweedFS 0).Config.SeaweedFSSecretKey}}{{end}}"
+                   placeholder="seaweedfsadmin" autocomplete="new-password">
           </div>
         </div>
         <div class="form-row" id="cred-ldap-row" {{if not .SortedLdap}}style="display:none"{{end}}>
@@ -1927,8 +1927,8 @@ function stepNumber(btn, delta) {
 
 const PLATFORM        = {{json .Platform}};
 const DOCKER_DEFAULT_PMM_EXTERNAL_PORT = {{.DockerDefaultPmmExternalPort}};
-const DOCKER_DEFAULT_MINIO_PORT = {{.DockerDefaultMinioPort}};
-const DOCKER_DEFAULT_MINIO_CONSOLE_PORT = {{.DockerDefaultMinioConsolePort}};
+const DOCKER_DEFAULT_SEAWEEDFS_PORT = {{.DockerDefaultSeaweedFSPort}};
+const DOCKER_DEFAULT_SEAWEEDFS_ADMIN_PORT = {{.DockerDefaultSeaweedFSAdminPort}};
 const PSMDB_IMAGES    = {{json .PSMDBImages}};
 const PBM_IMAGES      = {{json .PBMImages}};
 let PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
@@ -1965,11 +1965,11 @@ function removeBlock(btn) {
   const block = btn.closest('.component-block');
   const container = block.parentElement;
   block.remove();
-  // If this was a single-server container (PMM/Minio/LDAP), uncheck the toggle
+  // If this was a single-server container (PMM/SeaweedFS/LDAP), uncheck the toggle
   // and hide the corresponding credential row.
   const toggleMap = {
     'pmm-servers-container':  { cb: 'enable-pmm-docker' },
-    'minio-servers-container':{ cb: 'enable-minio-docker',  credRow: 'cred-minio-row' },
+    'seaweedfs-servers-container':{ cb: 'enable-seaweedfs-docker',  credRow: 'cred-seaweedfs-row' },
     'ldap-servers-container': { cb: 'enable-ldap-docker',   credRow: 'cred-ldap-row' },
   };
   const mapping = toggleMap[container.id];
@@ -1981,7 +1981,7 @@ function removeBlock(btn) {
   }
 }
 
-// Toggle a Docker single-server block (PMM / Minio / LDAP).
+// Toggle a Docker single-server block (PMM / SeaweedFS / LDAP).
 // When checked: show the block (auto-creating it if empty).
 // When unchecked: disable & hide the block so it is excluded from form data.
 function toggleDockerSingleServer(containerId, checkbox, addFn) {
@@ -2016,9 +2016,9 @@ function ensureDockerPmmServer() {
   ensureDockerSingleServerSelected('enable-pmm-docker', 'pmm-servers-container', addPmmServer);
 }
 
-function ensureDockerMinioServer() {
+function ensureDockerSeaweedFSServer() {
   if (PLATFORM !== 'docker') return;
-  ensureDockerSingleServerSelected('enable-minio-docker', 'minio-servers-container', addMinioServer, 'cred-minio-row');
+  ensureDockerSingleServerSelected('enable-seaweedfs-docker', 'seaweedfs-servers-container', addSeaweedFSServer, 'cred-seaweedfs-row');
 }
 
 function setDockerMonitoringCheckboxes(name, checked, imageGroup) {
@@ -2035,7 +2035,7 @@ function syncDockerPmmDependencies(checked) {
   setDockerMonitoringCheckboxes('replset_enable_pmm', checked, 'pmm');
 }
 
-function syncDockerMinioDependencies(checked) {
+function syncDockerSeaweedFSDependencies(checked) {
   setDockerMonitoringCheckboxes('cluster_enable_pbm', checked, 'pbm');
   setDockerMonitoringCheckboxes('replset_enable_pbm', checked, 'pbm');
 }
@@ -2061,13 +2061,13 @@ function syncDockerPmmServerToggle() {
   );
 }
 
-function syncDockerMinioServerToggle() {
+function syncDockerSeaweedFSServerToggle() {
   syncDockerServiceToggleFromDependencies(
-    'enable-minio-docker',
-    'minio-servers-container',
-    addMinioServer,
+    'enable-seaweedfs-docker',
+    'seaweedfs-servers-container',
+    addSeaweedFSServer,
     ['cluster_enable_pbm', 'replset_enable_pbm'],
-    'cred-minio-row',
+    'cred-seaweedfs-row',
   );
 }
 
@@ -2079,8 +2079,8 @@ function onDockerPmmFeatureToggle(checkbox) {
 
 function onDockerPbmFeatureToggle(checkbox) {
   toggleImageGroup(checkbox, 'pbm');
-  if (checkbox.checked) ensureDockerMinioServer();
-  syncDockerMinioServerToggle();
+  if (checkbox.checked) ensureDockerSeaweedFSServer();
+  syncDockerSeaweedFSServerToggle();
 }
 
 function onDockerMongotFeatureToggle(checkbox) {
@@ -2113,7 +2113,7 @@ function onMongotSourceChange(select) {
 }
 
 // Show or hide a credential row inside the Credentials section based on whether
-// the corresponding server type (PMM/Minio/LDAP) is included.
+// the corresponding server type (PMM/SeaweedFS/LDAP) is included.
 function toggleCredentialRow(rowId, show) {
   const row = document.getElementById(rowId);
   if (row) row.style.display = show ? '' : 'none';
@@ -2165,19 +2165,19 @@ function togglePackageBlock(btn) {
   btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
 }
 
-// Toggle the Minio VM body and Customize button when enable_minio checkbox changes.
+// Toggle the SeaweedFS VM body and Customize button when enable_seaweedfs checkbox changes.
 (function() {
-  const cb = document.getElementById('enable_minio');
+  const cb = document.getElementById('enable_seaweedfs');
   if (!cb) return;
-  const body = document.getElementById('minio-vm-body');
-  const toggleBtn = document.getElementById('minio-details-toggle');
+  const body = document.getElementById('seaweedfs-vm-body');
+  const toggleBtn = document.getElementById('seaweedfs-details-toggle');
   cb.addEventListener('change', () => {
     if (body) body.style.display = cb.checked ? '' : 'none';
     if (toggleBtn) {
       toggleBtn.style.display = cb.checked ? '' : 'none';
-      // Collapse the customize body when Minio is disabled.
+      // Collapse the customize body when SeaweedFS is disabled.
       if (!cb.checked) {
-        const detailsBody = document.getElementById('minio-details-body');
+        const detailsBody = document.getElementById('seaweedfs-details-body');
         if (detailsBody) detailsBody.style.display = 'none';
         toggleBtn.textContent = '▼ Customize';
       }
@@ -2185,8 +2185,8 @@ function togglePackageBlock(btn) {
   });
 })();
 
-function toggleMinioDetails(btn) {
-  const body = document.getElementById('minio-details-body');
+function toggleSeaweedFSDetails(btn) {
+  const body = document.getElementById('seaweedfs-details-body');
   if (!body) return;
   const hidden = body.style.display === 'none';
   body.style.display = hidden ? '' : 'none';
@@ -2245,10 +2245,10 @@ function onPmmAgentFeatureToggle(checkbox) {
 function onPbmAgentFeatureToggle(checkbox) {
   togglePackageFeatureGroup(checkbox, 'pbm');
   if (PLATFORM === 'chaos' && checkbox.checked) {
-    const minio = document.getElementById('enable_minio');
-    if (minio && !minio.checked) {
-      minio.checked = true;
-      minio.dispatchEvent(new Event('change', { bubbles: true }));
+    const seaweedfs = document.getElementById('enable_seaweedfs');
+    if (seaweedfs && !seaweedfs.checked) {
+      seaweedfs.checked = true;
+      seaweedfs.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
 }
@@ -3246,7 +3246,7 @@ function addCluster() {
   syncPerconaSearchRepoControl(c);
   if (PLATFORM !== 'docker') refreshAllPackageVersions(c);
   syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
-  syncDockerMinioDependencies(document.getElementById('enable-minio-docker')?.checked);
+  syncDockerSeaweedFSDependencies(document.getElementById('enable-seaweedfs-docker')?.checked);
 }
 
 function addReplset() {
@@ -3288,7 +3288,7 @@ function addReplset() {
   syncPerconaSearchRepoControl(c);
   if (PLATFORM !== 'docker') refreshAllPackageVersions(c);
   syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
-  syncDockerMinioDependencies(document.getElementById('enable-minio-docker')?.checked);
+  syncDockerSeaweedFSDependencies(document.getElementById('enable-seaweedfs-docker')?.checked);
 }
 
 function addPmmServer() {
@@ -3326,8 +3326,8 @@ function addPmmServer() {
   container.appendChild(c);
 }
 
-function addMinioServer() {
-  const container = document.getElementById('minio-servers-container');
+function addSeaweedFSServer() {
+  const container = document.getElementById('seaweedfs-servers-container');
   if (container.querySelectorAll('.component-block').length >= 1) return;
   const c = document.createElement('div');
   c.className = 'component-block';
@@ -3335,7 +3335,7 @@ function addMinioServer() {
     <div class="component-block-header">
       <div class="block-name-field">
         <label class="block-name-label">Name</label>
-        <input type="text" name="minio_server_name[]" class="block-name-input" placeholder="minio" value="minio" readonly>
+        <input type="text" name="seaweedfs_server_name[]" class="block-name-input" placeholder="seaweedfs" value="seaweedfs" readonly>
       </div>
       <div class="block-header-actions">
         <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomizeBlock(this)">▼ Customize</button>
@@ -3343,20 +3343,20 @@ function addMinioServer() {
     </div>
     <div class="customize-body" style="display:none">
       <div class="form-row">
-        <div class="form-group"><label>Minio Image <span class="field-tip" data-tip="Minio Docker image to use.">ⓘ</span></label>
-          <input type="text" name="minio_image[]" value="minio/minio:latest"></div>
-        <div class="form-group"><label>API Port <span class="field-tip" data-tip="Host port for the Minio S3 API (default: 9000).">ⓘ</span></label>
-          <input type="number" name="minio_port[]" value="${DOCKER_DEFAULT_MINIO_PORT}"></div>
-        <div class="form-group"><label>Console Port <span class="field-tip" data-tip="Host port for the Minio web console (default: 9001).">ⓘ</span></label>
-          <input type="number" name="minio_console_port[]" value="${DOCKER_DEFAULT_MINIO_CONSOLE_PORT}"></div>
+        <div class="form-group"><label>SeaweedFS Image <span class="field-tip" data-tip="SeaweedFS Docker image to use.">ⓘ</span></label>
+          <input type="text" name="seaweedfs_image[]" value="chrislusf/seaweedfs:latest"></div>
+        <div class="form-group"><label>API Port <span class="field-tip" data-tip="Host port for the SeaweedFS S3 API (default: 9000).">ⓘ</span></label>
+          <input type="number" name="seaweedfs_port[]" value="${DOCKER_DEFAULT_SEAWEEDFS_PORT}"></div>
+        <div class="form-group"><label>Console Port <span class="field-tip" data-tip="Host port for the SeaweedFS web console (default: 9001).">ⓘ</span></label>
+          <input type="number" name="seaweedfs_admin_port[]" value="${DOCKER_DEFAULT_SEAWEEDFS_ADMIN_PORT}"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Bucket Name <span class="field-tip" data-tip="Default S3 bucket name for MongoDB backups.">ⓘ</span></label>
-          <input type="text" name="minio_bucket_name[]" value="mongo-backups"></div>
+          <input type="text" name="seaweedfs_bucket_name[]" value="mongo-backups"></div>
         <div class="form-group"><label>Retention (days) <span class="field-tip" data-tip="Number of days to keep backups before expiry.">ⓘ</span></label>
-          <input type="number" name="minio_backup_retention[]" value="2" min="1"></div>
+          <input type="number" name="seaweedfs_backup_retention[]" value="2" min="1"></div>
         <div class="form-group form-group-checkbox">
-          <label><input type="checkbox" name="minio_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
+          <label><input type="checkbox" name="seaweedfs_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
       </div>
     </div>`;
   container.appendChild(c);
@@ -3421,8 +3421,8 @@ const numericFields = new Set([
   'mongos_cpu_cores','mongos_memory_gb',
   'arbiter_cpu_cores','arbiter_memory_gb',
   'replsetsvr_cpu_cores','replsetsvr_memory_gb',
-  'minio_cpu_cores','minio_memory_gb','minio_volume_size',
-  'minio_port','minio_console_port',
+  'seaweedfs_cpu_cores','seaweedfs_memory_gb','seaweedfs_volume_size',
+  'seaweedfs_port','seaweedfs_admin_port',
   'pmm_cpu_cores','pmm_memory_gb',
   'ca_cpu_cores','ca_memory_gb','ca_volume_size',
 ]);
@@ -3678,9 +3678,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (PLATFORM === 'docker') {
     syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
-    syncDockerMinioDependencies(document.getElementById('enable-minio-docker')?.checked);
+    syncDockerSeaweedFSDependencies(document.getElementById('enable-seaweedfs-docker')?.checked);
     syncDockerPmmServerToggle();
-    syncDockerMinioServerToggle();
+    syncDockerSeaweedFSServerToggle();
     toggleDockerYcsbSection(document.getElementById('enable_ycsb'));
   }
 
@@ -3744,9 +3744,9 @@ function validateDockerPortConflicts(config) {
   Object.entries(config.pmm_servers || {}).forEach(([name, server]) => {
     addPortUser(server.pmm_external_port || server.pmm_port, `PMM server ${name}`);
   });
-  Object.entries(config.minio_servers || {}).forEach(([name, server]) => {
-    addPortUser(server.minio_port, `MinIO API ${name}`);
-    addPortUser(server.minio_console_port, `MinIO console ${name}`);
+  Object.entries(config.seaweedfs_servers || {}).forEach(([name, server]) => {
+    addPortUser(server.seaweedfs_port, `SeaweedFS API ${name}`);
+    addPortUser(server.seaweedfs_admin_port, `SeaweedFS admin ${name}`);
   });
   Object.entries(config.ldap_servers || {}).forEach(([name, server]) => {
     addPortUser(server.ldap_port, `LDAP server ${name}`);
@@ -3885,9 +3885,9 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     'mongos_cpu_cores','mongos_memory_gb',
     'arbiter_cpu_cores','arbiter_memory_gb',
     'replsetsvr_cpu_cores','replsetsvr_memory_gb',
-    'minio_cpu_cores','minio_memory_gb','minio_volume_size',
-    'minio_port','minio_console_port',
-    'minio_root_user','minio_root_password',
+    'seaweedfs_cpu_cores','seaweedfs_memory_gb','seaweedfs_volume_size',
+    'seaweedfs_port','seaweedfs_admin_port',
+    'seaweedfs_access_key','seaweedfs_secret_key',
     'pmm_cpu_cores','pmm_memory_gb',
     'ca_cpu_cores','ca_memory_gb','ca_volume_size',
   ];
@@ -3975,7 +3975,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     config.enable_pmm = fd.has('enable_pmm');
   }
   if (PLATFORM === 'chaos') {
-    config.enable_minio = fd.has('enable_minio');
+    config.enable_seaweedfs = fd.has('enable_seaweedfs');
   }
 
   if (PLATFORM !== 'docker') {
@@ -4145,29 +4145,29 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
       };
     });
 
-    // Minio Servers – access/secret key come from the Credentials section
-    const mNames   = fd.getAll('minio_server_name[]');
-    const mImages  = fd.getAll('minio_image[]');
-    const mPorts   = fd.getAll('minio_port[]');
-    const mCPorts  = fd.getAll('minio_console_port[]');
-    const mBuckets = fd.getAll('minio_bucket_name[]');
-    const mRet     = fd.getAll('minio_backup_retention[]');
-    const mBind    = fd.getAll('minio_bind_localhost[]');
-    const credMinioAccess = fd.get('cred_minio_access_key');
-    const credMinioSecret = fd.get('cred_minio_secret_key');
-    config.minio_servers = {};
+    // SeaweedFS Servers – access/secret key come from the Credentials section
+    const mNames   = fd.getAll('seaweedfs_server_name[]');
+    const mImages  = fd.getAll('seaweedfs_image[]');
+    const mPorts   = fd.getAll('seaweedfs_port[]');
+    const mCPorts  = fd.getAll('seaweedfs_admin_port[]');
+    const mBuckets = fd.getAll('seaweedfs_bucket_name[]');
+    const mRet     = fd.getAll('seaweedfs_backup_retention[]');
+    const mBind    = fd.getAll('seaweedfs_bind_localhost[]');
+    const credSeaweedFSAccess = fd.get('cred_seaweedfs_access_key');
+    const credSeaweedFSSecret = fd.get('cred_seaweedfs_secret_key');
+    config.seaweedfs_servers = {};
     for (let i = 0; i < mNames.length; i++) {
       const name = mNames[i].trim();
       if (!name) continue;
-      config.minio_servers[name] = {
+      config.seaweedfs_servers[name] = {
         env_tag: 'test',
-        minio_image:        mImages[i]  || 'minio/minio:latest',
-        minio_port:         parseInt(mPorts[i])  || 9000,
-        minio_console_port: parseInt(mCPorts[i]) || 9001,
+        seaweedfs_image:        mImages[i]  || 'chrislusf/seaweedfs:latest',
+        seaweedfs_port:         parseInt(mPorts[i])  || 8333,
+        seaweedfs_admin_port: parseInt(mCPorts[i]) || 9333,
         bucket_name:        mBuckets[i] || 'mongo-backups',
         backup_retention:   parseInt(mRet[i])    || 2,
-        minio_access_key:   credMinioAccess || 'minio',
-        minio_secret_key:   credMinioSecret || 'minioadmin',
+        seaweedfs_access_key:   credSeaweedFSAccess || 'seaweedfs',
+        seaweedfs_secret_key:   credSeaweedFSSecret || 'seaweedfs-secret',
         bind_to_localhost:  mBind.some((v,idx) => idx === i && v === '1'),
       };
     }

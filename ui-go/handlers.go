@@ -290,8 +290,8 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var cfg Config
 	dockerDefaultPmmExternalPort := 8443
-	dockerDefaultMinioPort := 9000
-	dockerDefaultMinioConsolePort := 9001
+	dockerDefaultSeaweedFSPort := 8333
+	dockerDefaultSeaweedFSAdminPort := 9333
 	state, _ := loadState()
 	if err := dropStoredChaosTokensInState(state); err != nil {
 		http.Error(w, "State error: "+err.Error(), 500)
@@ -313,35 +313,35 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 	if platform == "docker" {
 		occupied := dockerOccupiedServicePorts(state, envID)
 		dockerDefaultPmmExternalPort = nextFreeDockerPort(8443, occupied)
-		dockerDefaultMinioPort, dockerDefaultMinioConsolePort = nextFreeDockerPortPair(9000, occupied)
+		dockerDefaultSeaweedFSPort, dockerDefaultSeaweedFSAdminPort = nextFreeSeaweedFSPorts(8333, occupied)
 	}
 
 	osUser := currentLocalUser()
 
 	renderPage(w, "configure", ConfigureData{
-		Platform:                      platform,
-		EnvID:                         envID,
-		Config:                        cfg,
-		Regions:                       defaultRegions(platform),
-		DefaultAuditFilter:            defaultAuditFilter,
-		OSUser:                        osUser,
-		DockerDefaultPmmExternalPort:  dockerDefaultPmmExternalPort,
-		DockerDefaultMinioPort:        dockerDefaultMinioPort,
-		DockerDefaultMinioConsolePort: dockerDefaultMinioConsolePort,
-		PSMDBVersions:                 cachedPSMDBVersions(),
-		PBMVersions:                   cachedPBMVersions(),
-		PSMDBMinorVersions:            cachedPSMDBMinorVersionsByMajor(),
-		PCSMVersions:                  cachedPCSMVersions(),
-		PMMImages:                     cachedPMMServerImages(),
-		PSMDBImages:                   cachedPSMDBImages(),
-		PBMImages:                     cachedPBMImages(),
-		PMMClientImages:               cachedPMMClientImages(),
-		MongotImages:                  cachedMongotImages(),
-		SortedClusters:                sortedClusters(cfg.Clusters),
-		SortedReplsets:                sortedReplsets(cfg.Replsets),
-		SortedPmmServers:              sortedPmmServers(cfg.PmmServers),
-		SortedMinio:                   sortedMinioServers(cfg.MinioServers),
-		SortedLdap:                    sortedLdapServers(cfg.LdapServers),
+		Platform:                        platform,
+		EnvID:                           envID,
+		Config:                          cfg,
+		Regions:                         defaultRegions(platform),
+		DefaultAuditFilter:              defaultAuditFilter,
+		OSUser:                          osUser,
+		DockerDefaultPmmExternalPort:    dockerDefaultPmmExternalPort,
+		DockerDefaultSeaweedFSPort:      dockerDefaultSeaweedFSPort,
+		DockerDefaultSeaweedFSAdminPort: dockerDefaultSeaweedFSAdminPort,
+		PSMDBVersions:                   cachedPSMDBVersions(),
+		PBMVersions:                     cachedPBMVersions(),
+		PSMDBMinorVersions:              cachedPSMDBMinorVersionsByMajor(),
+		PCSMVersions:                    cachedPCSMVersions(),
+		PMMImages:                       cachedPMMServerImages(),
+		PSMDBImages:                     cachedPSMDBImages(),
+		PBMImages:                       cachedPBMImages(),
+		PMMClientImages:                 cachedPMMClientImages(),
+		MongotImages:                    cachedMongotImages(),
+		SortedClusters:                  sortedClusters(cfg.Clusters),
+		SortedReplsets:                  sortedReplsets(cfg.Replsets),
+		SortedPmmServers:                sortedPmmServers(cfg.PmmServers),
+		SortedSeaweedFS:                 sortedSeaweedFSServers(cfg.SeaweedFSServers),
+		SortedLdap:                      sortedLdapServers(cfg.LdapServers),
 	})
 }
 
@@ -2654,12 +2654,12 @@ func assignDockerReplsetPorts(cfg *Config) {
 			occupied[port] = struct{}{}
 		}
 	}
-	for _, svc := range cfg.MinioServers {
-		if svc.MinioPort != 0 {
-			occupied[svc.MinioPort] = struct{}{}
+	for _, svc := range cfg.SeaweedFSServers {
+		if svc.SeaweedFSPort != 0 {
+			occupied[svc.SeaweedFSPort] = struct{}{}
 		}
-		if svc.MinioConsolePort != 0 {
-			occupied[svc.MinioConsolePort] = struct{}{}
+		if svc.SeaweedFSAdminPort != 0 {
+			occupied[svc.SeaweedFSAdminPort] = struct{}{}
 		}
 	}
 	for _, svc := range cfg.LdapServers {
@@ -2759,12 +2759,12 @@ func dockerOccupiedServicePorts(state map[string]*Environment, excludeEnvID stri
 				occupied[port] = struct{}{}
 			}
 		}
-		for _, svc := range env.Config.MinioServers {
-			if svc.MinioPort > 0 {
-				occupied[svc.MinioPort] = struct{}{}
+		for _, svc := range env.Config.SeaweedFSServers {
+			if svc.SeaweedFSPort > 0 {
+				occupied[svc.SeaweedFSPort] = struct{}{}
 			}
-			if svc.MinioConsolePort > 0 {
-				occupied[svc.MinioConsolePort] = struct{}{}
+			if svc.SeaweedFSAdminPort > 0 {
+				occupied[svc.SeaweedFSAdminPort] = struct{}{}
 			}
 		}
 	}
@@ -2796,6 +2796,19 @@ func nextFreeDockerPortPair(start int, occupied map[int]struct{}) (int, int) {
 	}
 }
 
+func nextFreeSeaweedFSPorts(start int, occupied map[int]struct{}) (int, int) {
+	apiPort := start
+	for {
+		adminPort := apiPort + 1000
+		if _, exists := occupied[apiPort]; !exists {
+			if _, exists := occupied[adminPort]; !exists {
+				return apiPort, adminPort
+			}
+		}
+		apiPort++
+	}
+}
+
 func addDockerConfigPortUsers(cfg Config, portUsers map[int][]string, labelPrefix string) {
 	addPortUser := func(port int, user string) {
 		if port <= 0 {
@@ -2816,9 +2829,9 @@ func addDockerConfigPortUsers(cfg Config, portUsers map[int][]string, labelPrefi
 		}
 		addPortUser(port, fmt.Sprintf("%sPMM server", labelPrefix))
 	}
-	for _, ns := range sortedMinioServers(cfg.MinioServers) {
-		addPortUser(ns.Config.MinioPort, fmt.Sprintf("%sMinIO API", labelPrefix))
-		addPortUser(ns.Config.MinioConsolePort, fmt.Sprintf("%sMinIO console", labelPrefix))
+	for _, ns := range sortedSeaweedFSServers(cfg.SeaweedFSServers) {
+		addPortUser(ns.Config.SeaweedFSPort, fmt.Sprintf("%sSeaweedFS API", labelPrefix))
+		addPortUser(ns.Config.SeaweedFSAdminPort, fmt.Sprintf("%sSeaweedFS admin", labelPrefix))
 	}
 	for _, ns := range sortedLdapServers(cfg.LdapServers) {
 		addPortUser(ns.Config.LdapPort, fmt.Sprintf("%sLDAP server", labelPrefix))

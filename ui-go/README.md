@@ -126,7 +126,7 @@ Hosts & Connections, and YCSB controls when enabled.
 7. **Hosts & Connections** – after a successful deploy the environment detail page shows
    every host or container with its IP address, a copy-pasteable connect command
    (`ssh user@host` or `docker exec -it <name> bash`), MongoDB connection strings for
-   every replica set and cluster, and clickable **Open** buttons for PMM and MinIO
+   every replica set and cluster, and clickable **Open** buttons for PMM and SeaweedFS
     Console URLs. All PMM-related containers (server, Grafana renderer, Watchtower,
     and per-node PMM client sidecars) are grouped together under a single **PMM** section.
 

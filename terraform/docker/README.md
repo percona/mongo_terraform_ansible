@@ -9,7 +9,7 @@ This module deploys the full Percona MongoDB stack on Docker containers:
 
 It can also create:
 
-- MinIO server (with a storage bucket for PBM backups)
+- SeaweedFS server (with an S3-compatible storage bucket for PBM backups)
 - YCSB container (for generating workloads)
 - LDAP Server (optional for authentication)
 - Percona ClusterSync for MongoDB (PCSM), disabled by default
@@ -19,7 +19,7 @@ By default it deploys one sharded cluster with 2 shards. Each shard is a 3-node 
 ### Minimum `tfvars`
 
 The checked-in [`minimum.tfvars`](./minimum.tfvars) is the smallest standalone
-replica-set deployment. It disables PMM, PBM, MinIO, and LDAP so no supporting
+replica-set deployment. It disables PMM, PBM, SeaweedFS, and LDAP so no supporting
 containers are required.
 
 ```hcl
@@ -35,7 +35,7 @@ replsets = {
 }
 
 pmm_servers  = {}
-minio_servers = {}
+  seaweedfs_servers = {}
 ldap_servers  = {}
 ```
 
@@ -69,8 +69,8 @@ pmm_servers = {
   "pmm-server" = {}
 }
 
-minio_servers = {
-  "minio" = {}
+seaweedfs_servers = {
+  "seaweedfs" = {}
 }
 
 ldap_servers = {}
@@ -93,8 +93,8 @@ pmm_servers = {
   "pmm-server" = {}
 }
 
-minio_servers = {
-  "minio" = {}
+seaweedfs_servers = {
+  "seaweedfs" = {}
 }
 
 ldap_servers = {}
@@ -114,7 +114,7 @@ replsets = {
 
 pmm_servers = {}
 
-minio_servers = {}
+seaweedfs_servers = {}
 
 ldap_servers = {}
 ```
@@ -290,7 +290,7 @@ replsets = {
 docker exec -it cl01-pbm-cli pbm status
 ```
 
-- Access the MinIO web console at `http://127.0.0.1:9001`. Default credentials: `minio/minioadmin`.
+- Browse buckets and objects at `http://127.0.0.1:8888/buckets/`. The SeaweedFS Admin UI is at `http://127.0.0.1:9333`, and the S3 endpoint used by PBM is `http://127.0.0.1:8333`. Default test credentials: `seaweedfs/seaweedfs-secret`.
 
 ## Percona ClusterSync for MongoDB
 

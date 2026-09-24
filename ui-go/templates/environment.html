@@ -1260,6 +1260,7 @@ async function cancelJob() {
   if (s.status === 'running') {
     showTerminalSection('');
     setButtonsDisabled(true);
+    loadHosts();
     appendToTerminal('▶ Reconnecting to running job…');
     const es = new EventSource(`/api/job/${jobId}/stream`);
     activeEventSource = es;

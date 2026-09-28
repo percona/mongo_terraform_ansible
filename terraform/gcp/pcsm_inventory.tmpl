@@ -4,6 +4,9 @@ pcsm-target ansible_host=${target.ip} mongo_port=${target.mongo_port} use_tls=${
 [pcsm]
 ${hostname_pcsm} ansible_host=${ip_pcsm} pcsm_use_tls=${source.use_tls || target.use_tls}
 
+[pmm]
+${hostname_pmm} ansible_host=${ip_pmm}
+
 [all:vars]
 ansible_user=${my_ssh_user}
 %{ if ssh_private_key_path != "" ~}

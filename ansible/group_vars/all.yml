@@ -254,6 +254,11 @@ mongodb_pmm_user: pmm
 # Warning! This is just an example, replace with your own for prod use!
 mongodb_pmm_user_pwd: percona
 
+# PCSM Prometheus endpoint monitored by the colocated PMM client.
+pcsm_metrics_port: 2242
+pcsm_metrics_path: /metrics
+pcsm_metrics_scheme: http
+
 # Warning! This is just an example, replace with your own for prod use!
 watchtower_token: 89220f28d5017b6a5806a7c589485c2b
 

@@ -210,7 +210,7 @@ ansible-playbook pcsm.yml -i myenv_inventory_pcsm \
   -e pcsm_env_file_source=/secure/myenv/pcsm.env
 ```
 
-The environment file must contain `PCSM_SOURCE_URI`, `PCSM_TARGET_URI`, `PCSM_SOURCE_PASSWORD`, and `PCSM_TARGET_PASSWORD`. Passwords in the URIs must be URL-encoded. For TLS deployments, `pcsm.yml` stages the selected topology's CA bundle on the PCSM host. The playbook creates the source and target users, installs the root-only environment file, configures and verifies `pcsm.service`, and enables it. `stop.yml` and `restart.yml` include PCSM; `reset.yml` preserves its package and secret environment.
+The environment file must contain `PCSM_SOURCE_URI`, `PCSM_TARGET_URI`, `PCSM_SOURCE_PASSWORD`, and `PCSM_TARGET_PASSWORD`. Passwords in the URIs must be URL-encoded. For TLS deployments, `pcsm.yml` stages the selected topology's CA bundle on the PCSM host. The playbook creates the source and target users, installs the root-only environment file, configures and verifies `pcsm.service`, and enables it. When PMM is enabled, `pcsm.yml` also installs a PMM Client on the PCSM host and registers the local `http://127.0.0.1:2242/metrics` endpoint as `<pcsm-host>-pcsm`. `stop.yml` and `restart.yml` include PCSM; `reset.yml` preserves its package and secret environment.
 
 ## YCSB Workloads
 

@@ -222,3 +222,7 @@
       ansible.builtin.systemd:
         name: "{{ pcsm_service_name }}"
         state: restarted
+
+# The PCSM inventory contains the PCSM and PMM hosts, so this imports only the
+# PCSM-targeted PMM client play from pmm_client_install.yml.
+- import_playbook: pmm_client_install.yml

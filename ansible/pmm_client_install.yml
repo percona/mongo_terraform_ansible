@@ -116,6 +116,105 @@
         - arbiter is not defined
         - "'shards' in group_names or 'replsets' in group_names"
 
+- name: Install PMM client on PCSM
+  hosts: pcsm
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
+  become: true
+  tags: install,monitoring
+  vars:
+    pmm_enabled: "{{ enable_pmm_agent | default(enable_pmm | default((groups['pmm'] | default([]) | length) > 0)) | bool }}"
+    pcsm_pmm_service_name: "{{ inventory_hostname }}-pcsm"
+  environment:
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
+  tasks:
+    - name: Install percona-release for PMM client
+      ansible.builtin.apt:
+        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+        state: present
+      when:
+        - pmm_enabled | bool
+        - ansible_facts['os_family'] == 'Debian'
+
+    - name: Install percona-release for PMM client on Red Hat
+      ansible.builtin.dnf:
+        name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+        state: present
+        disable_gpg_check: true
+      when:
+        - pmm_enabled | bool
+        - ansible_facts['os_family'] == 'RedHat'
+
+    - name: Enable PMM client repository on PCSM
+      ansible.builtin.command: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
+      changed_when: false
+      when: pmm_enabled | bool
+
+    - name: Install PMM client on PCSM
+      ansible.builtin.package:
+        name: "{{ pmm_client_package }}"
+        state: present
+      when: pmm_enabled | bool
+
+    - name: Disable Percona telemetry on PCSM
+      ansible.builtin.systemd:
+        name: percona-telemetry-agent
+        enabled: false
+        state: stopped
+        daemon_reload: true
+      ignore_errors: true
+      when:
+        - pmm_enabled | bool
+        - disable_telemetry | bool
+
+    - name: Ensure pmm-agent is started on PCSM
+      ansible.builtin.service:
+        name: pmm-agent
+        state: started
+      when: pmm_enabled | bool
+
+    - name: Point PCSM pmm-agent to the PMM server
+      ansible.builtin.shell: >-
+        pmm-admin config
+        --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].ansible_facts['fqdn'] }}:{{ pmm_external_port }}
+        --server-insecure-tls --force
+      no_log: true
+      register: pcsm_pmm_config_result
+      retries: 3
+      delay: 1
+      until: pcsm_pmm_config_result.rc == 0
+      when: pmm_enabled | bool
+
+    - name: Wait for PCSM metrics endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ pcsm_metrics_port }}/{{ pcsm_metrics_path | regex_replace('^/', '') }}"
+        method: GET
+        status_code: 200
+      register: pcsm_metrics_health
+      until: pcsm_metrics_health.status == 200
+      retries: 12
+      delay: 5
+      when: pmm_enabled | bool
+
+    - name: Check whether PCSM is already registered in PMM
+      ansible.builtin.shell: "pmm-admin list | grep -F -- '{{ pcsm_pmm_service_name }}'"
+      args:
+        executable: /bin/bash
+      register: pcsm_pmm_service
+      changed_when: false
+      failed_when: false
+      when: pmm_enabled | bool
+
+    - name: Register PCSM metrics with PMM
+      ansible.builtin.command: >-
+        pmm-admin add external
+        --service-name={{ pcsm_pmm_service_name }}
+        --listen-port={{ pcsm_metrics_port }}
+        --metrics-path={{ pcsm_metrics_path }}
+        --scheme={{ pcsm_metrics_scheme }}
+      when:
+        - pmm_enabled | bool
+        - pcsm_pmm_service.rc != 0
+
     - name: Register mongot metrics collector
       shell: >
         pmm-admin add external

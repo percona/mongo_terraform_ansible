@@ -41,6 +41,8 @@ resource "local_file" "AnsibleInventoryPCSM" {
     my_ssh_user          = var.my_ssh_user
     ssh_private_key_path = var.ssh_private_key_path
     pcsm_version         = var.pcsm_version
+    hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
+    ip_pmm               = var.enable_pmm ? google_compute_instance.pmm[0].network_interface.0.access_config.0.nat_ip : ""
   })
 
   filename = "${var.prefix}_inventory_pcsm"

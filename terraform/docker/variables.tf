@@ -304,6 +304,55 @@ variable "pcsm_env_file" {
   description = "Path to a host-generated 0600 shell env file containing PCSM_SOURCE_URI and PCSM_TARGET_URI."
 }
 
+variable "pcsm_pmm_host" {
+  type        = string
+  default     = "pmm-server"
+  description = "PMM Server host selected by the PCSM PMM Client, following the same naming and prefix rules as MongoDB PMM clients."
+}
+
+variable "pcsm_pmm_port" {
+  type        = number
+  default     = 8443
+  description = "Fallback PMM Server port used by the PCSM PMM Client when the selected pmm_servers entry does not define one."
+}
+
+variable "pcsm_pmm_server_user" {
+  type        = string
+  default     = "admin"
+  description = "Fallback PMM Server user used by the PCSM PMM Client when the selected pmm_servers entry does not define one."
+}
+
+variable "pcsm_pmm_server_pwd" {
+  type        = string
+  default     = "admin"
+  sensitive   = true
+  description = "Fallback PMM Server password used by the PCSM PMM Client when the selected pmm_servers entry does not define one."
+}
+
+variable "pcsm_pmm_client_image" {
+  type        = string
+  default     = "percona/pmm-client:latest"
+  description = "PMM Client image used by the PCSM sidecar."
+}
+
+variable "pcsm_metrics_port" {
+  type        = number
+  default     = 2242
+  description = "PCSM Prometheus metrics port."
+}
+
+variable "pcsm_metrics_path" {
+  type        = string
+  default     = "/metrics"
+  description = "PCSM Prometheus metrics path."
+}
+
+variable "pcsm_metrics_scheme" {
+  type        = string
+  default     = "http"
+  description = "PCSM Prometheus metrics scheme."
+}
+
 variable "pcsm_source_kind" {
   type        = string
   default     = "cluster"

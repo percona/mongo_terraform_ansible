@@ -1,7 +1,26 @@
+locals {
+  pcsm_pmm_server = try(var.pmm_servers[var.pcsm_pmm_host], null)
+  pcsm_pmm_port   = try(local.pcsm_pmm_server.pmm_port, var.pcsm_pmm_port)
+  pcsm_pmm_user   = try(local.pcsm_pmm_server.pmm_server_user, var.pcsm_pmm_server_user)
+  pcsm_pmm_pwd    = try(local.pcsm_pmm_server.pmm_server_pwd, var.pcsm_pmm_server_pwd)
+}
+
 resource "docker_image" "pcsm" {
   count        = var.enable_pcsm ? 1 : 0
   name         = var.pcsm_image
   keep_locally = true
+}
+
+data "docker_registry_image" "pcsm_pmm_client" {
+  count = var.enable_pcsm ? 1 : 0
+  name  = var.pcsm_pmm_client_image
+}
+
+resource "docker_image" "pcsm_pmm_client" {
+  count         = var.enable_pcsm ? 1 : 0
+  name          = "${replace(data.docker_registry_image.pcsm_pmm_client[0].name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")}@${data.docker_registry_image.pcsm_pmm_client[0].sha256_digest}"
+  pull_triggers = [data.docker_registry_image.pcsm_pmm_client[0].sha256_digest]
+  keep_locally  = true
 }
 
 resource "docker_container" "pcsm" {
@@ -15,7 +34,7 @@ resource "docker_container" "pcsm" {
   user       = "0:0"
   entrypoint = ["/bin/sh", "-c"]
   command = [
-    "set -a; . /run/secrets/pcsm.env; set +a; : \"$${PCSM_SOURCE_URI:?PCSM_SOURCE_URI is required}\"; : \"$${PCSM_TARGET_URI:?PCSM_TARGET_URI is required}\"; exec /pcsm-entry.sh pcsm"
+    "set -a; . /run/secrets/pcsm.env; set +a; : \"$${PCSM_SOURCE_URI:?PCSM_SOURCE_URI is required}\"; : \"$${PCSM_TARGET_URI:?PCSM_TARGET_URI is required}\"; export PCSM_LISTEN_HOST=0.0.0.0; export PCSM_PORT=${var.pcsm_metrics_port}; exec /pcsm-entry.sh pcsm"
   ]
 
   cpus   = tostring(var.pcsm_cpus)
@@ -79,6 +98,11 @@ resource "docker_container" "pcsm" {
     }
 
     precondition {
+      condition     = !var.enable_pcsm || contains(keys(var.pmm_servers), var.pcsm_pmm_host)
+      error_message = "pcsm_pmm_host must identify a configured PMM Server when PCSM is enabled."
+    }
+
+    precondition {
       condition     = var.pcsm_source_kind == var.pcsm_target_kind
       error_message = "PCSM requires cluster-to-cluster or replset-to-replset replication."
     }
@@ -97,5 +121,50 @@ resource "docker_container" "pcsm" {
       condition     = var.pcsm_target_kind == "cluster" ? contains(keys(var.clusters), trimspace(var.pcsm_target_name)) : contains(keys(var.replsets), trimspace(var.pcsm_target_name))
       error_message = "pcsm_target_name must identify a configured topology of pcsm_target_kind."
     }
+  }
+}
+
+resource "docker_container" "pcsm_pmm_client" {
+  count    = var.enable_pcsm ? 1 : 0
+  name     = "${local.name_prefix}pcsm-pmm-client"
+  hostname = "${local.name_prefix}pcsm-pmm-client"
+  image    = docker_image.pcsm_pmm_client[0].image_id
+
+  env = [
+    "PMM_AGENT_SETUP=1",
+    "PMM_AGENT_SETUP_FORCE=1",
+    "PMM_AGENT_SETUP_NODE_NAME=${local.name_prefix}pcsm",
+    "PMM_AGENT_SETUP_NODE_TYPE=container",
+    "PMM_AGENT_SERVER_ADDRESS=${local.name_prefix}${var.pcsm_pmm_host}:${local.pcsm_pmm_port}",
+    "PMM_AGENT_SERVER_USERNAME=${local.pcsm_pmm_user}",
+    "PMM_AGENT_SERVER_PASSWORD=${local.pcsm_pmm_pwd}",
+    "PMM_AGENT_SERVER_INSECURE_TLS=1",
+    "PMM_AGENT_CONFIG_FILE=config/pmm-agent.yaml",
+    "PMM_AGENT_PRERUN_SCRIPT=pmm-admin status --wait=10s; if ! pmm-admin list | grep -Fq '${local.name_prefix}pcsm-pcsm'; then until pmm-admin add external --service-name=${local.name_prefix}pcsm-pcsm --host=${local.name_prefix}pcsm --listen-port=${var.pcsm_metrics_port} --metrics-path=${var.pcsm_metrics_path} --scheme=${var.pcsm_metrics_scheme}; do sleep 5; done; fi",
+  ]
+
+  network_mode = "bridge"
+  networks_advanced {
+    name = docker_network.mongo_network.name
+  }
+
+  depends_on = [
+    docker_container.pcsm,
+    module.pmm_server,
+  ]
+
+  healthcheck {
+    test         = ["CMD-SHELL", "pmm-admin status"]
+    interval     = "10s"
+    timeout      = "10s"
+    retries      = 5
+    start_period = "30s"
+  }
+
+  wait    = false
+  restart = "unless-stopped"
+
+  lifecycle {
+    replace_triggered_by = [docker_image.pcsm_pmm_client]
   }
 }

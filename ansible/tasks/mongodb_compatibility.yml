@@ -1,0 +1,23 @@
+---
+- name: Validate MongoDB 9 PBM compatibility
+  ansible.builtin.assert:
+    that:
+      - not (enable_pbm | default(true) | bool)
+    fail_msg: "PBM does not yet support MongoDB 9.0 backup/restore. Set enable_pbm=false for this release."
+  when: mongodb_major_effective | int >= 9
+
+- name: Validate PBM backup type for official MongoDB
+  ansible.builtin.assert:
+    that:
+      - pbm_backup_type_effective == 'logical'
+    fail_msg: "MongoDB Community/Enterprise supports logical PBM backups only. Set pbm_backup_type=logical or disable PBM."
+  when:
+    - enable_pbm | default(true) | bool
+    - mongodb_distribution_effective in ['community', 'enterprise']
+
+- name: Validate MongoDB 9 Search compatibility
+  ansible.builtin.assert:
+    that:
+      - not (enable_mongot_effective | bool)
+    fail_msg: "Search compatibility with MongoDB 9.0 has not been verified. Disable mongot for this release."
+  when: mongodb_major_effective | int >= 9

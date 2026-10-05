@@ -329,6 +329,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		DockerDefaultSeaweedFSPort:      dockerDefaultSeaweedFSPort,
 		DockerDefaultSeaweedFSAdminPort: dockerDefaultSeaweedFSAdminPort,
 		PSMDBVersions:                   cachedPSMDBVersions(),
+		OfficialMongoDBVersions:         defaultMongoDBOfficialVersions,
 		PBMVersions:                     cachedPBMVersions(),
 		PSMDBMinorVersions:              cachedPSMDBMinorVersionsByMajor(),
 		PCSMVersions:                    cachedPCSMVersions(),
@@ -883,15 +884,16 @@ func environmentYCSBStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/versions
 func apiVersionsHandler(w http.ResponseWriter, r *http.Request) {
+	minorVersions := getPSMDBMinorVersionsByMajor()
 	writeJSON(w, 200, map[string]interface{}{
-		"psmdb_versions":       getPSMDBVersions(),
+		"psmdb_versions":       availablePSMDBReleases(getPSMDBVersions(), minorVersions),
 		"pbm_versions":         getPBMVersions(),
 		"pmm_server_images":    getPMMServerImages(),
 		"psmdb_images":         getPSMDBImages(),
 		"pbm_images":           getPBMImages(),
 		"pmm_client_images":    getPMMClientImages(),
 		"mongot_images":        getMongotImages(),
-		"psmdb_minor_versions": getPSMDBMinorVersionsByMajor(),
+		"psmdb_minor_versions": minorVersions,
 		"pcsm_versions":        getPCSMVersions(),
 	})
 }
@@ -1242,6 +1244,20 @@ func validateMongotVersionCompatibility(platform string, cfg *Config) error {
 		if e.enableMongot == nil || !*e.enableMongot {
 			continue
 		}
+		e.mongoRelease = strDefault(e.mongoRelease, cfg.MongoRelease)
+		e.mongoVersion = strDefault(e.mongoVersion, cfg.MongoVersion)
+		e.distribution = strDefault(e.distribution, cfg.MongoDBDistribution)
+		version := e.mongoVersion
+		if platform == "docker" {
+			version = e.psmdbImage
+		} else if version == "" {
+			version = e.mongoRelease
+		}
+		major, _, _, _, _ := parseMongoVersion(version)
+		releaseMajor, _, _, _, _ := parseMongoVersion(e.mongoRelease)
+		if major >= 9 || (platform != "docker" && releaseMajor >= 9) {
+			return fmt.Errorf("%s %q: Search compatibility with MongoDB 9.0 has not been verified; disable mongot for this release", e.kind, e.name)
+		}
 		source := strings.TrimSpace(e.mongotSource)
 		if source == "" {
 			source = "auto"
@@ -1269,14 +1285,14 @@ func validateMongotVersionCompatibility(platform string, cfg *Config) error {
 		if platform == "docker" {
 			versionStr = mongotVersionFromImage(e.psmdbImage)
 		} else {
-			versionStr = e.mongoVersion
+			versionStr = strDefault(e.mongoVersion, e.mongoRelease)
 		}
 		if versionStr == "" {
 			// Cannot determine version — skip (other validators will catch missing fields).
 			continue
 		}
-		major, minor := parseMajorMinor(versionStr)
-		if major < 0 {
+		major, minor, _, _, ok := parseMongoVersion(versionStr)
+		if !ok {
 			continue // unparseable — skip
 		}
 		if !mongotVersionOk(major, minor) {
@@ -1308,6 +1324,16 @@ func validatePackageBlock(kind, name string, distribution, release string, enabl
 
 func normalizeAndValidatePackageConfig(platform string, cfg *Config) error {
 	if platform == "docker" {
+		for name, cluster := range cfg.Clusters {
+			if err := validateMongoDB9Backup("cluster", name, cluster.PsmdbImage, boolDefault(cluster.EnablePbm, true)); err != nil {
+				return err
+			}
+		}
+		for name, replset := range cfg.Replsets {
+			if err := validateMongoDB9Backup("replica set", name, replset.PsmdbImage, boolDefault(replset.EnablePbm, true)); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 	defaultDistribution := normalizePackageDistribution(cfg.MongoDBDistribution)
@@ -1336,6 +1362,9 @@ func normalizeAndValidatePackageConfig(platform string, cfg *Config) error {
 		if err := validatePackageBlock("cluster", name, distribution, release, boolDefault(cluster.EnableAudit, false)); err != nil {
 			return err
 		}
+		if err := validateMongoDB9Backup("cluster", name, release, boolDefault(cluster.EnablePbm, true)); err != nil {
+			return err
+		}
 		cfg.Clusters[name] = cluster
 	}
 	for name, replset := range cfg.Replsets {
@@ -1356,7 +1385,18 @@ func normalizeAndValidatePackageConfig(platform string, cfg *Config) error {
 		if err := validatePackageBlock("replica set", name, distribution, release, boolDefault(replset.EnableAudit, false)); err != nil {
 			return err
 		}
+		if err := validateMongoDB9Backup("replica set", name, release, boolDefault(replset.EnablePbm, true)); err != nil {
+			return err
+		}
 		cfg.Replsets[name] = replset
+	}
+	return nil
+}
+
+func validateMongoDB9Backup(kind, name, release string, enabled bool) error {
+	major, _, _, _, _ := parseMongoVersion(release)
+	if enabled && major >= 9 {
+		return fmt.Errorf("%s %q: PBM does not yet support MongoDB 9.0 backup/restore; disable PBM for this release", kind, name)
 	}
 	return nil
 }

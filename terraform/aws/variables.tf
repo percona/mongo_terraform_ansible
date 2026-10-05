@@ -481,7 +481,7 @@ variable "source_ranges" {
 variable "mongo_release" {
   type        = string
   default     = ""
-  description = "MongoDB release line (e.g. psmdb-80, 8.0, 8.3). Empty string uses the default from group_vars."
+  description = "MongoDB release line (e.g. psmdb-80, 8.0, 8.3, 9.0). Empty string uses the default from group_vars."
 }
 
 variable "mongodb_distribution" {

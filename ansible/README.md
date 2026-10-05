@@ -2,6 +2,11 @@
 
 This directory contains the playbooks that install, configure, stop, restart, and reset MongoDB environments after infrastructure has been created.
 
+For fresh 9.0 deployments, see [MongoDB 9.0 deployment notes](../docs/mongodb-9.0.md).
+On supported releases, Community/Enterprise use logical PBM backups by default
+and PSMDB retains physical backups. `pbm_backup_type` can override the default.
+PBM is disabled for MongoDB 9.0 until backup/restore compatibility is verified.
+
 ## Prerequisites
 
 - [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/)

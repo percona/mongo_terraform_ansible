@@ -1,4 +1,25 @@
 ---
+- name: Verify MongoDB endpoint versions before configuring PCSM
+  hosts: pcsm-source:pcsm-target
+  become: false
+  gather_facts: false
+  tags: pcsm
+  tasks:
+    - name: Read MongoDB endpoint version
+      ansible.builtin.shell: >-
+        mongosh admin --quiet --host localhost --port {{ mongo_port }}
+        {% if use_tls | default(false) | bool %}--tls --tlsCAFile {{ CAFile }} --tlsCertificateKeyFile {{ clientCertificateKeyFile }}{% endif %}
+        -u {{ mongo_admin_user }} -p {{ mongo_admin_password }} --eval 'db.version()'
+      register: pcsm_mongodb_version
+      changed_when: false
+      no_log: true
+
+    - name: Require a verified PCSM MongoDB version line
+      ansible.builtin.assert:
+        that:
+          - pcsm_mongodb_version.stdout | trim is match('^[678]\.0\.')
+        fail_msg: "PCSM supports MongoDB 6.0, 7.0 and 8.0. MongoDB 9.0 compatibility has not been verified."
+
 - name: Configure the source MongoDB user used by PCSM
   hosts: pcsm-source
   become: false

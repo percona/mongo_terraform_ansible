@@ -36,7 +36,7 @@ var safeFilenameRe = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
 // defaultPSMDBVersions is used as a fallback when the Percona repo is unreachable.
 var defaultPSMDBVersions = []string{"psmdb-83", "psmdb-80", "psmdb-70", "psmdb-60", "psmdb-50", "psmdb-44", "psmdb-42", "psmdb-40", "psmdb-36"}
 var defaultPCSMVersions = []string{"0.9.0"}
-var defaultMongoDBOfficialVersions = []string{"8.3", "8.2", "8.0", "7.0", "6.0"}
+var defaultMongoDBOfficialVersions = []string{"9.0", "8.3", "8.2", "8.0", "7.0", "6.0"}
 
 // Default Docker image tags used when Docker Hub is unreachable.
 var defaultPSMDBImages = []string{

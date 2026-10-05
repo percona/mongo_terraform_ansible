@@ -15,8 +15,6 @@
       net.core.somaxconn: 65535
       vm.max_map_count: 102400
 
-    mongo_major: "{{ (mongo_release_effective | regex_search('^[0-9]+') | default(mongo_release_effective | regex_search('[0-9]+$'), true)) | int }}"
-
     pam_limits:
       - domain: "*"
         type: soft
@@ -28,6 +26,30 @@
         value: 64000
 
   tasks:
+
+    - name: Check for an existing disable THP service (Mongo >= 8)
+      ansible.builtin.stat:
+        path: "{{ thp_location }}"
+      register: disable_thp_service
+      when: mongodb_major_effective | int >= 8
+
+    - name: Stop and disable legacy THP service (Mongo >= 8)
+      ansible.builtin.systemd:
+        name: disable-thp
+        enabled: false
+        state: stopped
+      when:
+        - mongodb_major_effective | int >= 8
+        - disable_thp_service.stat.exists
+
+    - name: Remove legacy THP service (Mongo >= 8)
+      ansible.builtin.file:
+        path: "{{ thp_location }}"
+        state: absent
+      when:
+        - mongodb_major_effective | int >= 8
+        - disable_thp_service.stat.exists
+      notify: reload systemd
 
     - name: Tune sysctl values
       ansible.posix.sysctl:
@@ -65,7 +87,7 @@
         group: root
         mode: "0644"
       when:
-        - mongo_major | int < 80
+        - mongodb_major_effective | int < 8
       notify:
         - reload systemd
         - start disable thp

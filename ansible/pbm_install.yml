@@ -9,6 +9,10 @@
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
+    - name: Validate PBM compatibility
+      include_tasks: tasks/mongodb_compatibility.yml
+      when: pbm_enabled | bool
+
     - name: Install pbm packages from repository (latest)
       package:
         name: "{{ pbm_package }}"
@@ -174,7 +178,7 @@
         minute: '{{ pbm_backup_minute }}'
         hour: '{{ pbm_backup_hour }}'
         user: '{{ pbm_os_user }}'
-        job: /usr/bin/pbm backup --type '{{ pbm_backup_type }}' --mongodb-uri '{{ mongodb_uri }}'
+        job: /usr/bin/pbm backup --type '{{ pbm_backup_type_effective }}' --mongodb-uri '{{ mongodb_uri }}'
         cron_file: pbm_daily_backup
       when:
         - pbm_enabled | bool

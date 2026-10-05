@@ -23,11 +23,16 @@ mongodb_distribution_effective: "{{ mongodb_distribution | default(mongodb_distr
 
 # MongoDB version/release line. For PSMDB this is the percona-release repo name
 # (for example psmdb-80). For MongoDB Community/Enterprise this is the official
-# MongoDB repo line (for example 8.0 or 8.3).
+# MongoDB repo line (for example 8.0, 8.3 or 9.0).
 # Availability depends on the OS version.
 #mongo_release_default: psmdb-70
 mongo_release_default: psmdb-80
 mongo_release_effective: "{{ mongo_release | default(mongo_release_default, true) | trim }}"
+# Normalize psmdb-80/psmdb-90 and official 8.0/9.0 to the same major number.
+mongodb_major_effective: "{{ (mongo_release_effective | regex_replace('^psmdb-([0-9]+)[0-9]$', '\\1') | regex_search('^[0-9]+')) | int }}"
+# MongoDB 9 uses server-9.asc; earlier releases use server-<major>.0.asc.
+mongodb_repo_signing_key: "{{ '9' if mongodb_major_effective | int == 9 else (mongodb_major_effective | string) ~ '.0' }}"
+mongodb_apt_component: "{{ 'main' if ansible_facts['distribution'] == 'Debian' else 'multiverse' }}"
 mongo_repo_default: release
 mongo_repo_effective: "{{ mongo_repo | default(mongo_repo_default, true) | trim }}"
 
@@ -138,7 +143,8 @@ mongo_admin_password: percona
 mongod_log_path: /var/log/mongo/
 mongod_path: /var/lib/mongo/
 mongod_pid_path: "{{ '/var/run/mongodb/mongod.pid' if mongodb_distribution_effective in ['community', 'enterprise'] else '/var/run/mongod.pid' }}"
-enable_audit: false
+enable_audit_default: false
+enable_audit_effective: "{{ enable_audit | default(enable_audit_default, true) | bool }}"
 audit_log_path: /var/log/mongo/auditLog.json
 
 # MongoDB Search / Vector Search (mongot) experimental support.
@@ -168,7 +174,8 @@ mongodb_mongot_password: percona
 
 # Default audit policy: log successful write authorization checks for non-system users.
 # Override audit_filter per deployment or via --extra-vars when needed.
-audit_filter: '{ atype: "authCheck", "param.command": { $in: [ "insert", "update", "delete", "findandmodify" ] }, "users.user": { $not: /^__/ } }'
+audit_filter_default: '{ atype: "authCheck", "param.command": { $in: [ "insert", "update", "delete", "findandmodify" ] }, "users.user": { $not: /^__/ } }'
+audit_filter_effective: "{{ audit_filter_default if audit_filter is not defined or audit_filter == '' else audit_filter }}"
 
 thp_location: /usr/lib/systemd/system/disable-thp.service
 
@@ -278,8 +285,10 @@ watchtower_token: 89220f28d5017b6a5806a7c589485c2b
 pbmuser: pbm
 # Warning! This is just an example, replace with your own for prod use!
 pbmpwd: secretpwd
-# also can be logical
-pbm_backup_type: physical
+# Official MongoDB supports logical PBM backups only. Preserve physical backups
+# as the PSMDB default, while allowing inventory/extra-vars to override it.
+pbm_backup_type_default: "{{ 'physical' if mongodb_distribution_effective == 'psmdb' else 'logical' }}"
+pbm_backup_type_effective: "{{ pbm_backup_type | default(pbm_backup_type_default, true) }}"
 # how long to keep backups
 pbm_retention_days: 3
 # use for the cron job with backup time

@@ -322,7 +322,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label>MongoDB Major Version <span class="field-tip" data-tip="Defaults to PSMDB 8.0, the latest GA release line. PSMDB 8.3 and newer lines must be selected explicitly.">ⓘ</span></label>
+              <label>MongoDB Major Version <span class="field-tip" data-tip="Defaults to PSMDB 8.0. PSMDB 8.3 and newer lines must be selected explicitly. Releases are filtered by package availability for the selected OS and channel.">ⓘ</span></label>
               <select name="cluster_mongo_release[]" onchange="onMongoReleaseChange(this)">
                 {{$curRel := .Config.MongoRelease}}
                 {{$defaultRel := preferredPSMDBRelease $.PSMDBVersions}}
@@ -815,7 +815,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label>MongoDB Major Version <span class="field-tip" data-tip="Defaults to PSMDB 8.0, the latest GA release line. PSMDB 8.3 and newer lines must be selected explicitly.">ⓘ</span></label>
+              <label>MongoDB Major Version <span class="field-tip" data-tip="Defaults to PSMDB 8.0. PSMDB 8.3 and newer lines must be selected explicitly. Releases are filtered by package availability for the selected OS and channel.">ⓘ</span></label>
               <select name="replset_mongo_release[]" onchange="onMongoReleaseChange(this)">
                 {{$curRel := .Config.MongoRelease}}
                 {{$defaultRel := preferredPSMDBRelease $.PSMDBVersions}}
@@ -1936,7 +1936,7 @@ const PMM_SERVER_IMAGES = {{json .PMMImages}};
 const MONGOT_IMAGES = {{json .MongotImages}};
 let PCSM_VERSIONS = {{json .PCSMVersions}};
 let PSMDB_VERSIONS  = {{json .PSMDBVersions}};
-const OFFICIAL_MONGODB_VERSIONS = ['8.3', '8.2', '8.0', '7.0', '6.0'];
+const OFFICIAL_MONGODB_VERSIONS = {{json .OfficialMongoDBVersions}};
 let PBM_VERSIONS    = {{json .PBMVersions}};
 const DEFAULT_AUDIT_FILTER = {{json .DefaultAuditFilter}};
 // Minor versions keyed by major release identifier, e.g. {"psmdb-70": ["7.0.12", ...]}
@@ -2356,6 +2356,7 @@ function syncMongoDBDistributionControls(block, prefix) {
   if (!releaseSel) return;
   if (distribution !== 'psmdb' && releaseSel.value.startsWith('psmdb-')) {
     setSelectOptionsNoEmpty(releaseSel, OFFICIAL_MONGODB_VERSIONS);
+    if (OFFICIAL_MONGODB_VERSIONS.includes('8.0')) releaseSel.value = '8.0';
     onMongoReleaseChange(releaseSel);
   } else if (distribution === 'psmdb' && !releaseSel.value.startsWith('psmdb-')) {
     setSelectOptionsNoEmpty(releaseSel, PSMDB_VERSIONS);
@@ -2960,7 +2961,7 @@ function buildPackageOverrideRows(type) {
         </select></div>
       <div class="form-group" data-mongodb-repo><label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this ${label}. Defaults to release (GA).">ⓘ</span></label>
         <select name="${type}_mongo_repo[]" onchange="onPackageRepoChange(this, 'psmdb')">${repoOptions}</select></div>
-      <div class="form-group"><label>MongoDB Major Version <span class="field-tip" data-tip="Defaults to PSMDB 8.0, the latest GA release line. PSMDB 8.3 and newer lines must be selected explicitly.">ⓘ</span></label>
+      <div class="form-group"><label>MongoDB Major Version <span class="field-tip" data-tip="Defaults to PSMDB 8.0. PSMDB 8.3 and newer lines must be selected explicitly. Releases are filtered by package availability for the selected OS and channel.">ⓘ</span></label>
         <select name="${type}_mongo_release[]" onchange="onMongoReleaseChange(this)">${mongoReleaseOptions}</select></div>
       <div class="form-group"><label>MongoDB Minor Version <span class="field-tip" data-tip="PSMDB minor/package version pin for this ${label}. Defaults to the newest package from the selected release/channel.">ⓘ</span></label>
         <select name="${type}_mongo_version[]"></select></div>

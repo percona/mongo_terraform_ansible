@@ -1,5 +1,8 @@
 # Deploy MongoDB infrastructure on AWS
 
+For fresh MongoDB 9.0 package selections and integration compatibility, see
+[MongoDB 9.0 deployment notes](../../docs/mongodb-9.0.md).
+
 This Terraform module creates:
 
 - a VPC, public subnets, an internet gateway, routes, and security groups

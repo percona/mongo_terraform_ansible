@@ -1,5 +1,8 @@
 # Deploy VMs using Terraform with Libvirt/KVM
 
+For installing MongoDB 9.0 on the provisioned guests through Ansible, see
+[MongoDB 9.0 deployment notes](../../docs/mongodb-9.0.md).
+
 This module creates:
 
 - Libvirt Storage Pool

@@ -1,5 +1,9 @@
 # Deploy MongoDB on Docker with Terraform
 
+For Percona 9.0 image availability and integration compatibility, see
+[MongoDB 9.0 deployment notes](../../docs/mongodb-9.0.md). Docker remains
+Percona-image-only; upstream MongoDB images are not part of this deployment path.
+
 This module deploys the full Percona MongoDB stack on Docker containers:
 
 - Percona Server for MongoDB

@@ -20,6 +20,13 @@ resource "docker_image" "psmdb" {
   name          = "${local.psmdb_repository}@${data.docker_registry_image.psmdb.sha256_digest}"
   pull_triggers = [data.docker_registry_image.psmdb.sha256_digest]
   keep_locally  = true
+
+  lifecycle {
+    precondition {
+      condition     = length(regexall(":(9|[1-9][0-9]+)\\.", var.psmdb_image)) == 0 || (!var.enable_pbm && !var.enable_mongot)
+      error_message = "PBM and Search compatibility with PSMDB 9.0 has not been verified. Set enable_pbm=false and enable_mongot=false for this release."
+    }
+  }
 }
 
 data "docker_registry_image" "pbm" {

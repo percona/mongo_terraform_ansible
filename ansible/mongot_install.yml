@@ -10,6 +10,12 @@
     mongot_tarball: "mongot_community_{{ mongot_download_version }}_linux_{{ mongot_arch }}.tgz"
     mongot_url: "https://downloads.mongodb.org/mongodb-search-community/{{ mongot_download_version }}/{{ mongot_tarball }}"
   tasks:
+    - name: Require verified MongoDB Search compatibility
+      ansible.builtin.assert:
+        that: mongodb_major_effective | int < 9
+        fail_msg: "Search compatibility with MongoDB 9.0 has not been verified. Disable mongot for this release."
+      when: enable_mongot_effective | bool
+
     - name: Ensure mongot group exists
       group:
         name: "{{ mongot_group }}"

@@ -10,12 +10,12 @@ systemLog:
   logRotate: reopen
   path: {{ mongod_log_path }}/mongod.log
 
-{% if enable_audit %}
+{% if enable_audit_effective %}
 auditLog:
   destination: file
   format: JSON
   path: {{ audit_log_path }}
-  filter: '{{ audit_filter }}'
+  filter: {{ (audit_filter_effective if audit_filter_effective is string else audit_filter_effective | to_json) | to_json }}
 {% endif %}
 
 # Where and how to store data.
@@ -84,7 +84,7 @@ operationProfiling:
    rateLimit: 100
 {% endif %}
 
-{% if enable_audit %}
+{% if enable_audit_effective %}
 setParameter:
   auditAuthorizationSuccess: true
 {% endif %}

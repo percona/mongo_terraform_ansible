@@ -115,7 +115,7 @@
         group: "{{ mongo_os_group }}"
         mode: '0750'
         state: directory
-      when: enable_audit | bool
+      when: enable_audit_effective | bool
 
     - name: Set up keyfile for encryption at rest
       become: yes

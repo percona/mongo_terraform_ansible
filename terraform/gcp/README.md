@@ -1,5 +1,8 @@
 # Deploy MongoDB infrastructure on Google Cloud
 
+For fresh MongoDB 9.0 package selections and integration compatibility, see
+[MongoDB 9.0 deployment notes](../../docs/mongodb-9.0.md).
+
 This Terraform module creates:
 
 - a custom VPC, regional subnet, and firewall rules

@@ -21,8 +21,8 @@ const (
 	pcsmTargetUser = "pcsm-target"
 )
 
-var mongoVersionLineRe = regexp.MustCompile(`(?:^|[:_-])([678])\.(\d+)(?:\.(\d+))?`)
-var mongoReleaseLineRe = regexp.MustCompile(`psmdb-([678])(\d)`)
+var mongoVersionLineRe = regexp.MustCompile(`(?:^|[:_-])(\d+)\.(\d+)(?:\.(\d+))?`)
+var mongoReleaseLineRe = regexp.MustCompile(`^psmdb-(\d+)(\d)$`)
 
 type clusterSyncSecrets struct {
 	SourcePassword string `json:"source_password"`
@@ -116,7 +116,7 @@ func normalizeAndValidateClusterSync(platform string, cfg *Config) error {
 }
 
 func clusterSyncTopologyPackage(cfg Config, kind, name string) (version, distribution string, major int) {
-	version, distribution = cfg.MongoVersion, cfg.MongoDBDistribution
+	version, distribution = strDefault(cfg.MongoVersion, cfg.MongoRelease), cfg.MongoDBDistribution
 	if kind == "cluster" {
 		topology := cfg.Clusters[name]
 		if topology.MongoVersion != "" {
@@ -163,7 +163,10 @@ func validatePCSMMongoVersion(version string) error {
 	if minor != 0 {
 		return fmt.Errorf("MongoDB %d.%d is not a supported PCSM version line", major, minor)
 	}
-	minimum := map[int]int{6: 17, 7: 13, 8: 0}[major]
+	minimum, supported := map[int]int{6: 17, 7: 13, 8: 0}[major]
+	if !supported {
+		return fmt.Errorf("MongoDB %d.%d is not a verified PCSM version line; supported lines are 6.0, 7.0 and 8.0", major, minor)
+	}
 	if hasPatch && patch < minimum {
 		return fmt.Errorf("MongoDB %d.0.%d is below the supported minimum %d.0.%d", major, patch, major, minimum)
 	}

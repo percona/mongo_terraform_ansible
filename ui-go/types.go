@@ -471,6 +471,7 @@ type ConfigureData struct {
 	DockerDefaultSeaweedFSPort      int
 	DockerDefaultSeaweedFSAdminPort int
 	PSMDBVersions                   []string
+	OfficialMongoDBVersions         []string
 	// PBMVersions holds a flat sorted-descending list of all available PBM package
 	// versions (e.g. ["2.7.0", "2.6.1", "2.6.0", ...]). PBM uses a single Percona
 	// repository so there is no per-major-version grouping.

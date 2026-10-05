@@ -9,7 +9,6 @@
   vars:
     replset_seed_host: "{{ seed_member | default(groups[target_replset | default('replsets')] | first) }}"
     mongodb_repo_line: "{{ mongo_release_effective if mongodb_distribution_effective != 'psmdb' else '' }}"
-    mongodb_repo_key_major: "{{ (mongodb_repo_line | regex_search('^[0-9]+') | default('8', true)) ~ '.0' }}"
     mongodb_repo_product: "{{ 'mongodb-org' if mongodb_distribution_effective == 'community' else 'mongodb-enterprise' }}"
     mongodb_repo_host: "{{ 'repo.mongodb.org' if mongodb_distribution_effective == 'community' else 'repo.mongodb.com' }}"
     mongo_tls_flags: >-
@@ -21,6 +20,9 @@
       {% endif %}
 
   tasks:
+    - name: Validate MongoDB integration compatibility
+      include_tasks: tasks/mongodb_compatibility.yml
+
     - name: Validate MongoDB distribution
       assert:
         that:
@@ -130,12 +132,12 @@
 
         - name: Add official MongoDB GPG key
           ansible.builtin.apt_key:
-            url: "https://pgp.mongodb.com/server-{{ mongodb_repo_key_major }}.asc"
+            url: "https://pgp.mongodb.com/server-{{ mongodb_repo_signing_key }}.asc"
             state: present
 
         - name: Configure official MongoDB apt repository
           ansible.builtin.apt_repository:
-            repo: "deb [ arch=amd64,arm64 ] https://{{ mongodb_repo_host }}/apt/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }}/{{ mongodb_repo_product }}/{{ mongodb_repo_line }} multiverse"
+            repo: "deb [ arch=amd64,arm64 ] https://{{ mongodb_repo_host }}/apt/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }}/{{ mongodb_repo_product }}/{{ mongodb_repo_line }} {{ mongodb_apt_component }}"
             filename: "{{ mongodb_repo_product }}-{{ mongodb_repo_line }}"
             state: present
       when:
@@ -151,7 +153,7 @@
         baseurl: "https://{{ mongodb_repo_host }}/yum/redhat/{{ ansible_facts['distribution_major_version'] }}/{{ mongodb_repo_product }}/{{ mongodb_repo_line }}/$basearch/"
         gpgcheck: yes
         enabled: yes
-        gpgkey: "https://pgp.mongodb.com/server-{{ mongodb_repo_key_major }}.asc"
+        gpgkey: "https://pgp.mongodb.com/server-{{ mongodb_repo_signing_key }}.asc"
       when:
         - ansible_facts['os_family'] == 'RedHat'
         - mongodb_distribution_effective in ['community', 'enterprise']
@@ -264,7 +266,7 @@
         mode: "0750"
         state: directory
       when:
-        - enable_audit | bool
+        - enable_audit_effective | bool
         - replset_member_to_add | bool
         - not arbiter | default(false)
 

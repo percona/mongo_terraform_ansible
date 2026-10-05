@@ -4,16 +4,16 @@ Documentation=https://docs.mongodb.org/manual
 After=network.target
 
 [Service]
-User=mongod
-Group=mongod
+User={{ mongo_os_user }}
+Group={{ mongo_os_group }}
 Environment="OPTIONS=-f /etc/mongos.conf"
 ExecStart=/usr/bin/mongos $OPTIONS
 ExecStartPre=/usr/bin/touch /var/run/mongos.pid
-ExecStartPre=/usr/bin/chown mongod:mongod /var/run/mongos.pid
+ExecStartPre=/usr/bin/chown {{ mongo_os_user }}:{{ mongo_os_group }} /var/run/mongos.pid
 ExecStartPre=/usr/bin/chmod 0755 /var/run/mongos.pid
 PermissionsStartOnly=true
 PIDFile=/var/run/mongos.pid
-#Type=forking
+Type=forking
 # file size
 LimitFSIZE=infinity
 # cpu time
@@ -32,4 +32,3 @@ TasksAccounting=false
 
 [Install]
 WantedBy=multi-user.target
-

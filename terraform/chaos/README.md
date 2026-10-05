@@ -1,5 +1,8 @@
 # Deploy MongoDB infrastructure with the CHAOS provider
 
+For fresh MongoDB 9.0 package selections and integration compatibility, see
+[MongoDB 9.0 deployment notes](../../docs/mongodb-9.0.md).
+
 Creates the following resources:
 
 - VM instances for each MongoDB component (using the `chaos` provider)

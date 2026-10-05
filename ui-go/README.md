@@ -16,6 +16,11 @@ Supported platforms:
 - CHAOS
 - Docker
 
+MongoDB 9.0 is available as an explicit Community/Enterprise package selection
+for fresh VM environments. PSMDB releases and Docker images depend on published
+Percona artifacts. See [MongoDB 9.0 deployment notes](../docs/mongodb-9.0.md) for
+integration compatibility and examples. Default versions are retained.
+
 ## Requirements
 
 - **Go 1.22+** (install with `./scripts/install-prerequisites.sh --ui` from the repository root)

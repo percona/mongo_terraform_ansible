@@ -95,8 +95,11 @@ func getPSMDBVersions() []string {
 				versions = append(versions, v)
 			}
 		}
-		// Sort descending
-		sort.Slice(versions, func(i, j int) bool { return versions[i] > versions[j] })
+		sort.Slice(versions, func(i, j int) bool {
+			imajor, iminor, _, _, _ := parseMongoVersion(versions[i])
+			jmajor, jminor, _, _, _ := parseMongoVersion(versions[j])
+			return imajor > jmajor || (imajor == jmajor && iminor > jminor)
+		})
 		slog.Info("fetched PSMDB versions", "count", len(versions))
 	} else {
 		slog.Warn("psmdb versions fetch failed – using defaults")
@@ -556,7 +559,7 @@ func getPSMDBVersionsFor(channel, osImage string) []string {
 		}
 	}
 	if len(versions) == 0 && normalizedRepoChannel(channel) == "release" && strings.TrimSpace(osImage) == "" {
-		return getPSMDBVersions()
+		return availablePSMDBReleases(getPSMDBVersions(), minorVersions)
 	}
 	return versions
 }
@@ -685,9 +688,23 @@ func prefetchVersions() {
 
 func cachedPSMDBVersions() []string {
 	if v, ok := cacheGet("psmdb_versions"); ok {
-		return v.([]string)
+		return availablePSMDBReleases(v.([]string), cachedPSMDBMinorVersionsByMajor())
 	}
 	return defaultPSMDBVersions
+}
+
+// New repository directories may be published before their server packages.
+// Keep unverified 9.x+ candidates out of the initial UI; the OS/channel-specific
+// package endpoint can expose them as soon as actual packages are available.
+func availablePSMDBReleases(releases []string, packages map[string][]string) []string {
+	available := make([]string, 0, len(releases))
+	for _, release := range releases {
+		major, _, _, _, _ := parseMongoVersion(release)
+		if major < 9 || len(packages[release]) > 0 {
+			available = append(available, release)
+		}
+	}
+	return available
 }
 
 func cachedPBMVersions() []string {

@@ -14,7 +14,17 @@ Supported deployment targets:
 - Local: Docker containers or Libvirt/KVM virtual machines
 
 Cloud and CHAOS deployments use Terraform for infrastructure and Ansible for software
-configuration. Docker and Libvirt deployments are Terraform-only.
+configuration. Docker deployments are Terraform-only. Libvirt provisions base
+VMs; run Ansible manually afterward to install MongoDB.
+
+## MongoDB 9.0
+
+Fresh Community and Enterprise 9.0 environments can be selected in the Web UI
+or configured with `mongodb_distribution = "community"` (or `"enterprise"`)
+and `mongo_release = "9.0"`. Current default versions are retained.
+
+See [MongoDB 9.0 deployment notes](docs/mongodb-9.0.md) for examples across all
+targets, package/image availability, and integration compatibility.
 
 ## Prerequisites
 

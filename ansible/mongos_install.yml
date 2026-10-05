@@ -61,6 +61,19 @@
         - disable_telemetry | bool
         - mongodb_distribution_effective == 'psmdb'
 
+    # The standalone official mongos package does not create the mongod account.
+    - name: Ensure mongos system group exists
+      ansible.builtin.group:
+        name: "{{ mongo_os_group }}"
+        system: true
+
+    - name: Ensure mongos system user exists
+      ansible.builtin.user:
+        name: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
+        system: true
+        create_home: false
+
     - name: Grant mongos access to its TLS certificate
       file:
         path: "{{ certificateKeyFile }}"
@@ -84,7 +97,7 @@
         mode: '0750'
         owner: "{{ mongo_os_user }}"
         group: "{{ mongo_os_group }}"
-      when: enable_audit | bool
+      when: enable_audit_effective | bool
 
     - name: Configure mongo shell alias
       lineinfile:

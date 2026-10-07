@@ -2,6 +2,12 @@
 # Sharded Clusters
 ##################
 
+variable "vault_encryption" {
+  type        = bool
+  default     = false
+  description = "Enable Vault-backed encryption at rest for every MongoDB topology in this environment."
+}
+
 # By default we deploy 1 sharded cluster, named test01. The configuration can be customized by adding any of the optional values listed below.
 
 variable "clusters" {
@@ -46,11 +52,6 @@ variable "clusters" {
     #    tls_cert_file           = optional(string,"./certs/mongo.crt")
     #    tls_key_file            = optional(string,"./certs/mongo.key")
     #    tls_ca_file             = optional(string,"./certs/ca.crt")
-    #    enable_encryption_rest  = optional(bool, false)
-    #    vault_addr              = optional(string, "http://vault:8200")    
-    #    vault_token             = optional(string, "root")    
-    #    vault_kv_path           = optional(string, "kv/mongo-key")   
-    #    vault_pki_role          = optional(string, "mongo")   
   }))
 
   default = {
@@ -114,11 +115,6 @@ variable "replsets" {
     #    tls_cert_file             = optional(string,"./certs/mongo.crt")
     #    tls_key_file              = optional(string,"./certs/mongo.key")
     #    tls_ca_file               = optional(string,"./certs/ca.crt")    
-    #    enable_encryption_rest    = optional(bool, false)
-    #    vault_addr                = optional(string, "http://vault:8200")    
-    #    vault_token               = optional(string, "root")    
-    #    vault_kv_path             = optional(string, "kv/mongo-key")   
-    #    vault_pki_role            = optional(string, "mongo")      
   }))
 
   default = {

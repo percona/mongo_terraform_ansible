@@ -13,6 +13,12 @@ variable "prefix" {
   }
 }
 
+variable "vault_encryption" {
+  type        = bool
+  default     = false
+  description = "Enable Vault-backed encryption at rest for every MongoDB topology in this environment."
+}
+
 variable "project_id" {
   type        = string
   description = "GCP project where resources are created"

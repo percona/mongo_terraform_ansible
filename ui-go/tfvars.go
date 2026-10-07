@@ -47,6 +47,9 @@ func formatHCLVal(v interface{}) string {
 
 // writeTfvars generates the <env_id>.tfvars file in the platform's terraform directory.
 func writeTfvars(envID, platform string, cfg Config) error {
+	if err := validateVaultConfig(platform, cfg); err != nil {
+		return err
+	}
 	normalizeTopologyUseTLS(&cfg)
 	normalizeCAProvisioning(&cfg)
 	dir := filepath.Join(terraformDir, platform)
@@ -80,6 +83,21 @@ func writeTfvars(envID, platform string, cfg Config) error {
 		writeVar("prefix", cfg.Prefix)
 	}
 	writeVar("enable_pcsm", cfg.ClusterSync.Enabled)
+	writeVar("vault_encryption", cfg.VaultEncryption)
+	writeVar("vault_controller_dir", vaultControllerDir(envID))
+	if cfg.VaultEncryption {
+		if platform == "docker" {
+			writeOptStr("vault_image", cfg.VaultImage)
+		} else {
+			writeOptInt("vault_volume_size", cfg.VaultVolumeSize)
+			if platform == "chaos" {
+				writeOptInt("vault_cpu_cores", cfg.VaultCPUCores)
+				writeOptInt("vault_memory_gb", cfg.VaultMemoryGB)
+			} else {
+				writeOptStr("vault_type", cfg.VaultType)
+			}
+		}
+	}
 	if cfg.ClusterSync.Enabled {
 		writeVar("pcsm_source_kind", cfg.ClusterSync.SourceKind)
 		writeVar("pcsm_source_name", cfg.ClusterSync.SourceName)

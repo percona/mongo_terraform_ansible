@@ -66,7 +66,7 @@ security:
 {% if keyfile_encryption %}
   enableEncryption: true
   encryptionKeyFile: {{ encryption_keyfile }}
-{% elif vault_encryption %}
+{% elif vault_encryption_effective | bool and arbiter is not defined %}
   enableEncryption: true
   vault:
     serverName: {{ vault_server }}

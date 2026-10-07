@@ -21,6 +21,12 @@
                title="{{if eq $p "gcp"}}Must start with a lowercase letter; lowercase letters and digits only, max 14 characters{{else}}Lowercase letters and digits only, max 16 characters{{end}}">
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" name="vault_encryption" {{if .Config.VaultEncryption}}checked{{end}}> Encryption at rest (PSMDB / Vault)
+          <span class="field-tip" data-tip="When enabled, every cluster and replica set in this environment uses its dedicated Vault. All MongoDB topologies must use PSMDB.">ⓘ</span></label>
+      </div>
+    </div>
 
   </section>
 
@@ -3907,8 +3913,9 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     const pmmImage = selectedPmmServerImageValue();
     if (pmmImage) config.pmm_image = pmmImage;
   }
-	config.use_spot_instances = fd.has('use_spot_instances');
-	config.enable_ycsb = fd.has('enable_ycsb');
+  config.use_spot_instances = fd.has('use_spot_instances');
+  config.enable_ycsb = fd.has('enable_ycsb');
+  config.vault_encryption = fd.has('vault_encryption');
 	if (fd.has('enable_pcsm')) {
 	  const parseTopology = value => { const split = value.indexOf(':'); return {kind:value.slice(0, split), name:value.slice(split + 1)}; };
 	  const source = parseTopology(fd.get('pcsm_source') || '');

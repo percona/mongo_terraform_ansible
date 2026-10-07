@@ -1,4 +1,6 @@
 ---
+- import_playbook: vault_server.yml
+
 - name: Add a new shard replica set to an existing sharded cluster
   hosts: "{{ new_shard_group }}"
   become: yes
@@ -40,7 +42,7 @@
         that:
           - not (enable_audit | default(false) | bool)
           - not (keyfile_encryption | default(false) | bool)
-          - not (vault_encryption | default(false) | bool)
+          - not (vault_encryption_effective | bool)
         fail_msg: "MongoDB Community packages do not support audit logging or encryption at rest. Use psmdb/enterprise or disable those features."
       when: mongodb_distribution_effective == 'community'
 
@@ -135,6 +137,7 @@
       package:
         name: "{{ mongod_packages }}"
         state: present
+        policy_rc_d: "{{ 101 if ansible_facts['os_family'] == 'Debian' and vault_encryption_effective | bool else omit }}"
       when: mongo_version is not defined or mongo_version == ''
 
     - name: Install mongod packages from repository (specific version - Debian/Ubuntu)
@@ -142,6 +145,7 @@
         name: "{{ mongod_versioned_packages | map('regex_replace', '^(percona-server-mongodb|mongodb-org|mongodb-org-database|mongodb-org-server|mongodb-org-mongos|mongodb-org-tools|mongodb-enterprise|mongodb-enterprise-database|mongodb-enterprise-server|mongodb-enterprise-mongos|mongodb-enterprise-tools)$', '\\1=' ~ mongo_version ~ '*') | list }}"
         state: present
         allow_downgrade: true
+        policy_rc_d: "{{ 101 if vault_encryption_effective | bool else omit }}"
       when:
         - mongo_version is defined and mongo_version != ''
         - ansible_facts['os_family'] == 'Debian'
@@ -181,6 +185,10 @@
         group: root
         mode: "0600"
       when: not use_tls | bool
+
+    - name: Prepare Vault client and validate encryption mode
+      include_tasks: tasks/vault_client.yml
+      when: arbiter is not defined
 
     - name: Copy mongod.conf
       template:

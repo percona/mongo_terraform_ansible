@@ -13,6 +13,13 @@
   environment:
     PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
   tasks:
+    - name: Validate Vault encryption support
+      assert:
+        that:
+          - not (vault_encryption_effective | bool) or mongodb_distribution_effective == 'psmdb'
+          - not (vault_encryption_effective | bool and keyfile_encryption | bool)
+        fail_msg: "Vault encryption requires PSMDB and cannot be combined with local-keyfile encryption."
+
     - name: Validate MongoDB integration compatibility
       include_tasks: tasks/mongodb_compatibility.yml
 
@@ -34,7 +41,7 @@
         that:
           - not (enable_audit | default(false) | bool)
           - not (keyfile_encryption | default(false) | bool)
-          - not (vault_encryption | default(false) | bool)
+          - not (vault_encryption_effective | bool)
         fail_msg: "MongoDB Community packages do not support audit logging or encryption at rest. Use psmdb/enterprise or disable those features."
       when: mongodb_distribution_effective == 'community'
 

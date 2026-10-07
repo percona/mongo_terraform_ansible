@@ -165,6 +165,13 @@ type Config struct {
 	YcsbOsImage         string            `json:"ycsb_os_image,omitempty"`
 	YcsbContainerSuffix string            `json:"ycsb_container_suffix,omitempty"`
 	ClusterSync         ClusterSyncConfig `json:"cluster_sync,omitempty"`
+	VaultEncryption     bool              `json:"vault_encryption,omitempty"`
+	VaultVersion        string            `json:"vault_version,omitempty"`
+	VaultImage          string            `json:"vault_image,omitempty"`
+	VaultType           string            `json:"vault_type,omitempty"`
+	VaultVolumeSize     int               `json:"vault_volume_size,omitempty"`
+	VaultCPUCores       int               `json:"vault_cpu_cores,omitempty"`
+	VaultMemoryGB       int               `json:"vault_memory_gb,omitempty"`
 
 	// Cloud credentials / settings
 	ProjectID         string `json:"project_id,omitempty"`

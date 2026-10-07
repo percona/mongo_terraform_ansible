@@ -1574,6 +1574,12 @@ func topologyAnsibleVars(cfg Config, platform, name string, extraVars map[string
 	}
 	if platform == "aws" || platform == "gcp" || platform == "azure" || platform == "chaos" {
 		vars["use_tls"] = topologyUsesTLS(cfg, name)
+		if len(vaultTopologies(cfg)) > 0 {
+			vars["vault_controller_dir"] = vaultControllerDir(cfg.Prefix)
+		}
+		if cfg.VaultVersion != "" {
+			vars["vault_version"] = cfg.VaultVersion
+		}
 	}
 	return vars
 }
@@ -1664,6 +1670,10 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := normalizeAndValidateUseTLSConfig(payload.Platform, &payload.Config); err != nil {
+		jsonError(w, 400, err.Error())
+		return
+	}
+	if err := validateVaultConfig(payload.Platform, payload.Config); err != nil {
 		jsonError(w, 400, err.Error())
 		return
 	}
@@ -2018,6 +2028,27 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	action := body.Action
+	if action == "deploy" || action == "provision" || action == "configure" || action == "restart" {
+		if err := validateVaultConfig(env.Platform, env.Config); err != nil {
+			jsonError(w, 400, err.Error())
+			return
+		}
+		if env.Platform == "docker" && len(vaultTopologies(env.Config)) > 0 {
+			for _, tool := range []string{"python3", "openssl"} {
+				if !toolInstalled(tool) {
+					jsonError(w, 400, "Vault encryption requires controller-side "+tool+"; run scripts/install-prerequisites.sh")
+					return
+				}
+			}
+		}
+		if env.LastAppliedConfig != nil {
+			_, unsupported := analyseTopologyChange(*env.LastAppliedConfig, env.Config)
+			if len(unsupported) > 0 {
+				jsonError(w, 400, "unsupported topology change: "+strings.Join(unsupported, "; "))
+				return
+			}
+		}
+	}
 	if strings.TrimSpace(action) == "" {
 		jsonError(w, 400, "missing action")
 		return
@@ -2079,11 +2110,17 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		for _, name := range names {
 			extraVarsArg := ""
 			effectiveVars := topologyAnsibleVars(env.Config, platform, name, extraVars)
+			if len(vaultTopologies(env.Config)) > 0 {
+				effectiveVars["vault_controller_dir"] = vaultControllerDir(envID)
+			}
 			if len(effectiveVars) > 0 {
 				encoded, _ := json.Marshal(effectiveVars)
 				extraVarsArg = " --extra-vars " + shellQuote(string(encoded))
 			}
 			inv := shellQuote(filePrefix + "_inventory_" + name)
+			if len(vaultTopologies(env.Config)) > 0 && filepath.Base(playbookPath) != "vault_server.yml" {
+				extraVarsArg += " --skip-tags vault"
+			}
 			b.WriteString(fmt.Sprintf(
 				`{ [ -f %[1]s ] || { printf "ERROR: inventory file %%s not found\n" %[1]s; exit 1; }; `,
 				inv,
@@ -2114,6 +2151,11 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	cloudAnsibleCmd := func(playbookPath string, waitForSSH bool) string {
 		return cloudAnsibleCmdFor(playbookPath, waitForSSH, invNames, nil)
+	}
+	cloudVaultCmd := func(waitForSSH bool) string {
+		return cloudAnsibleCmdFor(filepath.Join(ansibleDir, "vault_server.yml"), waitForSSH, []string{"vault"}, map[string]string{
+			"vault_controller_dir": vaultControllerDir(envID),
+		})
 	}
 	cloudPCSMCmd := func(waitForSSH bool) string {
 		inv := shellQuote(filePrefix + "_inventory_pcsm")
@@ -2245,6 +2287,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		)
 		if platform != "docker" {
 			if appliedConfig != nil {
+				if len(vaultTopologies(env.Config)) > 0 {
+					shellCmd += " && " + cloudVaultCmd(true)
+				}
 				plan, unsupported := analyseTopologyChange(*appliedConfig, env.Config)
 				if len(unsupported) > 0 {
 					jsonError(w, 400, "unsupported topology change: "+strings.Join(unsupported, "; "))
@@ -2296,6 +2341,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				shellCmd += sshConfigInjectShell()
+				if len(vaultTopologies(env.Config)) > 0 {
+					shellCmd += " && " + cloudVaultCmd(true)
+				}
 				shellCmd += " && " + cloudConfigureCmdFor(invNames, true)
 			}
 		} else if appliedConfig != nil {
@@ -2344,6 +2392,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		configureCmd := cloudConfigureCmdFor(invNames, true)
+		if len(vaultTopologies(env.Config)) > 0 {
+			configureCmd = cloudVaultCmd(true) + " && " + configureCmd
+		}
 		if postDeploy := clusterSyncPostDeployShell(envID, env); postDeploy != "" {
 			configureCmd += " && " + postDeploy
 		}
@@ -2373,6 +2424,10 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 	case "stop":
 		if platform == "docker" {
 			prefix := sanitiseShellArg(strDefault(env.Config.Prefix, envID))
+			if len(vaultTopologies(env.Config)) > 0 {
+				cmd = []string{"bash", "-c", vaultDockerStopShell(prefix)}
+				break
+			}
 			cmd = []string{"bash", "-c",
 				fmt.Sprintf("docker ps -q --filter 'name=%s-' | xargs -r docker stop", prefix),
 			}
@@ -2384,6 +2439,10 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	case "restart":
 		if platform == "docker" {
+			if len(vaultTopologies(env.Config)) > 0 {
+				cmd = []string{"bash", "-c", vaultDockerRestartShell(envID, env.Config)}
+				break
+			}
 			prefix := sanitiseShellArg(strDefault(env.Config.Prefix, envID))
 			cmd = []string{"bash", "-c",
 				fmt.Sprintf("docker ps -aq --filter 'name=%s-' | xargs -r docker restart", prefix),
@@ -2391,6 +2450,9 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			cmd = []string{"bash", "-c",
 				cloudAnsibleCmd(filepath.Join(ansibleDir, "restart.yml"), false),
+			}
+			if len(vaultTopologies(env.Config)) > 0 {
+				cmd[2] = cloudVaultCmd(true) + " && " + cmd[2]
 			}
 		}
 
@@ -2430,6 +2492,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 					cleanupDockerModuleArtifacts(e.Config)
 				}
 				removeClusterSyncSecrets(envID)
+				os.RemoveAll(vaultControllerDir(envID))
 			} else {
 				e.Status = "destroy_failed"
 			}

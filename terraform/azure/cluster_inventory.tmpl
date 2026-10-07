@@ -45,6 +45,8 @@ ${ldap_hostname} ansible_host=${ldap_ip}
 
 %{ endif ~}
 [all:vars]
+${vault_inventory}
+[all:vars]
 # Ansible connection
 ansible_user=${my_ssh_user}
 %{ if ssh_private_key_path != "" ~}

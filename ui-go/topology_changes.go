@@ -22,6 +22,9 @@ func analyseTopologyChange(previous, desired Config) (topologyScaleOut, []string
 		AddedReplsetNodes: map[string]int{},
 	}
 	var unsupported []string
+	if previous.VaultEncryption != desired.VaultEncryption {
+		unsupported = append(unsupported, "changing environment encryption at rest requires migration or recreation")
+	}
 
 	for name, next := range desired.Clusters {
 		prior, exists := previous.Clusters[name]

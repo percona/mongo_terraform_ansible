@@ -11,6 +11,7 @@
       package:
         name: "{{ mongod_packages }}"
         state: present
+        policy_rc_d: "{{ 101 if ansible_facts['os_family'] == 'Debian' and vault_encryption_effective | bool else omit }}"
       when: mongo_version is not defined or mongo_version == ''
 
     - name: Install mongod packages from repository (specific version – Debian/Ubuntu)
@@ -18,6 +19,7 @@
         name: "{{ mongod_versioned_packages | map('regex_replace', '^(percona-server-mongodb|mongodb-org|mongodb-org-database|mongodb-org-server|mongodb-org-mongos|mongodb-org-tools|mongodb-enterprise|mongodb-enterprise-database|mongodb-enterprise-server|mongodb-enterprise-mongos|mongodb-enterprise-tools)$', '\\1=' ~ mongo_version ~ '*') | list }}"
         state: present
         allow_downgrade: true
+        policy_rc_d: "{{ 101 if vault_encryption_effective | bool else omit }}"
       when:
         - mongo_version is defined and mongo_version != ''
         - ansible_facts['os_family'] == 'Debian'
@@ -75,6 +77,10 @@
       when: not use_tls | bool
       notify: restart mongod
 
+    - name: Prepare Vault client and validate encryption mode
+      include_tasks: tasks/vault_client.yml
+      when: arbiter is not defined
+
     - name: Copy mongod.conf 
       become: yes
       template:
@@ -127,58 +133,6 @@
         mode: 0600
       when: keyfile_encryption | bool
       notify: restart mongod
-
-    - name: Copy Vault crt and mongo token file to all servers
-      block:
-
-        - name: Create directory for vault credentials
-          become: yes
-          file:
-            path: /etc/mongodb
-            state: directory
-            owner: "{{ mongo_os_user }}"
-            group: "{{ mongo_os_group }}"
-            mode: 0500
-
-        - name: Fetch the Vault crt file from Vault server to control machine
-          become: yes
-          fetch:
-            src: /etc/vault.d/vault.crt
-            dest: ./vault.crt
-            flat: yes
-          delegate_to: "{{ (groups['pmm'] | default([])) | first | default(inventory_hostname) }}"
-          run_once: true
-
-        - name: Copy vault certificate to MongoDB hosts
-          become: yes
-          copy:
-            src: "{{ playbook_dir }}/vault.crt"
-            dest: "{{ vault_cafile }}"
-            owner: "{{ mongo_os_user }}"
-            group: "{{ mongo_os_group }}"
-            mode: '0400'
-          notify: restart mongod
-
-        - name: Fetch the mongo token file from Vault server to control machine
-          become: yes
-          fetch:
-            src: /tmp/mongo_token.txt
-            dest: ./mongo_token.txt
-            flat: yes
-          delegate_to: "{{ (groups['pmm'] | default([])) | first | default(inventory_hostname) }}"
-          run_once: true
-
-        - name: Copy token file to MongoDB hosts
-          become: yes
-          copy:
-            src: "{{ playbook_dir }}/mongo_token.txt"
-            dest: "{{ vault_tokenfile }}"
-            owner: "{{ mongo_os_user }}"
-            group: "{{ mongo_os_group }}"
-            mode: '0400'
-          notify: restart mongod
-
-      when: vault_encryption | bool
 
     - name: Ensure mongod is started
       become: yes

@@ -72,6 +72,9 @@ func collectDockerHosts(envID string, env *Environment) ([]HostInfo, []ServiceUR
 		}
 		connectCmd := fmt.Sprintf("docker exec -it %s bash", name)
 		role := guessDockerRole(name, prefix)
+		if role == "vault" {
+			connectCmd = fmt.Sprintf("docker exec -it %s sh", name)
+		}
 		group := guessDockerGroup(name, prefix)
 		port := dockerContainerPorts(name)
 		hosts = append(hosts, HostInfo{
@@ -124,6 +127,8 @@ func guessDockerRole(name, prefix string) string {
 		return "ycsb"
 	case strings.HasPrefix(base, "pcsm"):
 		return "pcsm"
+	case base == "vault":
+		return "vault"
 	default:
 		return "service"
 	}
@@ -143,6 +148,8 @@ func guessDockerGroup(name, prefix string) string {
 		return "YCSB"
 	case "pcsm":
 		return "ClusterSync"
+	case "vault":
+		return "Vault"
 	}
 	base := strings.TrimPrefix(name, prefix+"-")
 	parts := strings.Split(base, "-")
@@ -458,6 +465,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			role = "pmm"
 		case sec == "ca":
 			role = "ca"
+		case sec == "vault":
+			role = "vault"
 		case strings.Contains(sec, "seaweedfs"):
 			role = "seaweedfs"
 		case strings.Contains(sec, "ycsb"):
@@ -477,6 +486,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			hostGroup = "PMM"
 		case "ca":
 			hostGroup = "CA"
+		case "vault":
+			hostGroup = "Vault"
 		case "ycsb":
 			hostGroup = "YCSB"
 		case "ldap":
@@ -517,6 +528,8 @@ func cloudHostPort(role, section string) string {
 		return "9000, 9001"
 	case "ldap":
 		return "389"
+	case "vault":
+		return "8200"
 	default:
 		return "—"
 	}

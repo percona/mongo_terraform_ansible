@@ -1,0 +1,30 @@
+---
+- name: Reset compatibility result
+  ansible.builtin.set_fact:
+    compatibility_rejected: false
+
+- name: Exercise integration compatibility checks
+  block:
+    - name: Evaluate the deployment combination
+      ansible.builtin.include_tasks: ../tasks/mongodb_compatibility.yml
+  rescue:
+    - name: Verify expected rejection
+      ansible.builtin.assert:
+        that:
+          - compatibility_case.error | length > 0
+          - compatibility_case.error in ansible_failed_result.msg
+    - name: Record rejection
+      ansible.builtin.set_fact:
+        compatibility_rejected: true
+  vars:
+    mongo_release: "{{ compatibility_case.release }}"
+    mongodb_distribution: "{{ compatibility_case.distribution }}"
+    enable_pbm: "{{ compatibility_case.pbm }}"
+    enable_mongot: "{{ compatibility_case.search }}"
+    pbm_version: "{{ compatibility_case.pbm_version | default('') }}"
+    pbm_backup_type: "{{ compatibility_case.backup | default('') }}"
+
+- name: Verify acceptance or rejection
+  ansible.builtin.assert:
+    that:
+      - compatibility_rejected == (compatibility_case.error | length > 0)

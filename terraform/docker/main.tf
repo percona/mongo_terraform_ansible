@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.9"
 
   backend "local" {}
 
@@ -52,15 +52,14 @@ module "mongodb_clusters" {
   audit_filter          = each.value.audit_filter
   enable_mongot         = each.value.enable_mongot
   mongot_image          = each.value.mongot_image
+  vault_encryption      = var.vault_encryption
+  vault_server          = "${local.name_prefix}vault"
+  vault_topology        = "cluster-${each.key}"
+  vault_credentials     = var.vault_encryption ? module.vault[0].credentials["cluster-${each.key}"] : ""
   #  use_tls                 = each.value.use_tls
   #  tls_cert_file           = each.value.tls_cert_file
   #  tls_key_file            = each.value.tls_key_file
   #  tls_ca_file             = each.value.tls_ca_file
-  #  enable_encryption_rest  = each.value.enable_encryption_rest
-  #  vault_addr              = each.value.vault_addr
-  #  vault_token             = each.value.vault_token
-  #  vault_kv_path           = each.value.vault_kv_path
-  #  vault_pki_role          = each.value.vault_pki_role  
   bind_to_localhost = each.value.bind_to_localhost
   enable_pmm        = each.value.enable_pmm
   enable_pbm        = each.value.enable_pbm
@@ -105,15 +104,14 @@ module "mongodb_replsets" {
   audit_filter           = each.value.audit_filter
   enable_mongot          = each.value.enable_mongot
   mongot_image           = each.value.mongot_image
+  vault_encryption       = var.vault_encryption
+  vault_server           = "${local.name_prefix}vault"
+  vault_topology         = "replset-${each.key}"
+  vault_credentials      = var.vault_encryption ? module.vault[0].credentials["replset-${each.key}"] : ""
   #  use_tls                 = each.value.use_tls
   #  tls_cert_file           = each.value.tls_cert_file
   #  tls_key_file            = each.value.tls_key_file
   #  tls_ca_file             = each.value.tls_ca_file  
-  #  enable_encryption_rest  = each.value.enable_encryption_rest
-  #  vault_addr              = each.value.vault_addr
-  #  vault_token             = each.value.vault_token
-  #  vault_kv_path           = each.value.vault_kv_path
-  #  vault_pki_role          = each.value.vault_pki_role  
   bind_to_localhost = each.value.bind_to_localhost
   enable_pmm        = each.value.enable_pmm
   enable_pbm        = each.value.enable_pbm

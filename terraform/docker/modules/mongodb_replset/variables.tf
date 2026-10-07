@@ -342,32 +342,10 @@ variable "ldap_user_search_base" {
 }
 
 ############
-# Encryption
+# TLS (reserved)
 ############
 
 variable "use_tls" {
   type    = bool
   default = true
-}
-
-variable "enable_encryption_rest" {
-  type    = bool
-  default = true
-}
-
-variable "vault_token" {
-  default   = "root"
-  sensitive = true
-}
-
-variable "vault_addr" {
-  default = "http://vault:8200"
-}
-
-variable "vault_kv_path" {
-  default = "kv/mongo-key"
-}
-
-variable "vault_pki_role" {
-  default = "mongo"
 }

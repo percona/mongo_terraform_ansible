@@ -29,6 +29,12 @@ resource "docker_container" "cfg" {
     "--slowms", "200",
     "--rateLimit", "100"
     ],
+    var.vault_encryption ? [
+      "--enableEncryption", "--vaultServerName", var.vault_server,
+      "--vaultPort", "8200", "--vaultTokenFile", "/etc/mongodb-vault/token",
+      "--vaultServerCAFile", "/etc/mongodb-vault/vault.crt",
+      "--vaultSecret", "secret/data/${var.vault_topology}/${each.key}"
+    ] : [],
     var.enable_audit ? [
       "--auditDestination", "file",
       "--auditFormat", "JSON",
@@ -50,6 +56,15 @@ resource "docker_container" "cfg" {
     ip       = var.bind_to_localhost ? "127.0.0.1" : "0.0.0.0"
   }
   user = var.uid
+  dynamic "mounts" {
+    for_each = var.vault_encryption ? [var.vault_credentials] : []
+    content {
+      type      = "volume"
+      source    = mounts.value
+      target    = "/etc/mongodb-vault"
+      read_only = true
+    }
+  }
   labels {
     label = "replsetName"
     value = "${var.cluster_name}-${var.configsvr_tag}"
@@ -76,7 +91,7 @@ resource "docker_container" "cfg" {
   }
   wait       = true
   restart    = "no"
-  depends_on = [null_resource.init_keyfile]
+  depends_on = [null_resource.init_keyfile, terraform_data.vault_data_mode]
 
   lifecycle {
     replace_triggered_by = [docker_image.psmdb]

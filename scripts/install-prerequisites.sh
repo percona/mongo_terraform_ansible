@@ -147,14 +147,14 @@ install_common() {
     macos)
       run brew tap hashicorp/tap
       run brew install hashicorp/tap/terraform
-      run brew install git ansible curl unzip openssh python
+      run brew install git ansible curl unzip openssh python openssl@3
       ;;
     debian)
       add_hashicorp_repo_debian
-      apt_install git terraform ansible openssh-client curl unzip python3 python3-pip
+      apt_install git terraform ansible openssh-client curl unzip python3 python3-pip openssl
       ;;
     rhel)
-      dnf_install git curl unzip openssh-clients python3 python3-pip ansible-core
+      dnf_install git curl unzip openssh-clients python3 python3-pip ansible-core openssl
       add_hashicorp_repo_rhel
       dnf_install terraform
       ;;

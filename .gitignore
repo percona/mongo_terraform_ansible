@@ -28,3 +28,6 @@ ui-go/psmdb-sandbox
 # Terraform-generated per-environment connection files
 terraform/**/*_inventory_*
 terraform/**/*_ssh_config_*
+ansible/.vault/
+terraform/**/.vault/
+scripts/**/__pycache__/

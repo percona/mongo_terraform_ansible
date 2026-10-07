@@ -8,6 +8,12 @@ variable "prefix" {
   description = "Prefix to be applied to the resources created, make sure to change it to avoid collisions with other users projects"
 }
 
+variable "vault_encryption" {
+  type        = bool
+  default     = false
+  description = "Enable Vault-backed encryption at rest for every MongoDB topology in this environment."
+}
+
 # By default we deploy 1 sharded cluster, named ig-cl01. Make sure to change the default name and prefix (ig-cl01) to avoid duplicates. The configuration can be customized by adding the optional values listed.
 variable "clusters" {
   description = "MongoDB clusters to deploy"

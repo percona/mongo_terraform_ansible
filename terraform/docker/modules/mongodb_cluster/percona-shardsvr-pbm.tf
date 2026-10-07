@@ -3,6 +3,24 @@ resource "docker_container" "pbm_shard" {
   name     = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}svr${each.value.replica_index}-${var.pbm_container_suffix}"
   image    = docker_image.pbm_mongod.image_id
   user     = var.uid
+  dynamic "mounts" {
+    for_each = var.vault_encryption ? [var.vault_credentials] : []
+    content {
+      type      = "volume"
+      source    = mounts.value
+      target    = "/etc/mongodb-vault"
+      read_only = true
+    }
+  }
+  dynamic "mounts" {
+    for_each = var.vault_encryption ? [docker_volume.keyfile_volume.name] : []
+    content {
+      type      = "volume"
+      source    = mounts.value
+      target    = var.keyfile_path
+      read_only = true
+    }
+  }
   command = [
     "pbm-agent"
   ]

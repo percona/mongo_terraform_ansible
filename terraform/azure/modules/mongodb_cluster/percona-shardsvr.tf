@@ -68,6 +68,21 @@ resource "azurerm_network_security_group" "mongodb_shard_nsg" {
     destination_address_prefix = "*"
   }
 
+  dynamic "security_rule" {
+    for_each = var.enable_mongot ? [1] : []
+    content {
+      name                       = "AllowMongoDBSearchPort"
+      priority                   = 125
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = tostring(var.mongot_port)
+      source_address_prefix      = var.subnet_cidr
+      destination_address_prefix = "*"
+    }
+  }
+
   security_rule {
     name                       = "Allow-ICMP"
     priority                   = 110

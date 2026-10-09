@@ -22,6 +22,13 @@ resource "docker_container" "mongos" {
       "--auditFilter", "${var.audit_filter}",
       "--setParameter", "auditAuthorizationSuccess=true"
     ] : [],
+    var.enable_mongot ? [
+      "--setParameter", "searchIndexManagementHostAndPort=${var.cluster_name}-${var.shardsvr_tag}00svr0-mongot:${var.mongot_port}",
+      "--setParameter", "mongotHost=${var.cluster_name}-${var.shardsvr_tag}00svr0-mongot:${var.mongot_port}",
+      "--setParameter", "skipAuthenticationToSearchIndexManagementServer=false",
+      "--setParameter", "useGrpcForSearch=true",
+      "--setParameter", "searchTLSMode=disabled"
+    ] : [],
     var.enable_ldap ? [
       "--setParameter", "authenticationMechanisms=PLAIN,SCRAM-SHA-256",
       "--ldapQueryUser", "${var.ldap_bind_dn}",

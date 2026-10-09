@@ -63,6 +63,18 @@ variable "enable_audit" {
   description = "Enable audit logging for this deployment"
 }
 
+variable "enable_mongot" {
+  type        = bool
+  default     = false
+  description = "Enable MongoDB Search and Vector Search"
+}
+
+variable "mongot_port" {
+  type        = number
+  default     = 27028
+  description = "mongot gRPC port"
+}
+
 variable "audit_filter" {
   type        = string
   default     = ""

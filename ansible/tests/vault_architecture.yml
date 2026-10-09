@@ -34,3 +34,46 @@
     - name: Assert ARM64 archive
       assert:
         that: vault_download_architecture == 'arm64'
+
+- name: Verify topology token policy can resolve the scoped KV v2 mount
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    vault_policy_source: "{{ lookup('file', '../vault_server.yml') }}"
+  tasks:
+    - name: Assert policy grants read access to the scoped mount lookup
+      assert:
+        that:
+          - >-
+            vault_policy_source is search('path "sys/internal/ui/mounts/secret/data/[{][{] vault_token_topology [}][}]/[*]" \{\s+capabilities = \["read"\]')
+
+- name: Verify topology token responses are resolved and empty tokens are rejected
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    vault_topologies:
+      - cluster-test
+      - replset-existing
+    vault_existing_tokens:
+      cluster-test: ""
+      replset-existing: existing-token
+    vault_token_creations:
+      results:
+        - vault_token_topology: cluster-test
+          skipped: false
+          json:
+            auth:
+              client_token: newly-created-token
+        - vault_token_topology: replset-existing
+          skipped: true
+  tasks:
+    - name: Resolve and validate test topology tokens
+      ansible.builtin.include_tasks: ../tasks/vault_resolve_tokens.yml
+
+    - name: Assert created and retained tokens were selected
+      ansible.builtin.assert:
+        that:
+          - vault_topology_tokens['cluster-test'] == 'newly-created-token'
+          - vault_topology_tokens['replset-existing'] == 'existing-token'

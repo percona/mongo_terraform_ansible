@@ -120,12 +120,14 @@ VAULT_CREDENTIALS='{"replset-rs01":"encryptedlab-vault-replset-rs01-credentials"
 python3 ../../scripts/vault-docker.py bootstrap
 ```
 
-MongoDB tokens are scoped to each topology's data and metadata paths, plus the
-KV engine configuration and token self-renewal endpoints. They are orphan,
-periodic 30-day tokens. A native systemd timer renews them daily; Docker renews
-them hourly in the Vault container. Root/unseal material is not needed for these
-renewals. If a token expires during a long outage, controller bootstrap replaces
-it and configuration/restart distributes the replacement to MongoDB nodes.
+MongoDB tokens are scoped to each topology's data and metadata paths, the KV
+engine configuration and mount-lookup endpoints, and token self-renewal
+endpoints. The mount-lookup permission is needed by PSMDB when it resolves the
+KV v2 engine for a topology-scoped key path. Tokens are orphan, periodic 30-day
+tokens. A native systemd timer renews them daily; Docker renews them hourly in
+the Vault container. Root/unseal material is not needed for these renewals. If
+a token expires during a long outage, controller bootstrap replaces it and
+configuration/restart distributes the replacement to MongoDB nodes.
 
 Secret paths are stable per node. KV v2 retains up to 10,000 versions; PSMDB's
 version-limit checks protect older master keys from being silently discarded.

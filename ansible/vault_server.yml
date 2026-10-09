@@ -277,6 +277,9 @@
             path "secret/metadata/{{ vault_token_topology }}/*" {
               capabilities = ["read"]
             }
+            path "sys/internal/ui/mounts/secret/data/{{ vault_token_topology }}/*" {
+              capabilities = ["read"]
+            }
             path "secret/config" { capabilities = ["read"] }
             path "auth/token/lookup-self" { capabilities = ["read"] }
             path "auth/token/renew-self" { capabilities = ["update"] }
@@ -326,15 +329,16 @@
         loop_var: vault_token_topology
       when: >-
         vault_existing_tokens[vault_token_topology] | length == 0 or
-        (vault_token_renewals.results | selectattr('item', 'equalto', vault_token_topology) | first).status | default(0) != 200
+        (vault_token_renewals.results | selectattr('vault_token_topology', 'equalto', vault_token_topology) | first).status | default(0) != 200
       no_log: true
+
+    - name: Resolve and validate topology tokens
+      ansible.builtin.include_tasks: tasks/vault_resolve_tokens.yml
 
     - name: Persist topology tokens on controller
       copy:
         dest: "{{ vault_controller_dir }}/{{ vault_token_topology }}.token"
-        content: >-
-          {{ (vault_token_creations.results | selectattr('item', 'equalto', vault_token_topology) | selectattr('skipped', 'undefined') | map(attribute='json.auth.client_token') | first)
-             | default(vault_existing_tokens[vault_token_topology]) }}
+        content: "{{ vault_topology_tokens[vault_token_topology] }}"
         mode: '0600'
       delegate_to: localhost
       become: false
@@ -346,9 +350,7 @@
     - name: Install topology tokens for renewal on Vault
       copy:
         dest: "/etc/vault.d/tokens/{{ vault_token_topology }}.token"
-        content: >-
-          {{ (vault_token_creations.results | selectattr('item', 'equalto', vault_token_topology) | selectattr('skipped', 'undefined') | map(attribute='json.auth.client_token') | first)
-             | default(vault_existing_tokens[vault_token_topology]) }}
+        content: "{{ vault_topology_tokens[vault_token_topology] }}"
         owner: root
         mode: '0600'
       loop: "{{ vault_topologies }}"

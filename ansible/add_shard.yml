@@ -142,7 +142,7 @@
 
     - name: Install mongod packages from repository (specific version - Debian/Ubuntu)
       apt:
-        name: "{{ mongod_versioned_packages | map('regex_replace', '^(percona-server-mongodb|mongodb-org|mongodb-org-database|mongodb-org-server|mongodb-org-mongos|mongodb-org-tools|mongodb-enterprise|mongodb-enterprise-database|mongodb-enterprise-server|mongodb-enterprise-mongos|mongodb-enterprise-tools)$', '\\1=' ~ mongo_version ~ '*') | list }}"
+        name: "{{ mongod_versioned_packages | map('regex_replace', '^(percona-server-mongodb|percona-server-mongodb-server|percona-server-mongodb-mongos|percona-server-mongodb-tools|mongodb-org|mongodb-org-database|mongodb-org-server|mongodb-org-mongos|mongodb-org-tools|mongodb-enterprise|mongodb-enterprise-database|mongodb-enterprise-server|mongodb-enterprise-mongos|mongodb-enterprise-tools)$', '\\1=' ~ mongo_version ~ '*') | list }}"
         state: present
         allow_downgrade: true
         policy_rc_d: "{{ 101 if vault_encryption_effective | bool else omit }}"
@@ -152,7 +152,7 @@
 
     - name: Install mongod packages from repository (specific version - RedHat)
       yum:
-        name: "{{ mongod_versioned_packages | map('regex_replace', '^(percona-server-mongodb|mongodb-org|mongodb-org-database|mongodb-org-server|mongodb-org-mongos|mongodb-org-tools|mongodb-enterprise|mongodb-enterprise-database|mongodb-enterprise-server|mongodb-enterprise-mongos|mongodb-enterprise-tools)$', '\\1-' ~ mongo_version) | list }}"
+        name: "{{ mongod_versioned_packages | map('regex_replace', '^(percona-server-mongodb|percona-server-mongodb-server|percona-server-mongodb-mongos|percona-server-mongodb-tools|mongodb-org|mongodb-org-database|mongodb-org-server|mongodb-org-mongos|mongodb-org-tools|mongodb-enterprise|mongodb-enterprise-database|mongodb-enterprise-server|mongodb-enterprise-mongos|mongodb-enterprise-tools)$', '\\1-' ~ mongo_version) | list }}"
         state: present
       when:
         - mongo_version is defined and mongo_version != ''

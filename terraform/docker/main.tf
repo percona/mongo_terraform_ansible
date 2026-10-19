@@ -141,6 +141,10 @@ module "pmm_server" {
   watchtower_image  = each.value.watchtower_image
   network_name      = "${local.name_prefix}${each.value.network_name}"
   bind_to_localhost = each.value.bind_to_localhost
+
+  enable_extensions                 = each.value.enable_extensions
+  extensions_image                  = each.value.extensions_image
+  extensions_inventory_sync_minutes = each.value.extensions_inventory_sync_minutes
 }
 
 module "seaweedfs_server" {

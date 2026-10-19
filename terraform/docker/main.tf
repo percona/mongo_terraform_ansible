@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.9"
 
   backend "local" {}
 
@@ -145,6 +145,24 @@ module "pmm_server" {
   enable_extensions                 = each.value.enable_extensions
   extensions_image                  = each.value.extensions_image
   extensions_inventory_sync_minutes = each.value.extensions_inventory_sync_minutes
+}
+
+module "pmm_bare_clients" {
+  source             = "./modules/pmm_bare_client"
+  for_each           = var.pmm_bare_clients
+  client_name        = "${local.name_prefix}${each.key}"
+  base_image         = each.value.base_image
+  pmm_client_repo    = each.value.pmm_client_repo
+  pmm_client_version = each.value.pmm_client_version
+  pmm_host           = "${local.name_prefix}${each.value.pmm_host}"
+  pmm_port           = each.value.pmm_port
+  pmm_server_user    = each.value.pmm_server_user
+  pmm_server_pwd     = each.value.pmm_server_pwd
+  network_name       = "${local.name_prefix}${each.value.network_name}"
+
+  depends_on = [
+    module.pmm_server
+  ]
 }
 
 module "seaweedfs_server" {

@@ -98,6 +98,15 @@ type PmmServerConfig struct {
 	ExtensionsImage  string `json:"extensions_image,omitempty"`
 }
 
+// PmmBareClientConfig maps to the pmm_bare_clients map object type: a host
+// with only a PMM client. BaseImage is Docker's, OsImage is CHAOS's.
+type PmmBareClientConfig struct {
+	BaseImage        string `json:"base_image,omitempty"`
+	PmmClientRepo    string `json:"pmm_client_repo,omitempty"`
+	PmmClientVersion string `json:"pmm_client_version,omitempty"`
+	OsImage          string `json:"os_image,omitempty"`
+}
+
 // defaultExtensionsImage matches the extensions_image default of the Terraform targets.
 const defaultExtensionsImage = "percona/pmm-extensions:3.10.0-rc1"
 
@@ -263,6 +272,7 @@ type Config struct {
 
 	// Docker-specific service servers
 	PmmServers       map[string]PmmServerConfig       `json:"pmm_servers,omitempty"`
+	PmmBareClients   map[string]PmmBareClientConfig   `json:"pmm_bare_clients,omitempty"`
 	SeaweedFSServers map[string]SeaweedFSServerConfig `json:"seaweedfs_servers,omitempty"`
 	LdapServers      map[string]LdapServerConfig      `json:"ldap_servers,omitempty"`
 
@@ -358,6 +368,10 @@ type NamedPmmServer struct {
 	Name   string
 	Config PmmServerConfig
 }
+type NamedPmmBareClient struct {
+	Name   string
+	Config PmmBareClientConfig
+}
 type NamedSeaweedFSServer struct {
 	Name   string
 	Config SeaweedFSServerConfig
@@ -389,6 +403,19 @@ func sortedReplsets(m map[string]ReplsetConfig) []NamedReplset {
 	out := make([]NamedReplset, 0, len(keys))
 	for _, k := range keys {
 		out = append(out, NamedReplset{k, m[k]})
+	}
+	return out
+}
+
+func sortedPmmBareClients(m map[string]PmmBareClientConfig) []NamedPmmBareClient {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	out := make([]NamedPmmBareClient, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, NamedPmmBareClient{k, m[k]})
 	}
 	return out
 }
@@ -496,11 +523,12 @@ type ConfigureData struct {
 	PMMClientImages    []string
 	MongotImages       []string
 	// Pre-sorted for templates
-	SortedClusters   []NamedCluster
-	SortedReplsets   []NamedReplset
-	SortedPmmServers []NamedPmmServer
-	SortedSeaweedFS  []NamedSeaweedFSServer
-	SortedLdap       []NamedLdapServer
+	SortedClusters    []NamedCluster
+	SortedReplsets    []NamedReplset
+	SortedPmmServers  []NamedPmmServer
+	SortedBareClients []NamedPmmBareClient
+	SortedSeaweedFS   []NamedSeaweedFSServer
+	SortedLdap        []NamedLdapServer
 }
 
 type EnvironmentData struct {

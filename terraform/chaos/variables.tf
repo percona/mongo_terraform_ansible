@@ -193,6 +193,28 @@ variable "enable_extensions" {
   }
 }
 
+variable "pmm_bare_clients" {
+  description = "VMs with only a PMM client and no MongoDB, keyed by name. Without its own os_image a client uses the environment's os_image."
+  type = map(object({
+    os_image           = optional(string)
+    pmm_client_repo    = optional(string, "") # release, testing or experimental; empty uses pmm_client_repo
+    pmm_client_version = optional(string, "") # empty uses pmm_client_version
+    cpu_cores          = optional(number, 2)
+    memory_gb          = optional(number, 4)
+    volume_size        = optional(number, 20)
+  }))
+  default = {}
+
+  validation {
+    condition     = length(var.pmm_bare_clients) == 0 || var.enable_pmm
+    error_message = "PMM clients without MongoDB need enable_pmm = true."
+  }
+  validation {
+    condition     = !contains(keys(var.pmm_bare_clients), var.default_pmm_host)
+    error_message = "A PMM client without MongoDB cannot have the same name as the PMM server (default_pmm_host)."
+  }
+}
+
 variable "extensions_image" {
   type        = string
   default     = "percona/pmm-extensions:3.10.0-rc1"

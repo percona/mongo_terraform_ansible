@@ -185,6 +185,39 @@ variable "pmm_servers" {
   }
 }
 
+##################
+# Bare PMM Clients
+##################
+
+variable "pmm_bare_clients" {
+  description = "Containers with only a PMM client, on a chosen OS with systemd"
+  type = map(object({
+    base_image         = optional(string, "ubuntu:24.04") # Debian, Ubuntu or RHEL-compatible image
+    pmm_client_repo    = optional(string, "release")      # percona-release channel: release, testing or experimental
+    pmm_client_version = optional(string, "")             # e.g. 3.10.0; empty installs the newest in the channel
+    pmm_host           = optional(string, "pmm-server")
+    pmm_port           = optional(number, 8443)
+    pmm_server_user    = optional(string, "admin")
+    pmm_server_pwd     = optional(string, "admin")
+    network_name       = optional(string, "mongo-terraform")
+  }))
+
+  default = {
+    #     client01 = {
+    #       base_image = "rockylinux:9"
+    #     }
+  }
+
+  validation {
+    condition     = alltrue([for c in values(var.pmm_bare_clients) : contains(keys(var.pmm_servers), c.pmm_host)])
+    error_message = "Each PMM client without MongoDB needs pmm_host to name an entry of pmm_servers."
+  }
+  validation {
+    condition     = length(setintersection(keys(var.pmm_bare_clients), keys(var.pmm_servers))) == 0
+    error_message = "A PMM client without MongoDB cannot have the same name as a PMM server."
+  }
+}
+
 ###############
 # SeaweedFS Servers
 ###############

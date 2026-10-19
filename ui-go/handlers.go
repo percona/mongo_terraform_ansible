@@ -326,6 +326,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		DefaultAuditFilter:              defaultAuditFilter,
 		OSUser:                          osUser,
 		DockerDefaultPmmExternalPort:    dockerDefaultPmmExternalPort,
+		DefaultExtensionsImage:          defaultExtensionsImage,
 		DockerDefaultSeaweedFSPort:      dockerDefaultSeaweedFSPort,
 		DockerDefaultSeaweedFSAdminPort: dockerDefaultSeaweedFSAdminPort,
 		PSMDBVersions:                   cachedPSMDBVersions(),

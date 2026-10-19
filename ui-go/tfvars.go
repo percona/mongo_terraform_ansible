@@ -206,6 +206,10 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			writeOptInt("pmm_cpu_cores", cfg.PmmCpuCores)
 			writeOptInt("pmm_memory_gb", cfg.PmmMemoryGb)
 			writeOptStr("pmm_image", cfg.PmmImage)
+			if cfg.EnableExtensions {
+				writeVar("enable_extensions", true)
+				writeOptStr("extensions_image", cfg.ExtensionsImage)
+			}
 			if boolDefault(cfg.EnableCA, false) && cfg.CAPlacement == "dedicated" {
 				writeVar("ca_cpu_cores", intDefault(cfg.CACpuCores, 2))
 				writeVar("ca_memory_gb", intDefault(cfg.CAMemoryGb, 4))
@@ -566,6 +570,12 @@ func writeTfvars(envID, platform string, cfg Config) error {
 					write(fmt.Sprintf("    pmm_server_pwd = %s", formatHCLVal(s.PmmServerPwd)))
 				}
 				write(fmt.Sprintf("    bind_to_localhost = %s", formatHCLVal(s.BindToLocalhost)))
+				if s.EnableExtensions {
+					write("    enable_extensions = true")
+					if s.ExtensionsImage != "" {
+						write(fmt.Sprintf("    extensions_image = %s", formatHCLVal(s.ExtensionsImage)))
+					}
+				}
 				write("  }")
 			}
 			write("}")

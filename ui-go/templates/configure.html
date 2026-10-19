@@ -1167,6 +1167,17 @@
                 Bind to localhost only</label>
             </div>
           </div>
+          <div class="form-row">
+            <div class="form-group form-group-checkbox">
+              <label><input type="checkbox" name="pmm_server_enable_extensions[]" value="1"
+                            {{if .Config.EnableExtensions}}checked{{end}} onchange="toggleExtensionsImageField(this)">
+                Deploy PMM Extensions <span class="field-tip" data-tip="Run the PMM Extensions side-car next to PMM Server. Needs PMM Server 3.10 or newer.">ⓘ</span></label>
+            </div>
+            <div class="form-group extensions-image-field" {{if not .Config.EnableExtensions}}style="display:none"{{end}}>
+              <label>PMM Extensions Image <span class="field-tip" data-tip="Docker image for the PMM Extensions side-car.">ⓘ</span></label>
+              <input type="text" name="pmm_server_extensions_image[]" value="{{strDefault .Config.ExtensionsImage $.DefaultExtensionsImage}}">
+            </div>
+          </div>
         </div><!-- .customize-body -->
       </div>
       {{end}}
@@ -1271,6 +1282,17 @@
                  style="{{if $isCustomPmm}}display:block{{else}}display:none{{end}};margin-top:0.3rem"
                  oninput="syncCustomImageOption(this)">
         </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group form-group-checkbox">
+        <label><input type="checkbox" id="enable_extensions" name="enable_extensions"
+                      {{if .Config.EnableExtensions}}checked{{end}} onchange="toggleExtensionsImageField(this)">
+          Deploy PMM Extensions <span class="field-tip" data-tip="Run the PMM Extensions side-car next to PMM Server. Needs PMM Server 3.10 or newer.">ⓘ</span></label>
+      </div>
+      <div class="form-group extensions-image-field" {{if not .Config.EnableExtensions}}style="display:none"{{end}}>
+        <label for="extensions_image">PMM Extensions Image <span class="field-tip" data-tip="Docker image used by Ansible to run the PMM Extensions side-car.">ⓘ</span></label>
+        <input type="text" id="extensions_image" name="extensions_image" value="{{strDefault .Config.ExtensionsImage .DefaultExtensionsImage}}">
       </div>
     </div>
     {{else}}
@@ -1932,6 +1954,7 @@ const DOCKER_DEFAULT_SEAWEEDFS_ADMIN_PORT = {{.DockerDefaultSeaweedFSAdminPort}}
 const PSMDB_IMAGES    = {{json .PSMDBImages}};
 const PBM_IMAGES      = {{json .PBMImages}};
 let PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
+const DEFAULT_EXTENSIONS_IMAGE = {{json .DefaultExtensionsImage}};
 const PMM_SERVER_IMAGES = {{json .PMMImages}};
 const MONGOT_IMAGES = {{json .MongotImages}};
 let PCSM_VERSIONS = {{json .PCSMVersions}};
@@ -3323,8 +3346,31 @@ function addPmmServer() {
         <div class="form-group form-group-checkbox">
           <label><input type="checkbox" name="pmm_server_bind_localhost[]" value="1" checked> Bind to localhost only</label></div>
       </div>
+      <div class="form-row">
+        <div class="form-group form-group-checkbox">
+          <label><input type="checkbox" name="pmm_server_enable_extensions[]" value="1" onchange="toggleExtensionsImageField(this)">
+            Deploy PMM Extensions <span class="field-tip" data-tip="Run the PMM Extensions side-car next to PMM Server. Needs PMM Server 3.10 or newer.">ⓘ</span></label></div>
+        <div class="form-group extensions-image-field" style="display:none">
+          <label>PMM Extensions Image <span class="field-tip" data-tip="Docker image for the PMM Extensions side-car.">ⓘ</span></label>
+          <input type="text" name="pmm_server_extensions_image[]" value="${escHtml(DEFAULT_EXTENSIONS_IMAGE)}"></div>
+      </div>
     </div>`;
   container.appendChild(c);
+}
+
+const EXTENSIONS_PMM_IMAGE_HINT = 'PMM Extensions needs PMM Server 3.10 or newer: pick such an image, for example perconalab/pmm-server:3.10.0-rc, rather than latest or an older version.';
+
+// Mirrors the Terraform check: a tagged image, not latest, and an explicit version of at least 3.10.
+function pmmImageSupportsExtensions(image) {
+  const tag = /:([^/:]+)$/.exec(image || '');
+  if (!tag || tag[1] === 'latest') return false;
+  const version = /^(\d+)\.(\d+)/.exec(tag[1]);
+  return !version || Number(version[1]) * 1000 + Number(version[2]) >= 3010;
+}
+
+function toggleExtensionsImageField(checkbox) {
+  const field = checkbox.closest('.form-row').querySelector('.extensions-image-field');
+  if (field) field.style.display = checkbox.checked ? '' : 'none';
 }
 
 function addSeaweedFSServer() {
@@ -3906,6 +3952,14 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   if (PLATFORM !== 'docker') {
     const pmmImage = selectedPmmServerImageValue();
     if (pmmImage) config.pmm_image = pmmImage;
+    config.enable_extensions = fd.has('enable_extensions');
+    if (config.enable_extensions) {
+      config.extensions_image = (fd.get('extensions_image') || '').trim();
+      if (!pmmImageSupportsExtensions(config.pmm_image)) {
+        alert(EXTENSIONS_PMM_IMAGE_HINT);
+        return;
+      }
+    }
   }
 	config.use_spot_instances = fd.has('use_spot_instances');
 	config.enable_ycsb = fd.has('enable_ycsb');
@@ -4143,8 +4197,14 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
         pmm_external_port: parseInt(getBlockFieldValue(block, 'pmm_server_port[]')) || 8443,
         // pmm_server_user/pwd not set here – they use the Terraform defaults
         bind_to_localhost: getBlockChecked(block, 'pmm_server_bind_localhost[]'),
+        enable_extensions: getBlockChecked(block, 'pmm_server_enable_extensions[]'),
+        extensions_image: getBlockFieldValue(block, 'pmm_server_extensions_image[]').trim(),
       };
     });
+    if (Object.values(config.pmm_servers).some(s => s.enable_extensions && !pmmImageSupportsExtensions(s.pmm_server_image))) {
+      alert(EXTENSIONS_PMM_IMAGE_HINT);
+      return;
+    }
 
     // SeaweedFS Servers – access/secret key come from the Credentials section
     const mNames   = fd.getAll('seaweedfs_server_name[]');

@@ -87,14 +87,19 @@ type ReplsetConfig struct {
 
 // PmmServerConfig maps to the Docker pmm_servers map object type.
 type PmmServerConfig struct {
-	EnvTag          string `json:"env_tag"`
-	PmmServerImage  string `json:"pmm_server_image,omitempty"`
-	PmmPort         int    `json:"pmm_port,omitempty"`
-	PmmExternalPort int    `json:"pmm_external_port,omitempty"`
-	PmmServerUser   string `json:"pmm_server_user,omitempty"`
-	PmmServerPwd    string `json:"pmm_server_pwd,omitempty"`
-	BindToLocalhost bool   `json:"bind_to_localhost,omitempty"`
+	EnvTag           string `json:"env_tag"`
+	PmmServerImage   string `json:"pmm_server_image,omitempty"`
+	PmmPort          int    `json:"pmm_port,omitempty"`
+	PmmExternalPort  int    `json:"pmm_external_port,omitempty"`
+	PmmServerUser    string `json:"pmm_server_user,omitempty"`
+	PmmServerPwd     string `json:"pmm_server_pwd,omitempty"`
+	BindToLocalhost  bool   `json:"bind_to_localhost,omitempty"`
+	EnableExtensions bool   `json:"enable_extensions,omitempty"`
+	ExtensionsImage  string `json:"extensions_image,omitempty"`
 }
+
+// defaultExtensionsImage matches the extensions_image default of the Terraform targets.
+const defaultExtensionsImage = "percona/pmm-extensions:3.10.0-rc1"
 
 // SeaweedFSServerConfig maps to the Docker seaweedfs_servers map object type.
 type SeaweedFSServerConfig struct {
@@ -194,6 +199,10 @@ type Config struct {
 	PmmImage        string `json:"pmm_image,omitempty"`
 	PmmImageChannel string `json:"pmm_image_channel,omitempty"`
 	PmmDiskType     string `json:"pmm_disk_type,omitempty"`
+
+	// PMM Extensions side-car on the PMM server (CHAOS)
+	EnableExtensions bool   `json:"enable_extensions,omitempty"`
+	ExtensionsImage  string `json:"extensions_image,omitempty"`
 
 	// Backup
 	DefaultBucketName string `json:"default_bucket_name,omitempty"`
@@ -468,6 +477,7 @@ type ConfigureData struct {
 	DefaultAuditFilter              string
 	OSUser                          string // current OS user, used as SSH user default
 	DockerDefaultPmmExternalPort    int
+	DefaultExtensionsImage          string
 	DockerDefaultSeaweedFSPort      int
 	DockerDefaultSeaweedFSAdminPort int
 	PSMDBVersions                   []string

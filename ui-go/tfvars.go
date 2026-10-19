@@ -61,6 +61,23 @@ func writeTfvars(envID, platform string, cfg Config) error {
 	writeVar := func(name string, val interface{}) {
 		write(fmt.Sprintf("%s = %s", name, formatHCLVal(val)))
 	}
+	writeBareClients := func(fields func(PmmBareClientConfig) [][2]string) {
+		if len(cfg.PmmBareClients) == 0 {
+			write("pmm_bare_clients = {}")
+			return
+		}
+		write("pmm_bare_clients = {")
+		for _, c := range sortedPmmBareClients(cfg.PmmBareClients) {
+			write(fmt.Sprintf("  %q = {", c.Name))
+			for _, f := range fields(c.Config) {
+				if f[1] != "" {
+					write(fmt.Sprintf("    %s = %s", f[0], formatHCLVal(f[1])))
+				}
+			}
+			write("  }")
+		}
+		write("}")
+	}
 	writeOptStr := func(name, val string) {
 		if val != "" {
 			writeVar(name, val)
@@ -206,6 +223,19 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			writeOptInt("pmm_cpu_cores", cfg.PmmCpuCores)
 			writeOptInt("pmm_memory_gb", cfg.PmmMemoryGb)
 			writeOptStr("pmm_image", cfg.PmmImage)
+			if cfg.EnableExtensions {
+				writeVar("enable_extensions", true)
+				writeOptStr("extensions_image", cfg.ExtensionsImage)
+			}
+			if len(cfg.PmmBareClients) > 0 {
+				writeBareClients(func(c PmmBareClientConfig) [][2]string {
+					return [][2]string{
+						{"os_image", c.OsImage},
+						{"pmm_client_repo", c.PmmClientRepo},
+						{"pmm_client_version", c.PmmClientVersion},
+					}
+				})
+			}
 			if boolDefault(cfg.EnableCA, false) && cfg.CAPlacement == "dedicated" {
 				writeVar("ca_cpu_cores", intDefault(cfg.CACpuCores, 2))
 				writeVar("ca_memory_gb", intDefault(cfg.CAMemoryGb, 4))
@@ -566,10 +596,25 @@ func writeTfvars(envID, platform string, cfg Config) error {
 					write(fmt.Sprintf("    pmm_server_pwd = %s", formatHCLVal(s.PmmServerPwd)))
 				}
 				write(fmt.Sprintf("    bind_to_localhost = %s", formatHCLVal(s.BindToLocalhost)))
+				if s.EnableExtensions {
+					write("    enable_extensions = true")
+					if s.ExtensionsImage != "" {
+						write(fmt.Sprintf("    extensions_image = %s", formatHCLVal(s.ExtensionsImage)))
+					}
+				}
 				write("  }")
 			}
 			write("}")
 		}
+
+		write("")
+		writeBareClients(func(c PmmBareClientConfig) [][2]string {
+			return [][2]string{
+				{"base_image", c.BaseImage},
+				{"pmm_client_repo", c.PmmClientRepo},
+				{"pmm_client_version", c.PmmClientVersion},
+			}
+		})
 
 		write("")
 		if len(cfg.SeaweedFSServers) == 0 {

@@ -286,6 +286,38 @@ replsets = {
 
 - Grafana renderer is installed so PMM graphs can be exported as PNG images.
 
+### PMM Extensions
+
+Set `enable_extensions = true` on a `pmm_servers` entry to run the PMM Extensions side-car, `<pmm-server>-extensions`, next to that PMM Server. It needs PMM Server 3.10 or newer:
+
+```
+pmm_servers = {
+  "pmm-server" = {
+    pmm_server_image  = "perconalab/pmm-server:3.10.0-rc"
+    enable_extensions = true
+  }
+}
+```
+
+PMM Server serves the side-car under `https://127.0.0.1:8443/extensions/`, so the side-car publishes no ports of its own. Its image is set with `extensions_image` (default `percona/pmm-extensions:3.10.0-rc1`), and it syncs PMM's inventory every `extensions_inventory_sync_minutes` (default 1). PMM Server's embedded Nomad server is enabled as well, since PMM Extensions runs its tasks through it.
+
+### PMM clients without MongoDB
+
+`pmm_bare_clients` adds containers that run only a PMM client, registered with the PMM Server as generic nodes. Each one is built locally from `base_image`, which can be any Debian, Ubuntu or RHEL-compatible image, with systemd as PID 1 and `pmm-client` installed from percona-release, so PMM Extensions can install and manage MongoDB on it the way it would on a VM. Each client registers with the PMM server named by its `pmm_host` (default `pmm-server`), which has to be in `pmm_servers`:
+
+```
+pmm_bare_clients = {
+  client01 = {}
+  client02 = {
+    base_image         = "rockylinux:9"
+    pmm_client_repo    = "testing"
+    pmm_client_version = "3.10.0"
+  }
+}
+```
+
+The containers need `SYS_ADMIN`, unconfined seccomp and AppArmor profiles, and the host's cgroup tree for systemd and for the Nomad client in pmm-agent.
+
 ## PBM Backup
 
 - A dedicated `pbm-cli` container is deployed for PBM commands. Example:

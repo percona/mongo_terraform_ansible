@@ -21,44 +21,9 @@
   vars:
     pmm_enabled: "{{ enable_pmm_agent | default(enable_pmm | default((groups['pmm'] | default([]) | length) > 0)) | bool }}"
   tasks:
-    - name: Install pmm-client package from repository (latest)
-      package:
-        name: "{{ pmm_client_package }}"
-        state: present
-      when:
-        - pmm_enabled | bool
-        - pmm_client_version is not defined or pmm_client_version == ''
-
-    - name: Install pmm-client packages from repository (specific version – Debian/Ubuntu)
-      apt:
-        name: "{{ pmm_client_package | map('regex_replace', '^pmm-client$', 'pmm-client=' ~ pmm_client_version ~ '*') | list }}"
-        state: present
-        allow_downgrade: true
-        lock_timeout: 300
-      when:
-        - pmm_enabled | bool
-        - pmm_client_version is defined and pmm_client_version != ''
-        - ansible_facts['os_family'] == 'Debian'
-
-    - name: Install pmm-client packages from repository (specific version – RedHat)
-      yum:
-        name: "{{ pmm_client_package | map('regex_replace', '^pmm-client$', 'pmm-client-' ~ pmm_client_version) | list }}"
-        state: present
-      when:
-        - pmm_enabled | bool
-        - pmm_client_version is defined and pmm_client_version != ''
-        - ansible_facts['os_family'] == 'RedHat'
-
-    - name: Disable Percona telemetry
-      systemd:
-        name: percona-telemetry-agent
-        enabled: false
-        state: stopped
-        daemon_reload: yes
-      ignore_errors: true
-      when:
-        - pmm_enabled | bool
-        - disable_telemetry | bool
+    - name: Install pmm-client
+      ansible.builtin.include_tasks: tasks/install_pmm_client.yml
+      when: pmm_enabled | bool
 
 - name: Configure monitoring with PMM
   hosts: cfg:shards:replsets:mongos
@@ -116,6 +81,65 @@
         - arbiter is not defined
         - "'shards' in group_names or 'replsets' in group_names"
 
+- name: Install PMM client on hosts without MongoDB
+  hosts: pmm_bare_client
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
+  become: true
+  tags: install,monitoring
+  environment:
+    PERCONA_TELEMETRY_DISABLE: "{{ '1' if disable_telemetry else '0' }}"
+  tasks:
+    - name: Install percona-release
+      ansible.builtin.apt:
+        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+        state: present
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install percona-release on Red Hat
+      ansible.builtin.dnf:
+        name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+        state: present
+        disable_gpg_check: true
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Enable PMM client repository
+      ansible.builtin.command: "/usr/bin/percona-release enable {{ pmm_client_repo | default('pmm3-client') }}"
+      changed_when: false
+
+    # PMM Extensions tasks run Python in a venv, which Debian ships separately
+    - name: Install python3-venv
+      ansible.builtin.apt:
+        name: python3-venv
+        state: present
+        update_cache: true
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install pmm-client
+      ansible.builtin.include_tasks: tasks/install_pmm_client.yml
+
+- name: Configure monitoring on hosts without MongoDB
+  hosts: pmm_bare_client
+  gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
+  become: true
+  tags: monitoring
+  tasks:
+    - name: Ensure pmm-agent is started
+      ansible.builtin.service:
+        name: pmm-agent
+        state: started
+        enabled: true
+
+    - name: Point pmm-agent to the PMM server
+      ansible.builtin.shell: >-
+        pmm-admin config
+        --server-url=https://{{ pmm_server_user }}:{{ pmm_server_pwd }}@{{ hostvars[groups['pmm'][0]].ansible_facts['fqdn'] }}:{{ pmm_external_port }}
+        --server-insecure-tls --force
+      no_log: true
+      register: pmm_config_result
+      retries: 3
+      delay: 1
+      until: pmm_config_result.rc == 0
+
 - name: Install PMM client on PCSM
   hosts: pcsm
   gather_facts: "{{ not (skip_repeated_facts | default(false) | bool) }}"
@@ -145,7 +169,7 @@
         - ansible_facts['os_family'] == 'RedHat'
 
     - name: Enable PMM client repository on PCSM
-      ansible.builtin.command: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
+      ansible.builtin.command: "/usr/bin/percona-release enable {{ pmm_client_repo | default('pmm3-client') }}"
       changed_when: false
       when: pmm_enabled | bool
 

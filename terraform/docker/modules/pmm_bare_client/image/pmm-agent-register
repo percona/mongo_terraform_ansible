@@ -1,0 +1,19 @@
+#!/bin/sh
+# Registers this host with PMM Server, as pmm-admin config does on a VM.
+set -eu
+. /etc/pmm-agent-register.env
+
+until curl -fks -o /dev/null "https://${PMM_SERVER_ADDRESS}/v1/readyz"; do
+    sleep 5
+done
+
+pmm-agent setup \
+    --config-file=/usr/local/percona/pmm/config/pmm-agent.yaml \
+    --server-address="$PMM_SERVER_ADDRESS" \
+    --server-username="$PMM_SERVER_USERNAME" \
+    --server-password="$PMM_SERVER_PASSWORD" \
+    --server-insecure-tls \
+    --force \
+    "$(hostname -i | cut -d' ' -f1)" generic "$(hostname)"
+
+touch /var/lib/pmm-agent-registered

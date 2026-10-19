@@ -52,11 +52,11 @@
   become: yes
   tasks:
     - name: Remove PMM server
-      shell: docker rm pmm-server watchtower renderer --force
+      shell: docker rm pmm-server pmm-extensions watchtower renderer --force
       ignore_errors: yes
 
     - name: Remove PMM volume
-      shell: docker volume rm pmm-data --force
+      shell: docker volume rm pmm-data pmm-extensions-secrets pmm-extensions-state --force
       ignore_errors: yes            
 
     - name: Remove PMM network

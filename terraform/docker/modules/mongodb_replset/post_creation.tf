@@ -24,8 +24,8 @@ resource "null_resource" "initiate_replset" {
       retries=30
       success=false
       while [ $retries -gt 0 ]; do
-        # Check the replica set status and look for a primary
-        primary=$(docker exec -i ${docker_container.rs[local.replset_member_keys[0]].name} mongosh --port ${docker_container.rs[local.replset_member_keys[0]].ports[0].internal} --eval "rs.status().members.filter(m => m.stateStr === 'PRIMARY').length > 0")
+        # rs.status() shows PRIMARY before the node accepts writes, and the users are created on this member
+        primary=$(docker exec -i ${docker_container.rs[local.replset_member_keys[0]].name} mongosh --port ${docker_container.rs[local.replset_member_keys[0]].ports[0].internal} --quiet --eval "db.hello().isWritablePrimary")
         
         if test "$primary" = "true"; then
           echo "Primary has been elected in replica set"
@@ -176,7 +176,20 @@ resource "null_resource" "add_new_replset_members" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      primary=$(docker exec -i ${docker_container.rs[local.replset_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${docker_container.rs[local.replset_member_keys[0]].ports[0].internal} --quiet --eval 'db.hello().primary')
+      primary=""
+      for attempt in $(seq 1 30); do
+        primary=$(docker exec -i ${docker_container.rs[local.replset_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --port ${docker_container.rs[local.replset_member_keys[0]].ports[0].internal} --quiet --eval 'db.hello().primary')
+        if [ -n "$primary" ] && [ "$(docker exec -i ${docker_container.rs[local.replset_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --host "$primary" --quiet --eval 'db.hello().isWritablePrimary')" = "true" ]; then
+          break
+        fi
+        primary=""
+        echo "Waiting for a writable primary (attempt $attempt/30)..."
+        sleep 5
+      done
+      if [ -z "$primary" ]; then
+        echo "No writable primary; cannot add replica set members."
+        exit 1
+      fi
       docker exec -i ${docker_container.rs[local.replset_member_keys[0]].name} mongosh admin -u ${var.mongodb_root_user} -p ${var.mongodb_root_password} --host "$primary" --eval '
         const existing = rs.status().members.map(m => m.name);
         const desired = [${join(",", [for key in local.replset_member_keys : "\"${docker_container.rs[key].name}:${docker_container.rs[key].ports[0].internal}\""])}];

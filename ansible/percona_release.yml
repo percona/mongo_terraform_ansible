@@ -65,7 +65,9 @@
             name:
               - curl
               - gnupg2
-              - lsb-release 
+              - lsb-release
+              # PMM Extensions tasks run Python in a venv, which Debian ships separately
+              - python3-venv
             state: present
             update_cache: yes
             cache_valid_time: 3600
@@ -154,7 +156,7 @@
         - "'cfg' in group_names or 'shards' in group_names or 'replsets' in group_names"
 
     - name: Enable PMM client repository
-      command: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
+      command: "/usr/bin/percona-release enable {{ pmm_client_repo | default('pmm3-client') }}"
       when: pmm_enabled | bool
 
     - name: Refresh apt package cache after repository setup

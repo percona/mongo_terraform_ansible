@@ -90,6 +90,14 @@ Review these first before deploying:
 
     If you want to provision any replica sets (non-sharded), set this variable. Make sure to change the default name to avoid duplicates.
 
+- **pmm_bare_clients**
+
+    VMs with only a PMM client and no MongoDB, keyed by name, for example `{ client01 = {}, client02 = { os_image = "Rocky Linux 9" } }`. Needs `enable_pmm`. A client without its own `os_image` uses the environment's `os_image`, and `cpu_cores`, `memory_gb` and `volume_size` default to 2, 4 and 20. Each client can set `pmm_client_repo` and `pmm_client_version` and otherwise uses the environment's. They get their own inventory, `<prefix>_inventory_pmm_clients`, which also works without any cluster or replica set. They accept MongoDB connections from the subnet so that PMM Extensions can bootstrap a replica set on them.
+
+- **enable_extensions**
+
+    Set to `true` to run the PMM Extensions side-car on the PMM server VM. It needs `pmm_image` to be PMM Server 3.10 or newer, for example `perconalab/pmm-server:3.10.0-rc`. The side-car image is `extensions_image`. PMM Server's embedded Nomad server is enabled and its port 4647 is opened to the subnet, so the PMM clients on the other VMs can run PMM Extensions tasks.
+
  - **my_ssh_user**
 
     Your own SSH user name. This is used to generate an SSH config file for you to login easily.

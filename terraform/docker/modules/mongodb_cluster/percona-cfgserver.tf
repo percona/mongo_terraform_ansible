@@ -9,6 +9,7 @@ resource "docker_container" "cfg" {
   hostname   = "${var.cluster_name}-${var.configsvr_tag}0${each.value}"
   domainname = var.domain_name
   image      = docker_image.psmdb.image_id
+  env        = local.mongod_env
   mounts {
     source    = docker_volume.keyfile_volume.name
     target    = var.keyfile_path

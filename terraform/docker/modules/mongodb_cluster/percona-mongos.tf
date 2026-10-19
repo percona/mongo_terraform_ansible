@@ -5,6 +5,7 @@ resource "docker_container" "mongos" {
   hostname   = "${var.cluster_name}-${var.mongos_tag}0${each.value}"
   domainname = var.domain_name
   image      = docker_image.psmdb.image_id
+  env        = local.mongod_env
   command = concat([
     "mongos",
     "--configdb", "${lookup({ for label in docker_container.cfg[local.cfg_member_keys[0]].labels : label.label => label.value }, "replsetName", null)}/${join(",", [for key in local.cfg_member_keys : "${docker_container.cfg[key].name}:${var.configsvr_port}"])}",

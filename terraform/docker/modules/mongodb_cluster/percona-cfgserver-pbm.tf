@@ -6,7 +6,7 @@ resource "docker_container" "pbm_cfg" {
   command = [
     "pbm-agent"
   ]
-  env = ["PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.cfg[each.key].name}:${var.configsvr_port}"]
+  env = concat(local.mongod_env, ["PBM_MONGODB_URI=${var.mongodb_pbm_user}:${var.mongodb_pbm_password}@${docker_container.cfg[each.key].name}:${var.configsvr_port}"])
   mounts {
     type   = "volume"
     target = "/data/db"

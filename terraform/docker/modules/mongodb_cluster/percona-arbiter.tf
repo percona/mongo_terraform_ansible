@@ -9,6 +9,7 @@ resource "docker_container" "arbiter" {
   hostname   = "${var.cluster_name}-${var.shardsvr_tag}0${each.value.shard_index}arb${each.value.arbiter_index}"
   domainname = var.domain_name
   image      = docker_image.psmdb.image_id
+  env        = local.mongod_env
   mounts {
     source    = docker_volume.keyfile_volume.name
     target    = var.keyfile_path

@@ -5,6 +5,10 @@ locals {
   base_os_repository = replace(data.docker_registry_image.base_os.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
   mongot_repository  = replace(data.docker_registry_image.mongot.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
 
+  # mongod's bundled TCMalloc crashes at startup on Linux 6.19+ unless glibc owns rseq
+  # (SERVER-121912). Drop once the PSMDB images ship the TCMalloc fix.
+  mongod_env = ["GLIBC_TUNABLES=glibc.pthread.rseq=1"]
+
   pbm_mongod_image_dockerfile_content = templatefile("${path.module}/pbm-mongod.Dockerfile.tmpl", {
     psmdb_image   = "${local.psmdb_repository}@${data.docker_registry_image.psmdb.sha256_digest}"
     pbm_image     = "${local.pbm_repository}@${data.docker_registry_image.pbm.sha256_digest}"

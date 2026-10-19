@@ -1,4 +1,13 @@
 locals {
+  pmm_bare_client_ips = { for client in chaos_instance.pmm_bare_client : client.name => client.ip_address }
+  pmm_bare_client_hosts = {
+    for key, client in chaos_instance.pmm_bare_client : client.name => {
+      ip                 = client.ip_address
+      pmm_client_repo    = lookup(local.pmm_client_inventory_repos, var.pmm_bare_clients[key].pmm_client_repo, var.pmm_bare_clients[key].pmm_client_repo)
+      pmm_client_version = var.pmm_bare_clients[key].pmm_client_version
+    }
+  }
+
   pmm_client_inventory_repos = {
     release      = "pmm3-client"
     testing      = "pmm3-client testing"
@@ -80,6 +89,8 @@ resource "local_file" "AnsibleInventoryCluster" {
       use_tls              = var.clusters[each.key].use_tls
       enable_pmm_agent     = var.enable_pmm && var.clusters[each.key].enable_pmm
       pmm_image            = var.pmm_image
+      enable_extensions    = var.enable_pmm && var.enable_extensions
+      extensions_image     = var.extensions_image
       enable_pbm           = var.clusters[each.key].enable_pbm
       enable_mongot        = var.clusters[each.key].enable_mongot
       mongot_source        = var.clusters[each.key].mongot_source
@@ -182,6 +193,8 @@ resource "local_file" "AnsibleInventoryRS" {
       use_tls              = var.replsets[each.key].use_tls
       enable_pmm_agent     = var.enable_pmm && var.replsets[each.key].enable_pmm
       pmm_image            = var.pmm_image
+      enable_extensions    = var.enable_pmm && var.enable_extensions
+      extensions_image     = var.extensions_image
       enable_pbm           = var.replsets[each.key].enable_pbm
       enable_mongot        = var.replsets[each.key].enable_mongot
       mongot_source        = var.replsets[each.key].mongot_source
@@ -253,4 +266,43 @@ resource "local_file" "SSHConfigRS" {
   })
 
   filename = "${var.prefix}_ssh_config_${each.key}"
+}
+
+# The PMM clients without MongoDB are configured once per environment, from their own inventory.
+resource "local_file" "AnsibleInventoryPmmClients" {
+  count = length(var.pmm_bare_clients) > 0 ? 1 : 0
+
+  content = templatefile("pmm_clients_inventory.tmpl", {
+    hostname_pmm         = local.pmm_host
+    ip_pmm               = chaos_instance.pmm[0].ip_address
+    pmm_bare_clients     = local.pmm_bare_client_hosts
+    my_ssh_user          = var.my_ssh_user
+    ssh_private_key_path = var.ssh_private_key_path
+    pmm_image            = var.pmm_image
+    enable_extensions    = var.enable_extensions
+    extensions_image     = var.extensions_image
+    pmm_client_version   = var.pmm_client_version
+    pmm_client_repo      = lookup(local.pmm_client_inventory_repos, var.pmm_client_repo, var.pmm_client_repo)
+  })
+
+  filename = "${var.prefix}_inventory_pmm_clients"
+}
+
+resource "local_file" "SSHConfigPmmClients" {
+  count = length(var.pmm_bare_clients) > 0 ? 1 : 0
+
+  content = templatefile("pmm_clients_ssh_config.tmpl", {
+    include_pmm          = length(var.clusters) + length(var.replsets) == 0
+    hostname_pmm         = local.pmm_host
+    public_ip_pmm        = chaos_instance.pmm[0].ip_address
+    pmm_bare_clients     = local.pmm_bare_client_ips
+    my_ssh_user          = var.my_ssh_user
+    ssh_private_key_path = var.ssh_private_key_path
+    ssh_gateway_name     = var.ssh_gateway_name
+    enable_ssh_gateway   = var.enable_ssh_gateway
+    port_to_forward      = var.port_to_forward
+    pmm_port             = var.pmm_port
+  })
+
+  filename = "${var.prefix}_ssh_config_pmm_clients"
 }

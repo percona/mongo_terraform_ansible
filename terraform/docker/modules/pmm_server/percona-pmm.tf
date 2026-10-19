@@ -109,11 +109,19 @@ resource "docker_container" "pmm" {
     docker_container.renderer
   ]
   image = docker_image.pmm.image_id
-  env   = ["PMM_ENABLE_ACCESS_CONTROL=${var.pmm_access_control}", "GF_RENDERING_SERVER_URL=http://${docker_container.renderer.name}:${var.renderer_port}/render", "GF_RENDERING_CALLBACK_URL=https://${var.pmm_host}:${var.pmm_port}/graph/", "PMM_WATCHTOWER_HOST=http://${docker_container.watchtower.name}:${var.watchtower_port}", "PMM_WATCHTOWER_TOKEN=${var.watchtower_token}"]
+  env   = concat(["PMM_ENABLE_ACCESS_CONTROL=${var.pmm_access_control}", "GF_RENDERING_SERVER_URL=http://${docker_container.renderer.name}:${var.renderer_port}/render", "GF_RENDERING_CALLBACK_URL=https://${var.pmm_host}:${var.pmm_port}/graph/", "PMM_WATCHTOWER_HOST=http://${docker_container.watchtower.name}:${var.watchtower_port}", "PMM_WATCHTOWER_TOKEN=${var.watchtower_token}"], local.pmm_extensions_env)
   mounts {
     type   = "volume"
     target = "/srv"
     source = docker_volume.pmm_volume.name
+  }
+  dynamic "mounts" {
+    for_each = docker_volume.extensions_secrets
+    content {
+      type   = "volume"
+      target = "/srv/extensions"
+      source = mounts.value.name
+    }
   }
   network_mode = "bridge"
   networks_advanced {

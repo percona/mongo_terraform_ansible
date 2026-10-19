@@ -1,0 +1,12 @@
+[Unit]
+Description=Register pmm-agent with PMM Server
+Before=pmm-agent.service
+ConditionPathExists=!/var/lib/pmm-agent-registered
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/pmm-agent-register
+
+[Install]
+WantedBy=multi-user.target

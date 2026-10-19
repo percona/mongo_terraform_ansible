@@ -81,6 +81,28 @@ variable "pmm_access_control" {
   type        = string
 }
 
+#################
+# PMM Extensions
+#################
+
+variable "enable_extensions" {
+  description = "Run the PMM Extensions side-car next to this PMM server. Needs PMM Server 3.10 or newer"
+  default     = false
+  type        = bool
+}
+
+variable "extensions_image" {
+  description = "Docker image for the PMM Extensions side-car"
+  default     = "percona/pmm-extensions:3.10.0-rc1"
+  type        = string
+}
+
+variable "extensions_inventory_sync_minutes" {
+  description = "How often PMM Extensions syncs PMM's inventory, in minutes"
+  default     = 1
+  type        = number
+}
+
 ###############
 # Docker Images
 ###############

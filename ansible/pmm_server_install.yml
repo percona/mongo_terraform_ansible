@@ -6,10 +6,39 @@
   become: true
   vars:
     pmm_enabled: "{{ enable_pmm | default((groups['pmm'] | default([]) | length) > 0) | bool }}"
+    pmm_extensions_enabled: "{{ pmm_enabled | bool and enable_extensions | default(false) | bool }}"
     pmm_image_refs:
       watchtower: "{{ watchtower_image | default('percona/watchtower:latest') }}"
       renderer: "{{ renderer_image | default('grafana/grafana-image-renderer:latest') }}"
       server: "{{ pmm_image | default('docker.io/percona/pmm-server:latest') }}"
+      extensions: "{{ extensions_image | default('percona/pmm-extensions:3.10.0-rc1') }}"
+    # The side-car is recreated whenever any of these change.
+    pmm_extensions_container_args:
+      # PMM publishes the secrets as group 0, mode 0640.
+      - --group-add
+      - "0"
+      - --volume
+      - pmm-extensions-secrets:/run/secrets/extensions:ro
+      - --volume
+      - pmm-extensions-state:/home/extensions/state
+      - -e
+      - SECRETS_DIR=/run/secrets/extensions
+      - -e
+      - "EXTENSIONS_INTERNAL_TOKEN={{ pmm_extensions_token }}"
+      - -e
+      - "EXTENSIONS_PMM_ENDPOINT=https://pmm-server:{{ pmm_port }}"
+      - -e
+      - "EXTENSIONS_NOMAD_ENDPOINT=https://pmm-server:{{ pmm_port }}/nomad"
+      - -e
+      - "BASE_URL=https://{{ ansible_host }}:{{ pmm_external_port }}/extensions"
+      - -e
+      - "GF_SECURITY_ADMIN_USER={{ pmm_server_user }}"
+      - -e
+      - "GF_SECURITY_ADMIN_PASSWORD={{ pmm_server_pwd }}"
+      - -e
+      - "TASKS__INVENTORY_SYNC_INTERVAL={{ extensions_inventory_sync_minutes | default(1) }} minutes"
+      - "{{ pmm_image_refs.extensions }}"
+    pmm_extensions_config_hash: "{{ pmm_extensions_container_args | join(' ') | hash('sha1') }}"
   tasks:
     - name: Load OS-specific variables
       include_vars: "vars/{{ ansible_facts['os_family'] }}.yml"
@@ -182,11 +211,27 @@
       failed_when: false
       when: pmm_enabled | bool
 
+    - name: Get PMM server container environment
+      ansible.builtin.command:
+        argv:
+          - docker
+          - container
+          - inspect
+          - "--format={{ '{{json .Config.Env}}' }}"
+          - pmm-server
+      register: pmm_server_env
+      changed_when: false
+      failed_when: false
+      when: pmm_enabled | bool
+
     - name: Determine containers requiring recreation
       ansible.builtin.set_fact:
         watchtower_recreate: "{{ watchtower_container.rc != 0 or watchtower_container.stdout != desired_images.results[0].stdout }}"
         renderer_recreate: "{{ renderer_container.rc != 0 or renderer_container.stdout != desired_images.results[1].stdout }}"
-        pmm_server_recreate: "{{ pmm_server_container.rc != 0 or pmm_server_container.stdout != desired_images.results[2].stdout }}"
+        pmm_server_recreate: >-
+          {{ pmm_server_container.rc != 0
+             or pmm_server_container.stdout != desired_images.results[2].stdout
+             or ('PMM_ENABLE_EXTENSIONS=1' in pmm_server_env.stdout | default('[]', true) | from_json) != pmm_extensions_enabled | bool }}
       when: pmm_enabled | bool
 
     - name: Remove containers using stale images
@@ -274,9 +319,49 @@
         - pmm_enabled | bool
         - pmm_data_volume.rc != 0
 
-    - name: Run PMM server container
+    - name: Create PMM Extensions volumes
       ansible.builtin.command:
         argv:
+          - docker
+          - volume
+          - create
+          - "{{ item }}"
+      loop:
+        - pmm-extensions-secrets
+        - pmm-extensions-state
+      changed_when: false
+      when: pmm_extensions_enabled | bool
+
+    - name: Generate the PMM Extensions token
+      ansible.builtin.copy:
+        content: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_letters', 'digits'], length=64) }}"
+        dest: "{{ pmm_dir }}/extensions-token"
+        owner: root
+        group: root
+        mode: "0600"
+        force: false
+      no_log: true
+      when: pmm_extensions_enabled | bool
+
+    - name: Read the PMM Extensions token
+      ansible.builtin.slurp:
+        src: "{{ pmm_dir }}/extensions-token"
+      register: pmm_extensions_token_file
+      no_log: true
+      when: pmm_extensions_enabled | bool
+
+    - name: Set the PMM Extensions token
+      ansible.builtin.set_fact:
+        pmm_extensions_token: "{{ pmm_extensions_token_file.content | b64decode }}"
+      no_log: true
+      when: pmm_extensions_enabled | bool
+
+    - name: Run PMM server container
+      ansible.builtin.command:
+        argv: "{{ pmm_server_args + (pmm_extensions_args if pmm_extensions_enabled | bool else []) + [pmm_image_refs.server] }}"
+      no_log: true
+      vars:
+        pmm_server_args:
           - docker
           - run
           - -d
@@ -297,7 +382,22 @@
           - PMM_WATCHTOWER_HOST=http://watchtower:8080
           - -e
           - "PMM_WATCHTOWER_TOKEN={{ watchtower_token }}"
-          - "{{ pmm_image_refs.server }}"
+        # Nomad clients on the other hosts dial the embedded Nomad server on 4647 at PMM_PUBLIC_ADDRESS.
+        pmm_extensions_args:
+          - --volume
+          - pmm-extensions-secrets:/srv/extensions
+          - -p
+          - 4647:4647
+          - -e
+          - PMM_ENABLE_EXTENSIONS=1
+          - -e
+          - PMM_EXTENSIONS_URL=http://pmm-extensions:9000
+          - -e
+          - "PMM_EXTENSIONS_TOKEN={{ pmm_extensions_token }}"
+          - -e
+          - PMM_ENABLE_NOMAD=1
+          - -e
+          - "PMM_PUBLIC_ADDRESS={{ ansible_host }}"
       when:
         - pmm_enabled | bool
         - pmm_server_recreate | bool
@@ -325,3 +425,82 @@
       when:
         - pmm_enabled | bool
         - pmm_server_recreate | bool
+
+    - name: Pull PMM Extensions image
+      ansible.builtin.command:
+        argv:
+          - docker
+          - pull
+          - "{{ pmm_image_refs.extensions }}"
+      register: extensions_image_pull
+      changed_when: "'Downloaded newer image' in extensions_image_pull.stdout"
+      when: pmm_extensions_enabled | bool
+
+    - name: Get desired PMM Extensions image ID
+      ansible.builtin.command:
+        argv:
+          - docker
+          - image
+          - inspect
+          - "--format={{ '{{.Id}}' }}"
+          - "{{ pmm_image_refs.extensions }}"
+      register: extensions_desired_image
+      changed_when: false
+      when: pmm_extensions_enabled | bool
+
+    - name: Get PMM Extensions container
+      ansible.builtin.command:
+        argv:
+          - docker
+          - container
+          - inspect
+          - "--format={{ '{{json .}}' }}"
+          - pmm-extensions
+      register: extensions_container
+      changed_when: false
+      failed_when: false
+      when: pmm_enabled | bool
+
+    - name: Determine whether PMM Extensions needs recreation
+      ansible.builtin.set_fact:
+        extensions_recreate: >-
+          {{ pmm_extensions_enabled | bool
+             and (extensions_container.rc != 0
+                  or pmm_server_recreate | bool
+                  or (extensions_container.stdout | from_json).Image != extensions_desired_image.stdout
+                  or not (extensions_container.stdout | from_json).State.Running
+                  or ((extensions_container.stdout | from_json).Config.Labels or {}).get('config-hash') != pmm_extensions_config_hash) }}
+      when: pmm_enabled | bool
+
+    - name: Remove a stale or disabled PMM Extensions container
+      ansible.builtin.command:
+        argv:
+          - docker
+          - rm
+          - --force
+          - pmm-extensions
+      when:
+        - pmm_enabled | bool
+        - extensions_container.rc == 0
+        - extensions_recreate | bool or not pmm_extensions_enabled | bool
+
+    - name: Run PMM Extensions container
+      ansible.builtin.command:
+        argv: "{{ ['docker', 'run', '-d', '--network=pmm-network', '--name', 'pmm-extensions', '--restart', 'always', '--label', 'config-hash=' ~ pmm_extensions_config_hash] + pmm_extensions_container_args }}"
+      no_log: true
+      when: extensions_recreate | default(false) | bool
+
+    - name: Wait until PMM Extensions is healthy
+      ansible.builtin.command:
+        argv:
+          - docker
+          - container
+          - inspect
+          - "--format={{ '{{.State.Health.Status}}' }}"
+          - pmm-extensions
+      register: extensions_health
+      until: extensions_health.stdout == 'healthy'
+      retries: 40
+      delay: 10
+      changed_when: false
+      when: pmm_extensions_enabled | bool

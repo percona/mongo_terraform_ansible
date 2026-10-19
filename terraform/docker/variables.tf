@@ -155,6 +155,10 @@ variable "pmm_servers" {
     watchtower_image  = optional(string, "percona/watchtower:latest")
     network_name      = optional(string, "mongo-terraform")
     bind_to_localhost = optional(bool, true) # Bind container ports to localhost (127.0.0.1) if true, otherwise to 0.0.0.0     
+    # PMM Extensions side-car; needs PMM Server 3.10 or newer
+    enable_extensions                 = optional(bool, false)
+    extensions_image                  = optional(string, "percona/pmm-extensions:3.10.0-rc1")
+    extensions_inventory_sync_minutes = optional(number, 1)
   }))
 
   default = {
@@ -168,6 +172,49 @@ variable "pmm_servers" {
     #       pmm_server_image = "percona/pmm-server:2.42"
     #       pmm_port = 443
     #     }
+  }
+
+  validation {
+    condition = alltrue([
+      for s in values(var.pmm_servers) : !s.enable_extensions || (
+        can(regex(":[^/:]+$", s.pmm_server_image)) && !endswith(s.pmm_server_image, ":latest") &&
+        try(tonumber(regex(":(\\d+)\\.\\d+", s.pmm_server_image)[0]) * 1000 + tonumber(regex(":\\d+\\.(\\d+)", s.pmm_server_image)[0]) >= 3010, true)
+      )
+    ])
+    error_message = "PMM Extensions needs PMM Server 3.10 or newer: set pmm_server_image to such an image, for example perconalab/pmm-server:3.10.0-rc, rather than latest or an older version."
+  }
+}
+
+##################
+# Bare PMM Clients
+##################
+
+variable "pmm_bare_clients" {
+  description = "Containers with only a PMM client, on a chosen OS with systemd"
+  type = map(object({
+    base_image         = optional(string, "ubuntu:24.04") # Debian, Ubuntu or RHEL-compatible image
+    pmm_client_repo    = optional(string, "release")      # percona-release channel: release, testing or experimental
+    pmm_client_version = optional(string, "")             # e.g. 3.10.0; empty installs the newest in the channel
+    pmm_host           = optional(string, "pmm-server")
+    pmm_port           = optional(number, 8443)
+    pmm_server_user    = optional(string, "admin")
+    pmm_server_pwd     = optional(string, "admin")
+    network_name       = optional(string, "mongo-terraform")
+  }))
+
+  default = {
+    #     client01 = {
+    #       base_image = "rockylinux:9"
+    #     }
+  }
+
+  validation {
+    condition     = alltrue([for c in values(var.pmm_bare_clients) : contains(keys(var.pmm_servers), c.pmm_host)])
+    error_message = "Each PMM client without MongoDB needs pmm_host to name an entry of pmm_servers."
+  }
+  validation {
+    condition     = length(setintersection(keys(var.pmm_bare_clients), keys(var.pmm_servers))) == 0
+    error_message = "A PMM client without MongoDB cannot have the same name as a PMM server."
   }
 }
 

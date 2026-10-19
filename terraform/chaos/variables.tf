@@ -179,6 +179,48 @@ variable "enable_pmm" {
   description = "Deploy a PMM monitoring server. Set to false to skip PMM entirely."
 }
 
+variable "enable_extensions" {
+  type        = bool
+  default     = false
+  description = "Run the PMM Extensions side-car on the PMM server VM. Needs pmm_image to be PMM Server 3.10 or newer."
+
+  validation {
+    condition = !var.enable_extensions || (
+      can(regex(":[^/:]+$", var.pmm_image)) && !endswith(var.pmm_image, ":latest") &&
+      try(tonumber(regex(":(\\d+)\\.\\d+", var.pmm_image)[0]) * 1000 + tonumber(regex(":\\d+\\.(\\d+)", var.pmm_image)[0]) >= 3010, true)
+    )
+    error_message = "PMM Extensions needs PMM Server 3.10 or newer: set pmm_image to such an image, for example perconalab/pmm-server:3.10.0-rc, rather than latest or an older version."
+  }
+}
+
+variable "pmm_bare_clients" {
+  description = "VMs with only a PMM client and no MongoDB, keyed by name. Without its own os_image a client uses the environment's os_image."
+  type = map(object({
+    os_image           = optional(string)
+    pmm_client_repo    = optional(string, "") # release, testing or experimental; empty uses pmm_client_repo
+    pmm_client_version = optional(string, "") # empty uses pmm_client_version
+    cpu_cores          = optional(number, 2)
+    memory_gb          = optional(number, 4)
+    volume_size        = optional(number, 20)
+  }))
+  default = {}
+
+  validation {
+    condition     = length(var.pmm_bare_clients) == 0 || var.enable_pmm
+    error_message = "PMM clients without MongoDB need enable_pmm = true."
+  }
+  validation {
+    condition     = !contains(keys(var.pmm_bare_clients), var.default_pmm_host)
+    error_message = "A PMM client without MongoDB cannot have the same name as the PMM server (default_pmm_host)."
+  }
+}
+
+variable "extensions_image" {
+  type        = string
+  default     = "percona/pmm-extensions:3.10.0-rc1"
+  description = "Docker image used by Ansible to run the PMM Extensions side-car."
+}
+
 #############
 # Percona ClusterSync
 #############

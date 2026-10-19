@@ -28,3 +28,9 @@ ui-go/psmdb-sandbox
 # Terraform-generated per-environment connection files
 terraform/**/*_inventory_*
 terraform/**/*_ssh_config_*
+
+# Files rendered by Terraform; pbm-storage.conf.* and *-mongot-password hold credentials
+terraform/**/*.Dockerfile
+terraform/**/*-mongot.yml
+terraform/**/*-mongot-password
+terraform/**/pbm-storage.conf.*

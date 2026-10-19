@@ -179,6 +179,26 @@ variable "enable_pmm" {
   description = "Deploy a PMM monitoring server. Set to false to skip PMM entirely."
 }
 
+variable "enable_extensions" {
+  type        = bool
+  default     = false
+  description = "Run the PMM Extensions side-car on the PMM server VM. Needs pmm_image to be PMM Server 3.10 or newer."
+
+  validation {
+    condition = !var.enable_extensions || (
+      can(regex(":[^/:]+$", var.pmm_image)) && !endswith(var.pmm_image, ":latest") &&
+      try(tonumber(regex(":(\\d+)\\.\\d+", var.pmm_image)[0]) * 1000 + tonumber(regex(":\\d+\\.(\\d+)", var.pmm_image)[0]) >= 3010, true)
+    )
+    error_message = "PMM Extensions needs PMM Server 3.10 or newer: set pmm_image to such an image, for example perconalab/pmm-server:3.10.0-rc, rather than latest or an older version."
+  }
+}
+
+variable "extensions_image" {
+  type        = string
+  default     = "percona/pmm-extensions:3.10.0-rc1"
+  description = "Docker image used by Ansible to run the PMM Extensions side-car."
+}
+
 #############
 # Percona ClusterSync
 #############

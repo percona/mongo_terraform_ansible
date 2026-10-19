@@ -65,7 +65,9 @@
             name:
               - curl
               - gnupg2
-              - lsb-release 
+              - lsb-release
+              # PMM Extensions tasks run Python in a venv, which Debian ships separately
+              - python3-venv
             state: present
             update_cache: yes
             cache_valid_time: 3600

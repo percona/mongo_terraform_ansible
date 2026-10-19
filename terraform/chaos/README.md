@@ -90,6 +90,10 @@ Review these first before deploying:
 
     If you want to provision any replica sets (non-sharded), set this variable. Make sure to change the default name to avoid duplicates.
 
+- **enable_extensions**
+
+    Set to `true` to run the PMM Extensions side-car on the PMM server VM. It needs `pmm_image` to be PMM Server 3.10 or newer, for example `perconalab/pmm-server:3.10.0-rc`. The side-car image is `extensions_image`. PMM Server's embedded Nomad server is enabled and its port 4647 is opened to the subnet, so the PMM clients on the other VMs can run PMM Extensions tasks.
+
  - **my_ssh_user**
 
     Your own SSH user name. This is used to generate an SSH config file for you to login easily.

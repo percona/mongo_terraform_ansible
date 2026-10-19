@@ -34,6 +34,14 @@ resource "chaos_instance" "pmm" {
         protocol = "tcp"
         comment  = "Allow PMM access from subnet"
       },
-    ]
+    ],
+    var.enable_extensions ? [
+      {
+        source   = "10.30.0.0/16"
+        port     = "4647"
+        protocol = "tcp"
+        comment  = "Allow Nomad RPC from subnet"
+      },
+    ] : []
   ))
 }

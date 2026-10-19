@@ -131,8 +131,10 @@ resource "docker_container" "pmm" {
     retries      = 5
     start_period = "30s"
   }
-  wait    = true
-  restart = "on-failure"
+  # First boot initialises PMM's databases in an empty volume, which takes longer than 60s.
+  wait         = true
+  wait_timeout = 300
+  restart      = "on-failure"
 
   lifecycle {
     replace_triggered_by = [docker_image.pmm]

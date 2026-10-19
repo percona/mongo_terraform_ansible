@@ -145,7 +145,7 @@
         - ansible_facts['os_family'] == 'RedHat'
 
     - name: Enable PMM client repository on PCSM
-      ansible.builtin.command: "/usr/bin/percona-release enable {{ pmm_client_repo }}"
+      ansible.builtin.command: "/usr/bin/percona-release enable {{ pmm_client_repo | default('pmm3-client') }}"
       changed_when: false
       when: pmm_enabled | bool
 

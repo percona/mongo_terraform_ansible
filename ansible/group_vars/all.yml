@@ -37,14 +37,12 @@ mongo_repo_default: release
 mongo_repo_effective: "{{ mongo_repo | default(mongo_repo_default, true) | trim }}"
 
 # We can also use perconalab/pmm-server-fb:PR-number-hash or perconalab/pmm-server:dev-latest. In that case set experimental to true.
+# pmm_image (default docker.io/percona/pmm-server:latest) comes from the inventory too.
 #pmm_image: perconalab/pmm-server:3-dev-latest
-pmm_image: docker.io/percona/pmm-server:latest
 #pmm_image: docker.io/percona/pmm-server:3
 
-#pmm_client_repo: pmm2-client experimental
-#pmm_client_repo: pmm2-client
-pmm_client_repo: pmm3-client
-pbm_repo: release
+# pmm_client_repo (default pmm3-client) and pbm_repo (default release) come from the inventory,
+# which a value here would override. Example: pmm_client_repo="pmm3-client testing"
 
 #########################
 ## Package sources

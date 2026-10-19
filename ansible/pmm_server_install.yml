@@ -9,7 +9,7 @@
     pmm_image_refs:
       watchtower: "{{ watchtower_image | default('percona/watchtower:latest') }}"
       renderer: "{{ renderer_image | default('grafana/grafana-image-renderer:latest') }}"
-      server: "{{ pmm_image }}"
+      server: "{{ pmm_image | default('docker.io/percona/pmm-server:latest') }}"
   tasks:
     - name: Load OS-specific variables
       include_vars: "vars/{{ ansible_facts['os_family'] }}.yml"

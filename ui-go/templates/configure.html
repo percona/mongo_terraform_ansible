@@ -477,14 +477,18 @@
                 </select>
                 <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $pmmcNs}}{{$pmmcNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $pmmcNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
               </div>
-              <select name="cluster_pmm_client_image[]" class="docker-tag-select" data-image-repo="pmm-client">
+              {{$pmmcCustom := and $curPmmc (ne (imageRepository $curPmmc "pmm-client") "pmm-client")}}{{$pmmcTag := imageTag $curPmmc}}
+              {{$pmmcListed := false}}{{range $.PMMClientImages}}{{if eq . $pmmcTag}}{{$pmmcListed = true}}{{end}}{{end}}
+              <select name="cluster_pmm_client_image[]" class="docker-tag-select" data-image-repo="pmm-client" onchange="toggleCustomImageInput(this)">
+                {{if and $curPmmc (not $pmmcCustom) (not $pmmcListed)}}<option value="{{$pmmcTag}}" selected>{{$pmmcNs}}/pmm-client:{{$pmmcTag}}</option>{{end}}
                 {{range $.PMMClientImages}}
-                <option value="{{.}}" {{if tagSelected $curPmmc (printf "%s/pmm-client" $pmmcNs) .}}selected{{end}}>
+                <option value="{{.}}" {{if and (not $pmmcCustom) (tagSelected $curPmmc (printf "%s/pmm-client" $pmmcNs) .)}}selected{{end}}>
                   {{$pmmcNs}}/pmm-client:{{.}}
                 </option>
                 {{end}}
-                <option value="__custom__">Custom image…</option>
+                <option value="__custom__" {{if $pmmcCustom}}selected{{end}}>Custom image…</option>
               </select>
+              <input type="text" class="custom-image-input" name="cluster_pmm_client_image_custom" value="{{if $pmmcCustom}}{{$curPmmc}}{{end}}" placeholder="registry/repo:tag" style="{{if not $pmmcCustom}}display:none;{{end}}margin-top:0.3rem">
             </div>
             <div class="form-group image-field" data-image-group="mongot" data-image-repo="mongodb-community-search" {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
               <label>mongot Image <span class="field-tip" data-tip="MongoDB Search / Vector Search Docker image tag used for mongot sidecars on shard data-bearing nodes.">ⓘ</span></label>
@@ -970,14 +974,18 @@
                 </select>
                 <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $pmmcNs}}{{$pmmcNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $pmmcNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
               </div>
-              <select name="replset_pmm_client_image[]" class="docker-tag-select" data-image-repo="pmm-client">
+              {{$pmmcCustom := and $curPmmc (ne (imageRepository $curPmmc "pmm-client") "pmm-client")}}{{$pmmcTag := imageTag $curPmmc}}
+              {{$pmmcListed := false}}{{range $.PMMClientImages}}{{if eq . $pmmcTag}}{{$pmmcListed = true}}{{end}}{{end}}
+              <select name="replset_pmm_client_image[]" class="docker-tag-select" data-image-repo="pmm-client" onchange="toggleCustomImageInput(this)">
+                {{if and $curPmmc (not $pmmcCustom) (not $pmmcListed)}}<option value="{{$pmmcTag}}" selected>{{$pmmcNs}}/pmm-client:{{$pmmcTag}}</option>{{end}}
                 {{range $.PMMClientImages}}
-                <option value="{{.}}" {{if tagSelected $curPmmc (printf "%s/pmm-client" $pmmcNs) .}}selected{{end}}>
+                <option value="{{.}}" {{if and (not $pmmcCustom) (tagSelected $curPmmc (printf "%s/pmm-client" $pmmcNs) .)}}selected{{end}}>
                   {{$pmmcNs}}/pmm-client:{{.}}
                 </option>
                 {{end}}
-                <option value="__custom__">Custom image…</option>
+                <option value="__custom__" {{if $pmmcCustom}}selected{{end}}>Custom image…</option>
               </select>
+              <input type="text" class="custom-image-input" name="replset_pmm_client_image_custom" value="{{if $pmmcCustom}}{{$curPmmc}}{{end}}" placeholder="registry/repo:tag" style="{{if not $pmmcCustom}}display:none;{{end}}margin-top:0.3rem">
             </div>
             <div class="form-group image-field" data-image-group="mongot" data-image-repo="mongodb-community-search" {{if not (boolDefault .Config.EnableMongot false)}}style="display:none"{{end}}>
               <label>mongot Image <span class="field-tip" data-tip="MongoDB Search / Vector Search Docker image tag used for mongot sidecars.">ⓘ</span></label>
@@ -1146,14 +1154,18 @@
                 </select>
                 <input type="text" class="docker-namespace-custom" value="{{if namespaceCustom $pmmNs}}{{$pmmNs}}{{end}}" placeholder="namespace" {{if not (namespaceCustom $pmmNs)}}style="display:none"{{end}} oninput="onDockerImageNamespaceChange(this)">
               </div>
-              <select name="pmm_server_image[]" class="docker-tag-select" data-image-repo="pmm-server">
+              {{$pmmsCustom := and $cur (ne (imageRepository $cur "pmm-server") "pmm-server")}}{{$pmmsTag := imageTag $cur}}
+              {{$pmmsListed := false}}{{range $.PMMImages}}{{if eq . $pmmsTag}}{{$pmmsListed = true}}{{end}}{{end}}
+              <select name="pmm_server_image[]" class="docker-tag-select" data-image-repo="pmm-server" onchange="toggleCustomImageInput(this)">
+                {{if and $cur (not $pmmsCustom) (not $pmmsListed)}}<option value="{{$pmmsTag}}" selected>{{$pmmNs}}/pmm-server:{{$pmmsTag}}</option>{{end}}
                 {{range $.PMMImages}}
-                <option value="{{.}}" {{if tagSelected $cur (printf "%s/pmm-server" $pmmNs) .}}selected{{end}}>
+                <option value="{{.}}" {{if and (not $pmmsCustom) (tagSelected $cur (printf "%s/pmm-server" $pmmNs) .)}}selected{{end}}>
                   {{$pmmNs}}/pmm-server:{{.}}
                 </option>
                 {{end}}
-                <option value="__custom__">Custom image…</option>
+                <option value="__custom__" {{if $pmmsCustom}}selected{{end}}>Custom image…</option>
               </select>
+              <input type="text" class="custom-image-input" name="pmm_server_image_custom" value="{{if $pmmsCustom}}{{$cur}}{{end}}" placeholder="registry/repo:tag" style="{{if not $pmmsCustom}}display:none;{{end}}margin-top:0.3rem">
             </div>
             <div class="form-group">
               <label>PMM Port <span class="field-tip" data-tip="Host port exposed for the PMM Server HTTPS interface (default: 8443).">ⓘ</span></label>
@@ -1267,6 +1279,8 @@
           <div class="pmm-image-select-group pmm-image-tag-group">
             <label for="pmm_image">Version <span class="field-tip" data-tip="PMM server image tag to deploy. The list refreshes when source or channel changes.">ⓘ</span></label>
             <select id="pmm_image" name="pmm_image" data-current-tag="{{$pmmTag}}" title="PMM server image tag to deploy" onchange="toggleCustomImageInput(this)">
+              {{$listed := false}}{{range .PMMImages}}{{if eq . $pmmTag}}{{$listed = true}}{{end}}{{end}}
+              {{if not (or $listed $isCustomPmm)}}<option value="{{$pmmTag}}" selected>{{$pmmSource}}/pmm-server:{{$pmmTag}}</option>{{end}}
               {{range .PMMImages}}
               <option value="{{.}}" {{if tagSelected $curPmm (printf "%s/pmm-server" $pmmSource) .}}selected{{end}}>{{$pmmSource}}/pmm-server:{{.}}</option>
               {{end}}
@@ -1343,6 +1357,8 @@
           <div class="pmm-image-select-group pmm-image-tag-group">
             <label for="pmm_image">Version <span class="field-tip" data-tip="PMM server image tag to deploy. The list refreshes when source or channel changes.">ⓘ</span></label>
             <select id="pmm_image" name="pmm_image" data-current-tag="{{$pmmTag}}" title="PMM server image tag to deploy" onchange="toggleCustomImageInput(this)">
+              {{$listed := false}}{{range .PMMImages}}{{if eq . $pmmTag}}{{$listed = true}}{{end}}{{end}}
+              {{if not (or $listed $isCustomPmm)}}<option value="{{$pmmTag}}" selected>{{$pmmSource}}/pmm-server:{{$pmmTag}}</option>{{end}}
               {{range .PMMImages}}
               <option value="{{.}}" {{if tagSelected $curPmm (printf "%s/pmm-server" $pmmSource) .}}selected{{end}}>{{$pmmSource}}/pmm-server:{{.}}</option>
               {{end}}
@@ -2942,7 +2958,7 @@ function buildDockerImageRows(type) {
       ${dataGroup === 'mongot' ? `<input type="text" class="docker-image-repository" value="${escHtml(repo)}" placeholder="repository" aria-label="mongot image repository" style="display:none" onchange="onDockerImageRepositoryChange(this)">` : ''}
       <div class="image-select-wrapper">
         <select name="${type}_${selectName}" class="docker-tag-select" data-image-repo="${repo}" onchange="toggleCustomImageInput(this)">${options}</select>
-        <input type="text" class="custom-image-input" name="${type}_${selectName}_custom"
+        <input type="text" class="custom-image-input" name="${type}_${selectName.replace('[]', '')}_custom"
                placeholder="registry/repo:tag" style="display:none;margin-top:0.3rem"
                oninput="syncCustomImageOption(this)">
       </div>

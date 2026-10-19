@@ -297,9 +297,11 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "State error: "+err.Error(), 500)
 		return
 	}
+	images := defaultImages
 	if envID != "" {
 		if env, ok := state[envID]; ok {
 			cfg = env.Config
+			images = builtinDefaultImages
 		}
 	}
 	normalizeTopologyUseTLS(&cfg)
@@ -326,7 +328,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		DefaultAuditFilter:              defaultAuditFilter,
 		OSUser:                          osUser,
 		DockerDefaultPmmExternalPort:    dockerDefaultPmmExternalPort,
-		DefaultExtensionsImage:          defaultExtensionsImage,
+		DefaultImages:                   images,
 		DockerDefaultSeaweedFSPort:      dockerDefaultSeaweedFSPort,
 		DockerDefaultSeaweedFSAdminPort: dockerDefaultSeaweedFSAdminPort,
 		PSMDBVersions:                   cachedPSMDBVersions(),

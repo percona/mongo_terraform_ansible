@@ -88,11 +88,11 @@ func TestConfigureTemplateRendersPmmClientsAndExtensions(t *testing.T) {
 	for _, platform := range []string{"docker", "chaos"} {
 		cfg := Config{PmmServers: servers, PmmBareClients: bare, EnableExtensions: true}
 		data := ConfigureData{
-			Platform:               platform,
-			Config:                 cfg,
-			DefaultExtensionsImage: defaultExtensionsImage,
-			SortedPmmServers:       sortedPmmServers(cfg.PmmServers),
-			SortedBareClients:      sortedPmmBareClients(cfg.PmmBareClients),
+			Platform:          platform,
+			Config:            cfg,
+			DefaultImages:     defaultImages,
+			SortedPmmServers:  sortedPmmServers(cfg.PmmServers),
+			SortedBareClients: sortedPmmBareClients(cfg.PmmBareClients),
 		}
 		var out strings.Builder
 		if err := tmpl.ExecuteTemplate(io.MultiWriter(&out), "layout", data); err != nil {

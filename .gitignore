@@ -16,6 +16,7 @@ ssh_config
 !terraform/libvirt/minimum.tfvars
 !terraform/libvirt/minimum-arm.tfvars
 .ansible_facts_cache/
+.env
 
 # Go UI runtime artifacts
 environments.json

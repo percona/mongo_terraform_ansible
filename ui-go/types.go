@@ -504,7 +504,7 @@ type ConfigureData struct {
 	DefaultAuditFilter              string
 	OSUser                          string // current OS user, used as SSH user default
 	DockerDefaultPmmExternalPort    int
-	DefaultExtensionsImage          string
+	DefaultImages                   DefaultImages
 	DockerDefaultSeaweedFSPort      int
 	DockerDefaultSeaweedFSAdminPort int
 	PSMDBVersions                   []string

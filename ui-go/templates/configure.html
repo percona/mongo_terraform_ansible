@@ -1366,6 +1366,17 @@
     {{end}}
   </section>
 
+  <!-- ──────────── PMM clients without MongoDB (Docker and CHAOS) ──────────── -->
+  {{if or (eq $p "docker") (eq $p "chaos")}}
+  <section class="form-section">
+    <div class="section-header">
+      <h2>PMM Clients Without MongoDB <span class="field-tip" data-tip="Hosts with only a PMM client, registered with the PMM server. PMM Extensions can install MongoDB on them.">ⓘ</span></h2>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addBareClient()">+ Add Client</button>
+    </div>
+    <div id="bare-clients-container"></div>
+  </section>
+  {{end}}
+
   <!-- ──────────── SeaweedFS VM (CHAOS only) ──────────── -->
   {{if eq $p "chaos"}}
   {{$seaweedfsDetailsConfigured := or .Config.SeaweedFSAccessKey .Config.SeaweedFSSecretKey .Config.DefaultBucketName .Config.SeaweedFSPort .Config.SeaweedFSAdminPort .Config.BackupRetention .Config.SeaweedFSCpuCores .Config.SeaweedFSMemoryGb .Config.SeaweedFSVolumeSize}}
@@ -1955,6 +1966,7 @@ const PSMDB_IMAGES    = {{json .PSMDBImages}};
 const PBM_IMAGES      = {{json .PBMImages}};
 let PMM_CLIENT_IMAGES = {{json .PMMClientImages}};
 const DEFAULT_EXTENSIONS_IMAGE = {{json .DefaultExtensionsImage}};
+const SAVED_BARE_CLIENTS = {{json .SortedBareClients}};
 const PMM_SERVER_IMAGES = {{json .PMMImages}};
 const MONGOT_IMAGES = {{json .MongotImages}};
 let PCSM_VERSIONS = {{json .PCSMVersions}};
@@ -3368,6 +3380,54 @@ function pmmImageSupportsExtensions(image) {
   return !version || Number(version[1]) * 1000 + Number(version[2]) >= 3010;
 }
 
+const BARE_CLIENT_IMAGES = PLATFORM === 'docker'
+  ? ['ubuntu:24.04', 'ubuntu:22.04', 'debian:12', 'rockylinux:9', 'oraclelinux:9']
+  : ['Ubuntu 24.04', 'Ubuntu 22.04', 'Rocky Linux 9', 'Rocky Linux 8', 'CentOS 9', 'Oracle Linux 9', 'Oracle Linux 8', 'Debian 12'];
+
+function addBareClient(name, cfg = {}) {
+  const container = document.getElementById('bare-clients-container');
+  if (!name) {
+    const taken = new Set([...container.querySelectorAll('input[name="bare_client_name[]"]')].map(i => i.value.trim()));
+    let n = 1;
+    while (taken.has('client' + String(n).padStart(2, '0'))) n++;
+    name = 'client' + String(n).padStart(2, '0');
+  }
+  const docker = PLATFORM === 'docker';
+  const image = docker ? (cfg.base_image || BARE_CLIENT_IMAGES[0]) : (cfg.os_image || '');
+  const listed = image === '' || BARE_CLIENT_IMAGES.includes(image);
+  const imageOptions = (docker ? '' : `<option value=""${image === '' ? ' selected' : ''}>default</option>`) +
+    BARE_CLIENT_IMAGES.map(i => `<option value="${escHtml(i)}"${i === image ? ' selected' : ''}>${escHtml(i)}</option>`).join('') +
+    `<option value="__custom__"${listed ? '' : ' selected'}>Custom…</option>`;
+  const repo = cfg.pmm_client_repo || 'release';
+  const clientFields = `
+    <div class="form-group"><label>Client Channel</label>
+      <select name="bare_client_repo[]">${['release', 'testing', 'experimental'].map(r => `<option value="${r}"${r === repo ? ' selected' : ''}>${r}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Client Version <span class="field-tip" data-tip="For example 3.10.0. Empty installs the newest in the channel.">ⓘ</span></label>
+      <input type="text" name="bare_client_version[]" value="${escHtml(cfg.pmm_client_version || '')}" placeholder="newest"></div>`;
+  const row = document.createElement('div');
+  row.className = 'form-row bare-client-row';
+  row.innerHTML = `
+    <div class="form-group"><label>Name</label>
+      <input type="text" name="bare_client_name[]" value="${escHtml(name)}"></div>
+    <div class="form-group"><label>${docker ? 'Base Image' : 'OS Image'} <span class="field-tip" data-tip="${docker ? 'Debian, Ubuntu or RHEL-compatible image the client is built on.' : 'CHAOS OS image. default uses the same OS as the other VMs.'}">ⓘ</span></label>
+      <select name="bare_client_image[]" onchange="this.nextElementSibling.style.display = this.value === '__custom__' ? '' : 'none'">${imageOptions}</select>
+      <input type="text" name="bare_client_image_custom[]" value="${listed ? '' : escHtml(image)}" placeholder="${docker ? 'registry/repo:tag' : 'CHAOS OS image'}" style="${listed ? 'display:none;' : ''}margin-top:0.3rem"></div>
+    ${clientFields}
+    <div class="form-group form-group-remove"><label aria-hidden="true">&nbsp;</label>
+      <button type="button" class="btn btn-danger btn-sm" title="Remove this client" onclick="this.closest('.bare-client-row').remove()">✕</button></div>`;
+  container.appendChild(row);
+}
+
+// Mirrors the Terraform checks on pmm_bare_clients.
+function validateBareClients(config) {
+  const names = Object.keys(config.pmm_bare_clients || {});
+  if (names.length === 0) return '';
+  const servers = PLATFORM === 'docker' ? Object.keys(config.pmm_servers || {}) : (config.enable_pmm ? ['pmm-server'] : []);
+  if (servers.length === 0) return 'PMM clients without MongoDB need a PMM server: deploy one or remove the clients.';
+  const clash = names.find(n => servers.includes(n));
+  return clash ? `PMM client "${clash}" cannot have the same name as the PMM server.` : '';
+}
+
 function toggleExtensionsImageField(checkbox) {
   const field = checkbox.closest('.form-row').querySelector('.extensions-image-field');
   if (field) field.style.display = checkbox.checked ? '' : 'none';
@@ -3708,6 +3768,7 @@ function reloadImages(evt) {
 // Also fetch versions asynchronously so selects are populated even if the cache
 // was cold when the page was server-rendered.
 document.addEventListener('DOMContentLoaded', () => {
+  (SAVED_BARE_CLIENTS || []).forEach(c => addBareClient(c.Name, c.Config));
   refreshClusterSyncTopologies();
   refreshPCSMVersions();
   refreshPCSMeffectiveDefaults();
@@ -4184,6 +4245,26 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     }
   }
 
+  // PMM clients without MongoDB
+  if (PLATFORM === 'docker' || PLATFORM === 'chaos') {
+    config.pmm_bare_clients = {};
+    for (const row of document.querySelectorAll('#bare-clients-container .bare-client-row')) {
+      const name = getBlockFieldValue(row, 'bare_client_name[]').trim();
+      if (!name) continue;
+      if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(name) || config.pmm_bare_clients[name]) {
+        alert(`PMM client name "${name}" must be unique and use lowercase letters, digits and hyphens.`);
+        return;
+      }
+      const imageSelect = getBlockFieldValue(row, 'bare_client_image[]');
+      const image = imageSelect === '__custom__' ? getBlockFieldValue(row, 'bare_client_image_custom[]').trim() : imageSelect;
+      config.pmm_bare_clients[name] = {
+        [PLATFORM === 'docker' ? 'base_image' : 'os_image']: image,
+        pmm_client_repo: getBlockFieldValue(row, 'bare_client_repo[]'),
+        pmm_client_version: getBlockFieldValue(row, 'bare_client_version[]').trim(),
+      };
+    }
+  }
+
   // PMM Servers (Docker)
   if (PLATFORM === 'docker') {
     config.pmm_servers = {};
@@ -4266,6 +4347,12 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   }
   if (envId) config.prefix = envId;
   const payload = { env_id: envId || undefined, platform: PLATFORM, config };
+
+  const bareClientError = validateBareClients(config);
+  if (bareClientError) {
+    alert(bareClientError);
+    return;
+  }
 
   if (PLATFORM === 'docker') {
     const portError = validateDockerPortConflicts(config);

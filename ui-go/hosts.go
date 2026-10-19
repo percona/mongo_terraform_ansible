@@ -73,6 +73,9 @@ func collectDockerHosts(envID string, env *Environment) ([]HostInfo, []ServiceUR
 		connectCmd := fmt.Sprintf("docker exec -it %s bash", name)
 		role := guessDockerRole(name, prefix)
 		group := guessDockerGroup(name, prefix)
+		if _, ok := env.Config.PmmBareClients[strings.TrimPrefix(name, prefix+"-")]; ok {
+			role, group = "pmm-client", "PMM Clients"
+		}
 		port := dockerContainerPorts(name)
 		hosts = append(hosts, HostInfo{
 			Name:       name,
@@ -300,14 +303,7 @@ func collectCloudHosts(envID string, env *Environment) ([]HostInfo, []MongoConnI
 	sshUser := strDefault(env.Config.MySSHUser, "ec2-user")
 	sshPrivateKeyPath := strings.TrimSpace(env.Config.SSHPrivateKeyPath)
 
-	var names []string
-	for name := range env.Config.Clusters {
-		names = append(names, name)
-	}
-	for name := range env.Config.Replsets {
-		names = append(names, name)
-	}
-	sort.Strings(names)
+	names := cloudInventoryNames(env.Config)
 
 	var hosts []HostInfo
 	filePrefix := strDefault(env.Config.Prefix, envID)
@@ -454,6 +450,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			role = "configsvr"
 		case strings.Contains(sec, "arb") || strings.Contains(sec, "arbiter"):
 			role = "arbiter"
+		case sec == "pmm_bare_client":
+			role = "pmm-client"
 		case strings.Contains(sec, "pmm"):
 			role = "pmm"
 		case sec == "ca":
@@ -475,6 +473,8 @@ func parseInventoryHosts(content, group, sshUser, sshPrivateKeyPath string) []Ho
 			hostGroup = "SeaweedFS"
 		case "pmm":
 			hostGroup = "PMM"
+		case "pmm-client":
+			hostGroup = "PMM Clients"
 		case "ca":
 			hostGroup = "CA"
 		case "ycsb":

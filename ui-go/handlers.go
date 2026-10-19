@@ -342,6 +342,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		SortedClusters:                  sortedClusters(cfg.Clusters),
 		SortedReplsets:                  sortedReplsets(cfg.Replsets),
 		SortedPmmServers:                sortedPmmServers(cfg.PmmServers),
+		SortedBareClients:               sortedPmmBareClients(cfg.PmmBareClients),
 		SortedSeaweedFS:                 sortedSeaweedFSServers(cfg.SeaweedFSServers),
 		SortedLdap:                      sortedLdapServers(cfg.LdapServers),
 	})
@@ -1552,6 +1553,25 @@ func normalizeCAProvisioning(cfg *Config) {
 	}
 }
 
+// pmmClientsInventory is the CHAOS inventory of the PMM server and the PMM clients without MongoDB.
+const pmmClientsInventory = "pmm_clients"
+
+// cloudInventoryNames lists the Ansible inventories Terraform generates for an environment.
+func cloudInventoryNames(cfg Config) []string {
+	names := make([]string, 0, len(cfg.Clusters)+len(cfg.Replsets)+1)
+	for name := range cfg.Clusters {
+		names = append(names, name)
+	}
+	for name := range cfg.Replsets {
+		names = append(names, name)
+	}
+	if len(cfg.PmmBareClients) > 0 {
+		names = append(names, pmmClientsInventory)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func topologyUsesTLS(cfg Config, name string) bool {
 	if cluster, ok := cfg.Clusters[name]; ok {
 		return boolDefault(cluster.UseTLS, cfg.UseTLS)
@@ -1897,14 +1917,7 @@ func getInventoryHandler(w http.ResponseWriter, r *http.Request) {
 
 	tfDir := filepath.Join(terraformDir, env.Platform)
 
-	var names []string
-	for name := range env.Config.Clusters {
-		names = append(names, name)
-	}
-	for name := range env.Config.Replsets {
-		names = append(names, name)
-	}
-	sort.Strings(names)
+	names := cloudInventoryNames(env.Config)
 
 	type invFile struct {
 		Name    string `json:"name"`
@@ -2061,14 +2074,7 @@ func environmentActionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var invNames []string
-	for name := range env.Config.Clusters {
-		invNames = append(invNames, name)
-	}
-	for name := range env.Config.Replsets {
-		invNames = append(invNames, name)
-	}
-	sort.Strings(invNames)
+	invNames := cloudInventoryNames(env.Config)
 
 	// filePrefix is prepended to generated inventory and ssh_config filenames so
 	// that multiple environments sharing the same Terraform directory do not

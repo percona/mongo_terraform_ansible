@@ -924,6 +924,7 @@ tr:last-child td { border-bottom: none; }
 
 /* ─── Full-width form group ───────────────────────────────────────── */
 .form-group-full { flex: 1 1 100%; min-width: 100%; }
+.form-group-remove { flex: 0 0 auto; min-width: 0; align-items: flex-start; }
 
 /* ─── Hosts & Connections section ────────────────────────────────── */
 .hosts-section {

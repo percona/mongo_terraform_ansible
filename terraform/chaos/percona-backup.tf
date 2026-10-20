@@ -1,7 +1,7 @@
 resource "chaos_instance" "seaweedfs" {
   count             = var.enable_seaweedfs ? 1 : 0
   name              = local.seaweedfs_host
-  os                = var.os_image
+  os                = local.default_os_image
   cpu_cores         = var.seaweedfs_cpu_cores
   memory            = var.seaweedfs_memory_gb
   disk              = var.seaweedfs_volume_size

@@ -90,6 +90,10 @@ Review these first before deploying:
 
     If you want to provision any replica sets (non-sharded), set this variable. Make sure to change the default name to avoid duplicates.
 
+- **os_image**
+
+    When unset, CHAOS uses Ubuntu 24.04 for infrastructure and most MongoDB topologies. A Community or Enterprise MongoDB 7.0 cluster or replica set instead uses Ubuntu 22.04, because the official 7.0 apt repository has no Ubuntu 24.04 release. A topology's `os_image` overrides this choice; an explicit Ubuntu 24.04 selection for official MongoDB 7.0 is rejected before provisioning.
+
 - **pmm_bare_clients**
 
     VMs with only a PMM client and no MongoDB, keyed by name, for example `{ client01 = {}, client02 = { os_image = "Rocky Linux 9" } }`. Needs `enable_pmm`. A client without its own `os_image` uses the environment's `os_image`, and `cpu_cores`, `memory_gb` and `volume_size` default to 2, 4 and 20. Each client can set `pmm_client_repo` and `pmm_client_version` and otherwise uses the environment's. They get their own inventory, `<prefix>_inventory_pmm_clients`, which also works without any cluster or replica set. They accept MongoDB connections from the subnet so that PMM Extensions can bootstrap a replica set on them.

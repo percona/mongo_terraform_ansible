@@ -1,7 +1,7 @@
 resource "chaos_instance" "pcsm" {
   count             = var.enable_pcsm ? 1 : 0
   name              = local.pcsm_host
-  os                = var.os_image
+  os                = local.default_os_image
   cpu_cores         = var.pcsm_cpu_cores
   memory            = var.pcsm_memory_gb
   disk              = var.pcsm_volume_size

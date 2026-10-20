@@ -19,6 +19,25 @@ provider "chaos" {
   api_token = var.chaos_api_token
 }
 
+locals {
+  cluster_os_images = {
+    for name, c in var.clusters : name => c.os_image != "" ? c.os_image : (
+      var.os_image != "" ? var.os_image : (
+        contains(["community", "enterprise"], c.mongodb_distribution != "" ? c.mongodb_distribution : var.mongodb_distribution) &&
+        (c.mongo_release != "" ? c.mongo_release : var.mongo_release) == "7.0"
+      ) ? "Ubuntu 22.04" : local.default_os_image
+    )
+  }
+  replset_os_images = {
+    for name, r in var.replsets : name => r.os_image != "" ? r.os_image : (
+      var.os_image != "" ? var.os_image : (
+        contains(["community", "enterprise"], r.mongodb_distribution != "" ? r.mongodb_distribution : var.mongodb_distribution) &&
+        (r.mongo_release != "" ? r.mongo_release : var.mongo_release) == "7.0"
+      ) ? "Ubuntu 22.04" : local.default_os_image
+    )
+  }
+}
+
 module "mongodb_clusters" {
   source   = "./modules/mongodb_cluster"
   for_each = var.clusters
@@ -35,7 +54,7 @@ module "mongodb_clusters" {
   audit_filter         = each.value.audit_filter
 
   my_ssh_user       = var.my_ssh_user
-  os_image          = each.value.os_image != "" ? each.value.os_image : var.os_image
+  os_image          = local.cluster_os_images[each.key]
   delete_after_days = var.delete_after_days
 
   shardsvr_cpu_cores    = var.shardsvr_cpu_cores
@@ -67,7 +86,7 @@ module "mongodb_replsets" {
   audit_filter           = each.value.audit_filter
 
   my_ssh_user       = var.my_ssh_user
-  os_image          = each.value.os_image != "" ? each.value.os_image : var.os_image
+  os_image          = local.replset_os_images[each.key]
   delete_after_days = var.delete_after_days
 
   replsetsvr_cpu_cores   = var.replsetsvr_cpu_cores

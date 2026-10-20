@@ -53,6 +53,11 @@ mongodb_psmdb_mongod_packages:
   - percona-mongodb-mongosh
 mongodb_psmdb_mongod_versioned_packages:
   - percona-server-mongodb
+  # The metapackage requires these three components at the exact same build.
+  # Pin them together; apt otherwise chooses newer components for an older pin.
+  - percona-server-mongodb-mongos
+  - percona-server-mongodb-server
+  - percona-server-mongodb-tools
   - percona-mongodb-mongosh
 
 mongodb_psmdb_mongos_packages:

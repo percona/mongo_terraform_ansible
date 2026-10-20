@@ -29,6 +29,12 @@
           - mongodb_distribution_effective == 'psmdb' or mongo_release_effective is not match('^psmdb-')
         fail_msg: "mongo_release must be psmdb-* for mongodb_distribution=psmdb, and a numeric official release line (for example 8.0 or 8.3) for mongodb_distribution=community or enterprise."
 
+    - name: Validate MongoDB 7.0 repository availability on Ubuntu
+      ansible.builtin.assert:
+        that:
+          - not (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_release'] == 'noble' and mongodb_distribution_effective in ['community', 'enterprise'] and mongo_release_effective == '7.0')
+        fail_msg: "MongoDB {{ mongodb_distribution_effective }} 7.0 has no Ubuntu 24.04 (noble) repository. Provision Ubuntu 22.04 (jammy) or another supported OS."
+
     - name: Validate MongoDB Community feature compatibility
       assert:
         that:

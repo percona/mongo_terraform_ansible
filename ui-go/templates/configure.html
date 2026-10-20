@@ -278,7 +278,7 @@
           {{if eq $p "chaos"}}
           <div class="form-row">
             <div class="form-group">
-              <label>OS Image <span class="field-tip" data-tip="Operating system for this CHAOS cluster only. Leave blank to use the Terraform module default.">ⓘ</span></label>
+              <label>OS Image <span class="field-tip" data-tip="Defaults to Ubuntu 24.04, or Ubuntu 22.04 for MongoDB Community/Enterprise 7.0.">ⓘ</span></label>
               {{$curOs := .Config.OsImage}}
               <select name="cluster_os_image[]" onchange="onPackageOsImageChange(this)">
                 <option value="" {{if eq $curOs ""}}selected{{end}}>default</option>
@@ -323,7 +323,7 @@
             </div>
             <div class="form-group">
               <label>MongoDB Major Version <span class="field-tip" data-tip="Defaults to PSMDB 8.0. PSMDB 8.3 and newer lines must be selected explicitly. Releases are filtered by package availability for the selected OS and channel.">ⓘ</span></label>
-              <select name="cluster_mongo_release[]" onchange="onMongoReleaseChange(this)">
+              <select name="cluster_mongo_release[]" onchange="onMongoReleaseChange(this); onPackageMongoReleaseChange(this)">
                 {{$curRel := .Config.MongoRelease}}
                 {{$defaultRel := preferredPSMDBRelease $.PSMDBVersions}}
                 {{range $.PSMDBVersions}}
@@ -771,7 +771,7 @@
           {{if eq $p "chaos"}}
           <div class="form-row">
             <div class="form-group">
-              <label>OS Image <span class="field-tip" data-tip="Operating system for this CHAOS replica set only. Leave blank to use the Terraform module default.">ⓘ</span></label>
+              <label>OS Image <span class="field-tip" data-tip="Defaults to Ubuntu 24.04, or Ubuntu 22.04 for MongoDB Community/Enterprise 7.0.">ⓘ</span></label>
               {{$curOs := .Config.OsImage}}
               <select name="replset_os_image[]" onchange="onPackageOsImageChange(this)">
                 <option value="" {{if eq $curOs ""}}selected{{end}}>default</option>
@@ -816,7 +816,7 @@
             </div>
             <div class="form-group">
               <label>MongoDB Major Version <span class="field-tip" data-tip="Defaults to PSMDB 8.0. PSMDB 8.3 and newer lines must be selected explicitly. Releases are filtered by package availability for the selected OS and channel.">ⓘ</span></label>
-              <select name="replset_mongo_release[]" onchange="onMongoReleaseChange(this)">
+              <select name="replset_mongo_release[]" onchange="onMongoReleaseChange(this); onPackageMongoReleaseChange(this)">
                 {{$curRel := .Config.MongoRelease}}
                 {{$defaultRel := preferredPSMDBRelease $.PSMDBVersions}}
                 {{range $.PSMDBVersions}}
@@ -2333,7 +2333,11 @@ function packageSelect(block, prefix, field) {
 
 function selectedPackageOsImage(block, prefix) {
   if (PLATFORM !== 'chaos') return '';
-  return (packageSelect(block, prefix, 'os_image')?.value || '').trim();
+  const explicit = (packageSelect(block, prefix, 'os_image')?.value || '').trim();
+  if (explicit) return explicit;
+  const distribution = selectedMongoDBDistribution(block, prefix);
+  const release = packageSelect(block, prefix, 'mongo_release')?.value;
+  return distribution !== 'psmdb' && release === '7.0' ? 'Ubuntu 22.04' : 'Ubuntu 24.04';
 }
 
 function selectedPCSMOsImage() {
@@ -2490,10 +2494,13 @@ async function refreshPackageVersions(block, prefix, product) {
   const repoField = product === 'psmdb' ? 'mongo_repo' : product === 'pbm' ? 'pbm_repo' : product === 'ps4m' ? 'mongot_repo' : 'pmm_client_repo';
   const channel = packageSelect(block, prefix, repoField)?.value || 'release';
   const osImage = selectedPackageOsImage(block, prefix);
+  const autoOfficialOS = PLATFORM === 'chaos' && product === 'psmdb' &&
+    selectedMongoDBDistribution(block, prefix) !== 'psmdb' &&
+    !packageSelect(block, prefix, 'os_image')?.value;
   const distribution = product === 'psmdb' ? selectedMongoDBDistribution(block, prefix) : 'psmdb';
-  const params = new URLSearchParams({ product, channel });
+  const params = new URLSearchParams({ product, channel, platform: PLATFORM });
   if (product === 'psmdb') params.set('distribution', distribution);
-  if (osImage) params.set('os_image', osImage);
+  if (osImage && !autoOfficialOS) params.set('os_image', osImage);
 
   const affected = product === 'psmdb'
     ? [packageSelect(block, prefix, 'mongo_release'), packageSelect(block, prefix, 'mongo_version')]
@@ -2514,9 +2521,11 @@ async function refreshPackageVersions(block, prefix, product) {
     if (product === 'psmdb') {
       const releaseSel = packageSelect(block, prefix, 'mongo_release');
       if (releaseSel) {
+        const previousRelease = releaseSel.value;
         releaseSel.dataset.minorVersions = JSON.stringify(data.minor_versions || {});
         setSelectOptionsNoEmpty(releaseSel, data.major_versions || []);
         onMongoReleaseChange(releaseSel);
+        if (releaseSel.value !== previousRelease) onPackageMongoReleaseChange(releaseSel);
       }
     } else if (product === 'ps4m') {
       setSelectOptions(packageSelect(block, prefix, 'mongot_version'), data.versions || []);
@@ -2566,6 +2575,15 @@ function onPackageOsImageChange(sel) {
   const prefix = packageFieldPrefix(sel);
   withPackageVersionDialog(() => Promise.all(['psmdb', 'pbm', 'pmm_client', 'ps4m'].map(product => refreshPackageVersions(block, prefix, product))));
   refreshPCSMVersions();
+}
+
+function onPackageMongoReleaseChange(sel) {
+  if (PLATFORM !== 'chaos') return;
+  const block = packageBlockForField(sel);
+  const prefix = packageFieldPrefix(sel);
+  if (!packageSelect(block, prefix, 'os_image')?.value) {
+    withPackageVersionDialog(() => Promise.all(['pbm', 'pmm_client', 'ps4m'].map(product => refreshPackageVersions(block, prefix, product))));
+  }
 }
 
 function refreshAllPackageVersions(block) {
@@ -2967,7 +2985,7 @@ function buildPackageOverrideRows(type) {
   const label = type === 'cluster' ? 'cluster' : 'replica set';
   const osImageRows = PLATFORM === 'chaos' ? `
     <div class="form-row">
-      <div class="form-group"><label>OS Image <span class="field-tip" data-tip="Operating system for this CHAOS ${label} only. Leave blank to use the Terraform module default.">ⓘ</span></label>
+      <div class="form-group"><label>OS Image <span class="field-tip" data-tip="Defaults to Ubuntu 24.04, or Ubuntu 22.04 for MongoDB Community/Enterprise 7.0.">ⓘ</span></label>
         <select name="${type}_os_image[]" onchange="onPackageOsImageChange(this)">
           <option value="">default</option>
           <option value="Ubuntu 24.04">Ubuntu 24.04</option>
@@ -2997,7 +3015,7 @@ function buildPackageOverrideRows(type) {
       <div class="form-group" data-mongodb-repo><label>MongoDB Repository Channel <span class="field-tip" data-tip="PSMDB repository channel for this ${label}. Defaults to release (GA).">ⓘ</span></label>
         <select name="${type}_mongo_repo[]" onchange="onPackageRepoChange(this, 'psmdb')">${repoOptions}</select></div>
       <div class="form-group"><label>MongoDB Major Version <span class="field-tip" data-tip="Defaults to PSMDB 8.0. PSMDB 8.3 and newer lines must be selected explicitly. Releases are filtered by package availability for the selected OS and channel.">ⓘ</span></label>
-        <select name="${type}_mongo_release[]" onchange="onMongoReleaseChange(this)">${mongoReleaseOptions}</select></div>
+        <select name="${type}_mongo_release[]" onchange="onMongoReleaseChange(this); onPackageMongoReleaseChange(this)">${mongoReleaseOptions}</select></div>
       <div class="form-group"><label>MongoDB Minor Version <span class="field-tip" data-tip="PSMDB minor/package version pin for this ${label}. Defaults to the newest package from the selected release/channel.">ⓘ</span></label>
         <select name="${type}_mongo_version[]"></select></div>
     </div>

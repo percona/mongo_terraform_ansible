@@ -5,7 +5,7 @@ locals {
 resource "chaos_instance" "ldap" {
   for_each          = var.ldap_servers
   name              = local.ldap_hosts[each.key]
-  os                = var.os_image
+  os                = local.default_os_image
   cpu_cores         = each.value.cpu_cores
   memory            = each.value.memory_gb
   disk              = 20

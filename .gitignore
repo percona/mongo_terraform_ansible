@@ -35,3 +35,8 @@ terraform/**/*.Dockerfile
 terraform/**/*-mongot.yml
 terraform/**/*-mongot-password
 terraform/**/pbm-storage.conf.*
+
+# Vault recovery material and Python caches
+ansible/.vault/
+terraform/**/.vault/
+scripts/**/__pycache__/

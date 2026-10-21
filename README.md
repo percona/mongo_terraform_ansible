@@ -72,6 +72,7 @@ browser instead of editing `.tfvars` files by hand.
 Key features:
 - Visual wizard for cluster topology, images/packages, credentials, and networking
 - Audit plugin controls for every cluster and replica set, including enable/disable and custom filter expressions
+- Optional environment-wide PSMDB encryption at rest with a dedicated Vault
 - Optional YCSB workload generator with UI controls to insert data, start load, and stop load
 - Live deployment log streamed in the browser via Server-Sent Events
 - Hosts & Connections panel with one-click SSH/`docker exec` commands, MongoDB connection
@@ -119,5 +120,6 @@ The root README is a starting point. Detailed operational guidance lives with th
 - Workload generation with YCSB: [UI workflow](./ui-go/README.md#ycsb-workloads), [cloud Ansible notes](./ansible/README.md#ycsb-workloads), and [Docker workflow](./terraform/docker/README.md#simulating-a-workload-with-ycsb).
 - ClusterSync: [manual cloud workflow](./ansible/README.md#percona-clustersync), [Docker workflow](./terraform/docker/README.md#percona-clustersync-for-mongodb), and the Terraform README for the selected cloud provider.
 - TLS, Vault-backed encryption, PBM, PMM, stopping, restarting, and reset playbooks: [Ansible README](./ansible/README.md).
+- Encryption configuration, controller-managed unsealing, and key lifecycle: [Vault encryption](docs/vault-encryption.md).
 
 ## Disclaimer: This code is not supported by Percona. It has been provided solely as a community-contributed example and is not covered under any Percona services agreement.

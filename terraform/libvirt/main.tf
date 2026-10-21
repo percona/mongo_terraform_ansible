@@ -1,4 +1,5 @@
 terraform {
+  required_version = ">= 1.9"
   backend "local" {}
 
   required_providers {
@@ -14,8 +15,9 @@ provider "libvirt" {
 }
 
 locals {
-  is_arm  = var.arch == "aarch64"
-  machine = local.is_arm ? "virt" : "pc"
+  is_arm   = var.arch == "aarch64"
+  machine  = local.is_arm ? "virt" : "pc"
+  auth_key = var.auth_key != "" ? var.auth_key : (fileexists("${path.module}/ssh_keys/opentofu.pub") ? file("${path.module}/ssh_keys/opentofu.pub") : "")
 }
 
 resource "libvirt_pool" "k8s" {
@@ -79,11 +81,11 @@ resource "libvirt_volume" "worker" {
 }
 
 resource "libvirt_cloudinit_disk" "commoninit" {
-  count   = var.hosts
-  name    = "commoninit_${var.hostnames[count.index]}"
+  count = var.hosts
+  name  = "commoninit_${var.hostnames[count.index]}"
   user_data = templatefile("${path.module}/templates/user_data.tpl", {
     host_name = var.hostnames[count.index]
-    auth_key  = file("${path.module}/ssh_keys/opentofu.pub")
+    auth_key  = local.auth_key
   })
   meta_data = yamlencode({
     instance-id    = var.hostnames[count.index]
@@ -145,10 +147,17 @@ resource "libvirt_domain" "domain-distro" {
 
   depends_on = [null_resource.nvram_init]
 
+  lifecycle {
+    precondition {
+      condition     = local.auth_key != ""
+      error_message = "Set auth_key to an SSH public key or provide ssh_keys/opentofu.pub."
+    }
+  }
+
   os = {
-    type         = "hvm"
-    type_arch    = var.arch
-    type_machine = local.machine
+    type            = "hvm"
+    type_arch       = var.arch
+    type_machine    = local.machine
     loader          = local.is_arm && var.firmware != "" ? var.firmware : null
     loader_type     = local.is_arm && var.firmware != "" ? "pflash" : null
     loader_readonly = local.is_arm && var.firmware != "" ? "yes" : null

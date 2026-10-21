@@ -1,0 +1,26 @@
+---
+- name: Resolve each topology token from a create response or existing token
+  ansible.builtin.set_fact:
+    vault_topology_tokens: >-
+      {{ vault_topology_tokens | default({}) | combine({
+        vault_token_topology:
+          ((vault_token_creations.results
+            | selectattr('vault_token_topology', 'equalto', vault_token_topology)
+            | selectattr('json.auth.client_token', 'defined')
+            | map(attribute='json.auth.client_token')
+            | first)
+           | default(vault_existing_tokens[vault_token_topology], true))
+      }) }}
+  loop: "{{ vault_topologies }}"
+  loop_control:
+    loop_var: vault_token_topology
+  no_log: true
+
+- name: Require a non-empty token for every topology
+  ansible.builtin.assert:
+    that:
+      - vault_topology_tokens[vault_token_topology] | length > 0
+    fail_msg: "Vault did not provide a client token for topology {{ vault_token_topology }}."
+  loop: "{{ vault_topologies }}"
+  loop_control:
+    loop_var: vault_token_topology

@@ -114,3 +114,17 @@ resource "google_compute_firewall" "mongodb-shardsvr-firewall" {
     ports    = [var.shard_port]
   }
 }
+
+resource "google_compute_firewall" "mongodb-shardsvr-mongot-firewall" {
+  count         = var.enable_mongot ? 1 : 0
+  name          = "${var.cluster_name}-${var.shardsvr_tag}-mongot-firewall"
+  network       = var.vpc
+  direction     = "INGRESS"
+  source_ranges = [var.subnet_cidr]
+  target_tags   = ["${var.cluster_name}-${var.shardsvr_tag}"]
+
+  allow {
+    protocol = "tcp"
+    ports    = [tostring(var.mongot_port)]
+  }
+}

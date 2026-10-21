@@ -1,0 +1,76 @@
+---
+- name: Verify MongoDB release normalization and package defaults
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+  tasks:
+    - name: Verify release-specific values
+      ansible.builtin.include_tasks: mongodb_version_case.yml
+      loop:
+        - { release: 'psmdb-70', distribution: psmdb, major: 7, key: '7.0', backup: physical }
+        - { release: 'psmdb-80', distribution: psmdb, major: 8, key: '8.0', backup: physical }
+        - { release: 'psmdb-83', distribution: psmdb, major: 8, key: '8.0', backup: physical }
+        - { release: 'psmdb-90', distribution: psmdb, major: 9, key: '9', backup: physical }
+        - { release: '8.0', distribution: community, major: 8, key: '8.0', backup: logical }
+        - { release: '9.0', distribution: community, major: 9, key: '9', backup: logical }
+        - { release: '9.0', distribution: enterprise, major: 9, key: '9', backup: logical }
+      loop_control:
+        loop_var: version_case
+
+    - name: Verify Debian repository component
+      ansible.builtin.assert:
+        that: mongodb_apt_component == 'main'
+      vars:
+        ansible_facts: { distribution: Debian }
+
+    - name: Verify Ubuntu repository component
+      ansible.builtin.assert:
+        that: mongodb_apt_component == 'multiverse'
+      vars:
+        ansible_facts: { distribution: Ubuntu }
+
+    - name: Verify explicit backup selection overrides defaults
+      ansible.builtin.assert:
+        that: pbm_backup_type_effective == 'logical'
+      vars:
+        mongodb_distribution: psmdb
+        pbm_backup_type: logical
+
+    - name: Verify official Debian mongos service uses the MongoDB account
+      ansible.builtin.assert:
+        that:
+          - "'User=mongodb' in router_service"
+          - "'Group=mongodb' in router_service"
+          - "'chown mongodb:mongodb /var/run/mongos.pid' in router_service"
+          - "'Type=forking' in router_service"
+      vars:
+        mongodb_distribution: community
+        ansible_facts: { os_family: Debian, distribution: Ubuntu }
+        router_service: "{{ lookup('ansible.builtin.template', '../templates/mongos.service.j2') }}"
+
+    - name: Verify PSMDB mongos service retains the mongod account
+      ansible.builtin.assert:
+        that:
+          - "'User=mongod' in router_service"
+          - "'Group=mongod' in router_service"
+      vars:
+        mongodb_distribution: psmdb
+        ansible_facts: { os_family: RedHat, distribution: Rocky }
+        router_service: "{{ lookup('ansible.builtin.template', '../templates/mongos.service.j2') }}"
+
+    - name: Verify integration compatibility decisions
+      ansible.builtin.include_tasks: mongodb_compatibility_case.yml
+      loop:
+        - { release: '9.0', distribution: community, pbm: false, search: false, error: '' }
+        - { release: '9.0', distribution: enterprise, pbm: false, search: false, error: '' }
+        - { release: '9.0', distribution: community, pbm: true, search: false, error: 'PBM does not yet support MongoDB 9.0' }
+        - { release: '9.0', distribution: enterprise, pbm: true, pbm_version: '2.16.0', search: false, error: 'PBM does not yet support MongoDB 9.0' }
+        - { release: '8.0', distribution: community, pbm: true, backup: physical, search: false, error: 'logical PBM backups only' }
+        - { release: 'psmdb-90', distribution: psmdb, pbm: true, search: false, error: 'PBM does not yet support MongoDB 9.0' }
+        - { release: 'psmdb-90', distribution: psmdb, pbm: false, search: false, error: '' }
+        - { release: '9.0', distribution: community, pbm: false, search: true, error: 'Search compatibility with MongoDB 9.0' }
+        - { release: 'psmdb-80', distribution: psmdb, pbm: true, search: false, error: '' }
+      loop_control:
+        loop_var: compatibility_case

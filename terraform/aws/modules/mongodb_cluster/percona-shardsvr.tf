@@ -136,6 +136,17 @@ resource "aws_security_group_rule" "mongodb-shardsvr-ingress" {
   cidr_blocks       = [var.subnet_cidr]
 }
 
+resource "aws_security_group_rule" "mongodb-shardsvr-mongot-ingress" {
+  count             = var.enable_mongot ? 1 : 0
+  type              = "ingress"
+  from_port         = var.mongot_port
+  to_port           = var.mongot_port
+  protocol          = "tcp"
+  security_group_id = aws_security_group.mongodb_shardsvr_sg.id
+  cidr_blocks       = [var.subnet_cidr]
+  description       = "mongos access to the shard Search endpoint"
+}
+
 # Ingress rule (SSH from anywhere)
 resource "aws_security_group_rule" "mongodb-shardsvr-ssh_inbound" {
   type              = "ingress"

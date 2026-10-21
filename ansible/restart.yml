@@ -1,4 +1,6 @@
 ---
+- import_playbook: vault_server.yml
+
 - hosts: cfg:shards:replsets
   gather_facts: false
   become: yes
@@ -8,6 +10,10 @@
     - name: Wipe arbiter directory contents
       shell: rm -rf {{ mongod_path }}/*
       when: arbiter is defined
+
+    - name: Refresh Vault credentials before restarting MongoDB
+      include_tasks: tasks/vault_client.yml
+      when: arbiter is not defined
 
     - name: Restart mongod service
       systemd:

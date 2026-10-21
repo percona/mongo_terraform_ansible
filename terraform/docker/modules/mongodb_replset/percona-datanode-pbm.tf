@@ -3,6 +3,26 @@ resource "docker_container" "pbm_rs" {
   name     = "${var.rs_name}-${var.replset_tag}${each.value.member_index}-${var.pbm_container_suffix}"
   image    = docker_image.pbm_mongod_rs.image_id
   user     = var.uid
+  # Physical restore starts mongod in the agent container using the node's
+  # captured configuration, so the same key-service files must be available.
+  dynamic "mounts" {
+    for_each = var.vault_encryption ? [var.vault_credentials] : []
+    content {
+      type      = "volume"
+      source    = mounts.value
+      target    = "/etc/mongodb-vault"
+      read_only = true
+    }
+  }
+  dynamic "mounts" {
+    for_each = var.vault_encryption ? [docker_volume.keyfile_volume.name] : []
+    content {
+      type      = "volume"
+      source    = mounts.value
+      target    = var.keyfile_path
+      read_only = true
+    }
+  }
   command = [
     "pbm-agent"
   ]

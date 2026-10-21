@@ -1,0 +1,10 @@
+---
+- name: Check normalized MongoDB release and defaults
+  ansible.builtin.assert:
+    that:
+      - mongodb_major_effective | int == version_case.major
+      - mongodb_repo_signing_key == version_case.key
+      - pbm_backup_type_effective == version_case.backup
+  vars:
+    mongo_release: "{{ version_case.release }}"
+    mongodb_distribution: "{{ version_case.distribution }}"

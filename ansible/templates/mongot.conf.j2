@@ -23,7 +23,11 @@ storage:
   dataPath: "{{ mongot_data_path }}"
 server:
   grpc:
+{% if 'shards' in group_names and (groups['mongos'] | default([]) | length) > 0 %}
+    address: "0.0.0.0:{{ mongot_port }}"
+{% else %}
     address: "localhost:{{ mongot_port }}"
+{% endif %}
     tls:
       mode: "disabled"
 metrics:

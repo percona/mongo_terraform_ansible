@@ -1,0 +1,69 @@
+---
+- name: Validate native Vault encryption settings
+  assert:
+    that:
+      - not (vault_encryption_effective | bool) or mongodb_distribution_effective == 'psmdb'
+      - not (vault_encryption_effective | bool and keyfile_encryption | bool)
+    fail_msg: "Vault encryption requires PSMDB and cannot be combined with local-keyfile encryption."
+
+- name: Inspect existing data directory
+  become: true
+  stat:
+    path: "{{ mongod_path }}/WiredTiger"
+  register: vault_existing_data
+
+- name: Read existing MongoDB configuration
+  become: true
+  slurp:
+    src: /etc/mongod.conf
+  register: vault_existing_config
+  no_log: true
+  when: vault_existing_data.stat.exists
+
+- name: Reject encryption-mode changes on populated nodes
+  assert:
+    that:
+      - "(((vault_existing_config.content | b64decode | from_yaml).security | default({})).vault is defined) == (vault_encryption_effective | bool)"
+    fail_msg: "Changing Vault encryption on an existing data directory requires migration or recreation."
+  when: vault_existing_data.stat.exists
+
+- name: Install credentials for an encrypted data-bearing node
+  when: vault_encryption_effective | bool
+  become: true
+  block:
+    - name: Require environment Vault and topology identity
+      assert:
+        that:
+          - groups['vault'] | default([]) | length == 1
+          - vault_topology is defined
+          - vault_server is defined
+
+    - name: Create Vault client directory
+      file:
+        path: /etc/mongodb
+        state: directory
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
+        mode: '0700'
+
+    - name: Install Vault trust certificate
+      copy:
+        src: "{{ vault_controller_dir }}/vault.crt"
+        dest: "{{ vault_cafile }}"
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
+        mode: '0400'
+
+    - name: Install scoped MongoDB token
+      copy:
+        src: "{{ vault_controller_dir }}/{{ vault_topology }}.token"
+        dest: "{{ vault_tokenfile }}"
+        owner: "{{ mongo_os_user }}"
+        group: "{{ mongo_os_group }}"
+        mode: '0400'
+      no_log: true
+
+    - name: Verify key service readiness from the database node
+      uri:
+        url: "https://{{ vault_server }}:{{ vault_port }}/v1/sys/health"
+        ca_path: "{{ vault_cafile }}"

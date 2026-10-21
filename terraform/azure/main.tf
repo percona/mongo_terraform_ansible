@@ -27,6 +27,7 @@ module "mongodb_clusters" {
   arbiters_per_replset = each.value.arbiters_per_replset
   mongos_count         = each.value.mongos_count
   enable_audit         = each.value.enable_audit
+  enable_mongot        = each.value.enable_mongot
   audit_filter         = each.value.audit_filter
   resource_group_name  = local.resource_group_name
   vnet_name            = local.vnet_name

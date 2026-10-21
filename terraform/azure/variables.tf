@@ -8,6 +8,12 @@ variable "prefix" {
   description = "Prefix to apply to resources to avoid naming collisions"
 }
 
+variable "vault_encryption" {
+  type        = bool
+  default     = false
+  description = "Enable Vault-backed encryption at rest for every MongoDB topology in this environment."
+}
+
 ################
 # Clusters and Replica Sets
 ################

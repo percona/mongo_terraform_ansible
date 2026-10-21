@@ -1,0 +1,51 @@
+---
+- name: Verify inventory selections override Ansible defaults
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+  vars:
+    mongo_port: 27017
+  tasks:
+    - name: Supply deterministic host facts for configuration rendering
+      ansible.builtin.set_fact:
+        ansible_facts:
+          distribution: Ubuntu
+          os_family: Debian
+          default_ipv4: { address: '127.0.0.1' }
+
+    - name: Verify distribution, release, audit toggle and custom filter
+      ansible.builtin.assert:
+        that:
+          - mongodb_distribution_effective == 'enterprise'
+          - mongodb_major_effective | int == 9
+          - enable_audit_effective | bool
+          - audit_filter_effective == {'atype':'authCheck'}
+
+    - name: Verify audit selection reaches the generated server configuration
+      ansible.builtin.assert:
+        that:
+          - "'auditLog:' in server_config"
+          - "'auditAuthorizationSuccess: true' in server_config"
+          - "(server_config | from_yaml).auditLog.filter | from_json == {'atype':'authCheck'}"
+      vars:
+        server_config: "{{ lookup('ansible.builtin.template', '../templates/mongod-replicaset.conf.j2') }}"
+
+    - name: Verify audit defaults remain disabled when no selection is supplied
+      ansible.builtin.assert:
+        that:
+          - not (enable_audit_effective | bool)
+          - "'auditLog:' not in server_config"
+      vars:
+        enable_audit: false
+        server_config: "{{ lookup('ansible.builtin.template', '../templates/mongod-replicaset.conf.j2') }}"
+
+    - name: Verify an explicit empty audit policy is preserved
+      ansible.builtin.assert:
+        that:
+          - audit_filter_effective == {}
+          - "(server_config | from_yaml).auditLog.filter | from_json == {}"
+      vars:
+        audit_filter: {}
+        server_config: "{{ lookup('ansible.builtin.template', '../templates/mongod-replicaset.conf.j2') }}"

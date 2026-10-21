@@ -87,6 +87,7 @@ resource "local_file" "AnsibleInventoryCluster" {
       env_tag              = each.value.env_tag
       enable_pmm           = var.enable_pmm
       use_tls              = var.clusters[each.key].use_tls
+      vault_inventory      = "${local.vault_inventory}\n[all:vars]\nvault_encryption=${var.vault_encryption}\nvault_topology=cluster-${each.key}\n"
       enable_pmm_agent     = var.enable_pmm && var.clusters[each.key].enable_pmm
       pmm_image            = var.pmm_image
       enable_extensions    = var.enable_pmm && var.enable_extensions
@@ -191,6 +192,7 @@ resource "local_file" "AnsibleInventoryRS" {
       env_tag              = each.value.env_tag
       enable_pmm           = var.enable_pmm
       use_tls              = var.replsets[each.key].use_tls
+      vault_inventory      = "${local.vault_inventory}\n[all:vars]\nvault_encryption=${var.vault_encryption}\nvault_topology=replset-${each.key}\n"
       enable_pmm_agent     = var.enable_pmm && var.replsets[each.key].enable_pmm
       pmm_image            = var.pmm_image
       enable_extensions    = var.enable_pmm && var.enable_extensions

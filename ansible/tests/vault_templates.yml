@@ -1,0 +1,49 @@
+---
+- name: Verify encryption rendering and inventory precedence
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: [../group_vars/all.yml]
+  vars:
+    mongo_port: 27017
+    replset_name: test-rs
+    cfg_server_port: 27019
+    cluster: test-cluster
+    shard_replset: test-shard
+    vault_environment: test-env
+    vault_topology: replset-test-rs
+    vault_server: 127.0.0.1
+    enable_audit: false
+    vault_encryption: 'true'
+  tasks:
+    - name: Supply deterministic network facts
+      set_fact:
+        ansible_facts:
+          default_ipv4: {address: 127.0.0.1}
+          os_family: Debian
+
+    - name: Verify string-valued inventory flag enables encryption
+      assert:
+        that:
+          - vault_encryption_effective | bool
+          - "'enableEncryption: true' in lookup('template', '../templates/mongod-replicaset.conf.j2')"
+          - "'secret/data/replset-test-rs/localhost' in lookup('template', '../templates/mongod-replicaset.conf.j2')"
+          - "'enableEncryption: true' in lookup('template', '../templates/mongod-sharding.conf.j2')"
+          - "'enableEncryption: true' in lookup('template', '../templates/mongod-cfgserver.conf.j2')"
+
+    - name: Mark the host as an arbiter
+      set_fact:
+        arbiter: true
+
+    - name: Verify arbiters do not use storage encryption
+      assert:
+        that:
+          - "'enableEncryption' not in lookup('template', '../templates/mongod-replicaset.conf.j2')"
+
+    - name: Test disabled string-valued inventory flag
+      set_fact:
+        vault_encryption: 'false'
+
+    - name: Verify disabled flag
+      assert:
+        that: not (vault_encryption_effective | bool)

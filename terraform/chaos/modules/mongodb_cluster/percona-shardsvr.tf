@@ -77,6 +77,14 @@ resource "chaos_instance" "shard" {
         protocol = "tcp"
         comment  = "Allow MongoDB access from subnet"
       },
-    ]
+    ],
+    var.enable_mongot ? [
+      {
+        source   = "10.30.0.0/16"
+        port     = tostring(var.mongot_port)
+        protocol = "tcp"
+        comment  = "Allow mongos access to the shard Search endpoint"
+      },
+    ] : []
   ))
 }

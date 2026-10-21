@@ -259,11 +259,18 @@ ansible-playbook cert_setup.yml -i inventory -e ca_staging_dir=/secure/staging/c
 
 ## Data-at-rest encryption with Vault
 
-There is an extra playbook `vault_server.yml` that generates a Vault on the PMM server, with the required configuration. A token for MongoDB is created and can be fetched by the `main.yml` playbook. 
-Run this playbook before the `main.yml` if you want a Vault-enabled setup and you don't have a Vault server already. Remember to set `vault_encryption: true` in the variables file.
+Set the environment-level `vault_encryption = true` in Terraform to enable
+encryption for every PSMDB cluster and replica set in that environment. The
+framework provisions a dedicated `[vault]` host; PMM is not required. `main.yml`,
+expansion, and restart playbooks initialize/unseal Vault and distribute
+topology-scoped credentials before starting data-bearing nodes. Recovery shares
+remain on the controller. To recover a sealed Vault separately:
 ```
 ansible-playbook vault_server.yml -i inventory
 ```
+
+See [Vault encryption and recovery](../docs/vault-encryption.md) for variables,
+controller paths, Docker/Libvirt workflows, and destruction semantics.
 
 ## Tags
 

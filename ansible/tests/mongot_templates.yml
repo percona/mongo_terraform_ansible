@@ -1,0 +1,73 @@
+---
+- name: Seed deterministic host facts for Search template tests
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Set inventory-derived network facts
+      ansible.builtin.set_fact:
+        ansible_facts:
+          default_ipv4:
+            address: "{{ ansible_host }}"
+          fqdn: "{{ inventory_hostname }}"
+
+- name: Verify mongos Search configuration is conditional and points to shard mongot
+  hosts: mongos
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+  vars:
+    cluster: test-cluster
+    cfg_server_port: 27019
+    mongos_port: 27017
+    mongo_port: 27017
+    enable_audit: false
+    enable_mongot: true
+  tasks:
+    - name: Check the router Search endpoint and gRPC settings
+      ansible.builtin.assert:
+        that:
+          - "'searchIndexManagementHostAndPort: 10.0.0.11:27028' in lookup('template', '../templates/mongos.conf.j2')"
+          - "'mongotHost: 10.0.0.11:27028' in lookup('template', '../templates/mongos.conf.j2')"
+          - "'useGrpcForSearch: true' in lookup('template', '../templates/mongos.conf.j2')"
+          - "'searchTLSMode: disabled' in lookup('template', '../templates/mongos.conf.j2')"
+
+    - name: Disable Search for the negative case
+      ansible.builtin.set_fact:
+        enable_mongot: false
+
+    - name: Ensure disabled Search does not add router parameters
+      ansible.builtin.assert:
+        that:
+          - "'mongotHost:' not in lookup('template', '../templates/mongos.conf.j2')"
+
+- name: Verify sharded mongot binds for router access
+  hosts: shards
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+  vars:
+    cluster: test-cluster
+    mongo_port: 27018
+    mongot_port: 27028
+    enable_mongot: true
+    mongos_port: 27017
+  tasks:
+    - name: Check mongot uses a network listener in sharded topology
+      ansible.builtin.assert:
+        that:
+          - "'address: \"0.0.0.0:27028\"' in lookup('template', '../templates/mongot.conf.j2')"
+
+- name: Keep standalone replica-set mongot loopback-only
+  hosts: replsets
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+  vars:
+    mongo_port: 27018
+    mongot_port: 27028
+    enable_mongot: true
+  tasks:
+    - name: Check standalone mongot remains loopback-bound
+      ansible.builtin.assert:
+        that:
+          - "'address: \"localhost:27028\"' in lookup('template', '../templates/mongot.conf.j2')"

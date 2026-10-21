@@ -16,6 +16,8 @@
 
 - import_playbook: percona_release.yml
 
+- import_playbook: vault_server.yml
+
 - import_playbook: ldap_install.yml
 
 - import_playbook: seaweedfs_install.yml

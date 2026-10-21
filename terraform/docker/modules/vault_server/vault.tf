@@ -1,75 +1,81 @@
-data "docker_registry_image" "vault" {
-  name = var.vault_image
-}
-
-locals {
-  vault_repository = replace(data.docker_registry_image.vault.name, "/(@sha256:[a-f0-9]+|:[^/]+)$/", "")
-}
-
 resource "docker_image" "vault" {
-  name          = "${local.vault_repository}@${data.docker_registry_image.vault.sha256_digest}"
-  pull_triggers = [data.docker_registry_image.vault.sha256_digest]
-  keep_locally  = true
+  name         = var.image
+  keep_locally = true
 }
 
-resource "docker_volume" "vault_data" {
-  name = var.vault_data_volume
+resource "docker_volume" "data" { name = "${var.name}-data" }
+resource "docker_volume" "config" { name = "${var.name}-config" }
+resource "docker_volume" "credentials" {
+  for_each = var.topologies
+  name     = "${var.name}-${each.key}-credentials"
+}
+
+resource "terraform_data" "prepare" {
+  triggers_replace = [docker_volume.config.id, docker_volume.data.id, docker_image.vault.image_id]
+  provisioner "local-exec" {
+    command = "python3 \"${abspath(path.module)}/../../../../scripts/vault-docker.py\" prepare"
+    environment = {
+      VAULT_CONTAINER      = var.name
+      VAULT_IMAGE          = var.image
+      VAULT_CONTROLLER_DIR = var.controller_dir
+    }
+  }
 }
 
 resource "docker_container" "vault" {
-  name  = var.vault_container_name
-  image = docker_image.vault.image_id
-  ports {
-    internal = var.vault_port
-    external = var.vault_port
-  }
-  volumes {
-    volume_name    = docker_volume.vault_data.name
-    container_path = "/vault"
-  }
-  env = [
-    "VAULT_DEV_ROOT_TOKEN_ID=${var.vault_token}",
-    "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${var.vault_port}"
+  name       = var.name
+  hostname   = var.name
+  image      = docker_image.vault.image_id
+  user       = "100:1000"
+  entrypoint = ["/bin/sh", "-c"]
+  command = [<<-SH
+    vault server -config=/vault/config/vault.hcl &
+    pid=$!
+    (
+      export VAULT_ADDR=https://127.0.0.1:8200 VAULT_CACERT=/vault/config/vault.crt
+      while kill -0 "$pid" 2>/dev/null; do
+        for file in /vault/data/tokens/*.token; do
+          [ -f "$file" ] || continue
+          VAULT_TOKEN="$(cat "$file")" vault token renew >/dev/null 2>&1 || true
+        done
+        sleep 3600
+      done
+    ) &
+    trap 'kill "$pid"; wait "$pid"' TERM INT
+    wait "$pid"
+  SH
   ]
-  command = ["server", "-dev"]
+  mounts {
+    type   = "volume"
+    source = docker_volume.data.name
+    target = "/vault/data"
+  }
+  mounts {
+    type      = "volume"
+    source    = docker_volume.config.name
+    target    = "/vault/config"
+    read_only = true
+  }
+  networks_advanced { name = var.network_name }
+  restart    = "no"
+  depends_on = [terraform_data.prepare]
+}
 
-  lifecycle {
-    replace_triggered_by = [docker_image.vault]
+resource "terraform_data" "bootstrap" {
+  # Recheck readiness and renew credentials on every apply, including scale-out.
+  triggers_replace = [timestamp(), docker_container.vault.id, jsonencode(var.topologies)]
+  provisioner "local-exec" {
+    command = "python3 \"${abspath(path.module)}/../../../../scripts/vault-docker.py\" bootstrap"
+    environment = {
+      VAULT_CONTAINER      = var.name
+      VAULT_IMAGE          = var.image
+      VAULT_CONTROLLER_DIR = var.controller_dir
+      VAULT_CREDENTIALS    = jsonencode({ for t in var.topologies : t => docker_volume.credentials[t].name })
+    }
   }
 }
 
-# Provision Vault with PKI and KV secrets engines
-resource "null_resource" "vault_init" {
-  depends_on = [docker_container.vault]
-
-  triggers = {
-    vault_container_id = docker_container.vault.id
-  }
-
-  provisioner "local-exec" {
-    command = <<EOT
-      export VAULT_ADDR=${var.vault_addr}
-      export VAULT_TOKEN=${var.vault_token}
-
-      vault secrets enable -path=pki pki
-      vault write pki/root/generate/internal \
-        common_name="${var.vault_pki_common_name}" ttl=8760h
-
-      vault write pki/roles/${var.vault_pki_role} \
-        allowed_domains="${var.vault_cert_domain}" \
-        allow_subdomains=true \
-        max_ttl="72h"
-
-      vault secrets enable -path=${var.vault_kv_path_prefix} kv
-
-      vault kv put ${var.vault_kv_path} key=$(openssl rand -base64 32)
-
-      mkdir -p ./certs
-
-      CERT_JSON=$(vault write -format=json pki/issue/${var.vault_pki_role} common_name="mongo1.${var.vault_cert_domain}")
-      echo $CERT_JSON | jq -r .data.certificate > ./certs/mongo.crt
-      echo $CERT_JSON | jq -r .data.issuing_ca > ./certs/ca.crt
-      echo $CERT_JSON | jq -r .data.private_key > ./certs/mongo.key
-EOT
-  }
+output "credentials" {
+  value      = { for t, volume in docker_volume.credentials : t => volume.name }
+  depends_on = [terraform_data.bootstrap]
 }

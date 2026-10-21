@@ -1,125 +1,183 @@
-# Deploy MongoDB environments using Terraform and Ansible
+# MongoDB environments with Terraform and Ansible
 
-This repository automates Percona software for MongoDB across cloud and local environments:
+Create and manage MongoDB environments on AWS, GCP, Azure, CHAOS, or local Docker
+containers. Provision local Libvirt/KVM virtual machines for manual configuration
+with Ansible.
 
-- Percona Server for MongoDB (PSMDB)
-- Percona Backup for MongoDB (PBM)
-- Percona Monitoring and Management (PMM)
-- Percona ClusterSync for MongoDB (PCSM)
+Use the **PSMDB Sandbox web UI** to configure and manage environments in your
+browser, or run Terraform and Ansible directly.
 
-Supported deployment targets:
+The project supports Percona Server for MongoDB (PSMDB), with MongoDB Community
+and Enterprise package options for VM-based deployments. Optional integrations
+include Percona Backup for MongoDB (PBM), Percona Monitoring and Management (PMM),
+and Percona ClusterSync for MongoDB (PCSM).
 
-- Public cloud: AWS, GCP, Azure
-- Private cloud: CHAOS
-- Local: Docker containers or Libvirt/KVM virtual machines
+## What you can build
 
-Cloud and CHAOS deployments use Terraform for infrastructure and Ansible for software
-configuration. Docker deployments are Terraform-only. Libvirt provisions base
-VMs; run Ansible manually afterward to install MongoDB.
+- Replica sets and sharded clusters, including multiple topologies in one environment.
+- Backup and restore environments using PBM and provider object storage or SeaweedFS.
+- Monitoring environments with PMM.
+- Cluster synchronization scenarios with PCSM.
+- Workload experiments using YCSB.
+- Environments with TLS, audit logging, LDAP authentication, or Vault-backed PSMDB
+  encryption at rest.
 
-## MongoDB 9.0
+Feature availability depends on the deployment target, MongoDB distribution, and
+version. See the linked guides for configuration and compatibility.
 
-Fresh Community and Enterprise 9.0 environments can be selected in the Web UI
-or configured with `mongodb_distribution = "community"` (or `"enterprise"`)
-and `mongo_release = "9.0"`. Current default versions are retained.
+## Deployment targets
 
-See [MongoDB 9.0 deployment notes](docs/mongodb-9.0.md) for examples across all
-targets, package/image availability, and integration compatibility.
+| Target | Infrastructure | Software configuration | Web UI |
+|---|---|---|---|
+| [AWS](terraform/aws/README.md) | Terraform | Ansible | Yes |
+| [GCP](terraform/gcp/README.md) | Terraform | Ansible | Yes |
+| [Azure](terraform/azure/README.md) | Terraform | Ansible | Yes |
+| [CHAOS](terraform/chaos/README.md) | Terraform with the private CHAOS provider | Ansible | Yes |
+| [Docker](terraform/docker/README.md) | Terraform | Container configuration through Terraform | Yes |
+| [Libvirt/KVM](terraform/libvirt/README.md) | Terraform | Run Ansible manually after provisioning | No |
+
+Docker deployments use Percona MongoDB images. AWS, GCP, Azure, and CHAOS support
+PSMDB, MongoDB Community, and MongoDB Enterprise package selections, subject to
+package availability.
+
+## Quick start: local Docker with the web UI
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/percona/mongo_terraform_ansible.git
+cd mongo_terraform_ansible
+```
+
+### 2. Install prerequisites
+
+If the tools are not already installed:
+
+```bash
+./scripts/install-prerequisites.sh --docker --ui
+```
+
+The installer supports macOS with an existing Homebrew installation, Debian-family
+Linux, and RHEL-family Linux. It installs common controller tools plus Docker and Go.
+
+Start Docker Desktop on macOS. On Linux, ensure Docker is running and your user has
+permission to access it; group changes require a new login session.
+
+### 3. Start the web UI
+
+```bash
+cd ui-go
+UI_REPO_DIR=.. go run .
+```
+
+Open **http://127.0.0.1:5001**.
+
+### 4. Create an environment
+
+1. Select **Docker**.
+2. Configure a replica set or sharded cluster and select any supporting services.
+3. Save the configuration and choose **Deploy**.
+4. Follow deployment output in the browser.
+5. Use **Hosts & Connections** to find connection commands and service URLs.
+6. Choose **Destroy** when finished to remove the environment's resources.
+
+The UI also supports cloud deployments, stop/restart operations, reset operations,
+and supported topology expansion. It is written in Go with no third-party Go
+dependencies; deployments use the external tools described below.
+
+See the [web UI guide](ui-go/README.md) for provider settings, screenshots,
+environment states, and binary builds.
 
 ## Prerequisites
 
-The controller machine needs `git`, Terraform 1.9 or newer, OpenSSH, and, for
-cloud or CHAOS deployments, Ansible. Install these common tools with:
+Use **Terraform 1.9+** for all targets. VM-based MongoDB installation also requires
+Ansible and SSH access. Running the UI from source requires **Go 1.22+**.
+
+Install common controller tools from the repository root:
 
 ```bash
 ./scripts/install-prerequisites.sh
 ```
 
-The installer supports macOS with an existing Homebrew installation, Debian-family
-Linux, and RHEL-family Linux. It uses `apt` or `dnf`/`yum` as appropriate and
-requires `sudo` on Linux. It does not bootstrap Homebrew, configure credentials,
-or create SSH keys.
-
-Add only the tools for the target you intend to use:
+Select additional dependencies for your target:
 
 ```bash
-./scripts/install-prerequisites.sh --docker  # Docker Engine/Desktop
-./scripts/install-prerequisites.sh --aws     # AWS CLI v2
-./scripts/install-prerequisites.sh --gcp     # Google Cloud CLI
-./scripts/install-prerequisites.sh --azure   # Azure CLI
-./scripts/install-prerequisites.sh --ui      # Go 1.22+ for ui-go
-./scripts/install-prerequisites.sh --libvirt # Linux KVM/Libvirt and genisoimage
+./scripts/install-prerequisites.sh --aws
+./scripts/install-prerequisites.sh --gcp
+./scripts/install-prerequisites.sh --azure
+./scripts/install-prerequisites.sh --libvirt
 ```
 
-Use `--all` to install every applicable target dependency, or `--dry-run` to
-inspect the commands. Libvirt/KVM is Linux-only. The CHAOS target also requires
-the privately distributed `percona/chaos` Terraform provider in the standard
-Terraform plugin directory; the installer cannot obtain it.
+Add `--ui` to install Go for the web UI. Use `--all` to install every applicable
+target dependency, or `--dry-run` to preview installation commands. The installer
+requires `sudo` on Linux.
 
-Cloud and CHAOS deployments additionally require network access, provider account
-permissions, and SSH key access to the instances. The cloud CLIs are required by
-the Web UI; manual Terraform workflows can instead use their provider's standard
-credential environment variables or profiles. Docker must be running after its
-installation. Linux users must add themselves to the Docker or Libvirt group and
-start a new login session before using those targets without `sudo`.
+Additional setup:
 
-## Web UI (Recommended)
+- **AWS, GCP, and Azure:** configure provider credentials, account permissions, and
+  SSH keys. The UI requires the corresponding cloud CLI; manual Terraform workflows
+  can use the provider's supported authentication methods.
+- **CHAOS:** install the privately distributed `percona/chaos` Terraform provider
+  separately and configure provider credentials and SSH access.
+- **Libvirt/KVM:** use a Linux host and follow the target guide for virtualization,
+  images, and access configuration.
 
-A zero-dependency web frontend (written in Go) is available in [`ui-go/`](./ui-go/README.md).
-It lets you configure, deploy, stop, restart, and destroy MongoDB environments through a
-browser instead of editing `.tfvars` files by hand.
+The prerequisite installer does not configure cloud credentials, generate SSH keys,
+bootstrap Homebrew, or obtain the private CHAOS provider.
 
-Key features:
-- Visual wizard for cluster topology, images/packages, credentials, and networking
-- Audit plugin controls for every cluster and replica set, including enable/disable and custom filter expressions
-- Optional environment-wide PSMDB encryption at rest with a dedicated Vault
-- Optional YCSB workload generator with UI controls to insert data, start load, and stop load
-- Live deployment log streamed in the browser via Server-Sent Events
-- Hosts & Connections panel with one-click SSH/`docker exec` commands, MongoDB connection
-  strings, and direct links to PMM and SeaweedFS Admin UIs
-- Multiple concurrent environments supported — each gets its own prefixed inventory and
-  SSH config files (e.g. `myenv_inventory_cl01`, `myenv_ssh_config_cl01`)
+## Deploy without the web UI
+
+Each target directory contains its own configuration examples and deployment
+instructions:
+
+- [AWS](terraform/aws/README.md)
+- [GCP](terraform/gcp/README.md)
+- [Azure](terraform/azure/README.md)
+- [CHAOS](terraform/chaos/README.md)
+- [Docker](terraform/docker/README.md)
+- [Libvirt/KVM](terraform/libvirt/README.md)
+
+For a minimal local Docker replica set, with Docker running, start from the
+repository root:
 
 ```bash
-cd ui-go
-UI_REPO_DIR=.. go run .
-# then open http://127.0.0.1:5001
+cd terraform/docker
+terraform init
+terraform plan -var-file=minimum.tfvars
+terraform apply -var-file=minimum.tfvars
 ```
 
-See [`ui-go/README.md`](./ui-go/README.md) for full details, including packaged PSMDB
-Sandbox usage with the required `UI_REPO_DIR` and optional `UI_DATA_DIR`.
+The checked-in `minimum.tfvars` disables PMM, PBM, SeaweedFS, and LDAP.
 
-## Manual Instructions (without the Web UI)
+Remove that environment with:
 
-1. Clone this repository on your machine and `cd` to it
+```bash
+terraform destroy -var-file=minimum.tfvars
+```
 
-    ```
-    git clone https://github.com/percona/mongo_terraform_ansible.git
-    cd mongo_terraform_ansible
-    ```
+For AWS, GCP, Azure, and CHAOS, Terraform provisions infrastructure and generates
+inventories; run the [Ansible playbooks](ansible/README.md) afterward to install and
+configure the software. The web UI orchestrates both steps.
 
-2. Go to your desired target platform's subdirectory. Example:
-    ```
-    cd terraform/gcp
-    ```
+Libvirt provisions base VMs. Prepare an inventory and run Ansible manually.
 
-3. Follow the instructions on the README inside the subdirectory of your desired platform.
+## Guides
 
-    - [AWS](./terraform/aws/README.md)
-    - [GCP](./terraform/gcp/README.md)
-    - [Azure](./terraform/azure/README.md)
-    - [CHAOS](./terraform/chaos/README.md)
-    - [Local Docker containers](./terraform/docker/README.md)
-    - [Local Libvirt/KVM virtual machines](./terraform/libvirt/README.md)
+| Topic | Documentation |
+|---|---|
+| Web UI and environment lifecycle | [UI guide](ui-go/README.md) |
+| MongoDB installation and operational playbooks | [Ansible guide](ansible/README.md) |
+| Supported topology expansion | [UI expansion workflow](ui-go/README.md#topology-expansion), [Ansible playbooks](ansible/README.md#running), [Docker expansion](terraform/docker/README.md#expanding-existing-docker-topologies) |
+| YCSB workloads | [Ansible workflow](ansible/README.md#ycsb-workloads), [Docker workflow](terraform/docker/README.md#simulating-a-workload-with-ycsb) |
+| ClusterSync | [Ansible workflow](ansible/README.md#percona-clustersync), [Docker workflow](terraform/docker/README.md#percona-clustersync-for-mongodb) |
+| Vault-backed PSMDB encryption | [Encryption guide](docs/vault-encryption.md) |
 
-## Advanced Workflows
+## License
 
-The root README is a starting point. Detailed operational guidance lives with the component that runs each workflow:
+Licensed under the [Apache License 2.0](LICENSE).
 
-- Existing topology expansion: [UI workflow](./ui-go/README.md#topology-expansion), [Ansible playbooks](./ansible/README.md#running), and each Terraform provider README.
-- Workload generation with YCSB: [UI workflow](./ui-go/README.md#ycsb-workloads), [cloud Ansible notes](./ansible/README.md#ycsb-workloads), and [Docker workflow](./terraform/docker/README.md#simulating-a-workload-with-ycsb).
-- ClusterSync: [manual cloud workflow](./ansible/README.md#percona-clustersync), [Docker workflow](./terraform/docker/README.md#percona-clustersync-for-mongodb), and the Terraform README for the selected cloud provider.
-- TLS, Vault-backed encryption, PBM, PMM, stopping, restarting, and reset playbooks: [Ansible README](./ansible/README.md).
-- Encryption configuration, controller-managed unsealing, and key lifecycle: [Vault encryption](docs/vault-encryption.md).
+## Support
 
-## Disclaimer: This code is not supported by Percona. It has been provided solely as a community-contributed example and is not covered under any Percona services agreement.
+This code is not supported by Percona. It is provided solely as a
+community-contributed example and is not covered under any Percona services
+agreement.

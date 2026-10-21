@@ -65,6 +65,20 @@ The web UI templates and static assets are embedded in the PSMDB Sandbox binary.
 repository directory is still required because Terraform and Ansible files are executed
 from disk.
 
+### Default images
+
+An optional `.env` file in the repository root sets the images the configure page starts
+new environments and blocks with, for example to try a release candidate:
+
+```
+PMM_SERVER_IMAGE=perconalab/pmm-server:3.10.0-rc
+PMM_CLIENT_IMAGE=perconalab/pmm-client:3.10.0-rc
+PMM_EXTENSIONS_IMAGE=percona/pmm-extensions:3.10.0-rc1
+```
+
+It is read at startup and applies to new environments only; editing an existing environment
+keeps the built-in defaults, so saving it does not change an image it never set.
+
 ## Screenshots
 
 ### Environment list

@@ -354,6 +354,9 @@ func configurePaths() error {
 
 	terraformDir = filepath.Join(repoDir, "terraform")
 	ansibleDir = filepath.Join(repoDir, "ansible")
+	if err := loadDefaultImages(filepath.Join(repoDir, ".env")); err != nil {
+		return fmt.Errorf("read default images: %w", err)
+	}
 	for _, path := range []struct {
 		name string
 		path string

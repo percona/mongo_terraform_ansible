@@ -2,11 +2,13 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
@@ -15,32 +17,84 @@ import (
 )
 
 func getDockerHubTags(namespace, repo string, limit int) []string {
-	key := "dh:" + namespace + "/" + repo
+	tags := getDockerHubTagsMatching(namespace, repo, "", limit)
+	if repo != "pmm-server" {
+		return tags
+	}
+	// Timestamped nightly builds can fill the recent-tags page. Fetch versioned
+	// tags separately so releases and RCs remain available in every namespace.
+	// A dot matches version tags without matching the timestamp-only builds.
+	versioned := getDockerHubTagsMatching(namespace, repo, ".", 1000)
+	merged := append([]string{}, tags...)
+	seen := make(map[string]bool, len(tags))
+	for _, tag := range tags {
+		seen[tag] = true
+	}
+	for _, tag := range versioned {
+		if !seen[tag] {
+			merged = append(merged, tag)
+			seen[tag] = true
+		}
+	}
+	return merged
+}
+
+func getDockerHubTagsMatching(namespace, repo, name string, limit int) []string {
+	key := fmt.Sprintf("dh:%s/%s:limit=%d:name=%s", namespace, repo, limit, name)
 	if v, ok := cacheGet(key); ok {
 		return v.([]string)
 	}
-	url := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags/?page_size=%d&ordering=last_updated", namespace, repo, limit)
+	pageSize := limit
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	if pageSize <= 0 {
+		return []string{}
+	}
+	query := url.Values{"page_size": {strconv.Itoa(pageSize)}, "ordering": {"last_updated"}}
+	if name != "" {
+		query.Set("name", name)
+	}
+	next := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags/?%s", namespace, repo, query.Encode())
 	client := &http.Client{Timeout: 8 * time.Second}
-	resp, err := client.Get(url)
-	if err != nil {
-		slog.Warn("docker hub tags fetch failed", "repo", namespace+"/"+repo, "err", err)
-		cacheSet(key, []string{})
-		return []string{}
-	}
-	defer resp.Body.Close()
-	var result struct {
-		Results []struct {
-			Name string `json:"name"`
-		} `json:"results"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		slog.Warn("docker hub tags decode failed", "repo", namespace+"/"+repo, "err", err)
-		cacheSet(key, []string{})
-		return []string{}
-	}
-	tags := make([]string, 0, len(result.Results))
-	for _, r := range result.Results {
-		tags = append(tags, r.Name)
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	tags := make([]string, 0)
+	// Bound both the result size and page count, including malformed empty pages.
+	for page := 0; next != "" && len(tags) < limit && page < (limit+pageSize-1)/pageSize; page++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, next, nil)
+		if err != nil {
+			return tags
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			slog.Warn("docker hub tags fetch failed", "repo", namespace+"/"+repo, "err", err)
+			return tags
+		}
+		var result struct {
+			Next    string `json:"next"`
+			Results []struct {
+				Name string `json:"name"`
+			} `json:"results"`
+		}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			slog.Warn("docker hub tags fetch failed", "repo", namespace+"/"+repo, "status", resp.StatusCode)
+			return tags
+		}
+		err = json.NewDecoder(resp.Body).Decode(&result)
+		resp.Body.Close()
+		if err != nil {
+			slog.Warn("docker hub tags decode failed", "repo", namespace+"/"+repo, "err", err)
+			return tags
+		}
+		for _, r := range result.Results {
+			if len(tags) == limit {
+				break
+			}
+			tags = append(tags, r.Name)
+		}
+		next = result.Next
 	}
 	slog.Info("fetched docker hub tags", "repo", namespace+"/"+repo, "count", len(tags))
 	cacheSet(key, tags)

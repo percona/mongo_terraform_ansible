@@ -911,6 +911,10 @@ func apiPackageVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	channel := normalizedRepoChannel(r.URL.Query().Get("channel"))
 	osImage := strings.TrimSpace(r.URL.Query().Get("os_image"))
+	chaosDefaultOS := r.URL.Query().Get("platform") == "chaos" && osImage == ""
+	if chaosDefaultOS {
+		osImage = "Ubuntu 24.04"
+	}
 
 	switch product {
 	case "psmdb":
@@ -918,7 +922,16 @@ func apiPackageVersionsHandler(w http.ResponseWriter, r *http.Request) {
 		var majorVersions []string
 		if distribution == "community" || distribution == "enterprise" {
 			minorVersions = getOfficialMongoDBMinorVersionsByMajorFor(distribution, osImage)
-			majorVersions = getOfficialMongoDBVersionsFor(distribution, osImage)
+			if chaosDefaultOS {
+				// The default CHAOS image for official MongoDB 7.0 is jammy;
+				// other releases use the regular noble default.
+				minorVersions["7.0"] = officialMongoDBPackageVersions(distribution, "7.0", "Ubuntu 22.04")
+			}
+			for _, release := range defaultMongoDBOfficialVersions {
+				if len(minorVersions[release]) > 0 {
+					majorVersions = append(majorVersions, release)
+				}
+			}
 		} else {
 			minorVersions = getPSMDBMinorVersionsByMajorFor(channel, osImage)
 			for _, release := range getPSMDBVersions() {
@@ -1326,6 +1339,13 @@ func validatePackageBlock(kind, name string, distribution, release string, enabl
 	return nil
 }
 
+func validateChaosMongoOS(kind, name, distribution, release, osImage string) error {
+	if distribution != "psmdb" && release == "7.0" && osImage == "Ubuntu 24.04" {
+		return fmt.Errorf("%s %q: MongoDB %s 7.0 has no Ubuntu 24.04 repository; select Ubuntu 22.04 or another supported OS", kind, name, distribution)
+	}
+	return nil
+}
+
 func normalizeAndValidatePackageConfig(platform string, cfg *Config) error {
 	if platform == "docker" {
 		for name, cluster := range cfg.Clusters {
@@ -1366,6 +1386,12 @@ func normalizeAndValidatePackageConfig(platform string, cfg *Config) error {
 		if err := validatePackageBlock("cluster", name, distribution, release, boolDefault(cluster.EnableAudit, false)); err != nil {
 			return err
 		}
+		if platform == "chaos" {
+			osImage := strDefault(cluster.OsImage, cfg.OsImage)
+			if err := validateChaosMongoOS("cluster", name, distribution, release, osImage); err != nil {
+				return err
+			}
+		}
 		if err := validateMongoDB9Backup("cluster", name, release, boolDefault(cluster.EnablePbm, true)); err != nil {
 			return err
 		}
@@ -1388,6 +1414,12 @@ func normalizeAndValidatePackageConfig(platform string, cfg *Config) error {
 		}
 		if err := validatePackageBlock("replica set", name, distribution, release, boolDefault(replset.EnableAudit, false)); err != nil {
 			return err
+		}
+		if platform == "chaos" {
+			osImage := strDefault(replset.OsImage, cfg.OsImage)
+			if err := validateChaosMongoOS("replica set", name, distribution, release, osImage); err != nil {
+				return err
+			}
 		}
 		if err := validateMongoDB9Backup("replica set", name, release, boolDefault(replset.EnablePbm, true)); err != nil {
 			return err

@@ -48,6 +48,17 @@ variable "clusters" {
     #      mongos_count = 1
     #    }
   }
+
+  validation {
+    condition = alltrue([for c in values(var.clusters) :
+      !(
+        contains(["community", "enterprise"], c.mongodb_distribution != "" ? c.mongodb_distribution : var.mongodb_distribution) &&
+        (c.mongo_release != "" ? c.mongo_release : var.mongo_release) == "7.0" &&
+        (c.os_image != "" ? c.os_image : var.os_image) == "Ubuntu 24.04"
+      )
+    ])
+    error_message = "MongoDB Community/Enterprise 7.0 has no Ubuntu 24.04 repository. Select Ubuntu 22.04 or a supported OS for that cluster."
+  }
 }
 
 # By default, no replica sets are deployed (except those needed for the sharded clusters).
@@ -86,6 +97,17 @@ variable "replsets" {
     #    ig-rs02 = {
     #      env_tag = "prod"
     #    }
+  }
+
+  validation {
+    condition = alltrue([for r in values(var.replsets) :
+      !(
+        contains(["community", "enterprise"], r.mongodb_distribution != "" ? r.mongodb_distribution : var.mongodb_distribution) &&
+        (r.mongo_release != "" ? r.mongo_release : var.mongo_release) == "7.0" &&
+        (r.os_image != "" ? r.os_image : var.os_image) == "Ubuntu 24.04"
+      )
+    ])
+    error_message = "MongoDB Community/Enterprise 7.0 has no Ubuntu 24.04 repository. Select Ubuntu 22.04 or a supported OS for that replica set."
   }
 }
 
@@ -490,9 +512,13 @@ variable "backup_retention" {
 #############
 
 variable "os_image" {
-  description = "Operating system for all instances"
+  description = "Operating system for all instances. Empty uses Ubuntu 24.04, except official MongoDB 7.0 topologies use Ubuntu 22.04."
   type        = string
-  default     = "Ubuntu 24.04"
+  default     = ""
+}
+
+locals {
+  default_os_image = var.os_image != "" ? var.os_image : "Ubuntu 24.04"
 }
 
 variable "delete_after_days" {

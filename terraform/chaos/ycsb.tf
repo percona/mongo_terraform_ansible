@@ -1,7 +1,7 @@
 resource "chaos_instance" "ycsb" {
   count             = var.enable_ycsb ? 1 : 0
   name              = local.ycsb_host
-  os                = var.os_image
+  os                = local.default_os_image
   cpu_cores         = var.ycsb_cpu_cores
   memory            = var.ycsb_memory_gb
   disk              = var.ycsb_volume_size

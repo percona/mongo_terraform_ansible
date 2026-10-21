@@ -1,7 +1,7 @@
 resource "chaos_instance" "pmm_bare_client" {
   for_each          = var.pmm_bare_clients
   name              = "${var.prefix}-${each.key}"
-  os                = coalesce(each.value.os_image, var.os_image)
+  os                = coalesce(each.value.os_image, local.default_os_image)
   cpu_cores         = each.value.cpu_cores
   memory            = each.value.memory_gb
   disk              = each.value.volume_size

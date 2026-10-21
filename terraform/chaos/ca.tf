@@ -1,7 +1,7 @@
 resource "chaos_instance" "ca" {
   count             = var.enable_ca && var.ca_placement == "dedicated" ? 1 : 0
   name              = local.ca_host
-  os                = var.os_image
+  os                = local.default_os_image
   cpu_cores         = var.ca_cpu_cores
   memory            = var.ca_memory_gb
   disk              = var.ca_volume_size

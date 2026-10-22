@@ -504,6 +504,15 @@ func TestConfigServiceURLsIncludesCloudPlgmTunnel(t *testing.T) {
 		if len(urls) != 1 || urls[0].URL != "http://127.0.0.1:39999" {
 			t.Fatalf("%s: plgm service URLs = %+v, want custom SSH-forwarded URL", platform, urls)
 		}
+		if !strings.Contains(urls[0].Hint, "ssh -N test-plgm") || !strings.Contains(urls[0].Hint, "39999") {
+			t.Fatalf("%s: plgm hint = %q, want SSH tunnel instructions for test-plgm on port 39999", platform, urls[0].Hint)
+		}
+	}
+
+	// Docker exposes plgm directly, so no tunnel hint is needed.
+	docker := &Environment{Platform: "docker", Config: Config{Prefix: "test", EnablePlgm: true}}
+	if urls := configServiceURLs("test", docker); len(urls) != 1 || urls[0].Hint != "" {
+		t.Fatalf("docker plgm service URLs = %+v, want no hint", urls)
 	}
 }
 

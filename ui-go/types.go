@@ -549,6 +549,9 @@ type ServiceURL struct {
 	Name  string `json:"name"`
 	Label string `json:"label"`
 	URL   string `json:"url"`
+	// Hint is an optional tooltip shown on the link button, used when extra
+	// steps are needed before the URL works (e.g. opening an SSH tunnel).
+	Hint string `json:"hint,omitempty"`
 }
 
 // MongoConnInfo describes a MongoDB connection string for a cluster or replica set.

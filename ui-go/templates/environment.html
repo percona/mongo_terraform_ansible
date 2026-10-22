@@ -97,7 +97,7 @@
 <div class="service-url-row" id="service-url-row">
   <span id="service-url-buttons">{{range .ServiceURLs}}
   <a class="btn btn-outline" href="{{.URL}}" target="_blank" rel="noopener noreferrer"
-     title="{{.URL}}">🔗 {{.Label}}</a>
+     title="{{if .Hint}}{{.Hint}}{{else}}{{.URL}}{{end}}">🔗 {{.Label}}{{if .Hint}} <span aria-hidden="true">ⓘ</span>{{end}}</a>
   {{end}}</span>
 </div>
 {{else}}
@@ -1119,7 +1119,7 @@ function updateServiceURLButtons(serviceUrls) {
   const container = document.getElementById('service-url-buttons');
   if (!container || !serviceUrls || serviceUrls.length === 0) return;
   container.innerHTML = serviceUrls.map(svc =>
-    `<a class="btn btn-outline" href="${escHtml(svc.url)}" target="_blank" rel="noopener noreferrer" title="${escHtml(svc.url)}">🔗 ${escHtml(svc.label)}</a>`
+    `<a class="btn btn-outline" href="${escHtml(svc.url)}" target="_blank" rel="noopener noreferrer" title="${escHtml(svc.hint || svc.url)}">🔗 ${escHtml(svc.label)}${svc.hint ? ' <span aria-hidden="true">ⓘ</span>' : ''}</a>`
   ).join('\n');
   const row = document.getElementById('service-url-row');
   if (row) row.style.display = '';

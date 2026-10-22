@@ -743,7 +743,7 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 			})
 		}
 		if env.Config.EnablePlgm {
-			urls = append(urls, plgmCloudServiceURL(env))
+			urls = append(urls, plgmCloudServiceURL(envID, env))
 		}
 	} else {
 		// Cloud deployments: PMM port is restricted to the internal subnet by the
@@ -778,7 +778,7 @@ func configServiceURLs(envID string, env *Environment) []ServiceURL {
 			break
 		}
 		if env.Config.EnablePlgm {
-			urls = append(urls, plgmCloudServiceURL(env))
+			urls = append(urls, plgmCloudServiceURL(envID, env))
 		}
 	}
 	return urls
@@ -801,11 +801,19 @@ func plgmDockerExternalPort(env *Environment) int {
 // plgmCloudServiceURL returns the plgm Web UI URL for VM-based platforms. plgm
 // binds its UI to 127.0.0.1 on the plgm host, so it is reached through the
 // LocalForward that the generated ssh_config sets up for the plgm host
-// (ssh -F <prefix>_ssh_config <prefix>-plgm).
-func plgmCloudServiceURL(env *Environment) ServiceURL {
+// (the deploy job also appends that block to ~/.ssh/config).
+func plgmCloudServiceURL(envID string, env *Environment) ServiceURL {
+	port := strDefault(env.Config.PlgmLocalPort, plgmDefaultLocalPort)
+	host := strDefault(env.Config.Prefix, envID) + "-plgm"
 	return ServiceURL{
 		Name:  "plgm",
 		Label: "plgm Load Generator (via SSH tunnel)",
-		URL:   fmt.Sprintf("http://127.0.0.1:%s", strDefault(env.Config.PlgmLocalPort, plgmDefaultLocalPort)),
+		URL:   fmt.Sprintf("http://127.0.0.1:%s", port),
+		Hint: fmt.Sprintf(
+			"The plgm Web UI is only reachable through an SSH tunnel. Before clicking, run this in a terminal and keep it open:\n\n"+
+				"  ssh -N %s\n\n"+
+				"(the deploy added this host to ~/.ssh/config with LocalForward %s -> 127.0.0.1:9999 on the plgm host). "+
+				"Then this button opens http://127.0.0.1:%s.",
+			host, port, port),
 	}
 }

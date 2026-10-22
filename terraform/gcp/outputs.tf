@@ -112,9 +112,10 @@ resource "local_file" "AnsibleInventoryCluster" {
       pcsm_version         = var.pcsm_version
       pcsm_is_source       = var.enable_pcsm && var.pcsm_source_kind == "cluster" && var.pcsm_source_name == each.key
       pcsm_is_target       = var.enable_pcsm && var.pcsm_target_kind == "cluster" && var.pcsm_target_name == each.key
-      bucket               = google_storage_bucket.mongo-backups.name
-      access_key           = google_storage_hmac_key.mongo-backup-service-account.access_id
-      secret_access_key    = google_storage_hmac_key.mongo-backup-service-account.secret
+      use_backup_storage   = local.use_backup_storage
+      bucket               = local.backup_bucket
+      access_key           = local.backup_access_key
+      secret_access_key    = local.backup_secret_key
       mongodb_distribution = var.clusters[each.key].mongodb_distribution != "" ? var.clusters[each.key].mongodb_distribution : var.mongodb_distribution
       mongo_release        = var.clusters[each.key].mongo_release != "" ? var.clusters[each.key].mongo_release : var.mongo_release
       mongo_version        = var.clusters[each.key].mongo_version != "" ? var.clusters[each.key].mongo_version : var.mongo_version
@@ -213,9 +214,10 @@ resource "local_file" "AnsibleInventoryRS" {
       pcsm_version         = var.pcsm_version
       pcsm_is_source       = var.enable_pcsm && var.pcsm_source_kind == "replset" && var.pcsm_source_name == each.key
       pcsm_is_target       = var.enable_pcsm && var.pcsm_target_kind == "replset" && var.pcsm_target_name == each.key
-      bucket               = google_storage_bucket.mongo-backups.name
-      access_key           = google_storage_hmac_key.mongo-backup-service-account.access_id
-      secret_access_key    = google_storage_hmac_key.mongo-backup-service-account.secret
+      use_backup_storage   = local.use_backup_storage
+      bucket               = local.backup_bucket
+      access_key           = local.backup_access_key
+      secret_access_key    = local.backup_secret_key
       mongodb_distribution = var.replsets[each.key].mongodb_distribution != "" ? var.replsets[each.key].mongodb_distribution : var.mongodb_distribution
       mongo_release        = var.replsets[each.key].mongo_release != "" ? var.replsets[each.key].mongo_release : var.mongo_release
       mongo_version        = var.replsets[each.key].mongo_version != "" ? var.replsets[each.key].mongo_version : var.mongo_version

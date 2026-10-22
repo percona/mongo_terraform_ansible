@@ -2,9 +2,14 @@ resource "aws_instance" "ycsb" {
   count             = var.enable_ycsb ? 1 : 0
   ami               = lookup(var.image, var.region)
   instance_type     = var.ycsb_type
+  placement_group   = local.placement_group
   availability_zone = aws_subnet.vpc-subnet[0].availability_zone
-  key_name          = aws_key_pair.my_key_pair.key_name
-  subnet_id         = aws_subnet.vpc-subnet[0].id
+  root_block_device {
+    volume_type = var.boot_disk_type
+    volume_size = var.boot_disk_size
+  }
+  key_name  = aws_key_pair.my_key_pair.key_name
+  subnet_id = aws_subnet.vpc-subnet[0].id
   tags = {
     Name = local.ycsb_host
   }

@@ -101,12 +101,14 @@ pmm_client_repo=${pmm_client_repo}
 
 # PBM
 enable_pbm=${enable_pbm}
+%{ if use_backup_storage ~}
 bucket=${bucket}
 region=${location}
 endpointUrl=${endpointUrl}
 key=${key}
 storage_provider=azure
 account=${account}
+%{ endif ~}
 %{ if pbm_version != "" ~}
 pbm_version=${pbm_version}
 %{ endif ~}

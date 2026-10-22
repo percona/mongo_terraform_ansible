@@ -159,6 +159,24 @@ Open **Settings** from the environments page and configure credentials for the c
 
 Use the provider-specific **Configure** button after entering credentials, then **Test** to validate them. Deploy, Provision, and Destroy validate provider credentials before Terraform runs.
 
+## Compute & Storage (AWS, GCP, Azure)
+
+Machine types, disk sizes and disk types are set once per environment in the
+**Compute & Storage** section and apply to every cluster and replica set.
+
+On AWS and GCP the section also offers benchmark tunables: provisioned disk
+IOPS and throughput, a separate config server disk type, boot disk type and size,
+compact placement, and extra labels/tags. GCP adds the minimum CPU platform,
+gVNIC/Tier_1 networking and zone placement. The YCSB client machine type is set
+in the **Workload Generator** section.
+
+A **Hardware Preset** fills these fields with a production-like profile (Atlas-like
+M30–M80, IO-heavy, and a latest-generation profile); every field stays editable.
+The rules for machine-series and disk compatibility, value ranges and placement
+live in `hardware.go`. The form checks them as you type (`POST /api/hardware/validate`)
+and the server checks them again on save. Presets are also available from
+`GET /api/hardware/presets?platform=aws|gcp`.
+
 ## Topology Expansion
 
 The UI supports additive topology changes for deployed environments:

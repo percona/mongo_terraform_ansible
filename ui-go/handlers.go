@@ -325,6 +325,7 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 		EnvID:                           envID,
 		Config:                          cfg,
 		Regions:                         defaultRegions(platform),
+		PreloadedImages:                 preloadedImages(platform),
 		DefaultAuditFilter:              defaultAuditFilter,
 		OSUser:                          osUser,
 		DockerDefaultPmmExternalPort:    dockerDefaultPmmExternalPort,
@@ -1182,11 +1183,7 @@ func apiImagesHandler(w http.ResponseWriter, r *http.Request) {
 	if region == "" {
 		region = r.URL.Query().Get("location")
 	}
-	images, err := getCloudImages(platform, region)
-	if err != nil {
-		slog.Warn("cloud images fetch failed", "platform", platform, "region", region, "err", err)
-		images = map[string][]CloudImage{}
-	}
+	images := getCloudImages(platform, region, r.URL.Query().Get("refresh") == "1")
 	writeJSON(w, 200, map[string]interface{}{"images": images})
 }
 
@@ -1433,6 +1430,38 @@ func validateMongoDB9Backup(kind, name, release string, enabled bool) error {
 	major, _, _, _, _ := parseMongoVersion(release)
 	if enabled && major >= 9 {
 		return fmt.Errorf("%s %q: PBM does not yet support MongoDB 9.0 backup/restore; disable PBM for this release", kind, name)
+	}
+	return nil
+}
+
+// validateBackupBucketConfig ensures that when an existing bucket is used for
+// PBM on AWS/GCP/Azure, the credentials needed to access it are provided.
+func validateBackupBucketConfig(platform string, cfg Config) error {
+	if platform != "aws" && platform != "gcp" && platform != "azure" {
+		return nil
+	}
+	if boolDefault(cfg.CreateBackupBucket, true) || strings.TrimSpace(cfg.ExistingBucketName) == "" {
+		return nil
+	}
+	missing := []string{}
+	switch platform {
+	case "aws", "gcp":
+		if strings.TrimSpace(cfg.ExistingBucketAccessKey) == "" {
+			missing = append(missing, "access key")
+		}
+		if cfg.ExistingBucketSecretKey == "" {
+			missing = append(missing, "secret key")
+		}
+	case "azure":
+		if strings.TrimSpace(cfg.ExistingStorageAccount) == "" {
+			missing = append(missing, "storage account")
+		}
+		if cfg.ExistingBucketSecretKey == "" {
+			missing = append(missing, "storage account key")
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("existing backup bucket %q requires: %s", cfg.ExistingBucketName, strings.Join(missing, ", "))
 	}
 	return nil
 }
@@ -1730,6 +1759,15 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := validateVaultConfig(payload.Platform, payload.Config); err != nil {
 		jsonError(w, 400, err.Error())
+		return
+	}
+	if err := validateBackupBucketConfig(payload.Platform, payload.Config); err != nil {
+		jsonError(w, 400, err.Error())
+		return
+	}
+	normalizeHardwareConfig(payload.Platform, &payload.Config)
+	if errs := validateHardwareConfig(payload.Platform, payload.Config); len(errs) > 0 {
+		jsonError(w, 400, "invalid compute & storage settings: "+strings.Join(errs, "; "))
 		return
 	}
 

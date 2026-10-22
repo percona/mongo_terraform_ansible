@@ -78,9 +78,29 @@ var funcMap = template.FuncMap{
 		b, err := json.Marshal(v)
 		return template.JS(b), err
 	},
-	"upper":     strings.ToUpper,
-	"hasPrefix": strings.HasPrefix,
-	"join":      strings.Join,
+	"upper":         strings.ToUpper,
+	"hasPrefix":     strings.HasPrefix,
+	"join":          strings.Join,
+	"defaultRegion": func(platform string) string { return defaultCloudRegion[platform] },
+	// Benchmark hardware tunables (see hardware.go).
+	"hardwarePresets":    hardwarePresets,
+	"hardwareFormFields": func() []string { return hardwareFormFields },
+	"diskTypes":          diskTypesFor,
+	"machineTypes":       suggestedMachineTypes,
+	"cpuPlatforms":       func() []string { return gcpCPUPlatforms },
+	// Render a label/tag map as "key=value" lines (sorted) for a textarea.
+	"labelsText": func(m map[string]string) string {
+		keys := make([]string, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		lines := make([]string, len(keys))
+		for i, k := range keys {
+			lines[i] = k + "=" + m[k]
+		}
+		return strings.Join(lines, "\n")
+	},
 	"contains": func(values []string, value string) bool {
 		for _, candidate := range values {
 			if candidate == value {
@@ -578,6 +598,7 @@ func main() {
 	slog.Info("starting PSMDB Sandbox", "repoDir", repoDir, "dataDir", filepath.Dir(stateFile))
 
 	go prefetchVersions()
+	startImagePrefetch()
 
 	mux := http.NewServeMux()
 
@@ -593,6 +614,8 @@ func main() {
 	mux.HandleFunc("GET /api/docker-tags", apiDockerTagsHandler)
 	mux.HandleFunc("GET /api/regions/{platform}", apiRegionsHandler)
 	mux.HandleFunc("GET /api/images/{platform}", apiImagesHandler)
+	mux.HandleFunc("GET /api/hardware/presets", apiHardwarePresetsHandler)
+	mux.HandleFunc("POST /api/hardware/validate", apiHardwareValidateHandler)
 	mux.HandleFunc("GET /api/prerequisites/{platform}", apiPrerequisitesHandler)
 	mux.HandleFunc("GET /api/settings", apiSettingsHandler)
 	mux.HandleFunc("POST /api/settings", apiSettingsHandler)

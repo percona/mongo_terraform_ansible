@@ -303,6 +303,23 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			}
 
 			// Backup
+			if platform == "aws" || platform == "gcp" || platform == "azure" {
+				createBucket := boolDefault(cfg.CreateBackupBucket, true)
+				writeVar("create_backup_bucket", createBucket)
+				if !createBucket && strings.TrimSpace(cfg.ExistingBucketName) != "" {
+					writeOptStr("existing_bucket_name", strings.TrimSpace(cfg.ExistingBucketName))
+					switch platform {
+					case "aws":
+						writeOptStr("existing_bucket_region", strings.TrimSpace(cfg.ExistingBucketRegion))
+						writeOptStr("existing_bucket_access_key", strings.TrimSpace(cfg.ExistingBucketAccessKey))
+					case "gcp":
+						writeOptStr("existing_bucket_access_key", strings.TrimSpace(cfg.ExistingBucketAccessKey))
+					case "azure":
+						writeOptStr("existing_storage_account", strings.TrimSpace(cfg.ExistingStorageAccount))
+					}
+					writeOptStr("existing_bucket_secret_key", cfg.ExistingBucketSecretKey)
+				}
+			}
 			writeOptStr("default_bucket_name", cfg.DefaultBucketName)
 			writeOptStr("backup_retention", func() string {
 				if cfg.BackupRetention != 0 {
@@ -321,6 +338,10 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			writeOptStr("arbiter_type", cfg.ArbiterType)
 			writeOptStr("replsetsvr_type", cfg.ReplsetSvrType)
 			writeOptInt("replsetsvr_volume_size", cfg.ReplsetSvrVolumeSize)
+			writeOptStr("ycsb_type", cfg.YcsbType)
+			if platform == "aws" || platform == "gcp" {
+				writeHardwareTfvars(platform, cfg, write, writeVar)
+			}
 
 			regionKey := cfg.Region
 			if platform == "azure" {

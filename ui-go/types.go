@@ -221,8 +221,20 @@ type Config struct {
 	ExtensionsImage  string `json:"extensions_image,omitempty"`
 
 	// Backup
-	DefaultBucketName string `json:"default_bucket_name,omitempty"`
-	BackupRetention   int    `json:"backup_retention,omitempty"`
+	// CreateBackupBucket controls whether a cloud bucket (S3/GCS/Azure Blob) is
+	// created for PBM backups on AWS/GCP/Azure. nil means true (legacy default).
+	CreateBackupBucket *bool  `json:"create_backup_bucket,omitempty"`
+	DefaultBucketName  string `json:"default_bucket_name,omitempty"`
+	BackupRetention    int    `json:"backup_retention,omitempty"`
+	// Existing bucket used for PBM when CreateBackupBucket is false.
+	// AWS: S3 bucket + region + access key ID/secret.
+	// GCP: GCS bucket + HMAC access ID/secret.
+	// Azure: blob container + storage account + account key (secret).
+	ExistingBucketName      string `json:"existing_bucket_name,omitempty"`
+	ExistingBucketRegion    string `json:"existing_bucket_region,omitempty"`
+	ExistingBucketAccessKey string `json:"existing_bucket_access_key,omitempty"`
+	ExistingBucketSecretKey string `json:"existing_bucket_secret_key,omitempty"`
+	ExistingStorageAccount  string `json:"existing_storage_account,omitempty"`
 
 	// Machine image / AMI selected for cloud instances.
 	MachineImage string `json:"machine_image,omitempty"`
@@ -269,6 +281,22 @@ type Config struct {
 	ReplsetSvrType       string `json:"replsetsvr_type,omitempty"`
 	ReplsetSvrVolumeSize int    `json:"replsetsvr_volume_size,omitempty"`
 	DataDiskType         string `json:"data_disk_type,omitempty"`
+
+	// Benchmark hardware tunables (AWS / GCP). Empty values keep Terraform defaults.
+	HardwarePreset     string            `json:"hardware_preset,omitempty"`
+	DataDiskIops       int               `json:"data_disk_iops,omitempty"`
+	DataDiskThroughput int               `json:"data_disk_throughput,omitempty"`
+	ConfigsvrDiskType  string            `json:"configsvr_disk_type,omitempty"`
+	BootDiskType       string            `json:"boot_disk_type,omitempty"`
+	BootDiskSize       int               `json:"boot_disk_size,omitempty"`
+	MinCpuPlatform     string            `json:"min_cpu_platform,omitempty"` // GCP only
+	NicType            string            `json:"nic_type,omitempty"`         // GCP only
+	Tier1Networking    bool              `json:"tier1_networking,omitempty"` // GCP only
+	ZoneMode           string            `json:"zone_mode,omitempty"`        // GCP only: spread | single
+	Zones              []string          `json:"zones,omitempty"`            // GCP only
+	CompactPlacement   bool              `json:"compact_placement,omitempty"`
+	YcsbType           string            `json:"ycsb_type,omitempty"`
+	ResourceLabels     map[string]string `json:"labels,omitempty"`
 
 	// Docker networking
 	NetworkName string `json:"network_name,omitempty"`
@@ -504,14 +532,17 @@ type NewEnvData struct {
 }
 
 type ConfigureData struct {
-	Platform                        string
-	EnvID                           string
-	Config                          Config
-	Regions                         []string
-	DefaultAuditFilter              string
-	OSUser                          string // current OS user, used as SSH user default
-	DockerDefaultPmmExternalPort    int
-	DefaultImages                   DefaultImages
+	Platform                     string
+	EnvID                        string
+	Config                       Config
+	Regions                      []string
+	DefaultAuditFilter           string
+	OSUser                       string // current OS user, used as SSH user default
+	DockerDefaultPmmExternalPort int
+	DefaultImages                DefaultImages
+	// Machine images already cached server-side, keyed by region (AWS/GCP).
+	PreloadedImages                 map[string]map[string][]CloudImage
+	DefaultRegion                   string
 	DockerDefaultSeaweedFSPort      int
 	DockerDefaultSeaweedFSAdminPort int
 	PSMDBVersions                   []string

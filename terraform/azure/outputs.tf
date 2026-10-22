@@ -113,10 +113,11 @@ resource "local_file" "AnsibleInventoryCluster" {
       pcsm_version         = var.pcsm_version
       pcsm_is_source       = var.enable_pcsm && var.pcsm_source_kind == "cluster" && var.pcsm_source_name == each.key
       pcsm_is_target       = var.enable_pcsm && var.pcsm_target_kind == "cluster" && var.pcsm_target_name == each.key
-      bucket               = azurerm_storage_container.mongo_backups_container.name
-      endpointUrl          = local.storage_endpoint
-      key                  = azurerm_storage_account.mongo_backups.primary_access_key
-      account              = azurerm_storage_account.mongo_backups.name
+      use_backup_storage   = local.use_backup_storage
+      bucket               = local.backup_bucket
+      endpointUrl          = local.backup_endpoint
+      key                  = local.backup_account_key
+      account              = local.backup_account
       mongodb_distribution = var.clusters[each.key].mongodb_distribution != "" ? var.clusters[each.key].mongodb_distribution : var.mongodb_distribution
       mongo_release        = var.clusters[each.key].mongo_release != "" ? var.clusters[each.key].mongo_release : var.mongo_release
       mongo_version        = var.clusters[each.key].mongo_version != "" ? var.clusters[each.key].mongo_version : var.mongo_version
@@ -216,10 +217,11 @@ resource "local_file" "AnsibleInventoryRS" {
       pcsm_version         = var.pcsm_version
       pcsm_is_source       = var.enable_pcsm && var.pcsm_source_kind == "replset" && var.pcsm_source_name == each.key
       pcsm_is_target       = var.enable_pcsm && var.pcsm_target_kind == "replset" && var.pcsm_target_name == each.key
-      bucket               = azurerm_storage_container.mongo_backups_container.name
-      endpointUrl          = local.storage_endpoint
-      key                  = azurerm_storage_account.mongo_backups.primary_access_key
-      account              = azurerm_storage_account.mongo_backups.name
+      use_backup_storage   = local.use_backup_storage
+      bucket               = local.backup_bucket
+      endpointUrl          = local.backup_endpoint
+      key                  = local.backup_account_key
+      account              = local.backup_account
       mongodb_distribution = var.replsets[each.key].mongodb_distribution != "" ? var.replsets[each.key].mongodb_distribution : var.mongodb_distribution
       mongo_release        = var.replsets[each.key].mongo_release != "" ? var.replsets[each.key].mongo_release : var.mongo_release
       mongo_version        = var.replsets[each.key].mongo_version != "" ? var.replsets[each.key].mongo_version : var.mongo_version

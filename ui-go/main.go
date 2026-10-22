@@ -143,6 +143,10 @@ var funcMap = template.FuncMap{
 	},
 	// Return *b if non-nil, otherwise def.
 	"boolDefault": boolDefault,
+	// True when PBM backup storage is enabled (AWS/GCP/Azure).
+	"backupEnabled": backupEnabled,
+	// CHAOS backup storage: "", "seaweedfs" or "existing".
+	"chaosBackupStorage": chaosBackupStorage,
 	// Return true when b is explicitly set to false.
 	"ptrBoolFalse": func(b *bool) bool {
 		return b != nil && !*b

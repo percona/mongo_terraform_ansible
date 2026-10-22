@@ -1517,29 +1517,73 @@
   </section>
   {{end}}
 
-  <!-- ──────────── SeaweedFS VM (CHAOS only) ──────────── -->
+  <!-- ──────────── Backup (CHAOS only) ──────────── -->
   {{if eq $p "chaos"}}
+  {{$chaosStorage := chaosBackupStorage .Config}}
+  {{$backupOn := ne $chaosStorage ""}}
+  {{$useSeaweedFS := boolDefault .Config.CreateBackupBucket true}}
   {{$seaweedfsDetailsConfigured := or .Config.SeaweedFSAccessKey .Config.SeaweedFSSecretKey .Config.DefaultBucketName .Config.SeaweedFSPort .Config.SeaweedFSAdminPort .Config.BackupRetention .Config.SeaweedFSCpuCores .Config.SeaweedFSMemoryGb .Config.SeaweedFSVolumeSize}}
   <section class="form-section">
-    <div class="section-header">
-      <h2>SeaweedFS Backup Storage VM</h2>
-      <button type="button" class="btn btn-outline btn-sm"
-              id="seaweedfs-details-toggle"
-              onclick="toggleSeaweedFSDetails(this)"
-              {{if not (boolDefault .Config.EnableSeaweedFS false)}}style="display:none"{{end}}
-              >{{if $seaweedfsDetailsConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
-    </div>
-    <!-- Enable SeaweedFS checkbox always visible, outside the collapsible body -->
+    <h2>Backup (PBM)</h2>
     <div class="form-row" style="margin-bottom:0.5rem">
       <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" id="enable_seaweedfs" name="enable_seaweedfs" value="true"
-                      {{if boolDefault .Config.EnableSeaweedFS false}}checked{{end}}>
-          Deploy SeaweedFS backup storage VM <span class="field-tip" data-tip="Deploy a dedicated SeaweedFS S3-compatible storage VM for backups.">ⓘ</span></label>
+        <label><input type="checkbox" id="enable_backup" name="enable_backup" value="true"
+                      {{if $backupOn}}checked{{end}}
+                      onchange="toggleBackupSettings()">
+          Enable backups <span class="field-tip" data-tip="Configure PBM backup storage and install the PBM agent on every cluster and replica set. Unticking turns the PBM agent off everywhere.">ⓘ</span></label>
       </div>
     </div>
-    <div id="seaweedfs-vm-body" {{if not (boolDefault .Config.EnableSeaweedFS false)}}style="display:none"{{end}}>
+    <div id="backup-settings-body" {{if not $backupOn}}style="display:none"{{end}}>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="backup_bucket_mode">Backup storage <span class="field-tip" data-tip="Deploy a dedicated SeaweedFS S3-compatible storage VM for backups, or point PBM at an existing S3-compatible bucket.">ⓘ</span></label>
+        <select id="backup_bucket_mode" name="backup_bucket_mode" onchange="toggleBackupSettings()">
+          <option value="seaweedfs" {{if $useSeaweedFS}}selected{{end}}>Deploy a SeaweedFS VM</option>
+          <option value="existing" {{if not $useSeaweedFS}}selected{{end}}>Use an existing bucket</option>
+        </select>
+      </div>
+    </div>
+    <div id="existing-bucket-body" data-backup-mode="existing" {{if $useSeaweedFS}}style="display:none"{{end}}>
+      <span class="subsection-title">Existing Bucket</span>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="existing_bucket_endpoint">Endpoint URL <span class="field-tip" data-tip="S3-compatible endpoint, e.g. https://minio.example.com:9000. Leave empty for AWS S3.">ⓘ</span></label>
+          <input type="text" id="existing_bucket_endpoint" name="existing_bucket_endpoint"
+                 value="{{.Config.ExistingBucketEndpoint}}" placeholder="AWS S3 when empty" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="existing_bucket_name">Bucket Name <span class="field-tip" data-tip="Exact name of the existing bucket (no prefix is added).">ⓘ</span></label>
+          <input type="text" id="existing_bucket_name" name="existing_bucket_name"
+                 value="{{.Config.ExistingBucketName}}" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="existing_bucket_region">Bucket Region <span class="field-tip" data-tip="Region of the existing bucket. Defaults to us-east-1 when empty.">ⓘ</span></label>
+          <input type="text" id="existing_bucket_region" name="existing_bucket_region"
+                 value="{{.Config.ExistingBucketRegion}}" placeholder="us-east-1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="existing_bucket_access_key">Access Key ID <span class="field-tip" data-tip="Access key ID with read, write, list and delete access to the bucket.">ⓘ</span></label>
+          <input type="text" id="existing_bucket_access_key" name="existing_bucket_access_key"
+                 value="{{.Config.ExistingBucketAccessKey}}" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="existing_bucket_secret_key">Secret Access Key <span class="field-tip" data-tip="Secret used by PBM to access the bucket. Stored in the environment's tfvars and Ansible inventory.">ⓘ</span></label>
+          <input type="password" id="existing_bucket_secret_key" name="existing_bucket_secret_key"
+                 value="{{.Config.ExistingBucketSecretKey}}" autocomplete="new-password">
+        </div>
+      </div>
+    </div>
+    <div id="seaweedfs-vm-body" data-backup-mode="seaweedfs" {{if not $useSeaweedFS}}style="display:none"{{end}}>
+      <div class="subsection-header">
+        <span class="subsection-title">SeaweedFS VM</span>
+        <button type="button" class="btn btn-outline btn-sm"
+                id="seaweedfs-details-toggle"
+                onclick="toggleSeaweedFSDetails(this)"
+                >{{if $seaweedfsDetailsConfigured}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+      </div>
       <div id="seaweedfs-details-body" {{if not $seaweedfsDetailsConfigured}}style="display:none"{{end}}>
-        <span class="subsection-title">VM Details</span>
         <div class="form-row">
           <div class="form-group">
             <label for="seaweedfs_access_key">SeaweedFS Access Key <span class="field-tip" data-tip="Access key for the SeaweedFS server (passed to Ansible).">ⓘ</span></label>
@@ -1616,6 +1660,7 @@
         </div>
       </div>
     </div>
+    </div><!-- #backup-settings-body -->
   </section>
   {{end}}
 
@@ -1735,19 +1780,29 @@
   {{if and (ne $p "docker") (ne $p "chaos")}}
   <section class="form-section">
     <h2>Backup (PBM)</h2>
+    {{$backupOn := backupEnabled .Config}}
     {{$createBucket := boolDefault .Config.CreateBackupBucket true}}
-    {{if or (eq $p "aws") (eq $p "gcp") (eq $p "azure")}}
     <div class="form-row" style="margin-bottom:0.5rem">
       <div class="form-group form-group-checkbox">
-        <label><input type="checkbox" id="create_backup_bucket" name="create_backup_bucket" value="true"
-                      {{if $createBucket}}checked{{end}}
-                      onchange="document.getElementById('backup-bucket-body').style.display = this.checked ? '' : 'none'; document.getElementById('existing-bucket-body').style.display = this.checked ? 'none' : ''">
-          Create backup bucket <span class="field-tip" data-tip="Create a new cloud storage bucket (S3 / GCS / Azure Blob) with credentials for PBM backups. When unchecked, you can point PBM at an existing bucket instead, or leave the bucket name empty to skip cloud backup storage.">ⓘ</span></label>
+        <label><input type="checkbox" id="enable_backup" name="enable_backup" value="true"
+                      {{if $backupOn}}checked{{end}}
+                      onchange="toggleBackupSettings()">
+          Enable backups <span class="field-tip" data-tip="Configure PBM backup storage and install the PBM agent on every cluster and replica set. Unticking turns the PBM agent off everywhere.">ⓘ</span></label>
       </div>
     </div>
-    <div id="existing-bucket-body" {{if $createBucket}}style="display:none"{{end}}>
-      <span class="subsection-title">Existing Bucket</span>
-      <p class="hint" style="margin:0.25rem 0 0.5rem">Leave the {{if eq $p "azure"}}container{{else}}bucket{{end}} name empty to deploy without cloud backup storage.</p>
+    <div id="backup-settings-body" {{if not $backupOn}}style="display:none"{{end}}>
+    {{if or (eq $p "aws") (eq $p "gcp") (eq $p "azure")}}
+    <div class="form-row">
+      <div class="form-group">
+        <label for="backup_bucket_mode">Backup storage <span class="field-tip" data-tip="Create a new cloud storage {{if eq $p "azure"}}container{{else}}bucket{{end}} ({{if eq $p "aws"}}S3{{else if eq $p "gcp"}}GCS{{else}}Azure Blob{{end}}) with credentials for PBM, or point PBM at an existing one.">ⓘ</span></label>
+        <select id="backup_bucket_mode" name="backup_bucket_mode" onchange="toggleBackupSettings()">
+          <option value="create" {{if $createBucket}}selected{{end}}>Create a new {{if eq $p "azure"}}container{{else}}bucket{{end}}</option>
+          <option value="existing" {{if not $createBucket}}selected{{end}}>Use an existing {{if eq $p "azure"}}container{{else}}bucket{{end}}</option>
+        </select>
+      </div>
+    </div>
+    <div id="existing-bucket-body" data-backup-mode="existing" {{if $createBucket}}style="display:none"{{end}}>
+      <span class="subsection-title">Existing {{if eq $p "azure"}}Container{{else}}Bucket{{end}}</span>
       <div class="form-row">
         <div class="form-group">
           <label for="existing_bucket_name">{{if eq $p "azure"}}Container Name{{else}}Bucket Name{{end}} <span class="field-tip" data-tip="Exact name of the existing {{if eq $p "aws"}}S3 bucket{{else if eq $p "gcp"}}GCS bucket{{else}}Azure Blob container{{end}} (no prefix is added).">ⓘ</span></label>
@@ -1785,7 +1840,7 @@
       </div>
     </div>
     {{end}}
-    <div id="backup-bucket-body" class="form-row" {{if not $createBucket}}style="display:none"{{end}}>
+    <div id="backup-bucket-body" class="form-row" data-backup-mode="create" {{if not $createBucket}}style="display:none"{{end}}>
       <div class="form-group">
         <label for="default_bucket_name">Bucket / Container Name <span class="field-tip" data-tip="S3 bucket (AWS/CHAOS) or Azure Blob container name used by PBM for backup storage.">ⓘ</span></label>
         <input type="text" id="default_bucket_name" name="default_bucket_name"
@@ -1797,6 +1852,7 @@
                value="{{intDefault .Config.BackupRetention 2}}" min="1">
       </div>
     </div>
+    </div><!-- #backup-settings-body -->
   </section>
   {{end}}
 
@@ -2272,15 +2328,16 @@ function toggleDockerSingleServer(containerId, checkbox, addFn) {
 
 // ──────────── Option dependencies ────────────
 // Some options only work when another one is on: PMM agents and PMM clients
-// without MongoDB need a PMM server, PBM agents need SeaweedFS (Docker, CHAOS),
-// TLS needs the certificate authority, and a CA on the PMM server needs PMM.
+// without MongoDB need a PMM server, PBM agents need SeaweedFS (Docker) or the
+// global "Enable backups" toggle (AWS/GCP/Azure/CHAOS), TLS needs the
+// certificate authority, and a CA on the PMM server needs PMM.
 // Each rule below names the "provider" checkbox and the options that need it.
 //   - Turning a dependent on turns the provider on.
 //   - Turning the provider off turns every dependent off.
 //   - With autoRemove, the provider turns off when nothing needs it anymore
-//     (Docker servers only; a cloud PMM server is useful on its own).
+//     (Docker servers and backups; a cloud PMM server is useful on its own).
 //   - With tickDependentsOnEnable, turning the provider on turns on every
-//     dependent checkbox (Docker monitoring/backup toggles).
+//     dependent checkbox (Docker monitoring/backup toggles, global backups).
 // The Go and Terraform validations still run on save as a safety net.
 const TOPOLOGY_PREFIXES = ['cluster', 'replset'];
 
@@ -2370,13 +2427,25 @@ function dependencyRules() {
       ],
     },
   ];
-  if (docker || PLATFORM === 'chaos') {
+  if (docker) {
     rules.push({
       id: 'seaweedfs',
       label: 'SeaweedFS backup storage',
-      provider: () => document.getElementById(docker ? 'enable-seaweedfs-docker' : 'enable_seaweedfs'),
-      autoRemove: docker,
-      tickDependentsOnEnable: docker,
+      provider: () => document.getElementById('enable-seaweedfs-docker'),
+      autoRemove: true,
+      tickDependentsOnEnable: true,
+      dependents: [checkboxDependent('enable_pbm', 'PBM agent')],
+    });
+  }
+  if (['aws', 'gcp', 'azure', 'chaos'].includes(PLATFORM)) {
+    // Global "Enable backups" toggle: ticking it installs the PBM agent on
+    // every cluster/replica set; unticking the last PBM agent turns it off.
+    rules.push({
+      id: 'backup',
+      label: 'backup storage',
+      provider: () => document.getElementById('enable_backup'),
+      autoRemove: true,
+      tickDependentsOnEnable: true,
       dependents: [checkboxDependent('enable_pbm', 'PBM agent')],
     });
   }
@@ -2677,6 +2746,20 @@ function refreshOptionConflicts() {
   }
 }
 
+// Backup (PBM) section on AWS/GCP/Azure/CHAOS: show the storage settings only
+// when backups are enabled, and the fields for the chosen storage mode
+// (create / existing on cloud, seaweedfs / existing on CHAOS).
+function toggleBackupSettings() {
+  const enabled = !!document.getElementById('enable_backup')?.checked;
+  const body = document.getElementById('backup-settings-body');
+  if (body) body.style.display = enabled ? '' : 'none';
+  const mode = document.getElementById('backup_bucket_mode');
+  if (!mode) return;
+  document.querySelectorAll('[data-backup-mode]').forEach(el => {
+    el.style.display = el.dataset.backupMode === mode.value ? '' : 'none';
+  });
+}
+
 function onDockerPmmFeatureToggle(checkbox) {
   toggleImageGroup(checkbox, 'pmm');
 }
@@ -2766,26 +2849,6 @@ function togglePackageBlock(btn) {
   body.style.display = hidden ? '' : 'none';
   btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
 }
-
-// Toggle the SeaweedFS VM body and Customize button when enable_seaweedfs checkbox changes.
-(function() {
-  const cb = document.getElementById('enable_seaweedfs');
-  if (!cb) return;
-  const body = document.getElementById('seaweedfs-vm-body');
-  const toggleBtn = document.getElementById('seaweedfs-details-toggle');
-  cb.addEventListener('change', () => {
-    if (body) body.style.display = cb.checked ? '' : 'none';
-    if (toggleBtn) {
-      toggleBtn.style.display = cb.checked ? '' : 'none';
-      // Collapse the customize body when SeaweedFS is disabled.
-      if (!cb.checked) {
-        const detailsBody = document.getElementById('seaweedfs-details-body');
-        if (detailsBody) detailsBody.style.display = 'none';
-        toggleBtn.textContent = '▼ Customize';
-      }
-    }
-  });
-})();
 
 function toggleSeaweedFSDetails(btn) {
   const body = document.getElementById('seaweedfs-details-body');
@@ -4840,36 +4903,42 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     // user explicitly unchecked it; when checked send true so it's stored.
     config.enable_pmm = fd.has('enable_pmm');
   }
-  if (PLATFORM === 'chaos') {
-    config.enable_seaweedfs = fd.has('enable_seaweedfs');
-  }
-  if (['aws', 'gcp', 'azure'].includes(PLATFORM)) {
-    config.create_backup_bucket = fd.has('create_backup_bucket');
-    if (!config.create_backup_bucket) {
+  if (['aws', 'gcp', 'azure', 'chaos'].includes(PLATFORM)) {
+    config.enable_backup = fd.has('enable_backup');
+    // "create" (cloud bucket) or "seaweedfs" (CHAOS VM) vs. "existing".
+    config.create_backup_bucket = (fd.get('backup_bucket_mode') || 'create') !== 'existing';
+    if (PLATFORM === 'chaos') {
+      config.enable_seaweedfs = config.enable_backup && config.create_backup_bucket;
+    }
+    if (config.enable_backup && !config.create_backup_bucket) {
       const val = name => (fd.get(name) || '').trim();
-      const existingName = val('existing_bucket_name');
-      if (existingName) {
-        config.existing_bucket_name = existingName;
-        const secret = fd.get('existing_bucket_secret_key') || '';
-        const missing = [];
-        if (PLATFORM === 'azure') {
-          config.existing_storage_account = val('existing_storage_account');
-          if (!config.existing_storage_account) missing.push('Storage Account');
-          if (!secret) missing.push('Storage Account Key');
-        } else {
-          config.existing_bucket_access_key = val('existing_bucket_access_key');
-          if (PLATFORM === 'aws') config.existing_bucket_region = val('existing_bucket_region');
-          if (!config.existing_bucket_access_key) missing.push(PLATFORM === 'gcp' ? 'HMAC Access ID' : 'Access Key ID');
-          if (!secret) missing.push(PLATFORM === 'gcp' ? 'HMAC Secret' : 'Secret Access Key');
+      const secret = fd.get('existing_bucket_secret_key') || '';
+      const missing = [];
+      config.existing_bucket_name = val('existing_bucket_name');
+      if (!config.existing_bucket_name) missing.push(PLATFORM === 'azure' ? 'Container Name' : 'Bucket Name');
+      if (PLATFORM === 'azure') {
+        config.existing_storage_account = val('existing_storage_account');
+        if (!config.existing_storage_account) missing.push('Storage Account');
+        if (!secret) missing.push('Storage Account Key');
+      } else {
+        config.existing_bucket_access_key = val('existing_bucket_access_key');
+        if (PLATFORM === 'aws' || PLATFORM === 'chaos') config.existing_bucket_region = val('existing_bucket_region');
+        if (PLATFORM === 'chaos') {
+          config.existing_bucket_endpoint = val('existing_bucket_endpoint');
+          if (config.existing_bucket_endpoint && !/^https?:\/\//.test(config.existing_bucket_endpoint)) {
+            missing.push('Endpoint URL starting with http:// or https://');
+          }
         }
-        if (missing.length) {
-          alert('Existing backup bucket requires: ' + missing.join(', '));
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Save & Configure';
-          return;
-        }
-        config.existing_bucket_secret_key = secret;
+        if (!config.existing_bucket_access_key) missing.push(PLATFORM === 'gcp' ? 'HMAC Access ID' : 'Access Key ID');
+        if (!secret) missing.push(PLATFORM === 'gcp' ? 'HMAC Secret' : 'Secret Access Key');
       }
+      if (missing.length) {
+        alert(`Existing backup ${PLATFORM === 'azure' ? 'container' : 'bucket'} requires: ${missing.join(', ')}`);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Save & Configure';
+        return;
+      }
+      config.existing_bucket_secret_key = secret;
     }
   }
 

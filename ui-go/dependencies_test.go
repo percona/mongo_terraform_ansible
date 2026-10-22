@@ -6,9 +6,9 @@ import (
 )
 
 // The configure page wires option dependencies (PMM agent → PMM server,
-// PBM agent → SeaweedFS, TLS → CA, CA on PMM → PMM server) through one
-// registry. Every element the registry looks up must exist on each platform,
-// otherwise a rule silently stops working.
+// PBM agent → SeaweedFS (Docker) or the global backup toggle, TLS → CA,
+// CA on PMM → PMM server) through one registry. Every element the registry
+// looks up must exist on each platform, otherwise a rule silently stops working.
 func TestConfigureDependencyProvidersExist(t *testing.T) {
 	cfg := Config{
 		Clusters: map[string]ClusterConfig{"cl01": {}},
@@ -16,10 +16,10 @@ func TestConfigureDependencyProvidersExist(t *testing.T) {
 	}
 	want := map[string][]string{
 		"docker": {`id="enable-pmm-docker"`, `id="enable-seaweedfs-docker"`, `id="bare-clients-container"`, `id="vault-psmdb-warning"`},
-		"chaos":  {`id="enable_pmm"`, `id="enable_seaweedfs"`, `id="enable_ca"`, `id="ca_placement"`, `id="bare-clients-container"`, `id="vault-psmdb-warning"`},
-		"aws":    {`id="enable_pmm"`, `id="enable_ca"`, `id="ca_placement"`, `id="vault-psmdb-warning"`},
-		"gcp":    {`id="enable_pmm"`, `id="enable_ca"`, `id="ca_placement"`, `id="vault-psmdb-warning"`},
-		"azure":  {`id="enable_pmm"`, `id="enable_ca"`, `id="ca_placement"`, `id="vault-psmdb-warning"`},
+		"chaos":  {`id="enable_pmm"`, `id="enable_backup"`, `id="enable_ca"`, `id="ca_placement"`, `id="bare-clients-container"`, `id="vault-psmdb-warning"`},
+		"aws":    {`id="enable_pmm"`, `id="enable_backup"`, `id="enable_ca"`, `id="ca_placement"`, `id="vault-psmdb-warning"`},
+		"gcp":    {`id="enable_pmm"`, `id="enable_backup"`, `id="enable_ca"`, `id="ca_placement"`, `id="vault-psmdb-warning"`},
+		"azure":  {`id="enable_pmm"`, `id="enable_backup"`, `id="enable_ca"`, `id="ca_placement"`, `id="vault-psmdb-warning"`},
 	}
 	for platform, ids := range want {
 		page := renderConfigure(t, ConfigureData{
@@ -63,7 +63,7 @@ func TestConfigureDependencyRegistryReferencesKnownIDs(t *testing.T) {
 		t.Fatal("dependencyRules() not found")
 	}
 	registry := page[start:end]
-	for _, id := range []string{"enable-pmm-docker", "enable_pmm", "enable-seaweedfs-docker", "enable_seaweedfs", "enable_ca"} {
+	for _, id := range []string{"enable-pmm-docker", "enable_pmm", "enable-seaweedfs-docker", "enable_backup", "enable_ca"} {
 		if !strings.Contains(registry, "'"+id+"'") {
 			t.Errorf("registry no longer references %q; update the dependency tests", id)
 		}

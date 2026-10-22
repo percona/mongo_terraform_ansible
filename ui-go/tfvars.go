@@ -262,10 +262,18 @@ func writeTfvars(envID, platform string, cfg Config) error {
 				writeVar("ca_memory_gb", intDefault(cfg.CAMemoryGb, 4))
 				writeVar("ca_volume_size", intDefault(cfg.CAVolumeSize, 20))
 			}
-			// SeaweedFS
-			enableSeaweedFS := cfg.EnableSeaweedFS != nil && *cfg.EnableSeaweedFS
-			if cfg.EnableSeaweedFS != nil {
-				writeVar("enable_seaweedfs", *cfg.EnableSeaweedFS)
+			// Backup storage: SeaweedFS VM or an existing S3-compatible bucket.
+			backupStorage := chaosBackupStorage(cfg)
+			enableSeaweedFS := backupStorage == chaosBackupSeaweedFS
+			if cfg.EnableSeaweedFS != nil || cfg.EnableBackup != nil {
+				writeVar("enable_seaweedfs", enableSeaweedFS)
+			}
+			if backupStorage == chaosBackupExisting && strings.TrimSpace(cfg.ExistingBucketName) != "" {
+				writeOptStr("existing_bucket_name", strings.TrimSpace(cfg.ExistingBucketName))
+				writeOptStr("existing_bucket_endpoint", strings.TrimSpace(cfg.ExistingBucketEndpoint))
+				writeOptStr("existing_bucket_region", strings.TrimSpace(cfg.ExistingBucketRegion))
+				writeOptStr("existing_bucket_access_key", strings.TrimSpace(cfg.ExistingBucketAccessKey))
+				writeOptStr("existing_bucket_secret_key", cfg.ExistingBucketSecretKey)
 			}
 			if enableSeaweedFS {
 				writeOptStr("seaweedfs_access_key", cfg.SeaweedFSAccessKey)
@@ -307,9 +315,10 @@ func writeTfvars(envID, platform string, cfg Config) error {
 
 			// Backup
 			if platform == "aws" || platform == "gcp" || platform == "azure" {
-				createBucket := boolDefault(cfg.CreateBackupBucket, true)
+				enabled := backupEnabled(cfg)
+				createBucket := enabled && boolDefault(cfg.CreateBackupBucket, true)
 				writeVar("create_backup_bucket", createBucket)
-				if !createBucket && strings.TrimSpace(cfg.ExistingBucketName) != "" {
+				if enabled && !createBucket && strings.TrimSpace(cfg.ExistingBucketName) != "" {
 					writeOptStr("existing_bucket_name", strings.TrimSpace(cfg.ExistingBucketName))
 					switch platform {
 					case "aws":

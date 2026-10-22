@@ -223,8 +223,14 @@ type Config struct {
 	ExtensionsImage  string `json:"extensions_image,omitempty"`
 
 	// Backup
-	// CreateBackupBucket controls whether a cloud bucket (S3/GCS/Azure Blob) is
-	// created for PBM backups on AWS/GCP/Azure. nil means true (legacy default).
+	// EnableBackup is the global PBM backup toggle on AWS/GCP/Azure/CHAOS.
+	// When off, no backup storage is created or used. nil means the legacy
+	// behaviour (see backupEnabled and chaosBackupStorage).
+	EnableBackup *bool `json:"enable_backup,omitempty"`
+	// CreateBackupBucket controls whether backup storage is created (true) or
+	// an existing bucket is used (false). On AWS/GCP/Azure "create" means a
+	// cloud bucket (S3/GCS/Azure Blob); on CHAOS it means a SeaweedFS VM.
+	// nil means true (legacy default).
 	CreateBackupBucket *bool  `json:"create_backup_bucket,omitempty"`
 	DefaultBucketName  string `json:"default_bucket_name,omitempty"`
 	BackupRetention    int    `json:"backup_retention,omitempty"`
@@ -232,7 +238,9 @@ type Config struct {
 	// AWS: S3 bucket + region + access key ID/secret.
 	// GCP: GCS bucket + HMAC access ID/secret.
 	// Azure: blob container + storage account + account key (secret).
+	// CHAOS: S3-compatible bucket + endpoint URL + region + access key ID/secret.
 	ExistingBucketName      string `json:"existing_bucket_name,omitempty"`
+	ExistingBucketEndpoint  string `json:"existing_bucket_endpoint,omitempty"`
 	ExistingBucketRegion    string `json:"existing_bucket_region,omitempty"`
 	ExistingBucketAccessKey string `json:"existing_bucket_access_key,omitempty"`
 	ExistingBucketSecretKey string `json:"existing_bucket_secret_key,omitempty"`

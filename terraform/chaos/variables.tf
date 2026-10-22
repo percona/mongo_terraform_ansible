@@ -519,6 +519,38 @@ variable "backup_retention" {
   description = "Days to keep backups in SeaweedFS bucket"
 }
 
+# Existing S3-compatible bucket, used for PBM when enable_seaweedfs = false.
+variable "existing_bucket_name" {
+  description = "Name of an existing S3-compatible bucket to use for PBM backups when enable_seaweedfs = false. Leave empty to skip backup storage."
+  type        = string
+  default     = ""
+}
+
+variable "existing_bucket_endpoint" {
+  description = "Endpoint URL of the existing bucket (e.g. https://s3.example.com:9000). Leave empty for AWS S3."
+  type        = string
+  default     = ""
+}
+
+variable "existing_bucket_region" {
+  description = "Region of the existing bucket (defaults to us-east-1)."
+  type        = string
+  default     = ""
+}
+
+variable "existing_bucket_access_key" {
+  description = "Access key ID with read/write access to the existing bucket."
+  type        = string
+  default     = ""
+}
+
+variable "existing_bucket_secret_key" {
+  description = "Secret access key for the existing bucket."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 #############
 # Instances
 #############

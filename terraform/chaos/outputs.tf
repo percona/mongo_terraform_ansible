@@ -121,12 +121,15 @@ resource "local_file" "AnsibleInventoryCluster" {
       hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
       ip_pcsm              = var.enable_pcsm ? chaos_instance.pcsm[0].ip_address : ""
       pcsm_version         = var.pcsm_version
-      bucket               = local.bucket_name
+      use_backup_storage   = local.use_backup_storage
+      storage_provider     = local.backup_storage_provider
+      bucket               = local.backup_bucket
+      region               = local.backup_region
+      endpointUrl          = local.backup_endpoint
       minio_hostname       = local.seaweedfs_host
       minio_ip             = var.enable_seaweedfs ? chaos_instance.seaweedfs[0].ip_address : ""
-      minio_port           = var.seaweedfs_port
-      access_key           = var.seaweedfs_access_key
-      secret_access_key    = var.seaweedfs_secret_key
+      access_key           = local.backup_access_key
+      secret_access_key    = local.backup_secret_key
       mongodb_distribution = var.clusters[each.key].mongodb_distribution != "" ? var.clusters[each.key].mongodb_distribution : var.mongodb_distribution
       mongo_release        = var.clusters[each.key].mongo_release != "" ? var.clusters[each.key].mongo_release : var.mongo_release
       mongo_version        = var.clusters[each.key].mongo_version != "" ? var.clusters[each.key].mongo_version : var.mongo_version
@@ -224,12 +227,15 @@ resource "local_file" "AnsibleInventoryRS" {
       hostname_plgm        = var.enable_plgm ? local.plgm_host : ""
       ip_plgm              = var.enable_plgm ? chaos_instance.plgm[0].ip_address : ""
       pcsm_version         = var.pcsm_version
-      bucket               = local.bucket_name
+      use_backup_storage   = local.use_backup_storage
+      storage_provider     = local.backup_storage_provider
+      bucket               = local.backup_bucket
+      region               = local.backup_region
+      endpointUrl          = local.backup_endpoint
       minio_hostname       = local.seaweedfs_host
       minio_ip             = var.enable_seaweedfs ? chaos_instance.seaweedfs[0].ip_address : ""
-      minio_port           = var.seaweedfs_port
-      access_key           = var.seaweedfs_access_key
-      secret_access_key    = var.seaweedfs_secret_key
+      access_key           = local.backup_access_key
+      secret_access_key    = local.backup_secret_key
       mongodb_distribution = var.replsets[each.key].mongodb_distribution != "" ? var.replsets[each.key].mongodb_distribution : var.mongodb_distribution
       mongo_release        = var.replsets[each.key].mongo_release != "" ? var.replsets[each.key].mongo_release : var.mongo_release
       mongo_version        = var.replsets[each.key].mongo_version != "" ? var.replsets[each.key].mongo_version : var.mongo_version

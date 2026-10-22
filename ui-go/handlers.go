@@ -307,6 +307,12 @@ func configureHandler(w http.ResponseWriter, r *http.Request) {
 	if platform == "chaos" && envID == "" {
 		cfg.DeleteAfterDays = 7
 	}
+	if cfg.EnableBackup == nil && envID == "" {
+		// New environments start with backups off; ticking the toggle turns on
+		// the PBM agent everywhere.
+		off := false
+		cfg.EnableBackup = &off
+	}
 	if cfg.CAPlacement == "" {
 		cfg.CAPlacement = "dedicated"
 	}
@@ -924,14 +930,91 @@ func validateMongoDB9Backup(kind, name, release string, enabled bool) error {
 	return nil
 }
 
+// backupEnabled reports whether PBM backup storage is enabled on AWS/GCP/Azure.
+// Environments saved before the global toggle existed (EnableBackup == nil)
+// keep their previous behaviour: on when a bucket is created or an existing
+// bucket is named.
+func backupEnabled(cfg Config) bool {
+	if cfg.EnableBackup != nil {
+		return *cfg.EnableBackup
+	}
+	return boolDefault(cfg.CreateBackupBucket, true) || strings.TrimSpace(cfg.ExistingBucketName) != ""
+}
+
+// CHAOS backup storage modes returned by chaosBackupStorage.
+const (
+	chaosBackupNone      = ""
+	chaosBackupSeaweedFS = "seaweedfs"
+	chaosBackupExisting  = "existing"
+)
+
+// chaosBackupStorage returns where PBM stores backups on CHAOS: a SeaweedFS
+// VM deployed with the environment, an existing S3-compatible bucket, or
+// nothing. Environments saved before the global toggle existed
+// (EnableBackup == nil) only knew the SeaweedFS checkbox.
+func chaosBackupStorage(cfg Config) string {
+	if cfg.EnableBackup == nil {
+		if boolDefault(cfg.EnableSeaweedFS, false) {
+			return chaosBackupSeaweedFS
+		}
+		return chaosBackupNone
+	}
+	if !*cfg.EnableBackup {
+		return chaosBackupNone
+	}
+	if boolDefault(cfg.CreateBackupBucket, true) {
+		return chaosBackupSeaweedFS
+	}
+	return chaosBackupExisting
+}
+
+// normalizeChaosBackup keeps the legacy EnableSeaweedFS flag in line with the
+// global backup toggle so Terraform deploys SeaweedFS only when it is used.
+func normalizeChaosBackup(cfg *Config) {
+	if cfg.EnableBackup == nil {
+		return
+	}
+	seaweedfs := chaosBackupStorage(*cfg) == chaosBackupSeaweedFS
+	cfg.EnableSeaweedFS = &seaweedfs
+}
+
 // validateBackupBucketConfig ensures that when an existing bucket is used for
-// PBM on AWS/GCP/Azure, the credentials needed to access it are provided.
+// PBM on AWS/GCP/Azure/CHAOS, its name and the credentials needed to access it
+// are provided.
 func validateBackupBucketConfig(platform string, cfg Config) error {
+	if platform == "chaos" {
+		if chaosBackupStorage(cfg) != chaosBackupExisting {
+			return nil
+		}
+		missing := []string{}
+		if strings.TrimSpace(cfg.ExistingBucketName) == "" {
+			missing = append(missing, "bucket name")
+		}
+		if strings.TrimSpace(cfg.ExistingBucketAccessKey) == "" {
+			missing = append(missing, "access key")
+		}
+		if cfg.ExistingBucketSecretKey == "" {
+			missing = append(missing, "secret key")
+		}
+		if ep := strings.TrimSpace(cfg.ExistingBucketEndpoint); ep != "" && !strings.HasPrefix(ep, "http://") && !strings.HasPrefix(ep, "https://") {
+			missing = append(missing, "endpoint URL starting with http:// or https://")
+		}
+		if len(missing) > 0 {
+			return fmt.Errorf("existing backup bucket requires: %s", strings.Join(missing, ", "))
+		}
+		return nil
+	}
 	if platform != "aws" && platform != "gcp" && platform != "azure" {
 		return nil
 	}
-	if boolDefault(cfg.CreateBackupBucket, true) || strings.TrimSpace(cfg.ExistingBucketName) == "" {
+	if !backupEnabled(cfg) || boolDefault(cfg.CreateBackupBucket, true) {
 		return nil
+	}
+	if strings.TrimSpace(cfg.ExistingBucketName) == "" {
+		if platform == "azure" {
+			return fmt.Errorf("existing backup container requires a container name")
+		}
+		return fmt.Errorf("existing backup bucket requires a bucket name")
 	}
 	missing := []string{}
 	switch platform {
@@ -1251,6 +1334,9 @@ func saveEnvironmentHandler(w http.ResponseWriter, r *http.Request) {
 	if err := validateBackupBucketConfig(payload.Platform, payload.Config); err != nil {
 		jsonError(w, 400, err.Error())
 		return
+	}
+	if payload.Platform == "chaos" {
+		normalizeChaosBackup(&payload.Config)
 	}
 	normalizeHardwareConfig(payload.Platform, &payload.Config)
 	if errs := validateHardwareConfig(payload.Platform, payload.Config); len(errs) > 0 {

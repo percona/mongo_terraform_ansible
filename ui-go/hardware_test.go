@@ -13,7 +13,7 @@ func hwTopology() Config {
 	return Config{
 		Clusters:   map[string]ClusterConfig{"cl01": {}},
 		Replsets:   map[string]ReplsetConfig{"rs01": {}},
-		EnableYcsb: true,
+		EnablePlgm: true,
 	}
 }
 
@@ -71,7 +71,7 @@ func TestValidateHardwareGCPRules(t *testing.T) {
 	}{
 		{"iops on pd-ssd", func(c *Config) { c.DataDiskType, c.DataDiskIops = "pd-ssd", 5000 }, "does not accept provisioned IOPS"},
 		{"iops out of range", func(c *Config) {
-			c.ShardsvrType, c.ReplsetSvrType, c.ConfigsvrType, c.MongosType, c.ArbiterType, c.YcsbType = "c3-standard-8", "c3-standard-8", "c3-standard-4", "c3-standard-4", "c3-standard-4", "c3-standard-4"
+			c.ShardsvrType, c.ReplsetSvrType, c.ConfigsvrType, c.MongosType, c.ArbiterType, c.PlgmType = "c3-standard-8", "c3-standard-8", "c3-standard-4", "c3-standard-4", "c3-standard-4", "c3-standard-4"
 			c.BootDiskType, c.DataDiskType, c.DataDiskIops = "pd-balanced", "hyperdisk-balanced", 1000
 		}, "IOPS must be between"},
 		{"iops per GB", func(c *Config) {
@@ -87,7 +87,7 @@ func TestValidateHardwareGCPRules(t *testing.T) {
 		}, "arbiter e2-medium: E2 machines do not support Hyperdisk"},
 		{"cpu platform on e2", func(c *Config) { c.MinCpuPlatform = "Intel Ice Lake" }, "fixed CPU platform"},
 		{"amd platform on n2", func(c *Config) {
-			c.ShardsvrType, c.ConfigsvrType, c.MongosType, c.ArbiterType, c.ReplsetSvrType, c.YcsbType = "n2-standard-4", "n2-standard-2", "n2-standard-2", "n2-standard-2", "n2-standard-2", "n2-standard-2"
+			c.ShardsvrType, c.ConfigsvrType, c.MongosType, c.ArbiterType, c.ReplsetSvrType, c.PlgmType = "n2-standard-4", "n2-standard-2", "n2-standard-2", "n2-standard-2", "n2-standard-2", "n2-standard-2"
 			c.MinCpuPlatform = "AMD Milan"
 		}, `cannot use CPU platform "AMD Milan"`},
 		{"tier1 needs gvnic", func(c *Config) { c.Tier1Networking = true }, "requires NIC type GVNIC"},
@@ -110,7 +110,7 @@ func TestValidateHardwareGCPRules(t *testing.T) {
 }
 
 func TestValidateHardwareRolesFollowTopology(t *testing.T) {
-	// Without arbiters or a YCSB client, their (default E2) machine types must not block Hyperdisk.
+	// Without arbiters or a plgm client, their (default E2) machine types must not block Hyperdisk.
 	cfg := Config{
 		Replsets:       map[string]ReplsetConfig{"rs01": {ArbitersPerReplset: intPtr(0)}},
 		ReplsetSvrType: "c4-standard-8", DataDiskType: "hyperdisk-balanced", BootDiskType: "hyperdisk-balanced",
@@ -188,14 +188,14 @@ func TestWriteTfvarsHardwareGCP(t *testing.T) {
 	cfg.ConfigsvrDiskType, cfg.BootDiskType, cfg.BootDiskSize = "pd-ssd", "pd-balanced", 30
 	cfg.MinCpuPlatform, cfg.NicType, cfg.Tier1Networking = "Intel Ice Lake", "GVNIC", true
 	cfg.ZoneMode, cfg.Zones, cfg.CompactPlacement = "single", []string{"us-central1-a"}, true
-	cfg.YcsbType, cfg.ResourceLabels = "n2-highcpu-16", map[string]string{"z": "1", "bench_run": "r1"}
+	cfg.PlgmType, cfg.ResourceLabels = "n2-highcpu-16", map[string]string{"z": "1", "bench_run": "r1"}
 	out := writeTestTfvars(t, "gcp", cfg)
 	for _, want := range []string{
 		`data_disk_type = "hyperdisk-balanced"`, `data_disk_iops = 16000`, `data_disk_throughput = 400`,
 		`configsvr_disk_type = "pd-ssd"`, `boot_disk_type = "pd-balanced"`, `boot_disk_size = 30`,
 		`min_cpu_platform = "Intel Ice Lake"`, `nic_type = "GVNIC"`, `tier1_networking = true`,
 		`zone_mode = "single"`, `zones = ["us-central1-a"]`, `compact_placement = true`,
-		`ycsb_type = "n2-highcpu-16"`, "labels = {\n  \"bench_run\" = \"r1\"\n  \"z\" = \"1\"\n}",
+		`plgm_type = "n2-highcpu-16"`, "labels = {\n  \"bench_run\" = \"r1\"\n  \"z\" = \"1\"\n}",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("gcp tfvars missing %q:\n%s", want, out)
@@ -219,7 +219,7 @@ func TestWriteTfvarsHardwareAWSAndDefaults(t *testing.T) {
 	}
 	// Empty settings keep every Terraform default.
 	out = writeTestTfvars(t, "gcp", hwTopology())
-	for _, unwanted := range []string{"data_disk_iops", "boot_disk", "compact_placement", "labels", "zones", "ycsb_type"} {
+	for _, unwanted := range []string{"data_disk_iops", "boot_disk", "compact_placement", "labels", "zones", "plgm_type"} {
 		if strings.Contains(out, unwanted) {
 			t.Errorf("default gcp tfvars must not contain %q:\n%s", unwanted, out)
 		}
@@ -241,7 +241,7 @@ func TestConfigureRendersComputeFieldsOnce(t *testing.T) {
 		})
 		// Count rendered markup only (JS block builders hold CHAOS-only copies).
 		form := page[strings.Index(page, `<form id="config-form"`):strings.Index(page, `</form>`)]
-		for _, field := range []string{"shardsvr_type", "configsvr_type", "mongos_type", "arbiter_type", "replsetsvr_type", "data_disk_type", "shardsvr_volume_size", "ycsb_type"} {
+		for _, field := range []string{"shardsvr_type", "configsvr_type", "mongos_type", "arbiter_type", "replsetsvr_type", "data_disk_type", "shardsvr_volume_size", "plgm_type"} {
 			if n := strings.Count(form, `name="`+field+`"`); n != 1 {
 				t.Errorf("%s: field %s rendered %d times, want 1", platform, field, n)
 			}
@@ -322,7 +322,7 @@ func TestHardwareDetailsCollapsedUnlessCustomized(t *testing.T) {
 	}
 }
 
-func TestCloudNetworkAndYcsbPanelsCollapsedByDefault(t *testing.T) {
+func TestCloudNetworkAndPlgmPanelsCollapsedByDefault(t *testing.T) {
 	panelOpen := func(t *testing.T, page, id string) bool {
 		t.Helper()
 		i := strings.Index(page, `id="`+id+`"`)
@@ -333,8 +333,8 @@ func TestCloudNetworkAndYcsbPanelsCollapsedByDefault(t *testing.T) {
 	}
 	for _, platform := range []string{"gcp", "aws", "azure"} {
 		page := renderConfigure(t, ConfigureData{Platform: platform})
-		if panelOpen(t, page, "cloud-network-details") || panelOpen(t, page, "ycsb-client-details") {
-			t.Errorf("%s: network and YCSB client panels should start collapsed", platform)
+		if panelOpen(t, page, "cloud-network-details") || panelOpen(t, page, "plgm-client-details") {
+			t.Errorf("%s: network and plgm client panels should start collapsed", platform)
 		}
 		// Region and machine image stay visible above the panel.
 		net := strings.Index(page, `id="cloud-network-details"`)
@@ -344,8 +344,8 @@ func TestCloudNetworkAndYcsbPanelsCollapsedByDefault(t *testing.T) {
 		if platform != "azure" && strings.Index(page, `id="machine_image"`) > net {
 			t.Errorf("%s: machine image must stay outside the network panel", platform)
 		}
-		if !strings.Contains(page, `id="ycsb-client-wrap" style="display:none"`) {
-			t.Errorf("%s: YCSB client settings should be hidden while YCSB is disabled", platform)
+		if !strings.Contains(page, `id="plgm-client-wrap" style="display:none"`) {
+			t.Errorf("%s: plgm client settings should be hidden while plgm is disabled", platform)
 		}
 	}
 	for _, cfg := range []Config{{DefaultVpcName: "bench"}, {SubnetCIDR: "10.1.0.0/20"}, {UseSpotInstances: true}, {SubnetCount: 1}} {
@@ -356,12 +356,12 @@ func TestCloudNetworkAndYcsbPanelsCollapsedByDefault(t *testing.T) {
 	if page := renderConfigure(t, ConfigureData{Platform: "gcp", Config: Config{DefaultVpcName: "mongo", SubnetCIDR: "10.128.0.0/20"}}); panelOpen(t, page, "cloud-network-details") {
 		t.Error("default network values should keep the panel collapsed")
 	}
-	page := renderConfigure(t, ConfigureData{Platform: "gcp", Config: Config{EnableYcsb: true, YcsbType: "n2-highcpu-8"}})
-	if !panelOpen(t, page, "ycsb-client-details") || strings.Contains(page, `id="ycsb-client-wrap" style="display:none"`) {
-		t.Error("a hand-picked YCSB machine type should be visible")
+	page := renderConfigure(t, ConfigureData{Platform: "gcp", Config: Config{EnablePlgm: true, PlgmType: "n2-highcpu-8"}})
+	if !panelOpen(t, page, "plgm-client-details") || strings.Contains(page, `id="plgm-client-wrap" style="display:none"`) {
+		t.Error("a hand-picked plgm machine type should be visible")
 	}
-	page = renderConfigure(t, ConfigureData{Platform: "gcp", Config: Config{EnableYcsb: true, YcsbType: "n2-highcpu-8", HardwarePreset: "atlas-m50"}})
-	if panelOpen(t, page, "ycsb-client-details") {
-		t.Error("a preset YCSB machine type should stay collapsed")
+	page = renderConfigure(t, ConfigureData{Platform: "gcp", Config: Config{EnablePlgm: true, PlgmType: "n2-highcpu-8", HardwarePreset: "atlas-m50"}})
+	if panelOpen(t, page, "plgm-client-details") {
+		t.Error("a preset plgm machine type should stay collapsed")
 	}
 }

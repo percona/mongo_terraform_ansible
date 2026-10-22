@@ -119,7 +119,7 @@ file. At minimum, review:
 - machine types, image, disk sizes, and `use_spot_instances`
 - backup bucket naming and retention
 - `source_ranges` for inbound access
-- optional PMM, CA/TLS, LDAP, and YCSB settings
+- optional PMM, CA/TLS, LDAP, and plgm load generator settings
 
 ### Minimum `tfvars`
 
@@ -157,7 +157,7 @@ cluster/replica set names) for each environment deployed in the same project.
 
 All settings are global to the deployment (every cluster and replica set) and
 optional; unset values keep the defaults. Boot disk, CPU platform, NIC and
-placement settings apply to MongoDB nodes and the YCSB client only.
+placement settings apply to MongoDB nodes and the plgm client only.
 
 | Variable | Default | Notes |
 |---|---|---|
@@ -170,7 +170,8 @@ placement settings apply to MongoDB nodes and the YCSB client only.
 | `nic_type`, `tier1_networking` | default, `false` | Tier_1 requires `GVNIC` |
 | `zone_mode`, `zones` | `spread`, all zones | `single` puts every instance in the first zone |
 | `compact_placement` | `false` | Collocated placement policy; requires `zone_mode = "single"` |
-| `ycsb_type` | `e2-medium` | Size it so the client is not the bottleneck |
+| `plgm_type` | `e2-medium` | Size it so the client is not the bottleneck |
+| `plgm_local_port` | `29999` | Local port forwarded by the generated ssh_config to the plgm Web UI |
 | `labels` | `{}` | Extra labels on every instance and disk |
 
 Example (C4 + Hyperdisk, single zone):
@@ -188,12 +189,12 @@ data_disk_throughput  = 400
 boot_disk_type        = "hyperdisk-balanced"
 nic_type              = "GVNIC"
 zone_mode             = "single"
-ycsb_type             = "c4-highcpu-16"
+plgm_type             = "c4-highcpu-16"
 labels                = { bench_run = "r1" }
 ```
 
 Spot VMs (`use_spot_instances`) are not suitable for benchmarks; they never
-apply to the YCSB client or service hosts.
+apply to the plgm client or service hosts.
 
 ## Deploy
 

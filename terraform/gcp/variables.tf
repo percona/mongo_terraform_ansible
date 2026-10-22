@@ -153,6 +153,12 @@ variable "port_to_forward" {
   description = "Local port number to forward via SSH to access PMM UI over localhost"
 }
 
+variable "plgm_local_port" {
+  type        = string
+  default     = "29999"
+  description = "Local port forwarded via SSH to the plgm Web UI (127.0.0.1:9999 on the plgm host)"
+}
+
 #############
 # PMM
 #############
@@ -326,25 +332,25 @@ locals {
   ca_host = "${var.prefix}-${var.default_ca_host}"
 }
 
-variable "enable_ycsb" {
+variable "enable_plgm" {
   type        = bool
   default     = false
-  description = "Deploy a dedicated YCSB workload generator instance."
+  description = "Deploy a dedicated plgm load generator instance."
 }
 
-variable "default_ycsb_host" {
-  description = "Base YCSB host name"
+variable "default_plgm_host" {
+  description = "Base plgm host name"
   type        = string
-  default     = "ycsb"
+  default     = "plgm"
 }
 
 locals {
-  ycsb_host = "${var.prefix}-${var.default_ycsb_host}"
+  plgm_host = "${var.prefix}-${var.default_plgm_host}"
 }
 
-variable "ycsb_type" {
+variable "plgm_type" {
   default     = "e2-medium"
-  description = "GCP machine type of the YCSB server"
+  description = "GCP machine type of the plgm server"
 }
 
 #############
@@ -406,7 +412,7 @@ variable "image" {
 }
 
 # Save money by running spot instances but they may be terminated by google at any time.
-# Do not use for benchmarks: preemption invalidates results. Never applied to the YCSB client.
+# Do not use for benchmarks: preemption invalidates results. Never applied to the plgm client.
 variable "use_spot_instances" {
   type    = bool
   default = false
@@ -438,25 +444,25 @@ variable "configsvr_disk_type" {
 variable "boot_disk_type" {
   type        = string
   default     = null
-  description = "Boot disk type for MongoDB nodes and the YCSB client. Defaults to the GCP default (pd-standard), which C3/C4/N4 machines do not support."
+  description = "Boot disk type for MongoDB nodes and the plgm client. Defaults to the GCP default (pd-standard), which C3/C4/N4 machines do not support."
 }
 
 variable "boot_disk_size" {
   type        = number
   default     = null
-  description = "Boot disk size (GB) for MongoDB nodes and the YCSB client. Defaults to the image size. MongoDB logs are written to the boot disk."
+  description = "Boot disk size (GB) for MongoDB nodes and the plgm client. Defaults to the image size. MongoDB logs are written to the boot disk."
 }
 
 variable "min_cpu_platform" {
   type        = string
   default     = null
-  description = "Minimum CPU platform for MongoDB nodes and the YCSB client (e.g. \"Intel Ice Lake\"). Pins the CPU generation for reproducible results. Not supported on E2/N4/C3/C4."
+  description = "Minimum CPU platform for MongoDB nodes and the plgm client (e.g. \"Intel Ice Lake\"). Pins the CPU generation for reproducible results. Not supported on E2/N4/C3/C4."
 }
 
 variable "nic_type" {
   type        = string
   default     = null
-  description = "vNIC type for MongoDB nodes and the YCSB client: GVNIC or VIRTIO_NET. Defaults to the GCP default."
+  description = "vNIC type for MongoDB nodes and the plgm client: GVNIC or VIRTIO_NET. Defaults to the GCP default."
 
   validation {
     condition     = var.nic_type == null || contains(["GVNIC", "VIRTIO_NET"], coalesce(var.nic_type, "GVNIC"))
@@ -467,7 +473,7 @@ variable "nic_type" {
 variable "tier1_networking" {
   type        = bool
   default     = false
-  description = "Enable Tier_1 per-VM egress bandwidth on MongoDB nodes and the YCSB client. Requires nic_type = GVNIC and a large supported machine type."
+  description = "Enable Tier_1 per-VM egress bandwidth on MongoDB nodes and the plgm client. Requires nic_type = GVNIC and a large supported machine type."
 
   validation {
     condition     = !var.tier1_networking || var.nic_type == "GVNIC"
@@ -495,7 +501,7 @@ variable "zones" {
 variable "compact_placement" {
   type        = bool
   default     = false
-  description = "Place MongoDB nodes and the YCSB client in a compact (collocated) placement policy. Requires zone_mode = single and a supported machine series (not E2/N1)."
+  description = "Place MongoDB nodes and the plgm client in a compact (collocated) placement policy. Requires zone_mode = single and a supported machine series (not E2/N1)."
 
   validation {
     condition     = !var.compact_placement || var.zone_mode == "single"

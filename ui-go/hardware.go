@@ -131,8 +131,8 @@ func gcpDiskSupported(family, diskType string) error {
 
 // Terraform defaults, used when a field is left empty in the UI.
 var hardwareDefaults = map[string]map[string]string{
-	"gcp": {"node_type": "e2-medium", "ycsb_type": "e2-medium", "data_disk_type": "pd-standard"},
-	"aws": {"node_type": "t3.medium", "ycsb_type": "t3.medium", "data_disk_type": "gp2"},
+	"gcp": {"node_type": "e2-medium", "plgm_type": "e2-medium", "data_disk_type": "pd-standard"},
+	"aws": {"node_type": "t3.medium", "plgm_type": "t3.medium", "data_disk_type": "gp2"},
 }
 
 type hwRole struct {
@@ -170,7 +170,7 @@ func hardwareRoles(platform string, cfg Config) []hwRole {
 		{"mongos", nodeType(cfg.MongosType), "", 0, hasClusters},
 		{"replica set node", nodeType(cfg.ReplsetSvrType), dataDisk, intDefault(cfg.ReplsetSvrVolumeSize, 100), hasReplsets},
 		{"arbiter", nodeType(cfg.ArbiterType), "", 0, hasArbiters},
-		{"YCSB client", strDefault(cfg.YcsbType, def["ycsb_type"]), "", 0, cfg.EnableYcsb},
+		{"plgm client", strDefault(cfg.PlgmType, def["plgm_type"]), "", 0, cfg.EnablePlgm},
 	}
 }
 
@@ -355,7 +355,7 @@ func containsString(list []string, v string) bool {
 // to the platform, so stale values never reach Terraform.
 func normalizeHardwareConfig(platform string, cfg *Config) {
 	trim := func(p *string) { *p = strings.TrimSpace(*p) }
-	for _, p := range []*string{&cfg.DataDiskType, &cfg.ConfigsvrDiskType, &cfg.BootDiskType, &cfg.MinCpuPlatform, &cfg.NicType, &cfg.ZoneMode, &cfg.YcsbType, &cfg.HardwarePreset} {
+	for _, p := range []*string{&cfg.DataDiskType, &cfg.ConfigsvrDiskType, &cfg.BootDiskType, &cfg.MinCpuPlatform, &cfg.NicType, &cfg.ZoneMode, &cfg.PlgmType, &cfg.HardwarePreset} {
 		trim(p)
 	}
 	zones := cfg.Zones[:0]
@@ -451,7 +451,7 @@ var hardwareFormFields = []string{
 	"shardsvr_type", "shardsvr_volume_size", "configsvr_type", "configsvr_volume_size",
 	"mongos_type", "arbiter_type", "replsetsvr_type", "replsetsvr_volume_size",
 	"data_disk_type", "data_disk_iops", "data_disk_throughput", "configsvr_disk_type",
-	"boot_disk_type", "boot_disk_size", "ycsb_type", "compact_placement",
+	"boot_disk_type", "boot_disk_size", "plgm_type", "compact_placement",
 	// GCP
 	"min_cpu_platform", "nic_type", "tier1_networking", "zone_mode",
 	// AWS
@@ -477,9 +477,9 @@ func hardwarePresets(platform string) []HardwarePreset {
 	switch platform {
 	case "gcp":
 		for _, t := range atlasTiers {
-			ycsb := "n2-highcpu-8"
+			plgm := "n2-highcpu-8"
 			if t.vcpu >= 16 {
-				ycsb = "n2-highcpu-16"
+				plgm = "n2-highcpu-16"
 			}
 			mt := fmt.Sprintf("n2-standard-%d", t.vcpu)
 			presets = append(presets, HardwarePreset{
@@ -491,7 +491,7 @@ func hardwarePresets(platform string) []HardwarePreset {
 					"shardsvr_volume_size": t.diskGB, "replsetsvr_volume_size": t.diskGB, "configsvr_volume_size": 20,
 					"data_disk_type": "pd-ssd", "boot_disk_type": "pd-balanced", "boot_disk_size": 30,
 					"min_cpu_platform": "Intel Ice Lake", "nic_type": "GVNIC", "zone_mode": "single",
-					"ycsb_type": ycsb,
+					"plgm_type": plgm,
 				},
 			})
 		}
@@ -505,7 +505,7 @@ func hardwarePresets(platform string) []HardwarePreset {
 					"shardsvr_volume_size": 500, "replsetsvr_volume_size": 500, "configsvr_volume_size": 50,
 					"data_disk_type": "hyperdisk-balanced", "data_disk_iops": 20000, "data_disk_throughput": 600,
 					"configsvr_disk_type": "pd-ssd", "boot_disk_type": "pd-balanced", "boot_disk_size": 30,
-					"nic_type": "GVNIC", "zone_mode": "single", "ycsb_type": "c3-highcpu-22",
+					"nic_type": "GVNIC", "zone_mode": "single", "plgm_type": "c3-highcpu-22",
 				},
 			},
 			HardwarePreset{
@@ -517,17 +517,17 @@ func hardwarePresets(platform string) []HardwarePreset {
 					"shardsvr_volume_size": 500, "replsetsvr_volume_size": 500, "configsvr_volume_size": 50,
 					"data_disk_type": "hyperdisk-balanced", "data_disk_iops": 16000, "data_disk_throughput": 400,
 					"boot_disk_type": "hyperdisk-balanced", "boot_disk_size": 30,
-					"nic_type": "GVNIC", "zone_mode": "single", "ycsb_type": "c4-highcpu-16",
+					"nic_type": "GVNIC", "zone_mode": "single", "plgm_type": "c4-highcpu-16",
 				},
 			},
 		)
 	case "aws":
 		for _, t := range atlasTiers {
 			mt := "m6i." + awsSizeByVCPU[t.vcpu]
-			ycsb := "c6i.2xlarge"
+			plgm := "c6i.2xlarge"
 			iops, tp := 3000, 125
 			if t.vcpu >= 16 {
-				ycsb, iops, tp = "c6i.4xlarge", 6000, 250
+				plgm, iops, tp = "c6i.4xlarge", 6000, 250
 			}
 			presets = append(presets, HardwarePreset{
 				ID: "atlas-" + strings.ToLower(t.name), Label: "Atlas-like " + t.name,
@@ -538,7 +538,7 @@ func hardwarePresets(platform string) []HardwarePreset {
 					"shardsvr_volume_size": t.diskGB, "replsetsvr_volume_size": t.diskGB, "configsvr_volume_size": 20,
 					"data_disk_type": "gp3", "data_disk_iops": iops, "data_disk_throughput": tp,
 					"boot_disk_type": "gp3", "boot_disk_size": 30, "subnet_count": 1,
-					"ycsb_type": ycsb,
+					"plgm_type": plgm,
 				},
 			})
 		}
@@ -551,7 +551,7 @@ func hardwarePresets(platform string) []HardwarePreset {
 					"configsvr_type": "m6i.large", "arbiter_type": "m6i.large",
 					"shardsvr_volume_size": 500, "replsetsvr_volume_size": 500, "configsvr_volume_size": 50,
 					"data_disk_type": "io2", "data_disk_iops": 20000, "configsvr_disk_type": "gp3",
-					"boot_disk_type": "gp3", "boot_disk_size": 30, "subnet_count": 1, "ycsb_type": "c6i.4xlarge",
+					"boot_disk_type": "gp3", "boot_disk_size": 30, "subnet_count": 1, "plgm_type": "c6i.4xlarge",
 				},
 			},
 			HardwarePreset{
@@ -562,7 +562,7 @@ func hardwarePresets(platform string) []HardwarePreset {
 					"configsvr_type": "m7i.large", "arbiter_type": "m7i.large",
 					"shardsvr_volume_size": 500, "replsetsvr_volume_size": 500, "configsvr_volume_size": 50,
 					"data_disk_type": "gp3", "data_disk_iops": 16000, "data_disk_throughput": 1000,
-					"boot_disk_type": "gp3", "boot_disk_size": 30, "subnet_count": 1, "ycsb_type": "c7i.4xlarge",
+					"boot_disk_type": "gp3", "boot_disk_size": 30, "subnet_count": 1, "plgm_type": "c7i.4xlarge",
 				},
 			},
 		)
@@ -584,7 +584,7 @@ func suggestedMachineTypes(platform string) []string {
 	}
 	add(hardwareDefaults[platform]["node_type"])
 	for _, p := range hardwarePresets(platform) {
-		for _, f := range []string{"shardsvr_type", "configsvr_type", "mongos_type", "arbiter_type", "ycsb_type"} {
+		for _, f := range []string{"shardsvr_type", "configsvr_type", "mongos_type", "arbiter_type", "plgm_type"} {
 			if v, ok := p.Fields[f].(string); ok {
 				add(v)
 			}

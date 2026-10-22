@@ -92,7 +92,8 @@ provider credentials and SSH configuration.
 ### Environment detail
 
 The environment detail page provides deployment actions, topology summary,
-Hosts & Connections, and YCSB controls when enabled.
+Hosts & Connections, and links to service web consoles (PMM, LDAP, SeaweedFS, and
+the plgm load generator Web UI when enabled).
 
 ![Environment detail](static/readme/environment-detail.png)
 
@@ -129,7 +130,10 @@ Hosts & Connections, and YCSB controls when enabled.
     - Each cluster and replica set includes audit plugin controls. Audit is disabled by
       default. Docker environments use the built-in write-only filter for non-system users
       unless you override it.
-    - Optional YCSB workload generation can be enabled for Docker and cloud environments.
+    - An optional [plgm](https://github.com/Percona-Lab/percona-load-generator-mongodb) load
+      generator can be enabled for Docker and cloud environments. The environment page links
+      to the plgm Web UI (Docker: `http://localhost:9999`; cloud: `http://127.0.0.1:29999`
+      through the SSH tunnel from the generated ssh_config). Workloads are configured in plgm.
 3. **Save** – writes `<env_id>.tfvars` inside the corresponding `../terraform/<platform>/`
    directory and records the environment in `environments.json`.
 4. **Deploy** – runs `terraform init && terraform apply` (and Ansible for cloud platforms)
@@ -167,8 +171,8 @@ Machine types, disk sizes and disk types are set once per environment in the
 On AWS and GCP the section also offers benchmark tunables: provisioned disk
 IOPS and throughput, a separate config server disk type, boot disk type and size,
 compact placement, and extra labels/tags. GCP adds the minimum CPU platform,
-gVNIC/Tier_1 networking and zone placement. The YCSB client machine type is set
-in the **Workload Generator** section.
+gVNIC/Tier_1 networking and zone placement. The plgm client machine type is set
+in the **Load Generator** section.
 
 A **Hardware Preset** fills these fields with a production-like profile (Atlas-like
 M30–M80, IO-heavy, and a latest-generation profile); every field stays editable.

@@ -141,6 +141,12 @@ variable "port_to_forward" {
   description = "Local port to forward for PMM UI access"
 }
 
+variable "plgm_local_port" {
+  type        = string
+  default     = "29999"
+  description = "Local port forwarded via SSH to the plgm Web UI (127.0.0.1:9999 on the plgm host)"
+}
+
 ################
 # PMM
 ################
@@ -314,25 +320,25 @@ locals {
   ca_host = "${var.prefix}-${var.default_ca_host}"
 }
 
-variable "enable_ycsb" {
+variable "enable_plgm" {
   type        = bool
   default     = false
-  description = "Deploy a dedicated YCSB workload generator instance."
+  description = "Deploy a dedicated plgm load generator instance."
 }
 
-variable "default_ycsb_host" {
-  description = "Base hostname for YCSB"
+variable "default_plgm_host" {
+  description = "Base hostname for plgm"
   type        = string
-  default     = "ycsb"
+  default     = "plgm"
 }
 
 locals {
-  ycsb_host = "${var.prefix}-${var.default_ycsb_host}"
+  plgm_host = "${var.prefix}-${var.default_plgm_host}"
 }
 
-variable "ycsb_type" {
+variable "plgm_type" {
   default     = "Standard_B2s"
-  description = "Azure VM size for the YCSB server"
+  description = "Azure VM size for the plgm server"
 }
 
 ################

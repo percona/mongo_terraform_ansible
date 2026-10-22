@@ -468,6 +468,45 @@ func TestConfigServiceURLsUsesSeaweedFSObjectBrowser(t *testing.T) {
 	}
 }
 
+func TestConfigServiceURLsIncludesDockerPlgm(t *testing.T) {
+	env := &Environment{Platform: "docker", Config: Config{Prefix: "test", EnablePlgm: true}}
+	urls := configServiceURLs("test", env)
+	if len(urls) != 1 || urls[0].Name != "test-plgm" || urls[0].URL != "http://localhost:9999" {
+		t.Fatalf("plgm service URLs = %+v, want default Docker plgm Web UI URL", urls)
+	}
+
+	env.Config.PlgmExternalPort = 19999
+	env.Config.PlgmContainerSuffix = "bench"
+	urls = configServiceURLs("test", env)
+	if len(urls) != 1 || urls[0].Name != "test-bench" || urls[0].URL != "http://localhost:19999" {
+		t.Fatalf("plgm service URLs = %+v, want custom Docker plgm Web UI URL", urls)
+	}
+
+	env.Config.EnablePlgm = false
+	if urls = configServiceURLs("test", env); len(urls) != 0 {
+		t.Fatalf("plgm service URLs = %+v, want none when plgm is disabled", urls)
+	}
+}
+
+func TestConfigServiceURLsIncludesCloudPlgmTunnel(t *testing.T) {
+	origTerraformDir := terraformDir
+	terraformDir = t.TempDir()
+	t.Cleanup(func() { terraformDir = origTerraformDir })
+
+	for _, platform := range []string{"aws", "gcp", "azure", "chaos"} {
+		env := &Environment{Platform: platform, Config: Config{Prefix: "test", EnablePlgm: true}}
+		urls := configServiceURLs("test", env)
+		if len(urls) != 1 || urls[0].Name != "plgm" || urls[0].URL != "http://127.0.0.1:29999" {
+			t.Fatalf("%s: plgm service URLs = %+v, want default SSH-forwarded URL", platform, urls)
+		}
+		env.Config.PlgmLocalPort = "39999"
+		urls = configServiceURLs("test", env)
+		if len(urls) != 1 || urls[0].URL != "http://127.0.0.1:39999" {
+			t.Fatalf("%s: plgm service URLs = %+v, want custom SSH-forwarded URL", platform, urls)
+		}
+	}
+}
+
 func TestPhpLDAPadminURL(t *testing.T) {
 	if got, want := phpLDAPadminURL("10.30.0.10"), "http://10.30.0.10:80/phpldapadmin"; got != want {
 		t.Errorf("phpLDAPadminURL() = %q, want %q", got, want)

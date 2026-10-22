@@ -6,7 +6,7 @@ data "google_compute_zones" "available" {
 locals {
   candidate_zones = length(var.zones) > 0 ? var.zones : data.google_compute_zones.available.names
   # Zones used for every instance. Members are spread round-robin over this list;
-  # infrastructure hosts (PMM, YCSB, CA, ...) use the first entry.
+  # infrastructure hosts (PMM, plgm, CA, ...) use the first entry.
   zones = var.zone_mode == "single" ? [local.candidate_zones[0]] : local.candidate_zones
 
   placement_policies = var.compact_placement ? [google_compute_resource_policy.compact[0].self_link] : []

@@ -159,6 +159,12 @@ variable "port_to_forward" {
   description = "Local port number to forward via SSH to access PMM UI over localhost"
 }
 
+variable "plgm_local_port" {
+  type        = string
+  default     = "29999"
+  description = "Local port forwarded via SSH to the plgm Web UI (127.0.0.1:9999 on the plgm host)"
+}
+
 #############
 # PMM
 #############
@@ -332,25 +338,25 @@ locals {
   ca_host = "${var.prefix}-${var.default_ca_host}"
 }
 
-variable "enable_ycsb" {
+variable "enable_plgm" {
   type        = bool
   default     = false
-  description = "Deploy a dedicated YCSB workload generator instance."
+  description = "Deploy a dedicated plgm load generator instance."
 }
 
-variable "default_ycsb_host" {
-  description = "Base YCSB host name"
+variable "default_plgm_host" {
+  description = "Base plgm host name"
   type        = string
-  default     = "ycsb"
+  default     = "plgm"
 }
 
 locals {
-  ycsb_host = "${var.prefix}-${var.default_ycsb_host}"
+  plgm_host = "${var.prefix}-${var.default_plgm_host}"
 }
 
-variable "ycsb_type" {
+variable "plgm_type" {
   default     = "t3.medium"
-  description = "EC2 instance type of the YCSB server"
+  description = "EC2 instance type of the plgm server"
 }
 
 #############
@@ -448,19 +454,19 @@ variable "configsvr_disk_type" {
 variable "boot_disk_type" {
   type        = string
   default     = null
-  description = "Root volume type for MongoDB nodes and the YCSB client (e.g. gp3). Defaults to the AMI setting."
+  description = "Root volume type for MongoDB nodes and the plgm client (e.g. gp3). Defaults to the AMI setting."
 }
 
 variable "boot_disk_size" {
   type        = number
   default     = null
-  description = "Root volume size (GB) for MongoDB nodes and the YCSB client. Defaults to the AMI size. MongoDB logs are written to the root volume."
+  description = "Root volume size (GB) for MongoDB nodes and the plgm client. Defaults to the AMI size. MongoDB logs are written to the root volume."
 }
 
 variable "compact_placement" {
   type        = bool
   default     = false
-  description = "Launch MongoDB nodes and the YCSB client in a cluster placement group (single AZ, low latency). Requires subnet_count = 1."
+  description = "Launch MongoDB nodes and the plgm client in a cluster placement group (single AZ, low latency). Requires subnet_count = 1."
 
   validation {
     condition     = !var.compact_placement || var.subnet_count == 1

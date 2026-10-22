@@ -63,7 +63,6 @@ module "mongodb_clusters" {
   bind_to_localhost = each.value.bind_to_localhost
   enable_pmm        = each.value.enable_pmm
   enable_pbm        = each.value.enable_pbm
-  enable_ycsb       = var.enable_ycsb
 
   depends_on = [
     module.pmm_server,

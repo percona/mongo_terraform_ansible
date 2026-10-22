@@ -203,7 +203,10 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			write("}")
 		}
 
-		writeVar("enable_ycsb", cfg.EnableYcsb)
+		writeVar("enable_plgm", cfg.EnablePlgm)
+		if cfg.EnablePlgm {
+			writeOptStr("plgm_local_port", cfg.PlgmLocalPort)
+		}
 
 		if platform == "chaos" {
 			// CHAOS-specific vars
@@ -338,7 +341,7 @@ func writeTfvars(envID, platform string, cfg Config) error {
 			writeOptStr("arbiter_type", cfg.ArbiterType)
 			writeOptStr("replsetsvr_type", cfg.ReplsetSvrType)
 			writeOptInt("replsetsvr_volume_size", cfg.ReplsetSvrVolumeSize)
-			writeOptStr("ycsb_type", cfg.YcsbType)
+			writeOptStr("plgm_type", cfg.PlgmType)
 			if platform == "aws" || platform == "gcp" {
 				writeHardwareTfvars(platform, cfg, write, writeVar)
 			}
@@ -396,10 +399,11 @@ func writeTfvars(envID, platform string, cfg Config) error {
 	} else {
 		// Docker-only
 		writeOptStr("network_name", cfg.NetworkName)
-		writeVar("enable_ycsb", cfg.EnableYcsb)
-		writeOptStr("ycsb_image", cfg.YcsbImage)
-		writeOptStr("ycsb_os_image", cfg.YcsbOsImage)
-		writeOptStr("ycsb_container_suffix", cfg.YcsbContainerSuffix)
+		writeVar("enable_plgm", cfg.EnablePlgm)
+		writeOptStr("plgm_image", cfg.PlgmImage)
+		writeOptStr("plgm_os_image", cfg.PlgmOsImage)
+		writeOptStr("plgm_container_suffix", cfg.PlgmContainerSuffix)
+		writeOptInt("plgm_external_port", cfg.PlgmExternalPort)
 	}
 
 	// ── Docker credential helpers ─────────────────────────────────────────────

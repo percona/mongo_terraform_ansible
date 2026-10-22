@@ -410,6 +410,10 @@ a:hover { text-decoration: underline; }
 .form-group-checkbox { flex-direction: column; gap: 0.25rem; }
 .form-group-checkbox label { display: flex; align-items: center; gap: 0.4rem; color: var(--color-text); cursor: pointer; }
 .hint { font-size: 0.78rem; color: var(--color-muted); margin-top: 0.5rem; }
+/* Note shown when an option is turned on/off automatically by a dependency. */
+.dependency-note { color: var(--color-info); margin: 0.25rem 0 0.5rem; }
+/* Option greyed out because it conflicts with another selected option. */
+.form-group-checkbox label.option-disabled { opacity: 0.55; cursor: not-allowed; }
 
 .component-block {
   background: var(--color-surface2);
@@ -933,10 +937,6 @@ tr:last-child td { border-bottom: none; }
   border-radius: var(--radius);
   padding: 1.2rem 1.4rem;
   margin-bottom: 1.2rem;
-}
-
-.ycsb-panel {
-  margin-top: 1.5rem;
 }
 
 .hosts-header {

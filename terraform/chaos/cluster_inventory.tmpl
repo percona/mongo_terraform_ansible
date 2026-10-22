@@ -34,9 +34,9 @@ ${hostname_pmm} ansible_host=${ip_pmm}
 ${hostname_ca} ansible_host=${ip_ca}
 
 %{ endif ~}
-%{ if hostname_ycsb != "" ~}
-[ycsb]
-${hostname_ycsb} ansible_host=${ip_ycsb}
+%{ if hostname_plgm != "" ~}
+[plgm]
+${hostname_plgm} ansible_host=${ip_plgm}
 
 %{ endif ~}
 %{ if minio_ip != "" ~}

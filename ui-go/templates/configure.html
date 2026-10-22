@@ -27,6 +27,7 @@
           <span class="field-tip" data-tip="When enabled, every cluster and replica set in this environment uses its dedicated Vault. All MongoDB topologies must use PSMDB.">ⓘ</span></label>
       </div>
     </div>
+    <p id="vault-psmdb-warning" class="alert alert-warning" role="status" style="display:none"></p>
 
   </section>
 
@@ -89,7 +90,7 @@
         <label><input type="checkbox" name="use_spot_instances"
                       {{if .Config.UseSpotInstances}}checked{{end}}>
           Use Spot VMs for MongoDB nodes
-          <span class="field-tip" data-tip="Cheaper, but GCP can preempt them at any time. Do not use for benchmarks. The YCSB client and service hosts never use Spot.">ⓘ</span>
+          <span class="field-tip" data-tip="Cheaper, but GCP can preempt them at any time. Do not use for benchmarks. The plgm client and service hosts never use Spot.">ⓘ</span>
         </label>
       </div>
     </div>
@@ -310,7 +311,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label for="boot_disk_type">Boot Disk Type <span class="field-tip" data-tip="Boot disk of MongoDB nodes and the YCSB client. MongoDB logs are written here. GCP C3/C4/N4 machines require an explicit type.">ⓘ</span></label>
+        <label for="boot_disk_type">Boot Disk Type <span class="field-tip" data-tip="Boot disk of MongoDB nodes and the plgm client. MongoDB logs are written here. GCP C3/C4/N4 machines require an explicit type.">ⓘ</span></label>
         <select id="boot_disk_type" name="boot_disk_type">
           <option value="">Default</option>
           {{range diskTypes $p}}{{if .Boot}}<option value="{{.Name}}" {{if eq $.Config.BootDiskType .Name}}selected{{end}}>{{.Name}}</option>{{end}}{{end}}
@@ -360,7 +361,7 @@
       </div>
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" id="compact_placement" name="compact_placement" {{if .Config.CompactPlacement}}checked{{end}}> Compact placement
-          <span class="field-tip" data-tip="Places MongoDB nodes and the YCSB client physically close together. Requires single zone mode and a non-E2/N1 series. Capacity may be limited.">ⓘ</span></label>
+          <span class="field-tip" data-tip="Places MongoDB nodes and the plgm client physically close together. Requires single zone mode and a non-E2/N1 series. Capacity may be limited.">ⓘ</span></label>
       </div>
     </div>
     {{else}}
@@ -368,7 +369,7 @@
     <div class="form-row">
       <div class="form-group form-group-checkbox">
         <label><input type="checkbox" id="compact_placement" name="compact_placement" {{if .Config.CompactPlacement}}checked{{end}}> Cluster placement group
-          <span class="field-tip" data-tip="Launches MongoDB nodes and the YCSB client in a cluster placement group for low, stable latency. Requires Subnet Count = 1. Burstable (t*) instances are not supported.">ⓘ</span></label>
+          <span class="field-tip" data-tip="Launches MongoDB nodes and the plgm client in a cluster placement group for low, stable latency. Requires Subnet Count = 1. Burstable (t*) instances are not supported.">ⓘ</span></label>
       </div>
     </div>
     {{end}}
@@ -1248,7 +1249,7 @@
       <label class="toggle-label">
         <input type="checkbox" id="enable-pmm-docker"
                {{if .SortedPmmServers}}checked{{end}}
-               onchange="toggleDockerSingleServer('pmm-servers-container', this, addPmmServer); syncDockerPmmDependencies(this.checked)">
+               onchange="toggleDockerSingleServer('pmm-servers-container', this, addPmmServer)">
         Include PMM Server
       </label>
     </div>
@@ -1510,7 +1511,7 @@
   <section class="form-section">
     <div class="section-header">
       <h2>PMM Clients Without MongoDB <span class="field-tip" data-tip="Hosts with only a PMM client, registered with the PMM server. PMM Extensions can install MongoDB on them.">ⓘ</span></h2>
-      <button type="button" class="btn btn-outline btn-sm" onclick="addBareClient()">+ Add Client</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="onAddBareClientClick(this)">+ Add Client</button>
     </div>
     <div id="bare-clients-container"></div>
   </section>
@@ -1626,7 +1627,7 @@
       <label class="toggle-label">
         <input type="checkbox" id="enable-seaweedfs-docker"
                {{if .SortedSeaweedFS}}checked{{end}}
-               onchange="toggleDockerSingleServer('seaweedfs-servers-container', this, addSeaweedFSServer); toggleCredentialRow('cred-seaweedfs-row', this.checked); syncDockerSeaweedFSDependencies(this.checked)">
+               onchange="toggleDockerSingleServer('seaweedfs-servers-container', this, addSeaweedFSServer); toggleCredentialRow('cred-seaweedfs-row', this.checked)">
         Include SeaweedFS Server
       </label>
     </div>
@@ -1864,51 +1865,65 @@
 
   <section class="form-section">
     <div class="section-header">
-      <h2>Workload Generator</h2>
+      <h2>Load Generator</h2>
     </div>
     <div class="form-row" style="margin-bottom:0.5rem">
       <div class="form-group form-group-checkbox">
       <label class="toggle-label">
-        <input type="checkbox" id="enable_ycsb" name="enable_ycsb" value="true"
-                {{if .Config.EnableYcsb}}checked{{end}}
-                {{if eq $p "docker"}}onchange="toggleDockerYcsbSection(this)"{{end}}>
-        Include YCSB <span class="field-tip" data-tip="Creates a dedicated YCSB workload generator for this environment. Available for Docker and all VM-based deployment types.">ⓘ</span>
+        <input type="checkbox" id="enable_plgm" name="enable_plgm" value="true"
+                {{if .Config.EnablePlgm}}checked{{end}}
+                onchange="togglePlgmSection(this)">
+        Include plgm <span class="field-tip" data-tip="Creates a dedicated plgm (Percona Load Generator for MongoDB) host running the plgm Web UI. Connect it to a cluster and define the workload from the plgm Web UI, linked from the environment page. Available for Docker and all VM-based deployment types.">ⓘ</span>
       </label>
       </div>
     </div>
     {{if or (eq $p "gcp") (eq $p "aws") (eq $p "azure")}}
-    {{$ycsbOpen := and .Config.YcsbType (not .Config.HardwarePreset)}}
-    <div id="ycsb-client-wrap" {{if not .Config.EnableYcsb}}style="display:none"{{end}}>
+    {{$plgmOpen := and .Config.PlgmType (not .Config.HardwarePreset)}}
+    <div id="plgm-client-wrap" {{if not .Config.EnablePlgm}}style="display:none"{{end}}>
     <div class="subsection-header">
-      <span class="subsection-title">YCSB Client Settings</span>
-      <button type="button" class="btn btn-outline btn-sm compute-toggle-btn" id="ycsb-client-details-toggle"
-              onclick="toggleComputeBlock(this)">{{if $ycsbOpen}}▲ Collapse{{else}}▼ Customize{{end}}</button>
+      <span class="subsection-title">plgm Client Settings</span>
+      <button type="button" class="btn btn-outline btn-sm compute-toggle-btn" id="plgm-client-details-toggle"
+              onclick="toggleComputeBlock(this)">{{if $plgmOpen}}▲ Collapse{{else}}▼ Customize{{end}}</button>
     </div>
-    <div class="compute-block-body" id="ycsb-client-details" {{if not $ycsbOpen}}style="display:none"{{end}}>
+    <div class="compute-block-body" id="plgm-client-details" {{if not $plgmOpen}}style="display:none"{{end}}>
     <div class="form-row">
       <div class="form-group">
-        <label for="ycsb_type">YCSB Client Machine Type <span class="field-tip" data-tip="Size the client so it is not the bottleneck: compute-optimized, at least as many vCPUs as a data node. It runs in the first zone, next to replica index 0 of every shard.">ⓘ</span></label>
-        <input type="text" id="ycsb_type" name="ycsb_type" list="machine-type-suggestions" value="{{.Config.YcsbType}}"
+        <label for="plgm_type">plgm Client Machine Type <span class="field-tip" data-tip="Size the client so it is not the bottleneck: compute-optimized, at least as many vCPUs as a data node. plgm only ships x86_64 binaries, so pick an x86 machine type. It runs in the first zone, next to replica index 0 of every shard.">ⓘ</span></label>
+        <input type="text" id="plgm_type" name="plgm_type" list="machine-type-suggestions" value="{{.Config.PlgmType}}"
                placeholder="{{if eq $p "aws"}}t3.medium{{else if eq $p "gcp"}}e2-medium{{else}}Standard_B2s{{end}}">
       </div>
     </div>
-    </div><!-- #ycsb-client-details -->
-    </div><!-- #ycsb-client-wrap -->
+    </div><!-- #plgm-client-details -->
+    </div><!-- #plgm-client-wrap -->
     {{end}}
-    {{if eq $p "docker"}}
-    <div id="ycsb-docker-body" style="{{if .Config.EnableYcsb}}{{else}}display:none{{end}}">
+    {{if or (eq $p "gcp") (eq $p "aws") (eq $p "azure") (eq $p "chaos")}}
+    <div id="plgm-tunnel-body" {{if not .Config.EnablePlgm}}style="display:none"{{end}}>
       <div class="form-row">
         <div class="form-group">
-          <label for="ycsb_image">YCSB Image <span class="field-tip" data-tip="Local Docker image name built for the YCSB workload container.">ⓘ</span></label>
-          <input type="text" id="ycsb_image" name="ycsb_image" value="{{strDefault .Config.YcsbImage "percona/ycsb"}}" placeholder="percona/ycsb">
+          <label for="plgm_local_port">plgm Web UI Local Port <span class="field-tip" data-tip="Local port forwarded by the generated ssh_config to the plgm Web UI (127.0.0.1:9999 on the plgm host). Open the tunnel with: ssh -F &lt;prefix&gt;_ssh_config &lt;prefix&gt;-plgm, then browse to http://127.0.0.1:&lt;port&gt;.">ⓘ</span></label>
+          <input type="number" id="plgm_local_port" name="plgm_local_port" min="1024" max="65535" value="{{.Config.PlgmLocalPort}}" placeholder="29999">
+        </div>
+      </div>
+    </div>
+    {{end}}
+    {{if eq $p "docker"}}
+    <div id="plgm-docker-body" style="{{if .Config.EnablePlgm}}{{else}}display:none{{end}}">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="plgm_image">plgm Image <span class="field-tip" data-tip="Local Docker image name built for the plgm container.">ⓘ</span></label>
+          <input type="text" id="plgm_image" name="plgm_image" value="{{strDefault .Config.PlgmImage "percona/plgm"}}" placeholder="percona/plgm">
         </div>
         <div class="form-group">
-          <label for="ycsb_os_image">Base OS Image <span class="field-tip" data-tip="Base container image used when building the YCSB Docker image.">ⓘ</span></label>
-          <input type="text" id="ycsb_os_image" name="ycsb_os_image" value="{{strDefault .Config.YcsbOsImage "redhat/ubi8-minimal"}}" placeholder="redhat/ubi8-minimal">
+          <label for="plgm_os_image">Base OS Image <span class="field-tip" data-tip="Alpine-based container image used when building the plgm Docker image (built for linux/amd64).">ⓘ</span></label>
+          <input type="text" id="plgm_os_image" name="plgm_os_image" value="{{strDefault .Config.PlgmOsImage "alpine:3.22"}}" placeholder="alpine:3.22">
         </div>
         <div class="form-group">
-          <label for="ycsb_container_suffix">Container Name <span class="field-tip" data-tip="Suffix appended to the environment prefix for the YCSB container name.">ⓘ</span></label>
-          <input type="text" id="ycsb_container_suffix" name="ycsb_container_suffix" value="{{strDefault .Config.YcsbContainerSuffix "ycsb"}}" placeholder="ycsb">
+          <label for="plgm_container_suffix">Container Name <span class="field-tip" data-tip="Suffix appended to the environment prefix for the plgm container name.">ⓘ</span></label>
+          <input type="text" id="plgm_container_suffix" name="plgm_container_suffix" value="{{strDefault .Config.PlgmContainerSuffix "plgm"}}" placeholder="plgm">
+        </div>
+        <div class="form-group">
+          <label for="plgm_external_port">Web UI Port <span class="field-tip" data-tip="Host port (bound to 127.0.0.1) that serves the plgm Web UI: http://localhost:&lt;port&gt;.">ⓘ</span></label>
+          <input type="number" id="plgm_external_port" name="plgm_external_port" min="1" max="65535" value="{{if .Config.PlgmExternalPort}}{{.Config.PlgmExternalPort}}{{end}}" placeholder="9999">
         </div>
       </div>
     </div>
@@ -2207,6 +2222,10 @@ function refreshVersionSelect(id, items, valueOf, labelOf, includeEmpty = false)
 function removeBlock(btn) {
   const block = btn.closest('.component-block');
   const container = block.parentElement;
+  const anchor = container.previousElementSibling;
+  // Options this block had turned on, so the dependency rules can drop servers
+  // that nothing uses anymore.
+  const removedChecked = new Set(Array.from(block.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.name));
   block.remove();
   // If this was a single-server container (PMM/SeaweedFS/LDAP), uncheck the toggle
   // and hide the corresponding credential row.
@@ -2218,10 +2237,15 @@ function removeBlock(btn) {
   const mapping = toggleMap[container.id];
   if (mapping) {
     const cb = document.getElementById(mapping.cb);
-    if (cb) cb.checked = false;
+    if (cb) {
+      cb.checked = false;
+      onDependencyChange(cb);
+    }
     const row = document.getElementById(mapping.credRow);
     if (row) row.style.display = 'none';
+    return;
   }
+  applyDependentChange(dep => (dep.kind === 'checkbox' && dep.names.some(n => removedChecked.has(n)) ? false : null), anchor);
 }
 
 // Toggle a Docker single-server block (PMM / SeaweedFS / LDAP).
@@ -2246,84 +2270,419 @@ function toggleDockerSingleServer(containerId, checkbox, addFn) {
   }
 }
 
-function ensureDockerSingleServerSelected(toggleId, containerId, addFn, credRowId = '') {
-  const checkbox = document.getElementById(toggleId);
-  if (!checkbox) return;
-  checkbox.checked = true;
-  toggleDockerSingleServer(containerId, checkbox, addFn);
-  if (credRowId) toggleCredentialRow(credRowId, true);
+// ──────────── Option dependencies ────────────
+// Some options only work when another one is on: PMM agents and PMM clients
+// without MongoDB need a PMM server, PBM agents need SeaweedFS (Docker, CHAOS),
+// TLS needs the certificate authority, and a CA on the PMM server needs PMM.
+// Each rule below names the "provider" checkbox and the options that need it.
+//   - Turning a dependent on turns the provider on.
+//   - Turning the provider off turns every dependent off.
+//   - With autoRemove, the provider turns off when nothing needs it anymore
+//     (Docker servers only; a cloud PMM server is useful on its own).
+//   - With tickDependentsOnEnable, turning the provider on turns on every
+//     dependent checkbox (Docker monitoring/backup toggles).
+// The Go and Terraform validations still run on save as a safety net.
+const TOPOLOGY_PREFIXES = ['cluster', 'replset'];
+
+function topologyCheckboxNames(feature) {
+  return TOPOLOGY_PREFIXES.map(prefix => `${prefix}_${feature}[]`);
 }
 
-function ensureDockerPmmServer() {
-  if (PLATFORM !== 'docker') return;
-  ensureDockerSingleServerSelected('enable-pmm-docker', 'pmm-servers-container', addPmmServer);
+function topologyBlockLabel(el) {
+  const block = el?.closest('.component-block');
+  const nameInput = block?.querySelector('input[name="cluster_name[]"], input[name="replset_name[]"]');
+  if (!nameInput) return '';
+  const kind = nameInput.name.startsWith('cluster_') ? 'cluster' : 'replica set';
+  return `${kind} ${nameInput.value.trim() || '(unnamed)'}`;
 }
 
-function ensureDockerSeaweedFSServer() {
-  if (PLATFORM !== 'docker') return;
-  ensureDockerSingleServerSelected('enable-seaweedfs-docker', 'seaweedfs-servers-container', addSeaweedFSServer, 'cred-seaweedfs-row');
+function checkboxDependent(feature, label) {
+  const names = topologyCheckboxNames(feature);
+  const boxes = () => names.flatMap(name => Array.from(document.querySelectorAll(`#config-form input[name="${name}"]`)));
+  return {
+    kind: 'checkbox',
+    names,
+    label,
+    active: () => boxes().some(cb => cb.checked),
+    // true = became active, false = became inactive, null = unrelated event.
+    triggeredBy: target => (names.includes(target?.name) ? target.checked : null),
+    deactivate: () => boxes().filter(cb => cb.checked).map(cb => {
+      setCheckboxAndNotify(cb, false);
+      return `${label} on ${topologyBlockLabel(cb)}`;
+    }),
+    activateAll: () => boxes().filter(cb => !cb.checked && !cb.disabled).forEach(cb => setCheckboxAndNotify(cb, true)),
+  };
 }
 
-function setDockerMonitoringCheckboxes(name, checked, imageGroup) {
-  if (PLATFORM !== 'docker') return;
-  document.querySelectorAll(`input[name="${name}[]"]`).forEach(cb => {
-    if (cb.checked === checked) return;
-    cb.checked = checked;
-    toggleImageGroup(cb, imageGroup);
-  });
+function bareClientRows() {
+  return Array.from(document.querySelectorAll('#bare-clients-container .bare-client-row'));
 }
 
-function syncDockerPmmDependencies(checked) {
-  setDockerMonitoringCheckboxes('cluster_enable_pmm', checked, 'pmm');
-  setDockerMonitoringCheckboxes('replset_enable_pmm', checked, 'pmm');
+function bareClientsDependent() {
+  return {
+    kind: 'bareClients',
+    label: 'PMM client without MongoDB',
+    needsConfirm: true,
+    active: () => bareClientRows().length > 0,
+    triggeredBy: () => null, // add/remove call applyDependentChange directly
+    describe: () => bareClientRows().map(row => row.querySelector('input[name="bare_client_name[]"]')?.value.trim() || '(unnamed)'),
+    deactivate: () => bareClientRows().map(row => {
+      const name = row.querySelector('input[name="bare_client_name[]"]')?.value.trim() || '(unnamed)';
+      row.remove();
+      return `PMM client ${name}`;
+    }),
+  };
 }
 
-function syncDockerSeaweedFSDependencies(checked) {
-  setDockerMonitoringCheckboxes('cluster_enable_pbm', checked, 'pbm');
-  setDockerMonitoringCheckboxes('replset_enable_pbm', checked, 'pbm');
+function caOnPmmDependent() {
+  const enableCA = () => document.getElementById('enable_ca');
+  const placement = () => document.getElementById('ca_placement');
+  const active = () => !!(enableCA()?.checked && placement()?.value === 'pmm');
+  return {
+    kind: 'caPlacement',
+    label: 'certificate authority on the PMM server',
+    active,
+    triggeredBy: target => (target && (target === enableCA() || target === placement()) ? active() : null),
+    deactivate: () => {
+      const sel = placement();
+      if (!sel || sel.value !== 'pmm') return [];
+      sel.value = 'dedicated';
+      toggleCASettings();
+      return ['certificate authority host (now a dedicated CA server)'];
+    },
+  };
 }
 
-function syncDockerServiceToggleFromDependencies(toggleId, containerId, addFn, dependencyNames, credRowId = '') {
-  if (PLATFORM !== 'docker') return;
-  const toggle = document.getElementById(toggleId);
-  if (!toggle) return;
-  const enabled = dependencyNames.some(name =>
-    Array.from(document.querySelectorAll(`input[name="${name}[]"]`)).some(cb => cb.checked)
-  );
-  toggle.checked = enabled;
-  toggleDockerSingleServer(containerId, toggle, addFn);
-  if (credRowId) toggleCredentialRow(credRowId, enabled);
+function dependencyRules() {
+  const docker = PLATFORM === 'docker';
+  const managedTLS = ['aws', 'gcp', 'azure', 'chaos'].includes(PLATFORM);
+  const rules = [
+    {
+      id: 'pmm',
+      label: 'PMM server',
+      provider: () => document.getElementById(docker ? 'enable-pmm-docker' : 'enable_pmm'),
+      autoRemove: docker,
+      tickDependentsOnEnable: docker,
+      dependents: [
+        checkboxDependent('enable_pmm', 'PMM agent'),
+        ...(docker || PLATFORM === 'chaos' ? [bareClientsDependent()] : []),
+        ...(managedTLS ? [caOnPmmDependent()] : []),
+      ],
+    },
+  ];
+  if (docker || PLATFORM === 'chaos') {
+    rules.push({
+      id: 'seaweedfs',
+      label: 'SeaweedFS backup storage',
+      provider: () => document.getElementById(docker ? 'enable-seaweedfs-docker' : 'enable_seaweedfs'),
+      autoRemove: docker,
+      tickDependentsOnEnable: docker,
+      dependents: [checkboxDependent('enable_pbm', 'PBM agent')],
+    });
+  }
+  if (managedTLS) {
+    rules.push({
+      id: 'ca',
+      label: 'certificate authority',
+      provider: () => document.getElementById('enable_ca'),
+      autoRemove: false,
+      tickDependentsOnEnable: false,
+      dependents: [checkboxDependent('use_tls', 'TLS')],
+    });
+  }
+  return rules.filter(rule => rule.provider());
 }
 
-function syncDockerPmmServerToggle() {
-  syncDockerServiceToggleFromDependencies(
-    'enable-pmm-docker',
-    'pmm-servers-container',
-    addPmmServer,
-    ['cluster_enable_pmm', 'replset_enable_pmm'],
-  );
+let dependencyBusy = false;
+
+// Sets a checkbox and fires its change event so the existing per-field
+// handlers (panels, image groups, package overrides) stay in sync. The
+// delegated dependency listener ignores these events while dependencyBusy.
+function setCheckboxAndNotify(cb, checked) {
+  if (!cb || cb.checked === checked) return;
+  cb.checked = checked;
+  cb.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-function syncDockerSeaweedFSServerToggle() {
-  syncDockerServiceToggleFromDependencies(
-    'enable-seaweedfs-docker',
-    'seaweedfs-servers-container',
-    addSeaweedFSServer,
-    ['cluster_enable_pbm', 'replset_enable_pbm'],
-    'cred-seaweedfs-row',
-  );
+function capitalize(text) {
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
+
+function showDependencyNote(anchor, text) {
+  if (!anchor || !text) return;
+  const host = anchor.closest('.form-row, .section-header') || anchor;
+  let note = host.nextElementSibling;
+  if (!note || !note.classList.contains('dependency-note')) {
+    note = document.createElement('p');
+    note.className = 'hint dependency-note';
+    note.setAttribute('role', 'status');
+    host.after(note);
+  }
+  note.textContent = text;
+  clearTimeout(note._dependencyTimer);
+  note._dependencyTimer = setTimeout(() => note.remove(), 8000);
+}
+
+function ruleIsNeeded(rule) {
+  return rule.dependents.some(dep => dep.active());
+}
+
+function ensureRuleProvider(rule, dep, anchor) {
+  const provider = rule.provider();
+  if (!provider || provider.checked) return;
+  setCheckboxAndNotify(provider, true);
+  showDependencyNote(anchor, `${capitalize(rule.label)} turned on because ${dep.label} is selected.`);
+}
+
+// Turns off everything that needs the provider. Returns false if the user
+// cancelled; the provider is then turned back on.
+function cascadeRuleOff(rule, anchor) {
+  const active = rule.dependents.filter(dep => dep.active());
+  if (!active.length) return true;
+  const confirmDep = active.find(dep => dep.needsConfirm);
+  if (confirmDep) {
+    const names = confirmDep.describe();
+    const others = active.filter(dep => dep !== confirmDep).map(dep => dep.label);
+    const msg = `Turning off the ${rule.label} also removes ${names.length === 1 ? 'this PMM client' : 'these PMM clients'} without MongoDB: ${names.join(', ')}.` +
+      (others.length ? `\nThese options are also turned off: ${others.join(', ')}.` : '') +
+      '\n\nContinue?';
+    if (!confirm(msg)) {
+      setCheckboxAndNotify(rule.provider(), true);
+      return false;
+    }
+  }
+  const changed = active.flatMap(dep => dep.deactivate());
+  if (changed.length) showDependencyNote(anchor, `Turned off because the ${rule.label} is off: ${changed.join(', ')}.`);
+  return true;
+}
+
+// Runs the dependency rules for one event. `stateFor(dep)` returns true when
+// that dependent was just turned on, false when it was turned off, null when
+// the event does not concern it.
+function applyDependentChange(stateFor, anchor) {
+  if (dependencyBusy) return;
+  dependencyBusy = true;
+  try {
+    dependencyRules().forEach(rule => {
+      rule.dependents.forEach(dep => {
+        const state = stateFor(dep);
+        if (state === true) {
+          ensureRuleProvider(rule, dep, anchor);
+        } else if (state === false && rule.autoRemove && !ruleIsNeeded(rule)) {
+          const provider = rule.provider();
+          if (provider?.checked) {
+            setCheckboxAndNotify(provider, false);
+            showDependencyNote(anchor, `${capitalize(rule.label)} removed because nothing uses it anymore.`);
+          }
+        }
+      });
+    });
+  } finally {
+    dependencyBusy = false;
+  }
+  refreshOptionConflicts();
+}
+
+// Delegated handler for every change event in the form.
+function onDependencyChange(target) {
+  if (dependencyBusy || !target) return;
+  dependencyBusy = true;
+  try {
+    dependencyRules().forEach(rule => {
+      if (target !== rule.provider()) return;
+      if (target.checked) {
+        if (rule.tickDependentsOnEnable) {
+          rule.dependents.filter(dep => dep.activateAll).forEach(dep => dep.activateAll());
+        }
+      } else {
+        cascadeRuleOff(rule, target);
+      }
+    });
+  } finally {
+    dependencyBusy = false;
+  }
+  applyDependentChange(dep => dep.triggeredBy(target), target);
+}
+
+// On page load: make sure every provider that something needs is on, so a
+// saved environment always opens in a consistent state.
+function normalizeDependencies() {
+  dependencyBusy = true;
+  try {
+    dependencyRules().forEach(rule => {
+      const provider = rule.provider();
+      if (provider && !provider.checked && ruleIsNeeded(rule)) setCheckboxAndNotify(provider, true);
+    });
+  } finally {
+    dependencyBusy = false;
+  }
+  refreshOptionConflicts();
+}
+
+// New cluster/replica set block: apply conflicts, then (Docker) inherit the
+// monitoring/backup toggles from servers that are already included.
+function initTopologyBlockDependencies(block) {
+  refreshOptionConflicts();
+  dependencyBusy = true;
+  try {
+    dependencyRules().filter(rule => rule.tickDependentsOnEnable && rule.provider()?.checked).forEach(rule => {
+      rule.dependents.filter(dep => dep.kind === 'checkbox').forEach(dep => {
+        dep.names.forEach(name => {
+          const cb = block.querySelector(`input[name="${name}"]`);
+          if (cb && !cb.disabled) setCheckboxAndNotify(cb, true);
+        });
+      });
+    });
+  } finally {
+    dependencyBusy = false;
+  }
+}
+
+function onAddBareClientClick(btn) {
+  addBareClient();
+  applyDependentChange(dep => (dep.kind === 'bareClients' ? true : null), btn);
+}
+
+function removeBareClientRow(btn) {
+  const anchor = document.querySelector('#bare-clients-container')?.previousElementSibling;
+  btn.closest('.bare-client-row')?.remove();
+  applyDependentChange(dep => (dep.kind === 'bareClients' ? false : null), anchor);
+}
+
+// ──────────── Conflicting options ────────────
+// Options that cannot be combined are greyed out with a tooltip:
+//   - TLS and Search/Vector Search in the same block (managed TLS platforms)
+//   - PBM on MongoDB 9.x
+//   - Encryption at rest (Vault) with a non-PSMDB distribution or image
+function setConflictState(input, reason) {
+  if (!input) return;
+  const label = input.closest('label');
+  if (reason) {
+    input.disabled = true;
+    input.dataset.conflictDisabled = '1';
+    if (label) {
+      label.classList.add('option-disabled');
+      label.title = reason;
+    }
+  } else if (input.dataset.conflictDisabled) {
+    input.disabled = false;
+    delete input.dataset.conflictDisabled;
+    if (label) {
+      label.classList.remove('option-disabled');
+      label.removeAttribute('title');
+    }
+  }
+}
+
+function topologyBlocks() {
+  return Array.from(document.querySelectorAll('#clusters-container > .component-block, #replsets-container > .component-block'));
+}
+
+function topologyBlockPrefix(block) {
+  return block.parentElement?.id === 'clusters-container' ? 'cluster' : 'replset';
+}
+
+// Mirrors parseMongoVersion in clustersync.go: "8.0", "psmdb-90", "repo/image:9.0.1".
+function mongoMajorFromVersion(value) {
+  const v = String(value || '');
+  let m = /(?:^|[:_-])(\d+)\.(\d+)/.exec(v);
+  if (m) return parseInt(m[1], 10);
+  m = /^psmdb-(\d+)(\d)$/.exec(v);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function topologyBlockMongoMajor(block, prefix) {
+  const value = PLATFORM === 'docker'
+    ? getBlockImageValue(block, `${prefix}_psmdb_image[]`, 'percona-server-mongodb')
+    : (block.querySelector(`select[name="${prefix}_mongo_release[]"]`)?.value || '');
+  return mongoMajorFromVersion(value);
+}
+
+// Mirrors validateVaultConfig in vault.go.
+function topologyBlockIsPSMDB(block, prefix) {
+  if (PLATFORM === 'docker') {
+    const image = getBlockImageValue(block, `${prefix}_psmdb_image[]`, 'percona-server-mongodb') || 'percona/percona-server-mongodb:latest';
+    return /(^|\/)percona\/percona-server-mongodb[:@]/.test(image);
+  }
+  const dist = block.querySelector(`select[name="${prefix}_mongodb_distribution[]"]`);
+  return !dist || (dist.value || 'psmdb') === 'psmdb';
+}
+
+let conflictsBusy = false;
+
+function refreshOptionConflicts() {
+  if (conflictsBusy) return;
+  conflictsBusy = true;
+  const pbmUnticked = [];
+  try {
+    const vault = document.querySelector('#config-form input[name="vault_encryption"]');
+    const vaultOn = !!vault?.checked;
+    const nonPSMDB = [];
+    topologyBlocks().forEach(block => {
+      const prefix = topologyBlockPrefix(block);
+      const field = name => block.querySelector(`input[name="${prefix}_${name}[]"]`);
+
+      const tls = field('use_tls');
+      const mongot = field('enable_mongot');
+      if (tls && mongot) {
+        setConflictState(mongot, tls.checked && !mongot.checked
+          ? 'Search/Vector Search cannot be used with managed TLS yet. Untick TLS to enable it.' : '');
+        setConflictState(tls, mongot.checked && !tls.checked
+          ? 'Managed TLS cannot be used with Search/Vector Search yet. Untick Search/Vector Search to enable it.' : '');
+      }
+
+      const pbm = field('enable_pbm');
+      if (pbm) {
+        const major = topologyBlockMongoMajor(block, prefix);
+        if (major >= 9) {
+          if (pbm.checked) {
+            dependencyBusy = true;
+            try { setCheckboxAndNotify(pbm, false); } finally { dependencyBusy = false; }
+            pbmUnticked.push(pbm);
+          }
+          setConflictState(pbm, `PBM does not support MongoDB ${major}.x backup and restore yet.`);
+        } else {
+          setConflictState(pbm, '');
+        }
+      }
+
+      const dist = block.querySelector(`select[name="${prefix}_mongodb_distribution[]"]`);
+      if (dist) {
+        Array.from(dist.options).forEach(opt => {
+          if (opt.value === 'psmdb') return;
+          opt.disabled = vaultOn;
+          opt.title = vaultOn ? 'Encryption at rest needs Percona Server for MongoDB.' : '';
+        });
+      }
+      if (!topologyBlockIsPSMDB(block, prefix)) nonPSMDB.push(topologyBlockLabel(block) || prefix);
+    });
+
+    if (vault) {
+      const warning = document.getElementById('vault-psmdb-warning');
+      const list = nonPSMDB.join(', ');
+      setConflictState(vault, !vaultOn && nonPSMDB.length ? `Encryption at rest needs PSMDB. Not using PSMDB: ${list}.` : '');
+      if (warning) {
+        warning.style.display = vaultOn && nonPSMDB.length ? '' : 'none';
+        warning.textContent = vaultOn && nonPSMDB.length
+          ? `Encryption at rest needs Percona Server for MongoDB. Switch these to PSMDB: ${list}.` : '';
+      }
+    }
+  } finally {
+    conflictsBusy = false;
+  }
+  if (pbmUnticked.length) {
+    showDependencyNote(pbmUnticked[0], `PBM agent turned off on ${pbmUnticked.map(topologyBlockLabel).join(', ')}: PBM does not support MongoDB 9.x yet.`);
+    const pbmNames = topologyCheckboxNames('enable_pbm');
+    applyDependentChange(dep => (dep.kind === 'checkbox' && dep.names.some(n => pbmNames.includes(n)) ? false : null), pbmUnticked[0]);
+  }
 }
 
 function onDockerPmmFeatureToggle(checkbox) {
   toggleImageGroup(checkbox, 'pmm');
-  if (checkbox.checked) ensureDockerPmmServer();
-  syncDockerPmmServerToggle();
 }
 
 function onDockerPbmFeatureToggle(checkbox) {
   toggleImageGroup(checkbox, 'pbm');
-  if (checkbox.checked) ensureDockerSeaweedFSServer();
-  syncDockerSeaweedFSServerToggle();
 }
 
 function onDockerMongotFeatureToggle(checkbox) {
@@ -2452,12 +2811,17 @@ function toggleChaosSettings(btn) {
   btn.textContent = hidden ? '▲ Collapse' : '▼ Customize';
 }
 
-function toggleDockerYcsbSection(checkbox) {
-  const body = document.getElementById('ycsb-docker-body');
-  if (!body) return;
-  body.style.display = checkbox.checked ? '' : 'none';
-  body.querySelectorAll('input,select,textarea').forEach(field => {
-    field.disabled = !checkbox.checked;
+function togglePlgmSection(checkbox) {
+  if (!checkbox) return;
+  ['plgm-client-wrap', 'plgm-tunnel-body', 'plgm-docker-body'].forEach(id => {
+    const body = document.getElementById(id);
+    if (!body) return;
+    body.style.display = checkbox.checked ? '' : 'none';
+    if (id !== 'plgm-client-wrap') {
+      body.querySelectorAll('input,select,textarea').forEach(field => {
+        field.disabled = !checkbox.checked;
+      });
+    }
   });
 }
 
@@ -2487,13 +2851,6 @@ function onPmmAgentFeatureToggle(checkbox) {
 
 function onPbmAgentFeatureToggle(checkbox) {
   togglePackageFeatureGroup(checkbox, 'pbm');
-  if (PLATFORM === 'chaos' && checkbox.checked) {
-    const seaweedfs = document.getElementById('enable_seaweedfs');
-    if (seaweedfs && !seaweedfs.checked) {
-      seaweedfs.checked = true;
-      seaweedfs.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  }
 }
 
 function toggleAuditFilter(checkbox) {
@@ -2805,6 +3162,7 @@ function refreshAllPackageVersions(block) {
 // Cascade: when the major MongoDB release (psmdb-70, psmdb-80…) changes,
 // repopulate the specific version dropdown.
 function onMongoReleaseChange(sel) {
+  refreshOptionConflicts(); // PBM is not available for MongoDB 9.x
   let versionSel = null;
   if (sel.id === 'mongo_release') {
     versionSel = document.getElementById('mongo_version');
@@ -3481,8 +3839,7 @@ function addCluster() {
   c.querySelectorAll('select[name="cluster_mongo_release[]"]').forEach(onMongoReleaseChange);
   syncPerconaSearchRepoControl(c);
   if (PLATFORM !== 'docker') refreshAllPackageVersions(c);
-  syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
-  syncDockerSeaweedFSDependencies(document.getElementById('enable-seaweedfs-docker')?.checked);
+  initTopologyBlockDependencies(c);
 }
 
 function addReplset() {
@@ -3524,8 +3881,7 @@ function addReplset() {
   c.querySelectorAll('select[name="replset_mongo_release[]"]').forEach(onMongoReleaseChange);
   syncPerconaSearchRepoControl(c);
   if (PLATFORM !== 'docker') refreshAllPackageVersions(c);
-  syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
-  syncDockerSeaweedFSDependencies(document.getElementById('enable-seaweedfs-docker')?.checked);
+  initTopologyBlockDependencies(c);
 }
 
 function addPmmServer() {
@@ -3616,7 +3972,7 @@ function addBareClient(name, cfg = {}) {
       <input type="text" name="bare_client_image_custom[]" value="${listed ? '' : escHtml(image)}" placeholder="${docker ? 'registry/repo:tag' : 'CHAOS OS image'}" style="${listed ? 'display:none;' : ''}margin-top:0.3rem"></div>
     ${clientFields}
     <div class="form-group form-group-remove"><label aria-hidden="true">&nbsp;</label>
-      <button type="button" class="btn btn-danger btn-sm" title="Remove this client" onclick="this.closest('.bare-client-row').remove()">✕</button></div>`;
+      <button type="button" class="btn btn-danger btn-sm" title="Remove this client" onclick="removeBareClientRow(this)">✕</button></div>`;
   container.appendChild(row);
 }
 
@@ -3810,7 +4166,7 @@ function collectHardwareExtras(fd) {
 function collectHardwareConfig() {
   const form = document.getElementById('config-form');
   const fd = new FormData(form);
-  const cfg = { region: fd.get('region') || '', enable_ycsb: fd.has('enable_ycsb'), clusters: {}, replsets: {} };
+  const cfg = { region: fd.get('region') || '', enable_plgm: fd.has('enable_plgm'), clusters: {}, replsets: {} };
   HW_FIELDS.forEach(f => {
     const v = fd.get(f);
     if (v === null || v === '' || f === 'compact_placement' || f === 'tier1_networking') return;
@@ -3844,7 +4200,7 @@ function scheduleHardwareValidation() {
       box.style.display = errs.length ? '' : 'none';
       if (errs.length) setHardwareDetailsOpen(true); // errors point at fields inside the panel
       if (errs.some(e => /Subnet Count/.test(e))) setCollapsibleOpen('cloud-network-details', true);
-      if (errs.some(e => /YCSB client/.test(e))) setCollapsibleOpen('ycsb-client-details', true);
+      if (errs.some(e => /plgm client/.test(e))) setCollapsibleOpen('plgm-client-details', true);
     } catch (_) { /* validation is advisory; the server re-checks on save */ }
   }, 300);
 }
@@ -3854,10 +4210,10 @@ function initHardwareSection() {
   const section = document.getElementById('compute-storage-section');
   const presetSel = document.getElementById('hardware_preset');
   const markCustom = () => { if (!hwApplyingPreset && presetSel && presetSel.value) { presetSel.value = ''; applyHardwarePreset(''); } };
-  const watched = new Set([...HW_FIELDS, 'zones', 'resource_labels', 'enable_ycsb', 'region']);
+  const watched = new Set([...HW_FIELDS, 'zones', 'resource_labels', 'enable_plgm', 'region']);
   document.getElementById('config-form').addEventListener('input', e => {
     const name = e.target.name || '';
-    if (HW_FIELDS.includes(name) && section?.contains(e.target) || name === 'ycsb_type' || name === 'subnet_count') markCustom();
+    if (HW_FIELDS.includes(name) && section?.contains(e.target) || name === 'plgm_type' || name === 'subnet_count') markCustom();
     if (name === 'data_disk_type') updateDiskPerfFields();
     if (watched.has(name) || name.includes('arbiters')) scheduleHardwareValidation();
   });
@@ -3871,11 +4227,6 @@ function initHardwareSection() {
   scheduleHardwareValidation();
 }
 document.addEventListener('DOMContentLoaded', initHardwareSection);
-document.addEventListener('DOMContentLoaded', () => {
-  const cb = document.getElementById('enable_ycsb');
-  const wrap = document.getElementById('ycsb-client-wrap');
-  if (cb && wrap) cb.addEventListener('change', () => { wrap.style.display = cb.checked ? '' : 'none'; });
-});
 
 // Integer fields – send as numbers in JSON (not strings) so Go unmarshal works cleanly.
 const numericFields = new Set([
@@ -4170,13 +4521,15 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshPmmServerImageTags({ preserveUnmatched: true });
   }
 
-  if (PLATFORM === 'docker') {
-    syncDockerPmmDependencies(document.getElementById('enable-pmm-docker')?.checked);
-    syncDockerSeaweedFSDependencies(document.getElementById('enable-seaweedfs-docker')?.checked);
-    syncDockerPmmServerToggle();
-    syncDockerSeaweedFSServerToggle();
-    toggleDockerYcsbSection(document.getElementById('enable_ycsb'));
-  }
+  // Turn on every server or CA that a saved option needs, then grey out
+  // conflicting options. Runs after the saved PMM clients are added above.
+  normalizeDependencies();
+  const configForm = document.getElementById('config-form');
+  configForm.addEventListener('change', e => onDependencyChange(e.target));
+  configForm.addEventListener('input', e => {
+    if (/_psmdb_image_custom$/.test(e.target.name || '')) refreshOptionConflicts();
+  });
+  togglePlgmSection(document.getElementById('enable_plgm'));
 
   // Async version refresh — updates global JS constants and repopulates selects.
   fetch('/api/versions')
@@ -4374,7 +4727,7 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     'replsetsvr_type','replsetsvr_volume_size',
     // Benchmark hardware tunables (AWS / GCP)
     'hardware_preset','data_disk_iops','data_disk_throughput','configsvr_disk_type',
-    'boot_disk_type','boot_disk_size','min_cpu_platform','nic_type','zone_mode','ycsb_type',
+    'boot_disk_type','boot_disk_size','min_cpu_platform','nic_type','zone_mode','plgm_type',
     // CHAOS-specific fields
     'delete_after_days',
     'shardsvr_cpu_cores','shardsvr_memory_gb',
@@ -4413,7 +4766,11 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
   }
   config.use_spot_instances = fd.has('use_spot_instances');
   Object.assign(config, collectHardwareExtras(fd));
-  config.enable_ycsb = fd.has('enable_ycsb');
+  config.enable_plgm = fd.has('enable_plgm');
+  if (config.enable_plgm && PLATFORM !== 'docker') {
+    const plgmLocalPort = (fd.get('plgm_local_port') || '').trim();
+    if (plgmLocalPort) config.plgm_local_port = plgmLocalPort;
+  }
   config.vault_encryption = fd.has('vault_encryption');
 	if (fd.has('enable_pcsm')) {
 	  const parseTopology = value => { const split = value.indexOf(':'); return {kind:value.slice(0, split), name:value.slice(split + 1)}; };
@@ -4451,12 +4808,14 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
     };
   }
 	if (PLATFORM === 'docker') {
-	  const ycsbImage = (fd.get('ycsb_image') || '').trim();
-	  const ycsbOsImage = (fd.get('ycsb_os_image') || '').trim();
-	  const ycsbContainerSuffix = (fd.get('ycsb_container_suffix') || '').trim();
-	  if (ycsbImage) config.ycsb_image = ycsbImage;
-	  if (ycsbOsImage) config.ycsb_os_image = ycsbOsImage;
-	  if (ycsbContainerSuffix) config.ycsb_container_suffix = ycsbContainerSuffix;
+	  const plgmImage = (fd.get('plgm_image') || '').trim();
+	  const plgmOsImage = (fd.get('plgm_os_image') || '').trim();
+	  const plgmContainerSuffix = (fd.get('plgm_container_suffix') || '').trim();
+	  const plgmExternalPort = parseInt(fd.get('plgm_external_port') || '', 10);
+	  if (plgmImage) config.plgm_image = plgmImage;
+	  if (plgmOsImage) config.plgm_os_image = plgmOsImage;
+	  if (plgmContainerSuffix) config.plgm_container_suffix = plgmContainerSuffix;
+	  if (plgmExternalPort > 0) config.plgm_external_port = plgmExternalPort;
 	}
   // Validate mongot version compatibility before sending to server.
   {

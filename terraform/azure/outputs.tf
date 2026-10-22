@@ -106,8 +106,8 @@ resource "local_file" "AnsibleInventoryCluster" {
       ip_pmm               = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
       hostname_ca          = var.enable_ca ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
       ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(azurerm_linux_virtual_machine.ca[0].public_ip_address, "") : try(azurerm_linux_virtual_machine.pmm[0].public_ip_address, "")) : ""
-      hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
-      ip_ycsb              = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
+      hostname_plgm        = var.enable_plgm ? local.plgm_host : ""
+      ip_plgm              = var.enable_plgm ? azurerm_linux_virtual_machine.plgm[0].public_ip_address : ""
       hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
       ip_pcsm              = var.enable_pcsm ? azurerm_linux_virtual_machine.pcsm[0].public_ip_address : ""
       pcsm_version         = var.pcsm_version
@@ -151,11 +151,12 @@ resource "local_file" "SSHConfigCluster" {
     ssh_private_key_path = var.ssh_private_key_path
     enable_ssh_gateway   = var.enable_ssh_gateway
     port_to_forward      = var.port_to_forward
+    plgm_local_port      = var.plgm_local_port
     ssh_gateway_name     = var.ssh_gateway_name
     hostname_pmm         = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm        = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
-    hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
-    public_ip_ycsb       = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
+    hostname_plgm        = var.enable_plgm ? local.plgm_host : ""
+    public_ip_plgm       = var.enable_plgm ? azurerm_linux_virtual_machine.plgm[0].public_ip_address : ""
     hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
     public_ip_pcsm       = var.enable_pcsm ? azurerm_linux_virtual_machine.pcsm[0].public_ip_address : ""
     pmm_port             = var.pmm_port
@@ -210,8 +211,8 @@ resource "local_file" "AnsibleInventoryRS" {
       ip_pmm               = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
       hostname_ca          = var.enable_ca ? (var.ca_placement == "dedicated" ? local.ca_host : local.pmm_host) : ""
       ip_ca                = var.enable_ca ? (var.ca_placement == "dedicated" ? try(azurerm_linux_virtual_machine.ca[0].public_ip_address, "") : try(azurerm_linux_virtual_machine.pmm[0].public_ip_address, "")) : ""
-      hostname_ycsb        = var.enable_ycsb ? local.ycsb_host : ""
-      ip_ycsb              = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
+      hostname_plgm        = var.enable_plgm ? local.plgm_host : ""
+      ip_plgm              = var.enable_plgm ? azurerm_linux_virtual_machine.plgm[0].public_ip_address : ""
       hostname_pcsm        = var.enable_pcsm ? local.pcsm_host : ""
       ip_pcsm              = var.enable_pcsm ? azurerm_linux_virtual_machine.pcsm[0].public_ip_address : ""
       pcsm_version         = var.pcsm_version
@@ -251,10 +252,11 @@ resource "local_file" "SSHConfigRS" {
     ssh_gateway_name       = var.ssh_gateway_name
     enable_ssh_gateway     = var.enable_ssh_gateway
     port_to_forward        = var.port_to_forward
+    plgm_local_port        = var.plgm_local_port
     hostname_pmm           = var.enable_pmm ? local.pmm_host : ""
     public_ip_pmm          = var.enable_pmm ? azurerm_linux_virtual_machine.pmm[0].public_ip_address : ""
-    hostname_ycsb          = var.enable_ycsb ? local.ycsb_host : ""
-    public_ip_ycsb         = var.enable_ycsb ? azurerm_linux_virtual_machine.ycsb[0].public_ip_address : ""
+    hostname_plgm          = var.enable_plgm ? local.plgm_host : ""
+    public_ip_plgm         = var.enable_plgm ? azurerm_linux_virtual_machine.plgm[0].public_ip_address : ""
     hostname_pcsm          = var.enable_pcsm ? local.pcsm_host : ""
     public_ip_pcsm         = var.enable_pcsm ? azurerm_linux_virtual_machine.pcsm[0].public_ip_address : ""
     pmm_port               = var.pmm_port
